@@ -8,6 +8,8 @@ out/
 next-env.d.ts
 
 # build / test output
+bench-results/
+backups/
 dist/
 coverage/
 playwright-report/

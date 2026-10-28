@@ -1,0 +1,117 @@
+# 07 — Security and AI governance
+
+## 1. Threat model
+
+| # | Threat | Vector | Control | Verified by |
+|---|---|---|---|---|
+| T1 | Cross-tenant read/write | Any query with a forged `institution_id`; direct PostgREST call with a user JWT | RLS on every table via `app.is_member` / `app.has_role`; `institution_id` never taken from the client without re-check in `getTenantContext` | Generated RLS suite (C-01), BOLA tests (C-10..) |
+| T2 | Guardian sees another child | Guessing student/invoice/result ids | Own-scope policies via `app.guardian_student_ids`; actions re-check scope | C-11, C-44, C-54 |
+| T3 | Teacher reads finance/HR | Navigating to `/finance`, calling finance actions | Class **C** RLS (finance/exam role sets); `requirePermission` in actions; nav hidden only as UX | C-03, C-50 |
+| T4 | Direct server-action invocation bypassing UI | Crafted POST to a server action with another institution's slug or forbidden input | `defineAction` always resolves ctx from session + slug and checks permission; Zod rejects unknown fields (`.strict()`) | C-03 escalation tests |
+| T5 | Drafts leaking on the public site | Anon query on `page_versions` or guessing version ids | Policy **P** exposes only `published_version_id` rows; public route never selects drafts | C-80 |
+| T6 | Storage path traversal | Upload to `other-institution/...` | Bucket `institution-files`; policy `(storage.foldername(name))[1] = institution_id::text` and `app.is_member`; signed URLs only (P1 feature) | Storage policy test when F-STU-08 lands |
+| T7 | Service-role leakage | Importing `admin.ts` in a client component or action | `src/lib/supabase/admin.ts` is `server-only`, exports a factory that throws unless `process.env.SERVICE_ROLE_CALLER` matches an allow-list set by seed/jobs entrypoints; ESLint `no-restricted-imports` outside `scripts/` and `src/modules/jobs/` | Lint rule + unit test of the guard |
+| T8 | Prompt injection via student/teacher-authored text | Curriculum text or remarks containing instructions | Data block delimiters + instruction; schema-constrained output; human review before save; no tool use in demo prompts; injection fixture in benchmark | C-66 |
+| T9 | Unauthorized cloud egress under `local_only` | Bug or misconfiguration selects Anthropic | Policy resolver returns a plan without `cloud`; the cloud provider module is lazily imported only when the plan contains `cloud`; `AI_CLOUD_ENABLED` global switch | C-62 (spy on provider factory) |
+| T10 | Demo reset against non-demo data | Operator error or exposed endpoint | `app.demo_reset` raises unless `is_demo`; `DEMO_RESET_ALLOWED` env; permission `demo.reset` only for `is_platform_admin`; UI confirmation phrase | C-04 |
+| T11 | Marks/payments tampering | Direct UPDATE/DELETE | Immutability triggers; versioned corrections; audit revision triggers | C-43, C-52 |
+| T12 | Rate abuse on public forms | Bots on enquiry form | Rate limit per `ip_hash` per hour inside the function; honeypot; (CAPTCHA planned) | C-81, C-83 |
+| T13 | Session fixation / stale claims | Long-lived cookies | `@supabase/ssr` refresh in `proxy.ts` with `getClaims()`; memberships read from DB each request (no role in JWT) | Manual + C-02 |
+| T14 | Secrets in repo or logs | `.env` commit, logging env | `.gitignore` covers `.env*` except example; CI secret scan (`gitleaks` action); logger redacts keys | CI job |
+
+## 2. Permission matrix
+
+Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions · **acc** accountant · **exc** exam_controller · **tch** teacher · **stu** student · **grd** guardian. `platform_superadmin` = `profiles.is_platform_admin` (only `demo.reset`, `institution.create`). ✓ = granted; `s` = scoped by RLS to own sections (teacher) or own children/self (guardian/student).
+
+| Permission | own | pri | adm | ads | acc | exc | tch | stu | grd |
+|---|---|---|---|---|---|---|---|---|---|
+| institution.settings.manage | ✓ | ✓ | ✓ | | | | | | |
+| member.manage | ✓ | ✓ | ✓ | | | | | | |
+| audit.read | ✓ | ✓ | ✓ | | | | | | |
+| dashboard.view | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
+| student.read | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | s | s | s |
+| student.write | ✓ | ✓ | ✓ | ✓ | | | | | |
+| guardian.read | ✓ | ✓ | ✓ | ✓ | ✓ | | s | | s |
+| staff.read | ✓ | ✓ | ✓ | | ✓ | ✓ | | | |
+| staff.write | ✓ | ✓ | ✓ | | | | | | |
+| academics.manage | ✓ | ✓ | ✓ | | | | | | |
+| academics.read | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | s | s |
+| attendance.mark | ✓ | ✓ | ✓ | | | | s | | |
+| attendance.correct | ✓ | ✓ | ✓ | | | | s (window) | | |
+| attendance.read | ✓ | ✓ | ✓ | | | ✓ | s | s | s |
+| admissions.enquiry.read / write | ✓ | ✓ | ✓ | ✓ | | | | | |
+| admissions.application.decide | ✓ | ✓ | | ✓ | | | | | |
+| admissions.enrol | ✓ | ✓ | ✓ | ✓ | | | | | |
+| finance.structure.manage | ✓ | ✓ | ✓ | | ✓ | | | | |
+| finance.invoice.generate | ✓ | ✓ | | | ✓ | | | | |
+| finance.payment.record | ✓ | ✓ | | | ✓ | | | | |
+| finance.read | ✓ | ✓ | ✓ | | ✓ | | | s | s |
+| exam.manage | ✓ | ✓ | | | | ✓ | | | |
+| exam.marks.enter | ✓ | ✓ | | | | ✓ | s | | |
+| exam.result.publish | ✓ | ✓ | | | | ✓ | | | |
+| exam.result.read | ✓ | ✓ | ✓ | | | ✓ | s | s | s |
+| exam.recheck.request | | | | | | | | s | s |
+| exam.recheck.review / decide | ✓ | ✓ | | | | ✓ | | | |
+| assignment.manage | ✓ | ✓ | | | | | s | | |
+| assignment.read | ✓ | ✓ | ✓ | | | | s | s | s |
+| ai.generate | ✓ | ✓ | ✓ | | | | ✓ | | |
+| ai.usage.read | ✓ | ✓ | ✓ | | | | | | |
+| website.edit | ✓ | ✓ | ✓ | ✓ | | | | | |
+| website.publish | ✓ | ✓ | ✓ | | | | | | |
+| notification.read (own) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| notification.log.read | ✓ | ✓ | ✓ | ✓ | | | | | |
+| job.manage | ✓ | ✓ | ✓ | | | | | | |
+
+The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
+
+## 3. Data classification
+
+| Class | Examples | Handling |
+|---|---|---|
+| Public | published pages, public notices/events, institution name | Anon RLS; cacheable |
+| Internal | grades, sections, subjects, curriculum, assignments, jobs, ai usage | Members only |
+| Confidential | student/guardian/staff PII, attendance, admissions, finance, HR, exam marks before and after publication, audit, delivery logs (contain phone numbers) | Role-scoped RLS; never sent to cloud AI unredacted; never logged in plain text |
+| Restricted | credentials, service role key, API keys, session cookies, `CRON_SECRET` | Env only; `server-only` modules; never in client bundles, logs, or reports |
+
+Exam marks are confidential at all times; pre-publication they are additionally invisible to guardians/students because `results` rows do not exist until publish and `marks` has no guardian policy.
+
+## 4. Service-role allow-list (D8)
+
+| Caller | Purpose | Guard |
+|---|---|---|
+| `scripts/seed/*`, `scripts/demo-reset.ts` | Seed and reset | CLI only; `DEMO_RESET_ALLOWED` for reset |
+| `src/modules/jobs/runner.ts` | Claim and process jobs across institutions | `CRON_SECRET` on the route; `SERVICE_ROLE_CALLER=jobs` |
+| SQL `security definer` functions | `app.submit_public_enquiry`, `app.enrol_applicant`, `app.generate_invoice`, `app.record_payment`, `app.publish_exam_results`, `app.apply_recheck_decision`, `app.publish_page`, `app.next_sequence`, `app.claim_job`, `app.enqueue_job`, `app.demo_reset`, `app.audit`, RLS helpers | Each checks `auth.uid()` membership/role internally where user-invoked; `execute` revoked from `anon`/`authenticated` except the user-invoked ones listed in each migration; `set search_path = ''` |
+
+Any new service-role or `security definer` usage must be added to this table in the same PR.
+
+## 5. AI governance (D9)
+
+- **Data flow:** prompts are built server-side from allow-listed fields (demo: curriculum unit title/description, grade, subject, teacher instruction). Student and guardian records never enter prompts in the demo. If a future feature needs them, the redactor must map names/phones/emails/ids to placeholders and the feature must be approved here first.
+- **Policy per institution:** `ai_policy` ∈ `local_only` (default) · `cloud_allowed` · `local_with_cloud_fallback`. Changed only by `institution.settings.manage`; change is audited.
+- **Global switches:** `AI_CLOUD_ENABLED` (default false), `ANTHROPIC_API_KEY` presence. Without both, cloud never runs regardless of policy.
+- **Limits:** daily token quota per institution, per-user per-minute requests, concurrency caps (`05 §4.1 ai`). Exceeding returns `quota_exceeded`/`rate_limited`; never silently degrades.
+- **Approval rule:** AI never writes marks, payments, attendance, memberships, access, admissions decisions, or welfare records. AI output is a draft; a human with the relevant permission saves it through the normal action with full validation.
+- **Redaction before cloud:** regex pass for Indian phone numbers, emails, 12-digit numbers (Aadhaar-like), and names from a per-request deny list (section roster when available); count stored in `ai_usage_events.redactions`.
+- **Logging and retention:** `ai_usage_events` stores metadata only (feature, provider, model, tokens, latency, cost estimate, ok/error, redactions) — never prompt or output text. Retained with the institution. Application logs must not print prompts.
+- **Transparency:** UI shows provider used and a "Simulated/Local/Cloud" badge; `/ai/usage` page for admins.
+- **Benchmarking:** `pnpm ai:bench` (T-040) measures; no capability claims are made before Day 15 results exist.
+
+## 6. Executable security checklist (`pnpm test:security`)
+
+| ID | Test | Mechanism |
+|---|---|---|
+| C-01 | For every tenant table in `rls-expectations.ts` and every role: cross-institution SELECT returns 0 rows; INSERT/UPDATE/DELETE with a foreign `institution_id` fails | Generated `describe.each` over `pg_tables` ∩ expectations; fails if a tenant table lacks an expectation entry |
+| C-02 | Disabled membership loses access immediately | Flip `status`, re-query |
+| C-03 | Permission matrix snapshot equals `07 §2`; each action's declared permission is in the matrix; calling every action as each unauthorized role returns `forbidden` | Unit + integration over the action registry |
+| C-10..C-14 | BOLA: student, guardian, invoice, result, attendance ids of another institution and of another guardian's child return `not_found`/0 rows for every role | Integration |
+| C-44 | Guardian cannot request a recheck for a result that is not their child's | Integration |
+| C-62 | `local_only` never calls the cloud provider factory (spy) | Unit |
+| C-63 | `local_with_cloud_fallback` without key → `ai_unavailable`, no network call | Unit with mocked fetch |
+| C-80 | Anon never receives draft page content; direct PostgREST select on `page_versions` as anon returns only published rows | Integration |
+| C-81/83 | Enquiry rate limit and honeypot | Integration |
+| C-04 | `demo_reset` refuses non-demo institution and refuses without env flag | Integration |
+| C-90 | No `admin.ts` import outside allow-listed paths | ESLint rule run in CI |
+| C-91 | No secrets committed | `gitleaks` in CI |
+
+The suite is a Day 4 deliverable (T-009 scaffolds it; T-042 completes it) and runs at every checkpoint and in CI.

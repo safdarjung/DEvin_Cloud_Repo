@@ -1,0 +1,97 @@
+# CoolSkool — agent instructions
+
+CoolSkool is an AI-powered school operating system for budget-conscious Indian private schools. This file plus your task packet (`docs/planning/coolskool/tasks/T-0NN-*.md`) is everything you need. Read only the spec sections your packet links to.
+
+## Stack (pinned in package.json; verify APIs against those versions with Context7 / `docs-lookup`)
+
+Next.js App Router + TypeScript (strict) · Tailwind v4 + shadcn/ui + lucide-react + Recharts · Supabase (Auth, Postgres + RLS, Storage) via `@supabase/ssr` and `@supabase/supabase-js` with generated types · Vercel AI SDK (`ai`) with `@ai-sdk/anthropic` (cloud) and an Ollama provider (local) · Zod · Vitest · Playwright · ESLint · pnpm. No ORM, no monorepo, no queue service.
+
+## Commands
+
+| Purpose | Command |
+|---|---|
+| Dev server | `pnpm dev` |
+| Local Supabase up / down / reset (migrations + seed) | `pnpm db:start` · `pnpm db:stop` · `pnpm db:reset` |
+| New migration | `pnpm db:migration:new <slug>` (then rename to the reserved number from `10-backlog-index.md`) |
+| Regenerate DB types | `pnpm db:types` → `src/lib/db/types.ts` (commit it) |
+| Seed demo tenant / reset demo data | `pnpm seed` · `pnpm demo:reset` (needs `DEMO_RESET_ALLOWED=true`) |
+| Unit tests / DB-integration tests / security suite / E2E | `pnpm test` · `pnpm test:db` · `pnpm test:security` · `pnpm test:e2e` |
+| Lint / typecheck / build | `pnpm lint` · `pnpm typecheck` · `pnpm build` |
+| Job runner / AI benchmark | `pnpm jobs:run` · `pnpm ai:bench` |
+
+Run only your packet's targeted tests while working. The lead runs the full suite at checkpoints.
+
+## Folder conventions
+
+```
+src/app/(auth)/login                 email+password login (seeded demo users)
+src/app/(tenant)/[institution]/...   authenticated tenant UI; layout resolves membership
+src/app/s/[slug]/[[...path]]         public school website (published content only)
+src/app/api/{public,ai,jobs}/...     route handlers: public forms, AI streaming, cron
+src/proxy.ts                         Supabase session refresh only (getClaims) — never authorization
+src/lib/supabase/{client,server,admin}.ts   browser / server (cookies) / service-role (server-only, allow-listed callers)
+src/lib/auth/{context,permissions,require}.ts  getTenantContext · PERMISSIONS matrix · requirePermission
+src/lib/actions/{result,define-action,registry}.ts  ActionResult envelope · defineAction(schema, permission, handler) · registry (every action registers here for C-03)
+src/lib/ai/{gateway,policy,providers,redact,usage}.ts  the only path to any model
+src/lib/audit.ts                      audit(ctx, event) → audit_events
+src/modules/<domain>/{schemas,actions,queries,components}   core people academics attendance admissions finance exams website ai notifications jobs
+supabase/migrations/2026102800NN_<slug>.sql   one owner per numbered file; never edit a merged migration
+scripts/{seed/,demo-reset.ts,jobs-run.ts,ai-bench.ts}
+tests/{unit,db,security}  e2e/
+```
+
+One owning module per entity (`05-data-architecture.md` §3). Cross-module reads go through the owner's `queries.ts`; cross-module writes go through the owner's action or SQL function. Never duplicate student or guardian data into another module's table.
+
+## Non-negotiable rules
+
+1. **Tenant scope.** Every tenant table has `institution_id`. Every server action receives the institution from the route, calls `getTenantContext()`, and re-verifies membership. RLS is always on; the service-role client is used only by seed/reset, the job runner, and the `security definer` functions listed in `07-security-and-ai-governance.md` §4.
+2. **Authorization is two layers.** RLS for data, `requirePermission(ctx, 'exam.result.publish')` in every action. Hiding UI is never authorization. Permissions live only in `src/lib/auth/permissions.ts`.
+3. **Result envelope.** Every action returns `{ ok: true, data } | { ok: false, error: { code, message, fieldErrors? } }`. Error codes are the `ErrorCode` union in `src/lib/actions/result.ts` (`06-workflows-and-contracts.md` §1). Never throw across the action boundary.
+4. **Validation.** Zod schema per action in the module's `schemas.ts`; `defineAction` parses input before the handler runs.
+5. **Immutable history.** `payments`, `receipts`, `results`, `marks`, `audit_events` are never updated or deleted by application code; corrections insert new versions (`superseded_by`). Triggers enforce this; do not bypass them.
+6. **AI boundary.** All model calls go through `src/lib/ai/gateway.ts`. `local_only` never instantiates a cloud provider. AI output is a suggestion a human saves; AI never writes marks, payments, access, or welfare decisions.
+7. **Honesty labels.** Simulated channels and limited features show a visible badge (`<SimulatedBadge />`). Docs and UI must agree.
+8. **No secrets in the repo.** Names go in `.env.example`; values never. Never print env values in logs or completion reports.
+9. **Migrations.** Append-only, numbered as reserved in `10-backlog-index.md`, one owner each, RLS policies for a table live in the migration that creates it, every table gets `created_at`/`updated_at` and the `app.set_updated_at()` trigger.
+10. **Surgical changes.** Touch only files your packet names. No reformatting, renaming, or drive-by refactors. New dependency only with a one-line justification in the completion report.
+
+## Before you write code (pre-code protocol)
+
+1. Load `andrej-karpathy-skills:karpathy-guidelines` and apply them: challenge every new file, dependency, and abstraction; reuse platform features; keep validation, security, and error handling.
+2. Read this file, your packet, and only the linked spec sections.
+3. For any library API you are not certain of, use Context7 (`docs-lookup` agent) against the versions pinned in `package.json`.
+4. Inspect the existing implementation of the path you will change (targeted greps and partial reads, not whole files).
+5. Write a 5–10 line plan: problem, smallest change, files, tests, assumptions (3 lines for trivial tasks).
+6. Use `tdd-workflow`: write the failing test first for business rules, RLS, and state transitions.
+7. Ask only if a critical ambiguity cannot be resolved safely; otherwise proceed with a recorded default in your completion report.
+
+## Token rules
+
+No whole-file dumps. No restating context that lives in docs. Targeted greps and partial reads. No speculative extras. Stop after two failed attempts on the same root cause and report. Reuse existing components, schemas, utilities.
+
+## Testing conventions
+
+- Unit: `tests/unit/**/*.test.ts` — pure functions, Zod schemas, permission matrix, AI policy, state machines.
+- DB integration: `tests/db/**/*.test.ts` — run against local Supabase with per-role clients from `tests/helpers/roles.ts`; each file creates its own fixture institution and cleans up.
+- Security: `tests/security/**` — generated RLS isolation suite, BOLA, escalation, draft leakage, cloud egress.
+- E2E: `e2e/*.spec.ts` — Playwright against `pnpm dev` with the seeded demo tenant.
+- Test names describe behavior: `test('guardian cannot read another guardian's child', ...)`.
+
+## Definition of done (per packet)
+
+Acceptance criteria met · packet tests green (paste actual output summary) · integrated into the running app on seeded data · reviewed when the packet touches auth, RLS, finance, exams, AI gateway, or seed/reset · honesty label correct in UI and docs · `pnpm lint && pnpm typecheck` clean for touched files.
+
+## Completion report (max ~25 lines)
+
+```
+Packet: T-0NN <title>
+Files changed: <paths>
+Behavior implemented: <2–5 lines>
+Tests run: <commands> → <pass/fail counts, actual>
+Tests not run and why: <...>
+Limitations / honesty label: <...>
+Security / integration risks: <...>
+Follow-ups: <task IDs or new debt entries for 12-decision-log.md §Debt>
+New dependencies (justification): <none | pkg — one line>
+Assumptions made: <...>
+```

@@ -4,10 +4,12 @@ AI-powered operating system for educational institutions, starting with budget-c
 
 ## Status
 
-Planning stage. No application code yet.
+Planning package complete (2026-10-28); awaiting review before implementation starts. No application code yet.
 
-- `docs/planning/coolskool/00-planning-prompt.md` — the architect prompt that produces the full planning package (architecture, data model, security, testing, 20-day plan, implementation task packets).
-- The planning package itself is written by that run into `docs/planning/coolskool/`.
+- `docs/planning/coolskool/00-README.md` — index of the planning package (brief, architecture, data model, workflows, security, testing, 20-day plan, backlog, operations, decision log).
+- `docs/planning/coolskool/tasks/` — one packet per implementation task (T-001 … T-045).
+- `docs/planning/coolskool/00-planning-prompt.md` — the architect prompt that produced the package.
+- `CLAUDE.md` — operating instructions for implementation agents.
 
 ## Intended stack
 
