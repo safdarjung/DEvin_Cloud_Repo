@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# build / test output
+dist/
+coverage/
+playwright-report/
+test-results/
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# editor / os
+.vscode/
+.idea/
+.DS_Store
+*.log
