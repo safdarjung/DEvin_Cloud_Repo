@@ -206,3 +206,78 @@ export async function getCurrentTermId(ctx: TenantContext, academicYearId: strin
   const current = data.find((t) => t.starts_on <= today && today <= t.ends_on);
   return (current ?? data[0]).id;
 }
+
+export interface ChildSummary {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  admissionNo: string;
+  gradeName: string | null;
+  sectionName: string | null;
+}
+
+interface ChildEnrolmentEmbed {
+  status: string;
+  class_sections: { name: string; grades: { display_name: string } | null } | null;
+}
+
+function toChildSummary(student: {
+  id: string;
+  admission_no: string;
+  first_name: string;
+  last_name: string | null;
+  enrolments: ChildEnrolmentEmbed[] | null;
+}): ChildSummary {
+  const active = (student.enrolments ?? []).find((e) => e.status === "active");
+  return {
+    id: student.id,
+    firstName: student.first_name,
+    lastName: student.last_name,
+    admissionNo: student.admission_no,
+    gradeName: active?.class_sections?.grades?.display_name ?? null,
+    sectionName: active?.class_sections?.name ?? null,
+  };
+}
+
+/**
+ * T-034 — guardian portal child list (05 §2.2 `guardian_students`). Lead
+ * ruling DBT-24: `portal_access` gates *portal visibility only* — a
+ * guardian with `portal_access = false` for a child still gets that
+ * child's notifications and RLS still lets other scoped reads through; it
+ * is only this list (and therefore the portal's child switcher) that
+ * excludes them. Ordered by admission_no for a deterministic "first child".
+ */
+export async function listMyChildren(ctx: TenantContext): Promise<ChildSummary[]> {
+  if (!ctx.membership.guardianId) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("guardian_students")
+    .select(
+      "students(id, admission_no, first_name, last_name, enrolments(status, class_sections(name, grades(display_name))))",
+    )
+    .eq("institution_id", ctx.institution.id)
+    .eq("guardian_id", ctx.membership.guardianId)
+    .eq("portal_access", true);
+  if (error) throw error;
+
+  return (data ?? [])
+    .map((row) => row.students as Parameters<typeof toChildSummary>[0] | null)
+    .filter((student): student is Parameters<typeof toChildSummary>[0] => student != null)
+    .map(toChildSummary)
+    .sort((a, b) => a.admissionNo.localeCompare(b.admissionNo));
+}
+
+/** T-034 — the student role's own record for the shared guardian/student portal UI (DBT-05). */
+export async function getMyStudent(ctx: TenantContext): Promise<ChildSummary | null> {
+  if (!ctx.membership.studentId) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("students")
+    .select("id, admission_no, first_name, last_name, enrolments(status, class_sections(name, grades(display_name)))")
+    .eq("id", ctx.membership.studentId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return toChildSummary(data as Parameters<typeof toChildSummary>[0]);
+}

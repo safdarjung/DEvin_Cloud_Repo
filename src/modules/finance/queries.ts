@@ -334,6 +334,41 @@ export async function getReceipt(ctx: TenantContext, id: string): Promise<Receip
   };
 }
 
+export interface ReceiptSummary {
+  id: string;
+  receiptNo: string;
+  createdAt: string;
+  amount: number;
+}
+
+/**
+ * T-034 fix round 1 — guardian/student portal fees tab. `receipts` itself
+ * has no `student_id` column (only `payments.invoice_id` -> `invoices.student_id`,
+ * see `getReceipt`'s comment), so the student filter is pushed into the
+ * query via the `payments`/`invoices` embed + `!inner` joins, not fetched
+ * in full and filtered in JS. `receipts_select` RLS (05 §5) already scopes
+ * every row returned here to finance roles or the receipt's own
+ * guardian/student; this filter narrows further to one specific child.
+ */
+export async function listReceiptsForStudent(ctx: TenantContext, studentId: string): Promise<ReceiptSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("receipts")
+    .select("id, receipt_no, created_at, snapshot, payments!inner(invoice_id, invoices!inner(student_id))")
+    .eq("institution_id", ctx.institution.id)
+    .eq("payments.invoices.student_id", studentId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    receiptNo: row.receipt_no,
+    createdAt: row.created_at,
+    amount: Number((row.snapshot as Record<string, unknown>).amount ?? 0),
+  }));
+}
+
 // T-032 Fix round 1 (code review, MEDIUM — money float): `numeric(12,2)`
 // columns come back over PostgREST as a decimal string even though the
 // generated `Database` type says `number` (the same gap every `Number(...)`
@@ -499,4 +534,34 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
       dueOn: row.due_on,
     };
   });
+}
+
+// dashboard — T-039.
+
+export interface TermCollectionSummary {
+  termId: string;
+  invoiceCount: number;
+  duePaise: number;
+  collectedPaise: number;
+}
+
+/** Collected vs due for one term, summed in integer paise (CLAUDE.md rule 4) — same reduce pattern as listLedgerEntries/listDefaulters above, never a float sum. */
+export async function termCollectionSummary(ctx: TenantContext, termId: string): Promise<TermCollectionSummary> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("total, paid_total")
+    .eq("institution_id", ctx.institution.id)
+    .eq("term_id", termId);
+  if (error) throw error;
+
+  const totals = (data ?? []).reduce(
+    (acc, row) => ({
+      duePaise: acc.duePaise + moneyToPaise(row.total),
+      collectedPaise: acc.collectedPaise + moneyToPaise(row.paid_total),
+    }),
+    { duePaise: 0, collectedPaise: 0 },
+  );
+
+  return { termId, invoiceCount: data?.length ?? 0, ...totals };
 }
