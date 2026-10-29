@@ -135,6 +135,12 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 - **Options:** publish the seeded exam live (3,024 notifications, slow); seed a small grade-scoped exam.
 - **Choice:** grade-scoped `Periodic Test 2 (Grade X)`. **Revisit:** none. **Evidence:** `11 §10` script timing target.
 
+### D26 — Fabric is the platform direction; CoolSkool is its first domain pack
+- **Context:** on 2026-10-29 the owner set the long-term product as **Fabric**: a multi-domain intelligence platform with personal and institutional workspaces, hybrid local/cloud AI, domain packs, and approved agentic execution. Nothing in the current codebase implements those beyond what T-001…T-045 already plan.
+- **Decision:** no change to the 20-day plan, packet scope, or demo branding. Keep four existing boundaries intact so later extraction stays cheap: (1) cross-cutting code lives in `src/lib/{auth,actions,ai,supabase}` and `app.*` SQL helpers, domain logic in `src/modules/<domain>`; (2) `profiles` is global (keyed by `auth.users`, no `institution_id`) and institution access exists only through `memberships` — never attach personal data to an institution row; (3) every model call goes through `src/lib/ai/gateway.ts` with policy resolved before any provider is instantiated, so privacy/cost/device routing extends one place; (4) AI output is a suggestion a human saves (CLAUDE.md rule 6).
+- **Not now:** personal workspace, domain-pack registry, forecasting/simulation, module studio, entitlements/billing, on-device runtimes. Each needs its own ADR with a concrete use case and measurable benefit.
+- **Revisit:** after T-045, before starting a second domain or any personal-account feature.
+
 ## 2. Phase 0 verified facts (2026-10-28)
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.
