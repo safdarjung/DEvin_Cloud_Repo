@@ -186,4 +186,31 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped via the corrected record's session's section
     write: ["owner", "principal", "admin", "teacher"], // INSERT-only; append-only (block_mutation)
   },
+
+  // 0007 (T-026) — admissions. 07 §2.2 `admissions.enquiry.read/write` and
+  // `admissions.enrol` grant own/principal/admin/admissions (narrower than
+  // app.staff_roles() — accountant/exam_controller/teacher excluded). FK
+  // scope checks (grade_applied_id, assigned_to, enquiry_id, academic_year_id)
+  // live in the `with check` clauses, not here.
+  enquiries: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions"],
+    write: ["owner", "principal", "admin", "admissions"],
+  },
+  applications: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions"],
+    write: ["owner", "principal", "admin", "admissions"],
+  },
+  // DEVIATION from the packet's uniform role set on INSERT only: 07 §2.2
+  // `admissions.application.decide` grants own/principal/admissions, NOT
+  // admin (unlike enquiry.read/write and enrol, where admin is listed) —
+  // followed per the lead's standing instruction to match the matrix over
+  // a coarse packet-stated RLS class. SELECT keeps admin (no separate
+  // "decisions.read" row exists); no UPDATE policy (append-only).
+  application_decisions: {
+    classes: ["S", "A"],
+    read: ["owner", "principal", "admin", "admissions"],
+    write: ["owner", "principal", "admissions"], // INSERT-only, admin excluded (see above)
+  },
 };

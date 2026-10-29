@@ -63,6 +63,76 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"application_decisions": {
+                  Row: {
+                    "application_id": string,"created_at": string,"decided_by": string | null,"decision": string,"id": string,"institution_id": string,"note": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "application_id": string,"created_at"?: string,"decided_by"?: string | null,"decision": string,"id"?: string,"institution_id": string,"note"?: string | null
+                  }
+                  Update: {
+                    "application_id"?: string,"created_at"?: string,"decided_by"?: string | null,"decision"?: string,"id"?: string,"institution_id"?: string,"note"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "application_decisions_application_id_fkey"
+      columns: ["application_id"]
+isOneToOne: false
+      referencedRelation: "applications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "application_decisions_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "application_decisions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"applications": {
+                  Row: {
+                    "academic_year_id": string,"applicant": NonNullable<Json>,"application_no": string,"created_at": string,"enquiry_id": string | null,"grade_applied_id": string,"guardian": NonNullable<Json>,"id": string,"institution_id": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"applicant": NonNullable<Json>,"application_no": string,"created_at"?: string,"enquiry_id"?: string | null,"grade_applied_id": string,"guardian": NonNullable<Json>,"id"?: string,"institution_id": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"applicant"?: NonNullable<Json>,"application_no"?: string,"created_at"?: string,"enquiry_id"?: string | null,"grade_applied_id"?: string,"guardian"?: NonNullable<Json>,"id"?: string,"institution_id"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "applications_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "applications_enquiry_id_fkey"
+      columns: ["enquiry_id"]
+isOneToOne: false
+      referencedRelation: "enquiries"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "applications_grade_applied_id_fkey"
+      columns: ["grade_applied_id"]
+isOneToOne: false
+      referencedRelation: "grades"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "applications_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"assignment_submissions": {
                   Row: {
                     "assignment_id": string,"content": Json | null,"created_at": string,"feedback": string | null,"id": string,"institution_id": string,"score": number | null,"student_id": string,"submitted_at": string,"updated_at": string
@@ -385,6 +455,38 @@ isOneToOne: false
                   Relationships: [
                     {
       foreignKeyName: "departments_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"enquiries": {
+                  Row: {
+                    "assigned_to": string | null,"child_name": string,"created_at": string,"email": string | null,"grade_applied_id": string | null,"guardian_name": string,"id": string,"institution_id": string,"notes": Json | null,"phone": string,"source": string,"source_ip_hash": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assigned_to"?: string | null,"child_name": string,"created_at"?: string,"email"?: string | null,"grade_applied_id"?: string | null,"guardian_name": string,"id"?: string,"institution_id": string,"notes"?: Json | null,"phone": string,"source"?: string,"source_ip_hash"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "assigned_to"?: string | null,"child_name"?: string,"created_at"?: string,"email"?: string | null,"grade_applied_id"?: string | null,"guardian_name"?: string,"id"?: string,"institution_id"?: string,"notes"?: Json | null,"phone"?: string,"source"?: string,"source_ip_hash"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "enquiries_assigned_to_fkey"
+      columns: ["assigned_to"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "enquiries_grade_applied_id_fkey"
+      columns: ["grade_applied_id"]
+isOneToOne: false
+      referencedRelation: "grades"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "enquiries_institution_id_fkey"
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
@@ -876,6 +978,9 @@ isOneToOne: false
       } },
 "record_audit_event":
 { Args: { "p_action": string,"p_after"?: Json,"p_before"?: Json,"p_entity_id"?: string,"p_entity_type": string,"p_institution_id": string,"p_metadata"?: Json }; Returns: string
+                           },
+"submit_public_enquiry":
+{ Args: { "p_ip_hash": string,"p_payload": Json,"p_slug": string }; Returns: Json
                            }
           }
           Enums: {
