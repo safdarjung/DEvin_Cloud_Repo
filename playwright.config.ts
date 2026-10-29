@@ -23,6 +23,9 @@ loadDotEnvLocal();
 
 export default defineConfig({
   testDir: "./e2e",
+  // Guarded by E2E_RESET=true inside the function itself (08 §4/§7) — a
+  // plain `pnpm test:e2e` locally does nothing here.
+  globalSetup: "./e2e/fixtures.ts",
   fullyParallel: true,
   // Batch C: capped to what passes reliably against one local Postgres —
   // several specs (j09/j10/j11/j12, tenant-shell) build/write heavy DB

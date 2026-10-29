@@ -1,0 +1,70 @@
+name: E2E
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # nightly, 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Write local env
+        run: |
+          STATUS=$(supabase status -o json)
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(echo "$STATUS" | jq -r .API_URL)" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(echo "$STATUS" | jq -r .PUBLISHABLE_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_SECRET_KEY=$(echo "$STATUS" | jq -r .SECRET_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_URL=$(echo "$STATUS" | jq -r .DB_URL)" >> "$GITHUB_ENV"
+          echo "APP_URL=http://localhost:3000" >> "$GITHUB_ENV"
+          echo "CRON_SECRET=ci-cron-secret" >> "$GITHUB_ENV"
+          echo "DEMO_RESET_ALLOWED=true" >> "$GITHUB_ENV"
+          echo "AI_CLOUD_ENABLED=false" >> "$GITHUB_ENV"
+          # 08 §4 J-08 risk: no Ollama runner in CI — the spec itself skips
+          # visibly (test.skip) when OLLAMA_BASE_URL is unreachable, so this
+          # job doesn't try to stand one up.
+          echo "E2E_RESET=true" >> "$GITHUB_ENV"
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build (fails fast on a broken production build)
+        run: pnpm build
+
+      # playwright.config.ts's own webServer starts the app itself
+      # (`reuseExistingServer: !process.env.CI` — CI is always set here, so
+      # Playwright always spawns its own server rather than reusing one this
+      # job pre-started, which would otherwise collide on :3000). Building
+      # first still catches a broken production build before the 25-minute
+      # E2E budget is spent on it.
+      - name: E2E tests
+        run: pnpm test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
