@@ -1045,7 +1045,24 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
-            "jobs_claim":
+            "correct_attendance":
+{ Args: { "p_institution_id": string,"p_new_status": string,"p_reason": string,"p_record_id": string }; Returns: {
+              "created_at": string,
+"id": string,
+"institution_id": string,
+"note": string | null,
+"session_id": string,
+"status": string,
+"student_id": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "attendance_records"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"jobs_claim":
 { Args: { "p_worker_id": string }; Returns: {
               "attempts": number,
 "created_at": string,
@@ -1114,6 +1131,24 @@ isOneToOne: true
 "record_audit_event":
 { Args: { "p_action": string,"p_after"?: Json,"p_before"?: Json,"p_entity_id"?: string,"p_entity_type": string,"p_institution_id": string,"p_metadata"?: Json }; Returns: string
                            },
+"submit_attendance":
+{ Args: { "p_institution_id": string,"p_session_id": string }; Returns: {
+              "class_section_id": string,
+"created_at": string,
+"date": string,
+"id": string,
+"institution_id": string,
+"marked_by": string | null,
+"status": string,
+"submitted_at": string | null,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "attendance_sessions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "submit_public_enquiry":
 { Args: { "p_ip_hash": string,"p_payload": Json,"p_slug": string }; Returns: Json
                            }

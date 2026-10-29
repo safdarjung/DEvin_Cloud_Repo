@@ -1,0 +1,210 @@
+"use client";
+
+// T-015 — 06 §W5 register. Single client component, local state, one
+// `markAttendance` call for all rows on save (packet: "one action call on
+// submit" — not one call per student) plus a separate `submitAttendance`
+// call to finalize. shortcut: status buttons are click/Tab/Enter only, no
+// custom hotkey grid — upgrade if teachers need faster entry for 45-row
+// sections.
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "cn";
+import { markAttendance, submitAttendance } from "@/modules/attendance/actions";
+import { CorrectionDialog } from "@/modules/attendance/components/CorrectionDialog";
+import type { AttendanceStatusOption, AttendanceStudentRow } from "@/modules/attendance/queries";
+
+interface AttendanceRegisterProps {
+  institutionSlug: string;
+  sectionId: string;
+  sectionLabel: string;
+  date: string;
+  students: AttendanceStudentRow[];
+  statuses: AttendanceStatusOption[];
+  initialSessionId: string | null;
+  initialSessionStatus: "open" | "submitted" | null;
+  /** Whether the signed-in member may offer corrections (attendance.correct) — RLS/the RPC are the real boundary. */
+  canCorrect: boolean;
+}
+
+type Draft = Record<string, { status: string; note: string }>;
+
+export function AttendanceRegister({
+  institutionSlug,
+  sectionId,
+  sectionLabel,
+  date,
+  students,
+  statuses,
+  initialSessionId,
+  initialSessionStatus,
+  canCorrect,
+}: AttendanceRegisterProps) {
+  const router = useRouter();
+  const [draft, setDraft] = useState<Draft>(() =>
+    Object.fromEntries(students.map((s) => [s.studentId, { status: s.status ?? "", note: s.note ?? "" }])),
+  );
+  const [sessionId, setSessionId] = useState(initialSessionId);
+  const [sessionStatus, setSessionStatus] = useState(initialSessionStatus);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+  const [correctingStudentId, setCorrectingStudentId] = useState<string | null>(null);
+
+  const isSubmitted = sessionStatus === "submitted";
+  const defaultStatus = statuses[0]?.code ?? "";
+
+  const allMarked = useMemo(
+    () => students.every((s) => Boolean(draft[s.studentId]?.status)),
+    [students, draft],
+  );
+
+  function setStatus(studentId: string, status: string) {
+    setDraft((d) => ({ ...d, [studentId]: { ...(d[studentId] ?? { note: "" }), status } }));
+  }
+
+  function handleSave() {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await markAttendance(institutionSlug, {
+        classSectionId: sectionId,
+        date,
+        records: students.map((s) => ({
+          studentId: s.studentId,
+          status: draft[s.studentId]?.status || defaultStatus,
+          note: draft[s.studentId]?.note || undefined,
+        })),
+      });
+      if (!result.ok) {
+        setMessage({ kind: "error", text: result.error.message });
+        return;
+      }
+      setSessionId(result.data.sessionId);
+      setMessage({ kind: "ok", text: `Saved attendance for ${result.data.recordCount} students.` });
+    });
+  }
+
+  function handleSubmit() {
+    if (!sessionId) return;
+    setMessage(null);
+    startTransition(async () => {
+      const result = await submitAttendance(institutionSlug, { sessionId });
+      if (!result.ok) {
+        setMessage({ kind: "error", text: result.error.message });
+        return;
+      }
+      setSessionStatus("submitted");
+      const absences = students.filter((s) => {
+        const code = draft[s.studentId]?.status;
+        return statuses.find((st) => st.code === code)?.notifyGuardian;
+      }).length;
+      setMessage({
+        kind: "ok",
+        text: `Attendance submitted — ${absences} absence${absences === 1 ? "" : "s"}, guardians notified (SMS simulated).`,
+      });
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">
+            {sectionLabel} — {date}
+          </h2>
+          {isSubmitted && <p className="text-muted-foreground text-sm">Submitted. Use &quot;Correct&quot; to change a record.</p>}
+        </div>
+        <div className="flex gap-2">
+          {!isSubmitted && (
+            <>
+              <Button variant="outline" onClick={handleSave} disabled={pending}>
+                {pending ? "Saving…" : "Save"}
+              </Button>
+              <Button onClick={handleSubmit} disabled={pending || !sessionId || !allMarked}>
+                Submit
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {message && (
+        <p role={message.kind === "error" ? "alert" : "status"} className={cn("text-sm", message.kind === "error" ? "text-destructive" : "text-muted-foreground")}>
+          {message.text}
+        </p>
+      )}
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Roll no.</TableHead>
+            <TableHead>Student</TableHead>
+            <TableHead>Status</TableHead>
+            {canCorrect && <TableHead>Correct</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {students.map((student) => {
+            const current = draft[student.studentId]?.status ?? "";
+            return (
+              <TableRow key={student.studentId}>
+                <TableCell>{student.rollNo ?? "—"}</TableCell>
+                <TableCell>{student.name}</TableCell>
+                <TableCell>
+                  <div className="flex gap-1" role="radiogroup" aria-label={`Attendance status for ${student.name}`}>
+                    {statuses.map((status) => (
+                      <Button
+                        key={status.code}
+                        type="button"
+                        size="sm"
+                        variant={current === status.code ? "default" : "outline"}
+                        role="radio"
+                        aria-checked={current === status.code}
+                        disabled={isSubmitted}
+                        onClick={() => setStatus(student.studentId, status.code)}
+                      >
+                        {status.code}
+                      </Button>
+                    ))}
+                  </div>
+                </TableCell>
+                {canCorrect && (
+                  <TableCell>
+                    {isSubmitted && current && student.recordId && (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setCorrectingStudentId(student.studentId)}
+                        >
+                          Correct
+                        </Button>
+                        {correctingStudentId === student.studentId && (
+                          <CorrectionDialog
+                            institutionSlug={institutionSlug}
+                            recordId={student.recordId}
+                            studentName={student.name}
+                            currentStatus={current}
+                            statuses={statuses}
+                            open={correctingStudentId === student.studentId}
+                            onOpenChange={(open) => !open && setCorrectingStudentId(null)}
+                            onCorrected={(newStatus) => {
+                              setStatus(student.studentId, newStatus);
+                              router.refresh();
+                            }}
+                          />
+                        )}
+                      </>
+                    )}
+                  </TableCell>
+                )}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}

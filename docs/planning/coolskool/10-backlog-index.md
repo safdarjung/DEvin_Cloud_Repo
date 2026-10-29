@@ -95,6 +95,7 @@ flowchart TD
 - `20261028000011` · T-012 · service_role lacked `usage on schema app` (0001 only granted it to `authenticated`/`anon`); any trigger on an app-schema-calling function (e.g. `validate_membership_link`) fails for service_role without it. Found while seeding memberships via the admin client.
 - `20261028000012` · T-037 · `app.claim_job`/`app.complete_job` (0003) live in the `app` schema, not exposed over PostgREST — the web `/api/jobs/run` route can't call them via `supabase-js`. Adds `public.jobs_claim`/`public.jobs_complete` security-definer wrappers, `execute` revoked from public/anon/authenticated and granted only to `service_role`, so the route never needs a direct superuser Postgres connection.
 - `20261028000013` · lead (D27) · `public.record_audit_event` wrapper so `src/lib/audit.ts` can reach `app.audit()` (not exposed over PostgREST); no packet created the TS audit helper that T-015/T-027 assume.
+- `20261028000014` · T-015 (lead ruling, overrides the packet's "must not modify migrations") · `public.submit_attendance`/`public.correct_attendance` security-definer RPCs (06 §W5); closes 0006's direct-write bypasses on `attendance_sessions`/`attendance_records`/`attendance_corrections` that let a caller skip the correction window, the submit audit, or reopen a submitted session.
 
 ## 4. Review requirements
 

@@ -176,17 +176,29 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   attendance_sessions: {
     classes: ["S+G", "T"],
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped to sections they teach
+    // T-015 (0014): direct UPDATE is blocked once a session is `submitted`
+    // (can never set or leave that status directly) — status only changes
+    // through public.submit_attendance. "write" below is still accurate for
+    // an `open` session.
     write: ["owner", "principal", "admin", "teacher"], // teacher scoped to sections they teach; INSERT/UPDATE also require the student to be enrolled in that section
   },
   attendance_records: {
     classes: ["S+G", "T"],
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped via the record's session's section
+    // T-015 (0014): direct INSERT/UPDATE is additionally gated on the
+    // record's session being `open` — a submitted session's records change
+    // only through public.correct_attendance.
     write: ["owner", "principal", "admin", "teacher"], // teacher scoped via the record's session's section; student_id must be enrolled in that section (CRITICAL fix, security review)
   },
   attendance_corrections: {
     classes: ["S+G", "T"],
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped via the corrected record's session's section
-    write: ["owner", "principal", "admin", "teacher"], // INSERT-only; append-only (block_mutation)
+    // T-015 (0014): the direct INSERT policy was dropped with no
+    // replacement — a correction can only be written by public.
+    // correct_attendance (security definer, bypasses RLS as table owner),
+    // which enforces the correction window and writes the audit row that a
+    // bare INSERT skipped.
+    write: [],
   },
 
   // 0007 (T-026) — admissions. 07 §2.2 `admissions.enquiry.read/write` and

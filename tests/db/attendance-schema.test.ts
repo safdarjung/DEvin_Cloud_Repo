@@ -157,7 +157,7 @@ describe("attendance migration (0006) RLS", () => {
     }
   });
 
-  it("C-15: attendance_corrections is append-only — insert by the class teacher succeeds, UPDATE/DELETE raise", async () => {
+  it("C-15: attendance_corrections is append-only — insert by the admin client succeeds, UPDATE/DELETE raise", async () => {
     const inst = await createTestInstitution("attendance-c15");
     try {
       await setAttendanceStatuses(inst.institutionId);
@@ -173,27 +173,140 @@ describe("attendance migration (0006) RLS", () => {
       const studentId = await insertStudent(inst.institutionId, "ADM-C15");
       const recordId = await createAttendanceRecord(inst.institutionId, sessionId, studentId, { status: "P" });
 
-      const insertCorrection = await inst
-        .clientAs("teacher")
-        .from("attendance_corrections")
-        .insert({
+      // Direct insert, bypassing RLS the same way the service role does —
+      // proves the append-only trigger itself, independent of who may
+      // write a correction row (T-015/0014: nobody may via RLS; only
+      // public.correct_attendance, covered in tests/db/attendance-actions.test.ts).
+      const [correction] = await sql`
+        insert into public.attendance_corrections (institution_id, record_id, old_status, new_status, reason, corrected_by)
+        values (${inst.institutionId}, ${recordId}, 'P', 'A', 'Marked wrong', ${teacherStaff.staff_id})
+        returning id
+      `;
+
+      await expect(
+        sql`update public.attendance_corrections set reason = 'edited' where id = ${correction.id}`,
+      ).rejects.toThrow(/invalid_state/);
+      await expect(
+        sql`delete from public.attendance_corrections where id = ${correction.id}`,
+      ).rejects.toThrow(/invalid_state/);
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  // T-015 (0014, security review): closes 0006's direct-write bypasses —
+  // proved again at the action/RPC level in tests/db/attendance-actions.test.ts.
+  it("T-015 fix: attendance_corrections has no direct INSERT policy for any role", async () => {
+    const inst = await createTestInstitution("attendance-corrections-no-direct-insert");
+    try {
+      await setAttendanceStatuses(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const [teacherStaff] = await sql`
+        select staff_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'
+      `;
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId, {
+        classTeacherId: teacherStaff.staff_id,
+      });
+      const sessionId = await createAttendanceSession(inst.institutionId, sectionId);
+      const studentId = await insertStudent(inst.institutionId, "ADM-C15-DIRECT");
+      const recordId = await createAttendanceRecord(inst.institutionId, sessionId, studentId, { status: "P" });
+
+      for (const role of ["teacher", "owner", "principal", "admin"] as const) {
+        const result = await inst.clientAs(role).from("attendance_corrections").insert({
           institution_id: inst.institutionId,
           record_id: recordId,
           old_status: "P",
           new_status: "A",
-          reason: "Marked wrong",
+          reason: "Direct insert attempt",
           corrected_by: teacherStaff.staff_id,
-        })
-        .select("id")
-        .single();
-      expect(insertCorrection.error).toBeNull();
+        });
+        expect(result.error).not.toBeNull();
+      }
+    } finally {
+      await inst.cleanup();
+    }
+  });
 
-      await expect(
-        sql`update public.attendance_corrections set reason = 'edited' where id = ${insertCorrection.data!.id}`,
-      ).rejects.toThrow(/invalid_state/);
-      await expect(
-        sql`delete from public.attendance_corrections where id = ${insertCorrection.data!.id}`,
-      ).rejects.toThrow(/invalid_state/);
+  it("T-015 fix: direct UPDATE can never set or leave attendance_sessions.status = 'submitted'", async () => {
+    const inst = await createTestInstitution("attendance-sessions-no-direct-submit");
+    try {
+      await setAttendanceStatuses(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const [teacherStaff] = await sql`
+        select staff_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'
+      `;
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId, {
+        classTeacherId: teacherStaff.staff_id,
+      });
+      const openSession = await createAttendanceSession(inst.institutionId, sectionId, { date: "2026-07-10" });
+
+      // Can't set status to submitted directly, even as the class teacher.
+      const directSubmit = await inst
+        .clientAs("teacher")
+        .from("attendance_sessions")
+        .update({ status: "submitted" })
+        .eq("id", openSession)
+        .select("id");
+      expect(directSubmit.data ?? []).toHaveLength(0);
+
+      const submittedSession = await createAttendanceSession(inst.institutionId, sectionId, {
+        date: "2026-07-11",
+        status: "submitted",
+      });
+
+      // Can't touch a submitted session directly at all (not even to reopen it).
+      const directReopen = await inst
+        .clientAs("teacher")
+        .from("attendance_sessions")
+        .update({ status: "open" })
+        .eq("id", submittedSession)
+        .select("id");
+      expect(directReopen.data ?? []).toHaveLength(0);
+
+      const stillSubmitted = await sql`select status from public.attendance_sessions where id = ${submittedSession}`;
+      expect(stillSubmitted[0].status).toBe("submitted");
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  it("T-015 fix: direct INSERT/UPDATE on attendance_records is blocked once the session is submitted", async () => {
+    const inst = await createTestInstitution("attendance-records-no-direct-write-submitted");
+    try {
+      await setAttendanceStatuses(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const [teacherStaff] = await sql`
+        select staff_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'
+      `;
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId, {
+        classTeacherId: teacherStaff.staff_id,
+      });
+      const submittedSession = await createAttendanceSession(inst.institutionId, sectionId, {
+        date: "2026-07-12",
+        status: "submitted",
+      });
+      const studentId = await insertStudent(inst.institutionId, "ADM-SUBMITTED-DIRECT");
+      await createEnrolment(inst.institutionId, studentId, sectionId, yearId, { rollNo: 1 });
+      const recordId = await createAttendanceRecord(inst.institutionId, submittedSession, studentId, { status: "P" });
+
+      const directInsert = await inst.clientAs("teacher").from("attendance_records").insert({
+        institution_id: inst.institutionId,
+        session_id: submittedSession,
+        student_id: await insertStudent(inst.institutionId, "ADM-SUBMITTED-DIRECT-2"),
+        status: "P",
+      });
+      expect(directInsert.error).not.toBeNull();
+
+      const directUpdate = await inst
+        .clientAs("teacher")
+        .from("attendance_records")
+        .update({ status: "A" })
+        .eq("id", recordId)
+        .select("id");
+      expect(directUpdate.data ?? []).toHaveLength(0);
     } finally {
       await inst.cleanup();
     }
