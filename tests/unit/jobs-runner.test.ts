@@ -222,7 +222,10 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     const { admin } = fakeAdmin();
     const ports = createRunnerPorts(admin);
 
-    await expect(ports.dispatch(makeJob({ type: "notify.attendance_absence" }))).rejects.toThrow(
+    // T-038 replaced the notify.attendance_absence placeholder with a real
+    // handler; finance.generate_term_invoices (T-031) is still a
+    // placeholder, which is what this case is actually testing.
+    await expect(ports.dispatch(makeJob({ type: "finance.generate_term_invoices" }))).rejects.toThrow(
       /not_implemented/,
     );
   });
