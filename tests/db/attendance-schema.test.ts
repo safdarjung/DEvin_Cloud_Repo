@@ -408,5 +408,6 @@ describe("attendance migration (0006) RLS", () => {
     } finally {
       await inst.cleanup();
     }
-  });
+    // Several real sign-ins in sequence; 5 s default is too tight under full-suite load.
+  }, 20_000);
 });
