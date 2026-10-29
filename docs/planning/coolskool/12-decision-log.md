@@ -160,6 +160,35 @@ Context7 MCP was not available in this session; versions come from the npm regis
 
 Unverified at planning time: exact `gen types` flags; `test.projects` syntax; TS 7 + Next 16; VRAM estimates; dated Haiku id; hosted Supabase capacity in `ap-south-1` on Day 18.
 
+### Installed versions (T-001, 2026-10-29)
+
+Context7 MCP was unavailable in this environment too; versions and syntax below were confirmed empirically (installed package types, `--help` output, and a green `pnpm build`/`pnpm test:e2e`), resolving the "unverified at planning time" items above.
+
+| Package | Installed version | Notes |
+|---|---|---|
+| next | 16.4.3 | `create-next-app` enables `cacheComponents: true` and `partialPrefetching: true` by default (confirmed D21's assumption); explicitly set `cacheComponents: false` in `next.config.ts`. No `--turbopack` CLI flag exists anymore — Turbopack is the default bundler; create-next-app wires Tailwind through a `turbopack.rules["*.css"]` loader (`@tailwindcss/turbopack`), not `postcss.config.mjs` — no postcss config was added (see note below). `next typegen` must run once before a standalone `tsc --noEmit` succeeds (generates the `LayoutProps`/`PageProps` ambient types under `.next/types/`); `typecheck` script is `next typegen && tsc --noEmit`. `middleware.ts` is gone; `proxy.ts` is added in T-006 per D24. |
+| react / react-dom | 19.3.0 | create-next-app pinned exact `19.3.0`; registry has `19.3.1`. Left as installed — not a required bump. |
+| typescript | 5.9.3 | Pinned `^5.9` in `devDependencies` per D22 (resolves to 5.9.3, not the TS7 `latest`). |
+| tailwindcss | 4.3.3 | CSS-first; `@import "tailwindcss"` in `src/app/globals.css`. No `tailwind.config.*` and no `postcss.config.mjs` (Turbopack handles it; see next.js note above) — the packet's assumption of a `postcss.config.mjs` file didn't hold for the Turbopack-default setup. |
+| shadcn CLI | 4.23.0 | `pnpm dlx shadcn@latest init -y -b radix -p nova` (non-interactive requires `-b <base>` and `-p <preset>`; `-y` alone still prompts). Base `radix`, preset `nova` (Lucide/Geist) to match CLAUDE.md's pinned `lucide-react`. Components added: `pnpm dlx shadcn@latest add button input card table badge dialog select sonner -y`. |
+| vitest | 5.0.5 | `test.projects` syntax confirmed from `vitest/dist/chunks/plugin.d.*.d.ts`: root `test.projects: TestProjectConfiguration[]`, each entry `{ extends: true, test: { name, environment, include } }`. Vitest 5 exits 1 on zero matched tests by default; `test:db`/`test:security` scripts need `--passWithNoTests` to meet the "zero tests, exit 0" acceptance criterion. |
+| @playwright/test | 1.64.1 | `playwright install chromium` (no `--with-deps`; this machine has no passwordless sudo, so OS-level browser deps weren't installed — CI's runner should install them with `--with-deps` since it runs as root). |
+| @vitejs/plugin-react | 6.1.2 | Per stack pin; used in `vitest.config.mts` alongside `vite-tsconfig-paths`. |
+
+**File-path conflict found and resolved:** `CLAUDE.md`'s folder conventions name the honesty-badge component `src/components/honesty.tsx`, but the T-001 packet text named it `src/components/simulated-badge.tsx`. Followed CLAUDE.md (every later packet imports against its declared paths) — component is at `src/components/honesty.tsx` exporting `SimulatedBadge` and `LimitedBadge`.
+
+### Installed versions (T-002, 2026-10-29)
+
+| Package | Installed version | Notes |
+|---|---|---|
+| supabase (CLI) | 2.122.0 | `pnpm supabase init` then `pnpm supabase start`. |
+
+**D23 resolved — key names the installed CLI prints:** `supabase status -o json` (and `supabase start`) print **both** families: the new `PUBLISHABLE_KEY` / `SECRET_KEY` (`sb_publishable_...` / `sb_secret_...`) **and** the legacy JWT `ANON_KEY` / `SERVICE_ROLE_KEY`. Mapped to `11 §1` names as: `PUBLISHABLE_KEY` → `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SECRET_KEY` → `SUPABASE_SECRET_KEY` (new names preferred, legacy ignored). `DB_URL` → `SUPABASE_DB_URL`, `API_URL` → `NEXT_PUBLIC_SUPABASE_URL`. Ports confirmed exactly as `11 §2`: API 54321, DB 54322, Studio 54323, Mailpit 54324.
+
+**`gen types` exact command:** `supabase gen types typescript --local > src/lib/db/types.ts` (the positional `typescript` language argument still works alongside `--local`; `--lang` defaults to `typescript` either way). Output is unformatted (`npx oxfmt` suggested by the CLI); left unformatted since it's a generated/non-hand-edited file and running an unreviewed package via `npx` was denied by the sandbox.
+
+**`config.toml` adjustments from the CLI's default:** default `[api] schemas` omits `storage` (`["public", "graphql_public"]`) — added `storage` per the packet. `[auth] site_url` defaults to `http://127.0.0.1:3000` — changed to `http://localhost:3000` per the packet. `[auth] enable_signup` defaults `true` — set `false`. `[auth.email] enable_confirmations` was already `false` by default — no change needed.
+
 ## 3. Debt register
 
 Each shortcut: reason · demo effect · production risk · resolution trigger · follow-up.

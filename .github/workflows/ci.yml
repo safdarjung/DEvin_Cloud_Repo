@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Write local env
+        run: |
+          STATUS=$(supabase status -o json)
+          echo "NEXT_PUBLIC_SUPABASE_URL=$(echo "$STATUS" | jq -r .API_URL)" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(echo "$STATUS" | jq -r .PUBLISHABLE_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_SECRET_KEY=$(echo "$STATUS" | jq -r .SECRET_KEY)" >> "$GITHUB_ENV"
+          echo "SUPABASE_DB_URL=$(echo "$STATUS" | jq -r .DB_URL)" >> "$GITHUB_ENV"
+          echo "APP_URL=http://localhost:3000" >> "$GITHUB_ENV"
+          echo "CRON_SECRET=ci-cron-secret" >> "$GITHUB_ENV"
+          echo "DEMO_RESET_ALLOWED=true" >> "$GITHUB_ENV"
+          echo "AI_CLOUD_ENABLED=false" >> "$GITHUB_ENV"
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: DB integration tests
+        run: pnpm test:db
+
+      - name: Security suite
+        run: pnpm test:security
+
+      - name: Build
+        run: pnpm build

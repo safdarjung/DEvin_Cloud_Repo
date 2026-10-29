@@ -4,7 +4,18 @@ AI-powered operating system for educational institutions, starting with budget-c
 
 ## Status
 
-Planning package complete (2026-10-28); awaiting review before implementation starts. No application code yet.
+Scaffold + local dev (T-001, T-002) in place: Next.js 16 app, Tailwind v4, shadcn/ui, ESLint, Vitest, Playwright, Supabase local dev, type generation, and CI all wired and green.
+
+## Local setup
+
+```
+pnpm install
+pnpm db:start            # supabase start (Docker); prints local keys → copy into .env.local
+pnpm db:reset            # applies migrations, regenerates types, runs seed
+pnpm dev                 # http://localhost:3000
+```
+
+See `docs/planning/coolskool/11-operations.md §1-2` for environment variable names, ports, and the Ollama model pull.
 
 - `docs/planning/coolskool/00-README.md` — index of the planning package (brief, architecture, data model, workflows, security, testing, 20-day plan, backlog, operations, decision log).
 - `docs/planning/coolskool/tasks/` — one packet per implementation task (T-001 … T-045).
