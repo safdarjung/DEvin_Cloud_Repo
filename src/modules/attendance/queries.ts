@@ -6,6 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 
+/** Institution-local calendar date (same approach as actions.ts's own `todayInTimezone` — not the server's UTC date). */
+function todayInInstitutionTimezone(ctx: TenantContext): string {
+  const locale = InstitutionSettingsSchema.shape.locale.safeParse(ctx.institution.settings.locale);
+  const timezone = locale.success ? locale.data.timezone : "Asia/Kolkata";
+  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
+    new Date(),
+  );
+}
+
 export interface AttendanceStatusOption {
   code: string;
   label: string;
@@ -232,4 +241,80 @@ export async function getStudentAttendanceSummary(
     totalInDenominator,
     thresholds: settings.thresholds,
   };
+}
+
+// dashboard — T-039. Both queries below scope to today's date only, not the
+// full attendance_records history (~181k rows): the row count is bounded to
+// however many students were marked today, the same shape as
+// getStudentAttendanceSummary's per-student fetch above, just institution-
+// wide. They reuse computeAttendancePercentage rather than re-deriving the
+// present/denominator weighting.
+
+export interface AttendanceTodaySummary {
+  date: string;
+  percentage: number;
+  presentWeighted: number;
+  totalInDenominator: number;
+}
+
+/** Institution-wide attendance % for today, across all sections. */
+export async function attendanceTodaySummary(ctx: TenantContext): Promise<AttendanceTodaySummary> {
+  const supabase = await createClient();
+  const settings = getAttendanceSettings(ctx);
+  const date = todayInInstitutionTimezone(ctx);
+
+  const { data, error } = await supabase
+    .from("attendance_records")
+    .select("status, attendance_sessions!inner(date)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("attendance_sessions.date", date);
+  if (error) throw error;
+
+  const { percentage, presentWeighted, totalInDenominator } = computeAttendancePercentage(
+    (data ?? []).map((r) => r.status),
+    settings.statuses,
+  );
+
+  return { date, percentage, presentWeighted, totalInDenominator };
+}
+
+export interface SectionAttendanceAlert {
+  classSectionId: string;
+  label: string;
+  percentage: number;
+}
+
+/** Sections at/below `settings.attendance.alert_thresholds.critical` today, worst first. */
+export async function sectionsBelowThreshold(ctx: TenantContext): Promise<SectionAttendanceAlert[]> {
+  const supabase = await createClient();
+  const settings = getAttendanceSettings(ctx);
+  const date = todayInInstitutionTimezone(ctx);
+
+  const { data, error } = await supabase
+    .from("attendance_records")
+    .select("status, attendance_sessions!inner(date, class_sections(id, name, grades(code)))")
+    .eq("institution_id", ctx.institution.id)
+    .eq("attendance_sessions.date", date);
+  if (error) throw error;
+
+  const bySection = new Map<string, { label: string; codes: string[] }>();
+  for (const row of data ?? []) {
+    const session = row.attendance_sessions as unknown as {
+      class_sections: { id: string; name: string; grades: { code: string } | null } | null;
+    };
+    const section = session.class_sections;
+    if (!section) continue;
+    const entry = bySection.get(section.id) ?? { label: `${section.grades?.code ?? "?"}-${section.name}`, codes: [] as string[] };
+    entry.codes.push(row.status);
+    bySection.set(section.id, entry);
+  }
+
+  return Array.from(bySection.entries())
+    .map(([classSectionId, entry]) => ({
+      classSectionId,
+      label: entry.label,
+      percentage: computeAttendancePercentage(entry.codes, settings.statuses).percentage,
+    }))
+    .filter((s) => s.percentage < settings.thresholds.critical)
+    .sort((a, b) => a.percentage - b.percentage);
 }

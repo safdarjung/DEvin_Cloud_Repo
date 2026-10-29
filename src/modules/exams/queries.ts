@@ -575,3 +575,68 @@ export async function getResultHistory(ctx: TenantContext, examId: string, stude
 
   return Promise.all(data.map((row) => hydrateResultRow(supabase, ctx.institution.id, row as unknown as ResultRow)));
 }
+
+// dashboard — T-039.
+
+export interface ExamGradeDistribution {
+  examId: string;
+  examName: string;
+  distribution: Record<string, number>;
+  total: number;
+}
+
+/**
+ * Grade distribution for one exam — defaults to the most recently published
+ * exam when `examId` is omitted. Selects only the `grade` column (never the
+ * full result row listResultsForExam fetches): Postgrest has no `GROUP BY`,
+ * so counting per grade still happens in JS over that one column. At demo
+ * scale (a few thousand results per exam) that's fine; if an institution's
+ * per-exam result count grows far past that, this should become a
+ * `select grade, count(*) group by grade` SQL view instead (flagged in the
+ * T-039 report rather than added here — P-01 owns migrations).
+ */
+export async function examGradeDistribution(ctx: TenantContext, examId?: string): Promise<ExamGradeDistribution | null> {
+  const supabase = await createClient();
+
+  let resolvedExamId = examId;
+  let examName = "";
+  if (resolvedExamId) {
+    const { data: exam, error: examError } = await supabase
+      .from("exams")
+      .select("name")
+      .eq("id", resolvedExamId)
+      .eq("institution_id", ctx.institution.id)
+      .maybeSingle();
+    if (examError) throw examError;
+    if (!exam) return null;
+    examName = exam.name;
+  } else {
+    const { data: exam, error: examError } = await supabase
+      .from("exams")
+      .select("id, name")
+      .eq("institution_id", ctx.institution.id)
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (examError) throw examError;
+    if (!exam) return null;
+    resolvedExamId = exam.id;
+    examName = exam.name;
+  }
+
+  const { data, error } = await supabase
+    .from("results")
+    .select("grade")
+    .eq("institution_id", ctx.institution.id)
+    .eq("exam_id", resolvedExamId)
+    .is("superseded_by", null);
+  if (error) throw error;
+
+  const distribution: Record<string, number> = {};
+  for (const row of data ?? []) {
+    distribution[row.grade] = (distribution[row.grade] ?? 0) + 1;
+  }
+
+  return { examId: resolvedExamId, examName, distribution, total: data?.length ?? 0 };
+}
