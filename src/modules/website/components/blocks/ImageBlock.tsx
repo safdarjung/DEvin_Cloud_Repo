@@ -1,0 +1,11 @@
+import type { ImageBlock as ImageBlockType } from "@/modules/website/blocks";
+
+export function ImageBlock({ block }: { block: ImageBlockType }) {
+  return (
+    <figure className="py-6">
+      {/* eslint-disable-next-line @next/next/no-img-element -- editor-authored URL, not a build-time static asset */}
+      <img src={block.url} alt={block.alt} className="mx-auto max-h-[32rem] w-full rounded-lg object-cover" />
+      {block.caption && <figcaption className="text-muted-foreground mt-2 text-center text-sm">{block.caption}</figcaption>}
+    </figure>
+  );
+}

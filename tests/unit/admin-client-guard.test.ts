@@ -35,4 +35,23 @@ describe("createAdminClient guard (T7 — service-role allow-list)", () => {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     expect(() => createAdminClient()).toThrow(/SERVICE_ROLE_CALLER/);
   });
+
+  // T-024: the public enquiry route's scoped helper, same shape as
+  // withJobsServiceRole/withAiServiceRole above — must relock after use,
+  // and restore (not clear) a pre-existing value rather than deleting it.
+  it("withPublicEnquiryServiceRole sets 'public_enquiry' only for the call, then relocks", async () => {
+    delete process.env.SERVICE_ROLE_CALLER;
+    const { withPublicEnquiryServiceRole } = await import("@/modules/website/with-service-role");
+    expect(withPublicEnquiryServiceRole(() => process.env.SERVICE_ROLE_CALLER)).toBe("public_enquiry");
+    expect(process.env.SERVICE_ROLE_CALLER).toBeUndefined();
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    expect(() => createAdminClient()).toThrow(/SERVICE_ROLE_CALLER/);
+  });
+
+  it("withPublicEnquiryServiceRole restores a pre-existing SERVICE_ROLE_CALLER instead of deleting it", async () => {
+    process.env.SERVICE_ROLE_CALLER = "jobs";
+    const { withPublicEnquiryServiceRole } = await import("@/modules/website/with-service-role");
+    expect(withPublicEnquiryServiceRole(() => process.env.SERVICE_ROLE_CALLER)).toBe("public_enquiry");
+    expect(process.env.SERVICE_ROLE_CALLER).toBe("jobs");
+  });
 });

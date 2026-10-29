@@ -6,13 +6,16 @@ import type { Database } from "@/lib/db/types";
 // is owner/principal/admin only (07 §4, platform migration), but
 // `ai.generate` is granted to teachers too — the gateway reads/writes usage
 // metadata (never prompt text) on their behalf via the service role.
-const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test", "ai"]);
+// "public_enquiry" (T-024): public.submit_public_enquiry is granted to
+// service_role only (07 §4, 20261028000007) — neither anon nor authenticated
+// may call it directly, so the public enquiry route is its sole caller.
+const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test", "ai", "public_enquiry"]);
 
 export function createAdminClient() {
   const caller = process.env.SERVICE_ROLE_CALLER;
   if (!caller || !ALLOWED_CALLERS.has(caller)) {
     throw new Error(
-      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/test",
+      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/test",
     );
   }
 

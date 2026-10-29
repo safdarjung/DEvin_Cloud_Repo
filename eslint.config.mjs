@@ -31,6 +31,16 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  {
+    // T-024: the public enquiry route's own scoped helper and the route
+    // that calls it — no other file under src/modules/website/** or
+    // src/app/s/** may import the admin client (the renderer uses the anon
+    // client only; RLS is its boundary, per the packet's security rules).
+    files: ["src/modules/website/with-service-role.ts", "src/app/api/public/enquiry/route.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

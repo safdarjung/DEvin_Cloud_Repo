@@ -1,4 +1,4 @@
-import type { JwtPayload, SupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type JwtPayload, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
 
 // Opt-in mock for `@/lib/supabase/server` (T-022 lead review). The real
@@ -32,4 +32,20 @@ export async function getClaims(): Promise<JwtPayload | null> {
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data) return null;
   return data.claims;
+}
+
+// Fix round 1 (security review, LOW — mock parity): the real
+// `createAnonClient` (src/lib/supabase/server.ts) never carries a session —
+// it is plain supabase-js with the publishable key, no cookies, no JWT.
+// Returning `actingClient` here would run anon-path code under whichever
+// role `callAs` last signed in, silently masking an anon-RLS regression
+// (a query that should 404 for anon but doesn't would still pass because
+// it secretly ran as e.g. "admin"). Same signature as the real function
+// (synchronous, no args) — a fresh unauthenticated client every call.
+export function createAnonClient(): SupabaseClient<Database> {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL as string,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
 }

@@ -1062,6 +1062,11 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"get_public_site":
+{ Args: { "p_slug": string }; Returns: {
+              "institution_id": string,"institution_name": string,"nav": Json,"theme": Json,"website_id": string
+            }[]
+                           },
 "jobs_claim":
 { Args: { "p_worker_id": string }; Returns: {
               "attempts": number,

@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { JwtPayload } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type JwtPayload } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
 
 export async function createClient() {
@@ -39,4 +39,19 @@ export async function getClaims(): Promise<JwtPayload | null> {
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data) return null;
   return data.claims;
+}
+
+/**
+ * T-024 — the public site renderer's only data client. Plain supabase-js,
+ * not `createServerClient` from `@supabase/ssr`: it never reads or sends
+ * cookies, so a staff member browsing `/s/[slug]` while signed in still
+ * gets the plain `anon` role, never their session. RLS class P (05 §5) is
+ * the sole access boundary for every query made with this client.
+ */
+export function createAnonClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
 }
