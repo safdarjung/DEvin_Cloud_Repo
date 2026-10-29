@@ -8,7 +8,8 @@ out/
 next-env.d.ts
 
 # build / test output
-bench-results/
+bench-results/*
+!bench-results/README.md
 backups/
 dist/
 coverage/

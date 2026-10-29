@@ -23,7 +23,7 @@
     "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
     "demo:reset": "node --env-file-if-exists=.env.local scripts/demo-reset.ts",
     "jobs:run": "node --env-file-if-exists=.env.local scripts/jobs-run.ts",
-    "ai:bench": "echo \"not implemented (T-040)\" && exit 1"
+    "ai:bench": "node --env-file-if-exists=.env.local scripts/ai-bench/bench.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.90",
