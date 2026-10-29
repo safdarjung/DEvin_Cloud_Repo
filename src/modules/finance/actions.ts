@@ -15,14 +15,17 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
+import { paymentModesFor } from "./queries";
 import {
   AssignFeeStructureSchema,
   GenerateStudentInvoiceSchema,
   GenerateTermInvoicesSchema,
+  RecordPaymentSchema,
   UpsertFeeStructureSchema,
   type AssignFeeStructureInput,
   type GenerateStudentInvoiceInput,
   type GenerateTermInvoicesInput,
+  type RecordPaymentInput,
   type UpsertFeeStructureInput,
 } from "./schemas";
 
@@ -81,6 +84,23 @@ async function requireTerm(supabase: FinanceClient, institutionId: string, id: s
     .maybeSingle();
   if (error) throwMapped(error);
   if (!data) throw new AppError("not_found", "Term not found.");
+  return data;
+}
+
+interface InvoiceRow {
+  id: string;
+  institution_id: string;
+}
+
+async function requireInvoice(supabase: FinanceClient, institutionId: string, id: string): Promise<InvoiceRow> {
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("id, institution_id")
+    .eq("id", id)
+    .eq("institution_id", institutionId)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) throw new AppError("not_found", "Invoice not found.");
   return data;
 }
 
@@ -380,5 +400,63 @@ export const generateStudentInvoice = defineAction({
 
     revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
     return { invoiceId: data as string };
+  },
+});
+
+export interface RecordPaymentResult {
+  paymentId: string;
+  receiptId: string;
+  receiptNo: string;
+}
+
+interface RecordPaymentRpcResult {
+  payment_id: string;
+  receipt_id: string;
+  receipt_no: string;
+}
+
+// T-032 — 06 §W9. `finance.payment.record` excludes admin (07 §2.2; see
+// `app.finance_write_roles()` in the finance migration), enforced by
+// defineAction's permission check before this handler ever runs.
+// `requireInvoice` proves the invoice belongs to `ctx.institution` first —
+// `public.record_payment` only checks the caller's role against the
+// invoice's own institution_id, not against the route's institution, so
+// skipping this check would let a user with a finance role in institution A
+// record a payment against an invoice id from institution B as long as the
+// id ever resolved (packet rule: "Prove the invoice belongs to
+// ctx.institution"). `app.record_payment` writes its own
+// `finance.payment.recorded` audit row — no second audit call here.
+export const recordPayment = defineAction({
+  name: "finance.payment.record",
+  schema: RecordPaymentSchema,
+  permission: "finance.payment.record",
+  handler: async (input: RecordPaymentInput, ctx): Promise<RecordPaymentResult> => {
+    const supabase = await createClient();
+    await requireInvoice(supabase, ctx.institution.id, input.invoiceId);
+
+    const modes = paymentModesFor(ctx.institution.settings);
+    if (!modes.includes(input.mode)) {
+      throw new AppError("validation_failed", `"${input.mode}" is not an accepted payment mode for this school.`, {
+        mode: [`"${input.mode}" is not an accepted payment mode for this school.`],
+      });
+    }
+
+    const { data, error } = await supabase.rpc("record_payment", {
+      p_invoice_id: input.invoiceId,
+      p_amount: input.amount,
+      p_mode: input.mode,
+      p_reference: (input.reference ?? null) as string,
+      p_received_at: input.receivedAt.toISOString(),
+      p_idempotency_key: input.idempotencyKey,
+    });
+    if (error) throwMapped(error);
+    const result = data as unknown as RecordPaymentRpcResult;
+
+    revalidatePath(`/${ctx.institution.slug}/finance/invoices/${input.invoiceId}`);
+    revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
+    revalidatePath(`/${ctx.institution.slug}/finance/ledger`);
+    revalidatePath(`/${ctx.institution.slug}/finance/defaulters`);
+
+    return { paymentId: result.payment_id, receiptId: result.receipt_id, receiptNo: result.receipt_no };
   },
 });

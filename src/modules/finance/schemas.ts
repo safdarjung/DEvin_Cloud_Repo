@@ -95,3 +95,27 @@ export const GenerateStudentInvoiceSchema = z
   .strict();
 
 export type GenerateStudentInvoiceInput = z.infer<typeof GenerateStudentInvoiceSchema>;
+
+// T-032 — 06 §W9 record-payment dialog. `mode` is checked against the
+// institution's own settings.finance.payment_modes in the action (not
+// hardcoded here as an enum) per packet rule 1 — the five-value DB check
+// constraint (app.record_payment) is the outer bound, settings narrow it
+// further per institution. `amount` follows this file's existing `money`
+// convention (numeric(12,2)-matching JS number) rather than a paise integer
+// or decimal string, for consistency with every other money field in this
+// module (FeeComponentInputSchema.amount, ConcessionInputSchema.amount) —
+// recorded as a deviation from the packet's literal wording in the
+// completion report. `receivedAt` coerces a datetime-local input value into
+// a Date, which supabase-js serializes to an ISO string for the RPC call.
+export const RecordPaymentSchema = z
+  .object({
+    invoiceId: uuid,
+    amount: z.number().positive().multipleOf(0.01),
+    mode: z.string().min(1).max(20),
+    reference: z.string().trim().max(200).optional(),
+    receivedAt: z.coerce.date(),
+    idempotencyKey: uuid,
+  })
+  .strict();
+
+export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;

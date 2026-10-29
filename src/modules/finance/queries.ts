@@ -12,6 +12,17 @@ export interface PickerOption {
   label: string;
 }
 
+// T-032 — shared by `recordPayment` (actions.ts, which as a "use server"
+// file may only export async functions, so this pure helper lives here
+// instead) and the invoice detail page, which needs the same list to pass
+// into `RecordPaymentDialog` as a prop.
+export function paymentModesFor(settings: Record<string, unknown>): string[] {
+  const finance = settings.finance;
+  if (typeof finance !== "object" || finance === null) return [];
+  const modes = (finance as Record<string, unknown>).payment_modes;
+  return Array.isArray(modes) ? modes.filter((m): m is string => typeof m === "string") : [];
+}
+
 /** Thin pickers for the structure/invoice forms — any authenticated member may read these (not finance-scoped). */
 export async function listAcademicYears(ctx: TenantContext): Promise<PickerOption[]> {
   const supabase = await createClient();
@@ -260,4 +271,232 @@ export async function getInvoice(ctx: TenantContext, id: string): Promise<Invoic
       concessionAmount: Number(l.concession_amount),
     })),
   };
+}
+
+// T-032 — 06 §W9. Rendered from `receipts.snapshot` only (packet security
+// rule 2: "the receipt must not change if names change later") — no join to
+// students/invoices here, so the shape below carries ids, not names.
+export interface ReceiptHeadSnapshot {
+  head: string;
+  amount: number;
+  concessionAmount: number;
+}
+
+export interface ReceiptSnapshot {
+  invoiceId: string;
+  studentId: string;
+  amount: number;
+  mode: string;
+  reference: string | null;
+  receivedAt: string;
+  heads: ReceiptHeadSnapshot[];
+}
+
+export interface ReceiptDetail {
+  id: string;
+  receiptNo: string;
+  financialYear: string;
+  createdAt: string;
+  snapshot: ReceiptSnapshot;
+}
+
+function toReceiptHeadSnapshot(h: Record<string, unknown>): ReceiptHeadSnapshot {
+  return { head: String(h.head), amount: Number(h.amount), concessionAmount: Number(h.concession_amount) };
+}
+
+/** RLS scopes to finance roles or the receipt's own student's guardian/student (05 §5); the explicit `institution_id` filter plus null-check still gives a clean `not_found` instead of relying on RLS alone (packet rule 2). */
+export async function getReceipt(ctx: TenantContext, id: string): Promise<ReceiptDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("receipts")
+    .select("id, receipt_no, financial_year, created_at, snapshot")
+    .eq("id", id)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  const snap = data.snapshot as Record<string, unknown>;
+  return {
+    id: data.id,
+    receiptNo: data.receipt_no,
+    financialYear: data.financial_year,
+    createdAt: data.created_at,
+    snapshot: {
+      invoiceId: String(snap.invoice_id),
+      studentId: String(snap.student_id),
+      amount: Number(snap.amount),
+      mode: String(snap.mode),
+      reference: snap.reference == null ? null : String(snap.reference),
+      receivedAt: String(snap.received_at),
+      heads: Array.isArray(snap.heads) ? (snap.heads as Record<string, unknown>[]).map(toReceiptHeadSnapshot) : [],
+    },
+  };
+}
+
+// T-032 Fix round 1 (code review, MEDIUM — money float): `numeric(12,2)`
+// columns come back over PostgREST as a decimal string even though the
+// generated `Database` type says `number` (the same gap every `Number(...)`
+// single-value read in this file already papers over) — summing those with
+// `+` after `Number(...)` goes through IEEE754 doubles and can make a
+// genuinely balanced ledger compare unequal with `===`. These two parse the
+// string directly into an integer (no float multiply), so sums and
+// comparisons are exact; only the final display value goes back through
+// `Number()`, once, on a clean two-decimal string it built itself.
+export function moneyToPaise(raw: string | number): number {
+  const text = typeof raw === "number" ? raw.toString() : raw;
+  const negative = text.startsWith("-");
+  const unsigned = negative ? text.slice(1) : text;
+  const [whole, fraction = ""] = unsigned.split(".");
+  const paddedFraction = (fraction + "00").slice(0, 2);
+  const paise = Number(`${whole || "0"}${paddedFraction}`);
+  return negative ? -paise : paise;
+}
+
+export function paiseToMoney(paise: number): number {
+  const negative = paise < 0;
+  const absolute = Math.abs(Math.trunc(paise));
+  const rupees = Math.trunc(absolute / 100);
+  const cents = absolute % 100;
+  const value = Number(`${rupees}.${String(cents).padStart(2, "0")}`);
+  return negative ? -value : value;
+}
+
+export interface LedgerEntry {
+  id: string;
+  entryDate: string;
+  account: string;
+  debit: number;
+  credit: number;
+  memo: string | null;
+  invoiceId: string | null;
+  paymentId: string | null;
+}
+
+export interface LedgerPage {
+  entries: LedgerEntry[];
+  totalDebit: number;
+  totalCredit: number;
+  /** Computed from the integer-paise sums, not from `totalDebit === totalCredit` (money-float fix round 1). */
+  balanced: boolean;
+  page: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export interface LedgerFilters {
+  from: string;
+  to: string;
+  account?: string;
+}
+
+const MAX_LEDGER_PAGE_SIZE = 100;
+const DEFAULT_LEDGER_PAGE_SIZE = 50;
+
+/** ledger_entries is finance_roles()-only (not guardian-scoped, 05 §5) — RLS alone is the gate here; no student/guardian call path renders this page. */
+export async function listLedgerEntries(
+  ctx: TenantContext,
+  filters: LedgerFilters,
+  page = 1,
+  pageSize = DEFAULT_LEDGER_PAGE_SIZE,
+): Promise<LedgerPage> {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(filters.from) || !/^\d{4}-\d{2}-\d{2}$/.test(filters.to)) {
+    throw new Error("from/to must be ISO dates (YYYY-MM-DD).");
+  }
+  if (filters.from > filters.to) {
+    throw new Error("from must not be after to.");
+  }
+
+  const size = Math.min(Math.max(Math.trunc(pageSize) || DEFAULT_LEDGER_PAGE_SIZE, 1), MAX_LEDGER_PAGE_SIZE);
+  const safePage = Math.max(Math.trunc(page) || 1, 1);
+
+  const supabase = await createClient();
+
+  let listQuery = supabase
+    .from("ledger_entries")
+    .select("id, entry_date, account, debit, credit, memo, invoice_id, payment_id", { count: "exact" })
+    .eq("institution_id", ctx.institution.id)
+    .gte("entry_date", filters.from)
+    .lte("entry_date", filters.to)
+    .order("entry_date", { ascending: false })
+    .range((safePage - 1) * size, safePage * size - 1);
+  if (filters.account) listQuery = listQuery.eq("account", filters.account);
+
+  let sumQuery = supabase
+    .from("ledger_entries")
+    .select("debit, credit")
+    .eq("institution_id", ctx.institution.id)
+    .gte("entry_date", filters.from)
+    .lte("entry_date", filters.to);
+  if (filters.account) sumQuery = sumQuery.eq("account", filters.account);
+
+  const [{ data, error, count }, { data: sumRows, error: sumError }] = await Promise.all([listQuery, sumQuery]);
+  if (error) throw error;
+  if (sumError) throw sumError;
+
+  const totalsPaise = (sumRows ?? []).reduce(
+    (acc, r) => ({
+      debitPaise: acc.debitPaise + moneyToPaise(r.debit),
+      creditPaise: acc.creditPaise + moneyToPaise(r.credit),
+    }),
+    { debitPaise: 0, creditPaise: 0 },
+  );
+
+  return {
+    entries: (data ?? []).map((r) => ({
+      id: r.id,
+      entryDate: r.entry_date,
+      account: r.account,
+      debit: Number(r.debit),
+      credit: Number(r.credit),
+      memo: r.memo,
+      invoiceId: r.invoice_id,
+      paymentId: r.payment_id,
+    })),
+    totalDebit: paiseToMoney(totalsPaise.debitPaise),
+    totalCredit: paiseToMoney(totalsPaise.creditPaise),
+    balanced: totalsPaise.debitPaise === totalsPaise.creditPaise,
+    page: safePage,
+    pageSize: size,
+    totalCount: count ?? 0,
+  };
+}
+
+export interface DefaulterRow {
+  studentId: string;
+  studentName: string;
+  invoiceId: string;
+  invoiceNo: string;
+  total: number;
+  paidTotal: number;
+  outstanding: number;
+  dueOn: string | null;
+}
+
+/** Outstanding (issued/part_paid) invoices for a term — fully paid and cancelled invoices are excluded (AC4). invoices RLS also allows the owning guardian/student, but defaulters is a staff-only page (gated by finance.read + role in practice); no guardian call path renders it. */
+export async function listDefaulters(ctx: TenantContext, filters: { termId: string }): Promise<DefaulterRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("id, invoice_no, student_id, total, paid_total, due_on, students(first_name, last_name)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("term_id", filters.termId)
+    .in("status", ["issued", "part_paid"])
+    .order("due_on", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const student = row.students as { first_name: string; last_name: string | null } | null;
+    return {
+      studentId: row.student_id,
+      studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
+      invoiceId: row.id,
+      invoiceNo: row.invoice_no,
+      total: Number(row.total),
+      paidTotal: Number(row.paid_total),
+      // Money-float fix round 1: subtract in integer paise, not floats.
+      outstanding: paiseToMoney(moneyToPaise(row.total) - moneyToPaise(row.paid_total)),
+      dueOn: row.due_on,
+    };
+  });
 }
