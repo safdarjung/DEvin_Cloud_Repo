@@ -8,6 +8,8 @@ export interface TableExpectation {
   read: FixtureRole[];
   /** Roles that can INSERT/UPDATE this table's rows within their own institution. */
   write: FixtureRole[];
+  /** Class P only (T-023): true if `anon` has a SELECT policy (published/live rows only). */
+  anonRead?: boolean;
 }
 
 // 05 §5 — the seven tables migration 0002 (T-004) creates. Later migrations'
@@ -212,5 +214,45 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["S", "A"],
     read: ["owner", "principal", "admin", "admissions"],
     write: ["owner", "principal", "admissions"], // INSERT-only, admin excluded (see above)
+  },
+
+  // 0010 (T-023) — website. Class P: every member SELECTs every row of
+  // their institution (including drafts — the internal editor needs them);
+  // `website.edit` (07 §2.2) grants INSERT/UPDATE to owner/principal/admin/
+  // admissions. `website.publish` (owner/principal/admin, admissions
+  // excluded) is enforced inside app.publish_page, not by a table policy,
+  // so it has no `write` entry here. `anonRead: true` tables additionally
+  // expose a published/live-only anon SELECT policy (T5, C-80) — never a
+  // draft, proven explicitly in tests/db/website-schema.test.ts, not by the
+  // generated suite's authenticated-only ROLES loop.
+  websites: {
+    classes: ["P"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions"],
+    anonRead: true,
+  },
+  pages: {
+    classes: ["P"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions"],
+    anonRead: true,
+  },
+  page_versions: {
+    classes: ["P"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions"], // INSERT-only; UPDATE/DELETE blocked outside app.publish_page
+    anonRead: true,
+  },
+  notices: {
+    classes: ["P"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions"],
+    anonRead: true,
+  },
+  events: {
+    classes: ["P"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions"],
+    anonRead: true,
   },
 };

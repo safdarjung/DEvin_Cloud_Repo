@@ -563,6 +563,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"events": {
+                  Row: {
+                    "created_at": string,"ends_at": string | null,"id": string,"institution_id": string,"is_public": boolean,"location": string | null,"starts_at": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_at"?: string | null,"id"?: string,"institution_id": string,"is_public"?: boolean,"location"?: string | null,"starts_at": string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_at"?: string | null,"id"?: string,"institution_id"?: string,"is_public"?: boolean,"location"?: string | null,"starts_at"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "events_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"grades": {
                   Row: {
                     "code": string,"created_at": string,"display_name": string,"grade_group": string,"id": string,"institution_id": string,"sort_key": number,"updated_at": string
@@ -739,6 +759,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"notices": {
+                  Row: {
+                    "audience": Json | null,"body": string,"created_at": string,"expires_at": string | null,"id": string,"institution_id": string,"is_public": boolean,"publish_at": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "audience"?: Json | null,"body": string,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"institution_id": string,"is_public"?: boolean,"publish_at"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "audience"?: Json | null,"body"?: string,"created_at"?: string,"expires_at"?: string | null,"id"?: string,"institution_id"?: string,"is_public"?: boolean,"publish_at"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notices_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"notifications": {
                   Row: {
                     "body": string,"created_at": string,"data": Json | null,"id": string,"institution_id": string,"read_at": string | null,"recipient_user_id": string,"title": string,"type": string,"updated_at": string
@@ -762,6 +802,64 @@ isOneToOne: false
       columns: ["recipient_user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"page_versions": {
+                  Row: {
+                    "blocks": NonNullable<Json>,"created_at": string,"created_by": string | null,"id": string,"institution_id": string,"page_id": string,"published_at": string | null,"version_no": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blocks"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"id"?: string,"institution_id": string,"page_id": string,"published_at"?: string | null,"version_no": number
+                  }
+                  Update: {
+                    "blocks"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string | null,"id"?: string,"institution_id"?: string,"page_id"?: string,"published_at"?: string | null,"version_no"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "page_versions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "page_versions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "page_versions_page_id_fkey"
+      columns: ["page_id"]
+isOneToOne: false
+      referencedRelation: "pages"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"pages": {
+                  Row: {
+                    "created_at": string,"id": string,"institution_id": string,"published_version_id": string | null,"slug": string,"title": string,"updated_at": string,"website_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"institution_id": string,"published_version_id"?: string | null,"slug": string,"title": string,"updated_at"?: string,"website_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"institution_id"?: string,"published_version_id"?: string | null,"slug"?: string,"title"?: string,"updated_at"?: string,"website_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pages_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "pages_website_id_fkey"
+      columns: ["website_id"]
+isOneToOne: false
+      referencedRelation: "websites"
       referencedColumns: ["id"]
     }
                   ]
@@ -921,6 +1019,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"websites": {
+                  Row: {
+                    "created_at": string,"id": string,"institution_id": string,"is_live": boolean,"nav": Json | null,"theme": Json | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"institution_id": string,"is_live"?: boolean,"nav"?: Json | null,"theme"?: Json | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"institution_id"?: string,"is_live"?: boolean,"nav"?: Json | null,"theme"?: Json | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "websites_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: true
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -973,6 +1091,23 @@ isOneToOne: false
                           SetofOptions: {
         from: "*"
         to: "jobs"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"publish_page":
+{ Args: { "p_page_id": string,"p_version_id": string }; Returns: {
+              "created_at": string,
+"id": string,
+"institution_id": string,
+"published_version_id": string | null,
+"slug": string,
+"title": string,
+"updated_at": string,
+"website_id": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "pages"
         isOneToOne: true
         isSetofReturn: false
       } },

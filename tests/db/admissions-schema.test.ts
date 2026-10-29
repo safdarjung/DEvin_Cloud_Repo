@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 import { closeFactoriesHelper, createAcademicYear, createGrade } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution } from "../helpers/roles";
 
@@ -26,7 +26,17 @@ function serviceRoleClient() {
 // exist in this schema yet, so every call to submit_public_enquiry errors
 // before it can reach the slug/is_live check. Tests that exercise the
 // function are gated on this and skip (not fail) until then.
-let hasWebsitesTable = false;
+//
+// Fix (T-023): resolved via a top-level await, not `beforeAll` — `describe`
+// runs its callback (and therefore every `it.skipIf(...)` check) synchronously
+// during module evaluation, before any `beforeAll` body has had a chance to
+// run, so a `beforeAll`-set flag is always read at its stale initial value.
+const [{ exists: hasWebsitesTable }] = await sql<{ exists: boolean }[]>`
+  select exists (
+    select 1 from information_schema.tables
+    where table_schema = 'public' and table_name = 'websites'
+  ) as exists
+`;
 
 async function setNumberingSettings(institutionId: string): Promise<void> {
   await sql`
@@ -41,16 +51,6 @@ async function setNumberingSettings(institutionId: string): Promise<void> {
 async function makeLiveWebsite(institutionId: string): Promise<void> {
   await sql`insert into public.websites (institution_id, is_live) values (${institutionId}, true)`;
 }
-
-beforeAll(async () => {
-  const [row] = await sql<{ exists: boolean }[]>`
-    select exists (
-      select 1 from information_schema.tables
-      where table_schema = 'public' and table_name = 'websites'
-    ) as exists
-  `;
-  hasWebsitesTable = row.exists;
-});
 
 afterAll(async () => {
   await sql.end();
