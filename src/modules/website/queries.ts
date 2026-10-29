@@ -14,7 +14,9 @@ import "server-only";
 // is live — zero rows for an unknown or offline slug, same shape as the
 // anon RLS predicates on pages/notices/events.
 import { cache } from "react";
-import { createAnonClient } from "@/lib/supabase/server";
+import { createAnonClient, createClient } from "@/lib/supabase/server";
+import { AppError, mapSqlError } from "@/lib/actions/result";
+import type { TenantContext } from "@/lib/auth/types";
 import { parseBlocksSafely, type Block } from "./blocks";
 
 export interface PublicSite {
@@ -135,4 +137,199 @@ export async function listPublicEvents(institutionId: string, limit = 4): Promis
     endsAt: row.ends_at,
     location: row.location,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// T-025 — tenant editor reads (member client, RLS class P). Every row is
+// scoped to `ctx.institution.id`; the member-SELECT policies (0010) already
+// restrict to the caller's own institution, this just keeps the query
+// itself narrow (rule 1) rather than relying on RLS alone to filter.
+// ---------------------------------------------------------------------------
+
+function throwMapped(error: unknown): never {
+  const mapped = mapSqlError(error);
+  if (mapped.ok) throw new AppError("internal", "Unexpected error.");
+  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
+
+export interface PageSummary {
+  id: string;
+  slug: string;
+  title: string;
+  publishedVersionId: string | null;
+  updatedAt: string;
+}
+
+export async function listPages(ctx: TenantContext): Promise<PageSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("pages")
+    .select("id, slug, title, published_version_id, updated_at")
+    .eq("institution_id", ctx.institution.id)
+    .order("slug");
+  if (error) throwMapped(error);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    publishedVersionId: row.published_version_id,
+    updatedAt: row.updated_at,
+  }));
+}
+
+export interface VersionSummary {
+  id: string;
+  versionNo: number;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export interface PageWithVersions {
+  id: string;
+  slug: string;
+  title: string;
+  publishedVersionId: string | null;
+  versions: VersionSummary[];
+}
+
+/** `null` when the page doesn't exist or belongs to a different institution — RLS would already hide it, this just gives the page.tsx a clean not_found instead of a thrown error. */
+export async function getPageWithVersions(ctx: TenantContext, pageId: string): Promise<PageWithVersions | null> {
+  const supabase = await createClient();
+  const { data: page, error: pageError } = await supabase
+    .from("pages")
+    .select("id, slug, title, published_version_id")
+    .eq("id", pageId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (pageError) throwMapped(pageError);
+  if (!page) return null;
+
+  const { data: versions, error: versionsError } = await supabase
+    .from("page_versions")
+    .select("id, version_no, published_at, created_at")
+    .eq("page_id", pageId)
+    .eq("institution_id", ctx.institution.id)
+    .order("version_no", { ascending: false });
+  if (versionsError) throwMapped(versionsError);
+
+  return {
+    id: page.id,
+    slug: page.slug,
+    title: page.title,
+    publishedVersionId: page.published_version_id,
+    versions: (versions ?? []).map((v) => ({
+      id: v.id,
+      versionNo: v.version_no,
+      publishedAt: v.published_at,
+      createdAt: v.created_at,
+    })),
+  };
+}
+
+export interface VersionDetail {
+  id: string;
+  pageId: string;
+  versionNo: number;
+  blocks: Block[];
+  publishedAt: string | null;
+}
+
+/** `null` when the version doesn't exist, isn't this page's, or isn't this institution's. */
+export async function getVersion(ctx: TenantContext, pageId: string, versionId: string): Promise<VersionDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("page_versions")
+    .select("id, page_id, version_no, blocks, published_at")
+    .eq("id", versionId)
+    .eq("page_id", pageId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    pageId: data.page_id,
+    versionNo: data.version_no,
+    blocks: parseBlocksSafely(data.blocks),
+    publishedAt: data.published_at,
+  };
+}
+
+export interface NoticeRow {
+  id: string;
+  title: string;
+  body: string;
+  publishAt: string;
+  expiresAt: string | null;
+  isPublic: boolean;
+  audience: unknown;
+}
+
+/** Every notice for the institution, draft or public — the editor needs to see what isn't live yet (packet, unlike listPublicNotices). */
+export async function listNotices(ctx: TenantContext): Promise<NoticeRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notices")
+    .select("id, title, body, publish_at, expires_at, is_public, audience")
+    .eq("institution_id", ctx.institution.id)
+    .order("publish_at", { ascending: false });
+  if (error) throwMapped(error);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    publishAt: row.publish_at,
+    expiresAt: row.expires_at,
+    isPublic: row.is_public,
+    audience: row.audience,
+  }));
+}
+
+export interface EventRow {
+  id: string;
+  title: string;
+  startsAt: string;
+  endsAt: string | null;
+  location: string | null;
+  isPublic: boolean;
+}
+
+export async function listEvents(ctx: TenantContext): Promise<EventRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("events")
+    .select("id, title, starts_at, ends_at, location, is_public")
+    .eq("institution_id", ctx.institution.id)
+    .order("starts_at", { ascending: true });
+  if (error) throwMapped(error);
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    location: row.location,
+    isPublic: row.is_public,
+  }));
+}
+
+export interface WebsiteSummary {
+  id: string;
+  isLive: boolean;
+}
+
+/** `null` when no website row exists yet for this institution (fresh test fixture; demo/seeded institutions always have one). */
+export async function getWebsite(ctx: TenantContext): Promise<WebsiteSummary | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("websites")
+    .select("id, is_live")
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) return null;
+  return { id: data.id, isLive: data.is_live };
 }
