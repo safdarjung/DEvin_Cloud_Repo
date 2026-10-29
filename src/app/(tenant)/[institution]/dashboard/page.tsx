@@ -72,7 +72,7 @@ export default async function DashboardPage({
               <CardTitle className="text-sm font-medium">Fee collection this term</CardTitle>
             </CardHeader>
             <CardContent>
-              <CollectionsChart collectedPaise={data.collections.collectedPaise} duePaise={data.collections.duePaise} formatINR={formatINR} />
+              <CollectionsChart collectedPaise={data.collections.collectedPaise} duePaise={data.collections.duePaise} />
             </CardContent>
           </Card>
         ) : (

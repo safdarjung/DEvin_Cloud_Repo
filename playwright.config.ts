@@ -24,6 +24,11 @@ loadDotEnvLocal();
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // Batch C: capped to what passes reliably against one local Postgres —
+  // several specs (j09/j10/j11/j12, tenant-shell) build/write heavy DB
+  // fixtures concurrently and collide under default parallelism (aria-label
+  // duplicates, resource contention). 1 worker trades speed for determinism.
+  workers: 1,
   reporter: "list",
   use: {
     baseURL: "http://localhost:3000",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,9 +64,14 @@ export function VerificationPanel({ institutionSlug, examId, examStatus, hasPape
     null,
   );
 
-  if (openState?.ok || closeState?.ok || reopenState?.ok) {
-    router.refresh();
-  }
+  // Bug fix (Batch C): was called unconditionally during render ("Cannot
+  // update a component (Router) while rendering a different component") —
+  // a status-transition result is a side effect, so it belongs in an effect.
+  useEffect(() => {
+    if (openState?.ok || closeState?.ok || reopenState?.ok) {
+      router.refresh();
+    }
+  }, [openState, closeState, reopenState, router]);
 
   const transitionError = [openState, closeState, reopenState].find((s) => s && !s.ok) as
     | { ok: false; error: { message: string } }

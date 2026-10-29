@@ -53,6 +53,20 @@ test.describe("tenant shell (J-00 subset)", () => {
       values (${instId}, 'Guardian', '9000000001')
       returning id
     `;
+    // A guardian is never created without at least one linked child in
+    // practice (every guardian membership is created alongside an
+    // enrolment) — resolvePortalSelection (T-034) correctly 404s a
+    // childless guardian, so this fixture must link one to exercise the
+    // real /portal redirect-to-default-child path.
+    const [studentRow] = await sql`
+      insert into public.students (institution_id, admission_no, first_name, dob, gender)
+      values (${instId}, 'ADM-TSHELL-1', 'Child', '2016-01-01', 'other')
+      returning id
+    `;
+    await sql`
+      insert into public.guardian_students (institution_id, guardian_id, student_id, relationship, is_primary)
+      values (${instId}, ${guardianRow.id}, ${studentRow.id}, 'mother', true)
+    `;
     await sql`
       insert into public.memberships (institution_id, user_id, role, staff_id)
       values (${instId}, ${principalId}, 'principal', ${staffPrincipal.id})
@@ -69,6 +83,8 @@ test.describe("tenant shell (J-00 subset)", () => {
       await tx`delete from public.audit_events where institution_id = ${instId}`;
     });
     await sql`delete from public.memberships where institution_id = ${instId}`;
+    await sql`delete from public.guardian_students where institution_id = ${instId}`;
+    await sql`delete from public.students where institution_id = ${instId}`;
     await sql`delete from public.staff where institution_id = ${instId}`;
     await sql`delete from public.guardians where institution_id = ${instId}`;
     await sql`delete from public.institutions where id = ${instId}`;
@@ -104,8 +120,15 @@ test.describe("tenant shell (J-00 subset)", () => {
     await loginAs(page, guardianEmail);
     await page.goto(`/${slug}/portal`);
 
-    await expect(page.getByRole("heading", { name: "Portal" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Attendance" })).toBeVisible();
+    // "My children" is PortalNav's actual guardian-role heading (same
+    // convention j07-guardian-portal.spec.ts checks for the student role,
+    // "My school") — the page never had a literal "Portal" heading; only
+    // the sidebar nav link to /portal is named that.
+    await expect(page.getByRole("heading", { name: "My children" })).toBeVisible();
+    // Scoped to the portal tabs: the sidebar also has its own "Attendance"
+    // link (guardians hold attendance.read for their own child), so the
+    // unscoped locator is a strict-mode violation (2+ matches).
+    await expect(page.getByRole("navigation", { name: "Portal tabs" }).getByRole("link", { name: "Attendance" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Portal" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Jobs" })).toHaveCount(0);

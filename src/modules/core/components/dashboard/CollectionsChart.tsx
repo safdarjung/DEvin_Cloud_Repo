@@ -1,16 +1,21 @@
 "use client";
-// T-039 — term collected vs due. Money is formatted from integer paise by
-// the caller (formatINR, dashboard.queries.ts) — this component never does
-// its own money math.
+// T-039 — term collected vs due.
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 interface CollectionsChartProps {
   collectedPaise: number;
   duePaise: number;
-  formatINR: (paise: number) => string;
 }
 
-export function CollectionsChart({ collectedPaise, duePaise, formatINR }: CollectionsChartProps) {
+// Bug fix (Batch C): dashboard.queries.ts's formatINR is `import "server-only"`
+// (Next.js rule: functions can't be passed as props across the Server/Client
+// boundary anyway). Duplicated here as a one-liner rather than extracting a
+// shared module — this component owns its own display formatting.
+function formatINR(paise: number): string {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paise / 100);
+}
+
+export function CollectionsChart({ collectedPaise, duePaise }: CollectionsChartProps) {
   const data = [
     { label: "Collected", amount: collectedPaise / 100, fill: "var(--chart-1)" },
     { label: "Due", amount: duePaise / 100, fill: "var(--chart-3)" },

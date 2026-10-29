@@ -219,6 +219,75 @@ describe("finance module (T-030) — generate_invoice/record_payment + RLS (C-50
     }
   });
 
+  it("C-51c: a 100% concession on every head produces a net-zero invoice, no ledger check-constraint violation, status paid", async () => {
+    const inst = await createTestInstitution("finance-c51c");
+    try {
+      await setFinanceSettings(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const termId = await createTerm(inst.institutionId, yearId, { sequence: 1 });
+      const gradeId = await createGrade(inst.institutionId);
+      const structureId = await createFeeStructure(inst.institutionId, yearId, gradeId);
+      await createFeeComponent(inst.institutionId, structureId, { head: "tuition", amount: 10000, frequency: "term" });
+      const studentId = await insertStudent(inst.institutionId, "ADM-C51C");
+      const assignmentId = await createFeeAssignment(inst.institutionId, studentId, structureId, yearId);
+      await sql`
+        insert into public.concessions (institution_id, fee_assignment_id, kind, head, percent, approved_by, reason)
+        values (${inst.institutionId}, ${assignmentId}, 'ews_rte', 'tuition', 100, ${inst.users.accountant.id}, 'test: full waiver')
+      `;
+
+      const result = await inst
+        .clientAs("accountant")
+        .rpc("generate_invoice", { p_student_id: studentId, p_term_id: termId });
+      expect(result.error).toBeNull();
+      const invoiceId = result.data as string;
+
+      const [invoice] = await sql`select subtotal, concession_total, total, status, paid_total from public.invoices where id = ${invoiceId}`;
+      expect(Number(invoice.total)).toBe(0);
+      expect(invoice.status).toBe("paid");
+      expect(Number(invoice.paid_total)).toBe(0);
+
+      const ledgerRows = await sql`select account, debit, credit from public.ledger_entries where invoice_id = ${invoiceId}`;
+      for (const row of ledgerRows) {
+        expect(Number(row.debit) === 0 !== (Number(row.credit) === 0)).toBe(true);
+      }
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  it("C-51d: stacked concessions on one head are capped at the line amount — total never negative", async () => {
+    const inst = await createTestInstitution("finance-c51d");
+    try {
+      await setFinanceSettings(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const termId = await createTerm(inst.institutionId, yearId, { sequence: 1 });
+      const gradeId = await createGrade(inst.institutionId);
+      const structureId = await createFeeStructure(inst.institutionId, yearId, gradeId);
+      await createFeeComponent(inst.institutionId, structureId, { head: "tuition", amount: 10000, frequency: "term" });
+      const studentId = await insertStudent(inst.institutionId, "ADM-C51D");
+      const assignmentId = await createFeeAssignment(inst.institutionId, studentId, structureId, yearId);
+      await sql`
+        insert into public.concessions (institution_id, fee_assignment_id, kind, head, percent, approved_by, reason)
+        values (${inst.institutionId}, ${assignmentId}, 'sibling', 'tuition', 60, ${inst.users.accountant.id}, 'test: stacked a'),
+               (${inst.institutionId}, ${assignmentId}, 'staff_ward', 'tuition', 60, ${inst.users.accountant.id}, 'test: stacked b')
+      `;
+
+      const result = await inst
+        .clientAs("accountant")
+        .rpc("generate_invoice", { p_student_id: studentId, p_term_id: termId });
+      expect(result.error).toBeNull();
+
+      const [invoice] = await sql`select concession_total, total, status from public.invoices where id = ${result.data as string}`;
+      expect(Number(invoice.concession_total)).toBe(10000);
+      expect(Number(invoice.total)).toBe(0);
+      expect(invoice.status).toBe("paid");
+      const [{ negatives }] = await sql`select count(*)::int as negatives from public.ledger_entries where invoice_id = ${result.data as string} and (debit < 0 or credit < 0)`;
+      expect(negatives).toBe(0);
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
   it("C-51b: a one_time component is excluded from a student's second invoice (Term 2)", async () => {
     const inst = await createTestInstitution("finance-c51b");
     try {

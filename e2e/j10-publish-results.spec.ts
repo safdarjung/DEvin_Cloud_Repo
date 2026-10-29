@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import postgres from "postgres";
 import { expect, type Page, test } from "@playwright/test";
 
 // J-10 (08 §4) — publish exam results -> report card -> guardian view (06
@@ -24,7 +25,51 @@ async function loginAs(page: Page, email: string, password = PASSWORD) {
   await page.waitForLoadState("networkidle");
 }
 
+// Fixture row ids, populated during the test and torn down in afterAll —
+// a direct Postgres connection (same shape as e2e/tenant-shell.spec.ts) is
+// required because marks/results are guarded by app.marks_guard/
+// results_guard, which only let DELETE through when `app.allow_reset` is
+// set, a GUC PostgREST's admin client has no way to set.
+const sql = postgres(process.env.SUPABASE_DB_URL!, { max: 5 });
+const fixture: {
+  gradeId?: string;
+  sectionId?: string;
+  subjectId?: string;
+  examId?: string;
+  studentWithGuardianId?: string;
+  studentOtherId?: string;
+  guardianId?: string;
+  guardianUserId?: string;
+} = {};
+
 test.describe("J-10: publish exam results, report card, guardian view", () => {
+  test.afterAll(async () => {
+    await sql.begin(async (tx) => {
+      await tx`select set_config('app.allow_reset', 'on', true)`;
+      if (fixture.examId) {
+        await tx`delete from public.results where exam_id = ${fixture.examId}`;
+        await tx`delete from public.marks where exam_paper_id in (select id from public.exam_papers where exam_id = ${fixture.examId})`;
+        await tx`delete from public.exam_papers where exam_id = ${fixture.examId}`;
+        await tx`delete from public.exams where id = ${fixture.examId}`;
+      }
+      const studentIds = [fixture.studentWithGuardianId, fixture.studentOtherId].filter((id): id is string => Boolean(id));
+      if (studentIds.length > 0) {
+        await tx`delete from public.enrolments where student_id = any(${studentIds})`;
+      }
+      if (fixture.guardianId) await tx`delete from public.guardian_students where guardian_id = ${fixture.guardianId}`;
+      if (fixture.guardianUserId) await tx`delete from public.memberships where user_id = ${fixture.guardianUserId}`;
+      if (studentIds.length > 0) await tx`delete from public.students where id = any(${studentIds})`;
+      if (fixture.guardianId) await tx`delete from public.guardians where id = ${fixture.guardianId}`;
+      if (fixture.subjectId) await tx`delete from public.subjects where id = ${fixture.subjectId}`;
+      if (fixture.sectionId) await tx`delete from public.class_sections where id = ${fixture.sectionId}`;
+      if (fixture.gradeId) await tx`delete from public.grades where id = ${fixture.gradeId}`;
+    });
+    if (fixture.guardianUserId) {
+      await serviceClient().auth.admin.deleteUser(fixture.guardianUserId);
+    }
+    await sql.end();
+  });
+
   test("examcontroller publishes once verification is clean; guardian sees only their own linked child's report card", async ({
     page,
   }) => {
@@ -50,25 +95,38 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
       .single();
     if (!term) throw new Error("seeded demo term not found");
 
-    const suffix = Date.now();
+    // Date.now() alone collides under parallel workers starting in the same
+    // millisecond (observed: two specs' exam-paper checkboxes rendering the
+    // identical aria-label). A short random component makes it unique.
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const { data: grade } = await admin
       .from("grades")
       .insert({ institution_id: institution.id, code: `J10-${suffix}`, display_name: "J-10 Test Grade", sort_key: 998, grade_group: "primary" })
       .select("id")
       .single();
     if (!grade) throw new Error("fixture grade was not created");
+    fixture.gradeId = grade.id;
 
     const { data: section } = await admin
       .from("class_sections")
       .insert({ institution_id: institution.id, grade_id: grade.id, academic_year_id: year.id, name: "A" })
       .select("id")
       .single();
+    // name must be unique too, not just code: PaperGrid's checkbox
+    // aria-label is `${section.label} ${subject.name}` (no code/id), and
+    // the seeded demo tenant already has a subject literally named
+    // "Science" (scripts/seed/lib/subjects.ts) — plain "Science" here
+    // collides with it in this fixture's own new section row, independent
+    // of any other spec's concurrency.
+    const subjectName = `Science ${suffix}`;
     const { data: subject } = await admin
       .from("subjects")
-      .insert({ institution_id: institution.id, code: `J10SCI-${suffix}`, name: "Science", kind: "scholastic" })
+      .insert({ institution_id: institution.id, code: `J10SCI-${suffix}`, name: subjectName, kind: "scholastic" })
       .select("id")
       .single();
     if (!section || !subject) throw new Error("fixture section/subject were not created");
+    fixture.sectionId = section.id;
+    fixture.subjectId = subject.id;
 
     // Two students: studentWithGuardian gets a fresh guardian (and its own
     // portal login) linked via guardian_students; studentOther has none —
@@ -84,6 +142,8 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
       .select("id")
       .single();
     if (!studentWithGuardian || !studentOther) throw new Error("fixture students were not created");
+    fixture.studentWithGuardianId = studentWithGuardian.id;
+    fixture.studentOtherId = studentOther.id;
 
     await admin.from("enrolments").insert([
       { institution_id: institution.id, student_id: studentWithGuardian.id, class_section_id: section.id, academic_year_id: year.id, started_on: "2026-04-01" },
@@ -97,13 +157,22 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
       email_confirm: true,
     });
     if (guardianAuthError || !guardianAuth.user) throw guardianAuthError ?? new Error("failed to create guardian user");
+    fixture.guardianUserId = guardianAuth.user.id;
 
+    // Unique per run — a hardcoded phone collides with
+    // guardians(institution_id, phone)'s unique constraint on a rerun
+    // against the same persistent demo tenant without an intervening
+    // demo:reset.
+    const guardianPhone = `9${Date.now().toString().slice(-5)}${Math.floor(Math.random() * 10000)
+      .toString()
+      .padStart(4, "0")}`;
     const { data: guardian } = await admin
       .from("guardians")
-      .insert({ institution_id: institution.id, full_name: "J10 Test Guardian", phone: "9800000700" })
+      .insert({ institution_id: institution.id, full_name: "J10 Test Guardian", phone: guardianPhone })
       .select("id")
       .single();
     if (!guardian) throw new Error("fixture guardian was not created");
+    fixture.guardianId = guardian.id;
 
     await admin.from("guardian_students").insert({
       institution_id: institution.id,
@@ -127,8 +196,9 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
     await page.getByRole("button", { name: "Create exam" }).click();
     await page.waitForURL(/\/exams\/[0-9a-f-]+$/);
     const examId = new URL(page.url()).pathname.split("/").pop();
+    fixture.examId = examId;
 
-    const paperCheckbox = page.getByRole("checkbox", { name: `J10-${suffix}-A Science`, exact: true });
+    const paperCheckbox = page.getByRole("checkbox", { name: `J10-${suffix}-A ${subjectName}`, exact: true });
     await expect(paperCheckbox).toBeVisible();
     await paperCheckbox.check();
     await page.getByRole("button", { name: /Create 1 paper/ }).click();
@@ -137,13 +207,22 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
     await page.getByRole("button", { name: "Open marks entry" }).click();
     await expect(page.getByText("marks_entry", { exact: true })).toBeVisible();
 
-    await page.getByRole("link", { name: new RegExp(`J10-${suffix}-A`) }).click();
-    await page.waitForURL(/\/papers\/[0-9a-f-]+$/);
+    const { data: examPaper } = await admin.from("exam_papers").select("id").eq("exam_id", examId).single();
+    if (!examPaper) throw new Error("fixture exam paper was not created");
+    await page.goto(`/${SLUG}/exams/${examId}/papers/${examPaper.id}`);
 
     // 2. enter marks for both students (examcontroller holds exam.marks.enter too).
     const marksInputs = page.locator('input[type="number"]');
     await expect(marksInputs).toHaveCount(2);
-    await marksInputs.nth(0).fill("92");
+    // Root cause (Batch C) of the Save button going completely inert (no
+    // network request, no console/page error, no DOM change): "92" exceeds
+    // the input's native `max` (max_marks defaults to 80) — the browser
+    // silently blocks the native form submission via HTML5 constraint
+    // validation before it ever reaches React's submit handler. Was always
+    // wrong here (pre-existing since this spec was written), just never
+    // reached while the checkbox aria-label collision blocked the test
+    // earlier in the flow.
+    await marksInputs.nth(0).fill("70");
     await marksInputs.nth(1).fill("48");
     await page.getByRole("button", { name: /Save \d+ change/ }).click();
     await expect(page.getByText("Saved — 2 entered, 0 unchanged.")).toBeVisible();

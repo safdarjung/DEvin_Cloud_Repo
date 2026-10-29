@@ -1,4 +1,9 @@
+import { createClient } from "@supabase/supabase-js";
 import { expect, type Page, test } from "@playwright/test";
+
+function serviceClient() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);
+}
 
 // J-06 (08 §4) — attendance session -> submit -> absence notification. Runs
 // against the seeded demo tenant (`st-josephs-demo`) rather than a
@@ -54,6 +59,42 @@ test.describe("J-06: attendance marking and submission", () => {
   });
 
   test("marking every student and submitting shows the absence/notification feedback", async ({ page }) => {
+    // e2e stability (Batch C): this test creates and submits a real
+    // attendance_sessions row for VI-A/today in the shared demo tenant —
+    // a second run on the same calendar day (e.g. a second full
+    // `pnpm test:e2e` pass) finds that session already `submitted`, so
+    // "Save"/"Submit" never render and the test times out waiting for
+    // them. Delete any such row first so the register always starts
+    // `open` (attendance_sessions/records carry no block_mutation guard,
+    // unlike attendance_corrections — a plain service-role delete is fine).
+    const admin = serviceClient();
+    const { data: institution } = await admin.from("institutions").select("id").eq("slug", SLUG).single();
+    const { data: section } = await admin
+      .from("class_sections")
+      .select("id, grades!inner(code)")
+      .eq("institution_id", institution!.id)
+      .eq("name", "A")
+      .eq("grades.code", "VI")
+      .single();
+    const { data: session } = await admin
+      .from("attendance_sessions")
+      .select("id")
+      .eq("class_section_id", section!.id)
+      // The app computes "today" in the institution's timezone (Asia/Kolkata,
+      // 05 §4.1 locale), not UTC — `toISOString()` alone is wrong whenever
+      // UTC and Kolkata disagree on the calendar date (UTC+5:30), which is
+      // most of the day.
+      .eq("date", new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }))
+      .maybeSingle();
+    if (session) {
+      // shortcut: doesn't delete attendance_corrections first (append-only,
+      // block_mutation-guarded — a service-role DELETE would need the
+      // allow_reset GUC, unreachable over PostgREST). Fine here: this test
+      // never clicks "Correct", so the session it created has none.
+      await admin.from("attendance_records").delete().eq("session_id", session.id);
+      await admin.from("attendance_sessions").delete().eq("id", session.id);
+    }
+
     await loginAs(page, "teacher.vi-a@demo.coolskool.test");
     await page.goto(`/${SLUG}/attendance`);
     await viaRow(page).click();

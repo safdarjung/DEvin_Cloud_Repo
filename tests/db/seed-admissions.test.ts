@@ -64,13 +64,19 @@ describe("T-029 seed counts (AC1)", () => {
 
 describe("T-029 named demo entities (05 §8.1)", () => {
   it("APP-live-1 is Riya Verma, grade I, accepted, guardian Sunita Verma 9800000101 (new)", async () => {
+    // Filtered on the guardian phone, not applicant first name: "Riya" is
+    // also in admissions.ts's generic FIRST_NAMES_FEMALE pool, so a
+    // randomly-generated enquiry/application can coincidentally share it —
+    // the hardcoded 9800000101 (outside the T-029 98000002xx random block)
+    // is unique to this named fixture.
     const [row] = await sql`
       select a.applicant, a.guardian, g.code as grade_code
       from public.applications a
       join public.grades g on g.id = a.grade_applied_id
-      where a.institution_id = ${institutionId} and a.applicant ->> 'firstName' = 'Riya'
+      where a.institution_id = ${institutionId} and a.guardian ->> 'phone' = '9800000101'
     `;
     expect(row).toBeTruthy();
+    expect(row.applicant.firstName).toBe("Riya");
     expect(row.grade_code).toBe("I");
     expect(row.guardian.phone).toBe("9800000101");
     const [existingGuardian] = await sql`select id from public.guardians where institution_id = ${institutionId} and phone = '9800000101'`;
@@ -78,13 +84,17 @@ describe("T-029 named demo entities (05 §8.1)", () => {
   });
 
   it("APP-live-2 is Kabir Mehta, grade VI, accepted, guardian phone reuses guardian.two (9800000002)", async () => {
+    // Same fix as APP-live-1 above: "Kabir" is also in the generic
+    // FIRST_NAMES_MALE pool, so filter on the fixture's known guardian
+    // phone instead of the applicant's first name.
     const [row] = await sql`
-      select a.guardian, g.code as grade_code
+      select a.applicant, a.guardian, g.code as grade_code
       from public.applications a
       join public.grades g on g.id = a.grade_applied_id
-      where a.institution_id = ${institutionId} and a.applicant ->> 'firstName' = 'Kabir'
+      where a.institution_id = ${institutionId} and a.guardian ->> 'phone' = '9800000002' and a.applicant ->> 'lastName' = 'Mehta'
     `;
     expect(row).toBeTruthy();
+    expect(row.applicant.firstName).toBe("Kabir");
     expect(row.grade_code).toBe("VI");
     expect(row.guardian.phone).toBe("9800000002");
 

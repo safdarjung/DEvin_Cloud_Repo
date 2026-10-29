@@ -151,12 +151,11 @@ export async function run(ctx: SeedContext): Promise<void> {
           const kind = CONCESSION_KINDS[concessionCursor % CONCESSION_KINDS.length]!;
           concessionCursor += 1;
           if (kind === "ews_rte") {
-            // shortcut: 99%, not 100% — app.generate_invoice's ledger_entries
-            // insert requires (debit = 0) <> (credit = 0) per entry, and a
-            // literal 100% waiver on every head zeroes the whole invoice
-            // (subtotal - concession_total = 0), which that check rejects.
-            // Upgrade (in the finance migration, not here) if a demo
-            // scenario ever needs a truly ₹0 invoice.
+            // 100% waiver on every head (05 §8.1). 20261028000024 fixed
+            // app.generate_invoice to skip the degenerate (debit 0, credit 0)
+            // fees_receivable ledger_entries row on a net-zero invoice
+            // instead of inserting it — the check constraint no longer
+            // rejects a literal full waiver.
             for (const head of headsByStructureId.get(structureId) ?? []) {
               concessionRows.push({
                 id: uuidV5("finance", `concession:${student.id}:ews_rte:${head}`),
@@ -164,9 +163,9 @@ export async function run(ctx: SeedContext): Promise<void> {
                 fee_assignment_id: assignmentId,
                 kind,
                 head,
-                percent: 99,
+                percent: 100,
                 approved_by: principalUserId,
-                reason: "EWS/RTE admission — near-full fee waiver per institution policy.",
+                reason: "EWS/RTE admission — full fee waiver per institution policy.",
               });
             }
           } else {
@@ -270,6 +269,11 @@ export async function run(ctx: SeedContext): Promise<void> {
         const [invoice] = await financeSql`select invoice_no, total from public.invoices where id = ${invoiceId}`;
         const invoiceNo = invoice!.invoice_no as string;
         const total = Number(invoice!.total);
+        // A 100%-ews_rte invoice has total 0 and is already 'paid' by
+        // app.generate_invoice itself — nothing to record, and
+        // app.record_payment rejects amount <= 0 ("amount must be greater
+        // than zero").
+        if (total <= 0) return;
         const amount = entry.outcome === "half" ? Math.round((total / 2) * 100) / 100 : total;
 
         await financeSql`
