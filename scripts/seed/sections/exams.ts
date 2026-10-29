@@ -290,6 +290,8 @@ export async function run(ctx: SeedContext): Promise<void> {
 
   // publish_exam_results/apply_recheck_decision require a non-null
   // app.current_user_id(); set it for this transaction only (local=true).
+  // published_at is wall-clock now(), not 05 §8.1's "2026-10-05" (DBT-33):
+  // keeps the recheck window open for J-11 on any reset date.
   const examControllerUserId = ctx.userIdByLogin["examcontroller"]!;
   await ctx.sql.begin(async (tx) => {
     await tx`select set_config('request.jwt.claims', ${JSON.stringify({ sub: examControllerUserId, role: "authenticated" })}, true)`;

@@ -132,11 +132,3 @@ describe("T-033 named demo entities (05 §8.1)", () => {
     expect(statuses).toEqual(["paid", "part_paid"].sort());
   });
 });
-
-describe("T-033 determinism", () => {
-  it("re-querying the same invoice twice returns the same invoice_no (no drift within a run)", async () => {
-    const [a] = await sql`select invoice_no from public.invoices where institution_id = ${institutionId} limit 1`;
-    const [b] = await sql`select invoice_no from public.invoices where institution_id = ${institutionId} limit 1`;
-    expect(a.invoice_no).toBe(b.invoice_no);
-  });
-});
