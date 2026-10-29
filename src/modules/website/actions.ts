@@ -199,7 +199,13 @@ export const publishPage = defineAction({
     if (error) throwMapped(error);
 
     revalidatePath(`/${ctx.institution.slug}/website/pages/${input.pageId}`);
-    revalidatePath(`/s/${ctx.institution.slug}`);
+    // Fix round 2 (e2e, T-027): the public route is `/s/[slug]/[[...path]]`
+    // (layout.tsx at `/s/[slug]`). A literal `revalidatePath` without
+    // `"layout"` only invalidates the exact matched path — i.e. just the
+    // home page (`path: []`) — never any other page's cache entry
+    // (`/s/{slug}/{otherSlug}`). `"layout"` cascades to every page nested
+    // under that layout, so publishing any page actually takes effect.
+    revalidatePath(`/s/${ctx.institution.slug}`, "layout");
     return { id: data.id, publishedVersionId: data.published_version_id };
   },
 });
@@ -233,7 +239,7 @@ export const setWebsiteLive = defineAction({
       after: { isLive: data.is_live },
     });
     revalidatePath(`/${ctx.institution.slug}/website`);
-    revalidatePath(`/s/${ctx.institution.slug}`);
+    revalidatePath(`/s/${ctx.institution.slug}`, "layout");
     return { id: data.id, isLive: data.is_live };
   },
 });
@@ -273,7 +279,7 @@ export const upsertNotice = defineAction({
       after: { isPublic: data.is_public, publishAt: data.publish_at },
     });
     revalidatePath(`/${ctx.institution.slug}/website/notices`);
-    revalidatePath(`/s/${ctx.institution.slug}`);
+    revalidatePath(`/s/${ctx.institution.slug}`, "layout");
     return { id: data.id };
   },
 });
@@ -310,7 +316,7 @@ export const upsertEvent = defineAction({
       after: { isPublic: data.is_public, startsAt: data.starts_at },
     });
     revalidatePath(`/${ctx.institution.slug}/website/events`);
-    revalidatePath(`/s/${ctx.institution.slug}`);
+    revalidatePath(`/s/${ctx.institution.slug}`, "layout");
     return { id: data.id };
   },
 });
