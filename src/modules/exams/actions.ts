@@ -215,6 +215,36 @@ export const enterMarks = defineAction({
   },
 });
 
+export const publishExamResults = defineAction({
+  name: "exam.result.publish",
+  schema: ExamIdSchema,
+  permission: "exam.result.publish",
+  handler: async (input: ExamIdInput, ctx) => {
+    const supabase = await createClient();
+
+    // The exam id is proven to belong to ctx.institution before the RPC
+    // call (CLAUDE.md rule 10) — app.publish_exam_results (0009/0018) takes
+    // only p_exam_id, not an institution id, so this check is the only
+    // thing standing between a guessed exam id and another institution's
+    // results.
+    const { data: exam, error: examError } = await supabase
+      .from("exams")
+      .select("id")
+      .eq("id", input.examId)
+      .eq("institution_id", ctx.institution.id)
+      .maybeSingle();
+    if (examError) throwMapped(examError);
+    if (!exam) throw new AppError("not_found", "Exam not found.");
+
+    const { data, error } = await supabase.rpc("publish_exam_results", { p_exam_id: input.examId });
+    if (error) throwMapped(error);
+
+    revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}`);
+    revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}/results`);
+    return data as { exam_id: string; result_count: number };
+  },
+});
+
 export const verifyExam = defineAction({
   name: "exam.verify",
   schema: ExamIdSchema,

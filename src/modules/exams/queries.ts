@@ -319,3 +319,259 @@ export async function getMyPapers(ctx: TenantContext): Promise<MyPaperSummary[]>
     };
   });
 }
+
+// ---------------------------------------------------------------------------
+// T-019 — results reads (06 §W7). `results` carries no subject names in its
+// snapshot (only `subject_id`, 0009's snapshot shape) — resolved here via a
+// second query, same shape as getExamWithPapers resolving section/subject
+// names for exam_papers. Guardian/student scope is pure RLS (0009
+// results_select): a studentId they can't see simply yields no row, so
+// getCurrentResult returns null and the page calls notFound() — rule 3.
+// ---------------------------------------------------------------------------
+
+/** Roles the matrix (07 §2.2) gives result-version history to — narrower than exam.result.read, which guardians/students/teachers also hold. */
+const EXAM_HISTORY_ROLES = new Set(["owner", "principal", "admin", "exam_controller"]);
+
+interface ResultSnapshotSubject {
+  exam_paper_id: string;
+  subject_id: string;
+  marks_obtained: number | null;
+  max_marks: number;
+  is_absent: boolean;
+  passed: boolean;
+  grade: string | null;
+}
+
+interface ResultSnapshot {
+  subjects: ResultSnapshotSubject[];
+  attendancePercentage: number;
+}
+
+export interface ResultSubjectRow {
+  examPaperId: string;
+  subjectId: string;
+  subjectName: string;
+  marksObtained: number | null;
+  maxMarks: number;
+  isAbsent: boolean;
+  passed: boolean;
+  grade: string | null;
+}
+
+export interface ResultDetail {
+  id: string;
+  examId: string;
+  examName: string;
+  examType: string;
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  versionNo: number;
+  total: number;
+  maxTotal: number;
+  percentage: number;
+  grade: string;
+  attendancePercentage: number;
+  publishedAt: string;
+  /** version_no > 1 — ReportCard's "Corrected on <date>" note. */
+  isCorrected: boolean;
+  subjects: ResultSubjectRow[];
+}
+
+type ResultRow = {
+  id: string;
+  exam_id: string;
+  student_id: string;
+  snapshot: unknown;
+  total: number;
+  max_total: number;
+  percentage: number;
+  grade: string;
+  version_no: number;
+  published_at: string;
+  exams: { name: string; type: string } | null;
+  students: { first_name: string; last_name: string | null; admission_no: string } | null;
+};
+
+async function hydrateResultRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  institutionId: string,
+  row: ResultRow,
+): Promise<ResultDetail> {
+  const snapshot = row.snapshot as ResultSnapshot;
+  const subjectIds = [...new Set(snapshot.subjects.map((s) => s.subject_id))];
+
+  const { data: subjects, error: subjectsError } =
+    subjectIds.length > 0
+      ? await supabase.from("subjects").select("id, name").eq("institution_id", institutionId).in("id", subjectIds)
+      : { data: [], error: null };
+  if (subjectsError) throw subjectsError;
+  const subjectNameById = new Map((subjects ?? []).map((s) => [s.id, s.name]));
+
+  return {
+    id: row.id,
+    examId: row.exam_id,
+    examName: row.exams?.name ?? "",
+    examType: row.exams?.type ?? "",
+    studentId: row.student_id,
+    studentName: [row.students?.first_name, row.students?.last_name].filter(Boolean).join(" "),
+    admissionNo: row.students?.admission_no ?? "",
+    versionNo: row.version_no,
+    total: row.total,
+    maxTotal: row.max_total,
+    percentage: row.percentage,
+    grade: row.grade,
+    attendancePercentage: snapshot.attendancePercentage,
+    publishedAt: row.published_at,
+    isCorrected: row.version_no > 1,
+    subjects: snapshot.subjects.map((s) => ({
+      examPaperId: s.exam_paper_id,
+      subjectId: s.subject_id,
+      subjectName: subjectNameById.get(s.subject_id) ?? "",
+      marksObtained: s.marks_obtained,
+      maxMarks: s.max_marks,
+      isAbsent: s.is_absent,
+      passed: s.passed,
+      grade: s.grade,
+    })),
+  };
+}
+
+const RESULT_SELECT =
+  "id, exam_id, student_id, snapshot, total, max_total, percentage, grade, version_no, published_at, exams(name, type), students(first_name, last_name, admission_no)";
+
+/** The current (never superseded) result snapshot. Rule 3: guardians/students get only this — never getResultHistory. */
+export async function getCurrentResult(ctx: TenantContext, examId: string, studentId: string): Promise<ResultDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(RESULT_SELECT)
+    .eq("institution_id", ctx.institution.id)
+    .eq("exam_id", examId)
+    .eq("student_id", studentId)
+    .is("superseded_by", null)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return hydrateResultRow(supabase, ctx.institution.id, data as unknown as ResultRow);
+}
+
+export interface ResultListRow {
+  studentId: string;
+  studentName: string;
+  admissionNo: string;
+  total: number;
+  maxTotal: number;
+  percentage: number;
+  grade: string;
+  isCorrected: boolean;
+}
+
+export interface ExamResultsSummary {
+  examId: string;
+  examName: string;
+  examStatus: string;
+  results: ResultListRow[];
+  /** grade -> count, over the rows RLS actually returned (never a bare teacher's whole class if RLS narrows it). */
+  gradeDistribution: Record<string, number>;
+}
+
+/** Current-version results for every student of an exam, plus a grade distribution — the controller/teacher list (also used by T-039). RLS (0009 results_select) narrows this to the caller's own scope (teacher: sections they teach; exam roles: everyone). */
+export async function listResultsForExam(ctx: TenantContext, examId: string): Promise<ExamResultsSummary | null> {
+  const supabase = await createClient();
+  const { data: exam, error: examError } = await supabase
+    .from("exams")
+    .select("id, name, status")
+    .eq("id", examId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (examError) throw examError;
+  if (!exam) return null;
+
+  const { data, error } = await supabase
+    .from("results")
+    .select("student_id, total, max_total, percentage, grade, version_no, students(first_name, last_name, admission_no)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("exam_id", examId)
+    .is("superseded_by", null);
+  if (error) throw error;
+
+  const gradeDistribution: Record<string, number> = {};
+  const results = (data ?? []).map((row) => {
+    gradeDistribution[row.grade] = (gradeDistribution[row.grade] ?? 0) + 1;
+    const student = row.students as { first_name: string; last_name: string | null; admission_no: string } | null;
+    return {
+      studentId: row.student_id,
+      studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
+      admissionNo: student?.admission_no ?? "",
+      total: row.total,
+      maxTotal: row.max_total,
+      percentage: row.percentage,
+      grade: row.grade,
+      isCorrected: row.version_no > 1,
+    };
+  });
+
+  return { examId: exam.id, examName: exam.name, examStatus: exam.status, results, gradeDistribution };
+}
+
+export interface StudentResultRow {
+  examId: string;
+  examName: string;
+  examType: string;
+  total: number;
+  maxTotal: number;
+  percentage: number;
+  grade: string;
+  publishedAt: string;
+}
+
+/** Every current-version result for one student across exams — the portal's "my report cards" list (T-034). Pure RLS scope, same as getCurrentResult. */
+export async function listResultsForStudent(ctx: TenantContext, studentId: string): Promise<StudentResultRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select("exam_id, total, max_total, percentage, grade, published_at, exams(name, type)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("student_id", studentId)
+    .is("superseded_by", null)
+    .order("published_at", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const exam = row.exams as { name: string; type: string } | null;
+    return {
+      examId: row.exam_id,
+      examName: exam?.name ?? "",
+      examType: exam?.type ?? "",
+      total: row.total,
+      maxTotal: row.max_total,
+      percentage: row.percentage,
+      grade: row.grade,
+      publishedAt: row.published_at,
+    };
+  });
+}
+
+/**
+ * Every version of a result, newest first — exam roles only (07 §2.2),
+ * checked here (not just hidden in the UI, rule 3) so a guardian/student/
+ * teacher who has `exam.result.read` can never fetch another version
+ * through this function even if a page mistakenly called it.
+ */
+export async function getResultHistory(ctx: TenantContext, examId: string, studentId: string): Promise<ResultDetail[] | null> {
+  if (!EXAM_HISTORY_ROLES.has(ctx.membership.role)) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("results")
+    .select(RESULT_SELECT)
+    .eq("institution_id", ctx.institution.id)
+    .eq("exam_id", examId)
+    .eq("student_id", studentId)
+    .order("version_no", { ascending: false });
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+
+  return Promise.all(data.map((row) => hydrateResultRow(supabase, ctx.institution.id, row as unknown as ResultRow)));
+}

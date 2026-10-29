@@ -8,6 +8,12 @@ import { VerificationPanel } from "@/modules/exams/components/VerificationPanel"
 import { getExamWithPapers, listSectionOptions, listSubjectOptions } from "@/modules/exams/queries";
 import { verifyExam } from "@/modules/exams/actions";
 
+// T-019 fix round 1 — same roles results/page.tsx (T-019) allows to see a
+// whole class's results; guardian/student hold exam.result.read too but
+// must never see this link (they get only their own report card, never a
+// class list).
+const RESULTS_LINK_ROLES = new Set(["owner", "principal", "admin", "exam_controller", "teacher"]);
+
 export default async function ExamDetailPage({
   params,
 }: {
@@ -24,11 +30,18 @@ export default async function ExamDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">{exam.name}</h1>
-        <p className="text-muted-foreground text-sm">
-          {exam.type} · {exam.papers.length} paper{exam.papers.length === 1 ? "" : "s"}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">{exam.name}</h1>
+          <p className="text-muted-foreground text-sm">
+            {exam.type} · {exam.papers.length} paper{exam.papers.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        {ctx.permissions.has("exam.result.read") && RESULTS_LINK_ROLES.has(ctx.membership.role) && (
+          <Link href={`/${institutionSlug}/exams/${exam.id}/results`} className="text-sm hover:underline">
+            Publish / View results
+          </Link>
+        )}
       </div>
 
       <VerificationPanel

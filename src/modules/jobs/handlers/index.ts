@@ -3,21 +3,24 @@ import { generateTermInvoices } from "./finance.generate_term_invoices.ts";
 import { notifyAttendanceAbsence } from "./notify.attendance_absence.ts";
 import { notifyEnquiryReceived } from "./notify.enquiry_received.ts";
 import { notifyEnrolmentWelcome } from "./notify.enrolment_welcome.ts";
+import { notifyResultsPublished } from "./notify.results_published.ts";
 
-export { generateTermInvoices, notifyAttendanceAbsence, notifyEnquiryReceived, notifyEnrolmentWelcome };
+export {
+  generateTermInvoices,
+  notifyAttendanceAbsence,
+  notifyEnquiryReceived,
+  notifyEnrolmentWelcome,
+  notifyResultsPublished,
+};
 
-// T-038 could not implement these two: 06 §W7/§W8 publish results and
-// recheck decisions into `results`/`recheck_decisions` tables that no
-// migration has created yet (grepped all of supabase/migrations/*.sql —
-// neither table exists on this branch). Re-checking state at send time
-// (lead ruling) is impossible without the row to re-check, and nothing
-// enqueues either job type yet either. Left as placeholders, same as
-// T-037 left all five; replace when the exams module's migration lands.
+// T-019 (lead ruling) replaced notify.results_published's placeholder (the
+// `results` table it depends on now exists, 0009/0018). notify.recheck_decided
+// still can't be implemented: it needs `recheck_decisions` to carry real
+// decision rows, which is T-020's packet, not this one.
 function notImplemented(type: string): JobHandler {
   return async () => {
     throw new Error(`not_implemented:${type}`);
   };
 }
 
-export const notifyResultsPublished: JobHandler = notImplemented("notify.results_published");
 export const notifyRecheckDecided: JobHandler = notImplemented("notify.recheck_decided");
