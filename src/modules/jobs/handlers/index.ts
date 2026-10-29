@@ -1,9 +1,10 @@
 import type { JobHandler } from "../types.ts";
+import { generateTermInvoices } from "./finance.generate_term_invoices.ts";
 import { notifyAttendanceAbsence } from "./notify.attendance_absence.ts";
 import { notifyEnquiryReceived } from "./notify.enquiry_received.ts";
 import { notifyEnrolmentWelcome } from "./notify.enrolment_welcome.ts";
 
-export { notifyAttendanceAbsence, notifyEnquiryReceived, notifyEnrolmentWelcome };
+export { generateTermInvoices, notifyAttendanceAbsence, notifyEnquiryReceived, notifyEnrolmentWelcome };
 
 // T-038 could not implement these two: 06 §W7/§W8 publish results and
 // recheck decisions into `results`/`recheck_decisions` tables that no
@@ -20,4 +21,3 @@ function notImplemented(type: string): JobHandler {
 
 export const notifyResultsPublished: JobHandler = notImplemented("notify.results_published");
 export const notifyRecheckDecided: JobHandler = notImplemented("notify.recheck_decided");
-export const generateTermInvoices: JobHandler = notImplemented("finance.generate_term_invoices");

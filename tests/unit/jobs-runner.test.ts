@@ -223,9 +223,11 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     const ports = createRunnerPorts(admin);
 
     // T-038 replaced the notify.attendance_absence placeholder with a real
-    // handler; finance.generate_term_invoices (T-031) is still a
-    // placeholder, which is what this case is actually testing.
-    await expect(ports.dispatch(makeJob({ type: "finance.generate_term_invoices" }))).rejects.toThrow(
+    // handler, and T-031 replaced finance.generate_term_invoices's;
+    // notify.results_published is still a placeholder (06 §W7's `results`
+    // table doesn't exist on this branch yet), which is what this case is
+    // actually testing.
+    await expect(ports.dispatch(makeJob({ type: "notify.results_published" }))).rejects.toThrow(
       /not_implemented/,
     );
   });

@@ -1,0 +1,384 @@
+"use server";
+
+// T-031 — finance module actions (06 §W9, 07 §2.2 finance.structure.manage /
+// finance.invoice.generate). Structure/assignment writes are direct RLS
+// upserts (same shape as attendance.actions.ts's markAttendance) — RLS
+// already re-checks institution membership in `with check`, but every id
+// is also verified here first (packet rule 2) so a cross-tenant or missing
+// id surfaces as `not_found`/`validation_failed`, not an opaque RLS-policy-
+// violation mapped to `internal`. Invoice generation is strictly through
+// `public.generate_invoice` (packet rule 2 / CLAUDE.md rule 5) — no
+// TypeScript here ever inserts into `invoices`/`invoice_lines`.
+import { revalidatePath } from "next/cache";
+import { defineAction } from "@/lib/actions/define-action";
+import { AppError, mapSqlError } from "@/lib/actions/result";
+import { audit } from "@/lib/audit";
+import type { TenantContext } from "@/lib/auth/types";
+import { createClient } from "@/lib/supabase/server";
+import {
+  AssignFeeStructureSchema,
+  GenerateStudentInvoiceSchema,
+  GenerateTermInvoicesSchema,
+  UpsertFeeStructureSchema,
+  type AssignFeeStructureInput,
+  type GenerateStudentInvoiceInput,
+  type GenerateTermInvoicesInput,
+  type UpsertFeeStructureInput,
+} from "./schemas";
+
+type FinanceClient = Awaited<ReturnType<typeof createClient>>;
+
+function throwMapped(error: unknown): never {
+  const mapped = mapSqlError(error);
+  if (mapped.ok) throw new AppError("internal", "Unexpected error.");
+  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
+
+async function requireAcademicYear(supabase: FinanceClient, institutionId: string, id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("academic_years")
+    .select("id")
+    .eq("id", id)
+    .eq("institution_id", institutionId)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) throw new AppError("not_found", "Academic year not found.");
+}
+
+async function requireGrade(supabase: FinanceClient, institutionId: string, id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("grades")
+    .select("id")
+    .eq("id", id)
+    .eq("institution_id", institutionId)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) throw new AppError("not_found", "Grade not found.");
+}
+
+async function requireStudent(supabase: FinanceClient, institutionId: string, id: string): Promise<void> {
+  const { data, error } = await supabase
+    .from("students")
+    .select("id")
+    .eq("id", id)
+    .eq("institution_id", institutionId)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) throw new AppError("not_found", "Student not found.");
+}
+
+interface TermRow {
+  id: string;
+  academic_year_id: string;
+}
+
+async function requireTerm(supabase: FinanceClient, institutionId: string, id: string): Promise<TermRow> {
+  const { data, error } = await supabase
+    .from("terms")
+    .select("id, academic_year_id")
+    .eq("id", id)
+    .eq("institution_id", institutionId)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) throw new AppError("not_found", "Term not found.");
+  return data;
+}
+
+interface FeeStructureRow {
+  id: string;
+  academic_year_id: string;
+}
+
+async function requireFeeStructure(supabase: FinanceClient, institutionId: string, id: string): Promise<FeeStructureRow> {
+  const { data, error } = await supabase
+    .from("fee_structures")
+    .select("id, academic_year_id")
+    .eq("id", id)
+    .eq("institution_id", institutionId)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!data) throw new AppError("not_found", "Fee structure not found.");
+  return data;
+}
+
+export const upsertFeeStructure = defineAction({
+  name: "finance.structure.upsert",
+  schema: UpsertFeeStructureSchema,
+  permission: "finance.structure.manage",
+  handler: async (input: UpsertFeeStructureInput, ctx) => {
+    const supabase = await createClient();
+    await requireAcademicYear(supabase, ctx.institution.id, input.academicYearId);
+    await requireGrade(supabase, ctx.institution.id, input.gradeId);
+
+    let structureId: string;
+    if (input.id) {
+      await requireFeeStructure(supabase, ctx.institution.id, input.id);
+      const { data, error } = await supabase
+        .from("fee_structures")
+        .update({
+          academic_year_id: input.academicYearId,
+          grade_id: input.gradeId,
+          name: input.name,
+          is_default: input.isDefault ?? false,
+        })
+        .eq("id", input.id)
+        .eq("institution_id", ctx.institution.id)
+        .select("id")
+        .single();
+      if (error) throwMapped(error);
+      structureId = data.id;
+    } else {
+      // AC1: a second save with the same (year, grade, name) updates
+      // instead of duplicating — the table's own unique constraint.
+      const { data, error } = await supabase
+        .from("fee_structures")
+        .upsert(
+          {
+            institution_id: ctx.institution.id,
+            academic_year_id: input.academicYearId,
+            grade_id: input.gradeId,
+            name: input.name,
+            is_default: input.isDefault ?? false,
+          },
+          { onConflict: "academic_year_id,grade_id,name" },
+        )
+        .select("id")
+        .single();
+      if (error) throwMapped(error);
+      structureId = data.id;
+    }
+
+    // shortcut: components upsert by head (onConflict fee_structure_id,head)
+    // only — a head removed from the form stays on the structure until
+    // replaced. Upgrade with an explicit delete-missing-heads pass if a
+    // demo scenario needs component removal (none does today).
+    const { error: componentsError } = await supabase.from("fee_components").upsert(
+      input.components.map((c) => ({
+        institution_id: ctx.institution.id,
+        fee_structure_id: structureId,
+        head: c.head,
+        amount: c.amount,
+        frequency: c.frequency,
+        applies_to_new_only: c.appliesToNewOnly ?? false,
+      })),
+      { onConflict: "fee_structure_id,head" },
+    );
+    if (componentsError) throwMapped(componentsError);
+
+    // Audit carries ids and amounts only (packet rule 7) — no free-text name.
+    await audit(ctx, {
+      action: "finance.structure.upserted",
+      entityType: "fee_structure",
+      entityId: structureId,
+      after: {
+        academicYearId: input.academicYearId,
+        gradeId: input.gradeId,
+        components: input.components.map((c) => ({ head: c.head, amount: c.amount, frequency: c.frequency })),
+      },
+    });
+
+    revalidatePath(`/${ctx.institution.slug}/finance/structures`);
+    revalidatePath(`/${ctx.institution.slug}/finance/structures/${structureId}`);
+    return { id: structureId };
+  },
+});
+
+export const assignFeeStructure = defineAction({
+  name: "finance.structure.assign",
+  schema: AssignFeeStructureSchema,
+  permission: "finance.structure.manage",
+  handler: async (input: AssignFeeStructureInput, ctx) => {
+    const supabase = await createClient();
+    await requireStudent(supabase, ctx.institution.id, input.studentId);
+    await requireAcademicYear(supabase, ctx.institution.id, input.academicYearId);
+    const structure = await requireFeeStructure(supabase, ctx.institution.id, input.feeStructureId);
+    if (structure.academic_year_id !== input.academicYearId) {
+      throw new AppError("validation_failed", "Fee structure does not belong to this academic year.", {
+        feeStructureId: ["Fee structure does not belong to this academic year."],
+      });
+    }
+
+    const { data: components, error: componentsError } = await supabase
+      .from("fee_components")
+      .select("head")
+      .eq("fee_structure_id", input.feeStructureId)
+      .eq("institution_id", ctx.institution.id);
+    if (componentsError) throwMapped(componentsError);
+    const validHeads = new Set((components ?? []).map((c) => c.head));
+    const badConcession = input.concessions.find((c) => c.head && !validHeads.has(c.head));
+    if (badConcession) {
+      throw new AppError("validation_failed", `"${badConcession.head}" is not a component on this fee structure.`, {
+        head: [`"${badConcession.head}" is not a component on this fee structure.`],
+      });
+    }
+
+    const { data: assignment, error: assignmentError } = await supabase
+      .from("fee_assignments")
+      .upsert(
+        {
+          institution_id: ctx.institution.id,
+          student_id: input.studentId,
+          fee_structure_id: input.feeStructureId,
+          academic_year_id: input.academicYearId,
+          assigned_by: ctx.user.id,
+        },
+        { onConflict: "student_id,academic_year_id" },
+      )
+      .select("id")
+      .single();
+    if (assignmentError) throwMapped(assignmentError);
+
+    // shortcut: re-assigning doesn't clear prior concessions on the same
+    // assignment id — upgrade with a replace-concessions step if a demo
+    // re-assign scenario needs it (none does today).
+    if (input.concessions.length > 0) {
+      const { error: concessionsError } = await supabase.from("concessions").insert(
+        input.concessions.map((c) => ({
+          institution_id: ctx.institution.id,
+          fee_assignment_id: assignment.id,
+          kind: c.kind,
+          head: c.head ?? null,
+          percent: c.percent ?? null,
+          amount: c.amount ?? null,
+          approved_by: ctx.user.id,
+          reason: c.reason,
+        })),
+      );
+      if (concessionsError) throwMapped(concessionsError);
+    }
+
+    await audit(ctx, {
+      action: "finance.structure.assigned",
+      entityType: "fee_assignment",
+      entityId: assignment.id,
+      after: {
+        studentId: input.studentId,
+        feeStructureId: input.feeStructureId,
+        concessions: input.concessions.map((c) => ({ head: c.head ?? null, percent: c.percent ?? null, amount: c.amount ?? null })),
+      },
+    });
+
+    revalidatePath(`/${ctx.institution.slug}/finance/structures/${input.feeStructureId}`);
+    return { id: assignment.id };
+  },
+});
+
+// Fix round 1 (code review, HIGH): mirrors the job handler's soft-budget
+// guard (src/modules/jobs/handlers/finance.generate_term_invoices.ts) —
+// stops cleanly before the platform request timeout instead of looping
+// every student unbounded. `runGenerateTermInvoices` is exported (as an
+// async function — "use server" files may only export async functions, so
+// this constant stays module-private) so tests can inject a tiny budget
+// directly, bypassing defineAction's permission/context wiring (same shape
+// as the job handler being called directly in
+// tests/db/invoice-generation.test.ts).
+const DEFAULT_GENERATE_TERM_INVOICES_BUDGET_MS = 20_000;
+
+export interface GenerateTermInvoicesResult {
+  studentCount: number;
+  generated: number;
+  alreadyExisted: number;
+  failed: number;
+  remaining: number;
+}
+
+export async function runGenerateTermInvoices(
+  supabase: FinanceClient,
+  ctx: TenantContext,
+  input: GenerateTermInvoicesInput,
+  budgetMs: number = DEFAULT_GENERATE_TERM_INVOICES_BUDGET_MS,
+): Promise<GenerateTermInvoicesResult> {
+  const term = await requireTerm(supabase, ctx.institution.id, input.termId);
+  await requireGrade(supabase, ctx.institution.id, input.gradeId);
+
+  const { data: enrolments, error: enrolError } = await supabase
+    .from("enrolments")
+    .select("student_id, class_sections!inner(grade_id)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("academic_year_id", term.academic_year_id)
+    .eq("status", "active")
+    .eq("class_sections.grade_id", input.gradeId);
+  if (enrolError) throwMapped(enrolError);
+
+  const studentIds = Array.from(new Set((enrolments ?? []).map((e) => e.student_id)));
+
+  const { data: existing, error: existingError } = await supabase
+    .from("invoices")
+    .select("student_id")
+    .eq("institution_id", ctx.institution.id)
+    .eq("term_id", input.termId)
+    .neq("status", "cancelled")
+    .in("student_id", studentIds.length > 0 ? studentIds : [""]);
+  if (existingError) throwMapped(existingError);
+  const existingIds = new Set((existing ?? []).map((i) => i.student_id));
+
+  const toProcess = studentIds.filter((id) => !existingIds.has(id));
+  const alreadyExisted = studentIds.length - toProcess.length;
+
+  // Packet rule 5: no TS-callable job enqueue exists (`app.enqueue_job`
+  // lives in the `app` schema, which `supabase/config.toml` does not
+  // expose over PostgREST) — synchronous per-student path through
+  // `public.generate_invoice` (already idempotent per student/term), not
+  // a generic enqueue helper (T-037 lesson). `key` documents the
+  // idempotency key a future bulk-enqueue wrapper should use.
+  const key = `invoices:${input.termId}:${input.gradeId}`;
+  const deadline = Date.now() + budgetMs;
+  let generated = 0;
+  let failed = 0;
+  let processed = 0;
+  for (const studentId of toProcess) {
+    if (Date.now() >= deadline) break;
+    const { error } = await supabase.rpc("generate_invoice", { p_student_id: studentId, p_term_id: input.termId });
+    processed += 1;
+    if (error) {
+      failed += 1;
+      continue;
+    }
+    generated += 1;
+  }
+  const remaining = toProcess.length - processed;
+
+  await audit(ctx, {
+    action: "finance.invoice.generate_term",
+    entityType: "term",
+    entityId: input.termId,
+    after: { gradeId: input.gradeId, studentCount: studentIds.length, generated, alreadyExisted, failed, remaining },
+    metadata: { key },
+  });
+
+  return { studentCount: studentIds.length, generated, alreadyExisted, failed, remaining };
+}
+
+export const generateTermInvoices = defineAction({
+  name: "finance.invoice.generateTerm",
+  schema: GenerateTermInvoicesSchema,
+  permission: "finance.invoice.generate",
+  handler: async (input: GenerateTermInvoicesInput, ctx) => {
+    const supabase = await createClient();
+    const result = await runGenerateTermInvoices(supabase, ctx, input);
+    revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
+    return result;
+  },
+});
+
+export const generateStudentInvoice = defineAction({
+  name: "finance.invoice.generateStudent",
+  schema: GenerateStudentInvoiceSchema,
+  permission: "finance.invoice.generate",
+  handler: async (input: GenerateStudentInvoiceInput, ctx) => {
+    const supabase = await createClient();
+    await requireStudent(supabase, ctx.institution.id, input.studentId);
+    await requireTerm(supabase, ctx.institution.id, input.termId);
+
+    // `app.generate_invoice` writes its own `finance.invoice.generated`
+    // audit row — no second audit call here (would double-audit).
+    const { data, error } = await supabase.rpc("generate_invoice", {
+      p_student_id: input.studentId,
+      p_term_id: input.termId,
+    });
+    if (error) throwMapped(error);
+
+    revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
+    return { invoiceId: data as string };
+  },
+});
