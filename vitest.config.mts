@@ -49,6 +49,11 @@ export default defineConfig({
           name: "db",
           environment: "node",
           include: ["tests/db/**/*.test.ts"],
+          // tests/db/seed-determinism.test.ts resets + reseeds the shared
+          // `st-josephs-demo` tenant in place; run db test files one at a
+          // time so no other file reads it mid-reseed (Vitest's documented
+          // fix for suites that share a live resource).
+          fileParallelism: false,
         },
       },
       {

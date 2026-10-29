@@ -51,6 +51,10 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
+      # tests/db/seed-*.test.ts and E2E read the seeded demo tenant (full scale seeds in ~5 s).
+      - name: Seed demo tenant
+        run: pnpm seed
+
       - name: DB integration tests
         run: pnpm test:db
 

@@ -2,6 +2,7 @@ import postgres from "postgres";
 import { createScriptAdminClient } from "../lib/admin-client.ts";
 import { getSeedScale } from "./config.ts";
 import { createSeedContext, type SeedContext } from "./lib/context.ts";
+import { GRADES, sectionNames } from "./lib/grades.ts";
 import { mulberry32, SEED_PRNG_SEED } from "./lib/prng.ts";
 import { run as runAcademics } from "./sections/academics.ts";
 import { run as runAdmissions } from "./sections/admissions.ts";
@@ -23,7 +24,7 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "website", run: runWebsite },
 ];
 
-async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, dbUrl: string) {
+async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {
   const { data: institution } = await admin
     .from("institutions")
     .select("id")
@@ -44,11 +45,54 @@ async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, 
     process.exit(1);
   }
 
-  const sql = postgres(dbUrl, { max: 1 });
-  try {
-    await sql`select app.demo_reset(${institution.id}::uuid)`;
-  } finally {
-    await sql.end();
+  await sql`select app.demo_reset(${institution.id}::uuid)`;
+}
+
+/** 05 §8.2 count assertions — thrown loud if a reset ever drifts from the documented contract. */
+async function assertCounts(ctx: SeedContext): Promise<void> {
+  const expectedSections = GRADES.reduce((sum, grade) => sum + sectionNames(grade.code).length, 0);
+  const expectedStudents = expectedSections * 42;
+
+  const counts: Record<string, number> = {};
+  for (const table of ["students", "guardians", "guardian_students", "staff", "class_sections", "enrolments"] as const) {
+    // "*" (not "id") — guardian_students has no `id` column, only a composite PK.
+    const { count, error } = await ctx.admin
+      .from(table)
+      .select("*", { count: "exact", head: true })
+      .eq("institution_id", ctx.institutionId);
+    if (error) throw new Error(`Count query failed for ${table}: ${error.message}`);
+    counts[table] = count ?? 0;
+  }
+  console.log(`Counts: ${JSON.stringify(counts)}`);
+
+  const expectations: [string, number][] = [
+    ["students", expectedStudents],
+    ["class_sections", expectedSections],
+    ["staff", 106],
+    ["enrolments", expectedStudents],
+  ];
+  for (const [table, expected] of expectations) {
+    if (counts[table] !== expected) {
+      throw new Error(`Count assertion failed: ${table} expected ${expected}, got ${counts[table]}`);
+    }
+  }
+  // 05 §8.1's ~2,300 minimum is a full-scale number (1-2 children per guardian); scale it with SEED_SCALE.
+  const minGuardians = Math.floor(expectedStudents * 0.75);
+  if (counts.guardians! < minGuardians) {
+    throw new Error(`Count assertion failed: guardians expected >= ${minGuardians}, got ${counts.guardians}`);
+  }
+  if (counts.guardian_students! < expectedStudents) {
+    throw new Error(
+      `Count assertion failed: guardian_students expected >= ${expectedStudents}, got ${counts.guardian_students}`,
+    );
+  }
+
+  const { count: homeworkAssignments } = await ctx.admin
+    .from("assignments")
+    .select("id", { count: "exact", head: true })
+    .eq("institution_id", ctx.institutionId);
+  if (homeworkAssignments) {
+    throw new Error(`Count assertion failed: assignments (homework) expected 0, got ${homeworkAssignments}`);
   }
 }
 
@@ -63,18 +107,25 @@ async function main() {
 
   const startedAt = Date.now();
   const admin = createScriptAdminClient();
-  await resetIfNeeded(admin, dbUrl);
+  const sql = postgres(dbUrl, { max: 1 });
 
-  const ctx = createSeedContext(mulberry32(SEED_PRNG_SEED), admin);
-  console.log(`Seeding (scale: ${getSeedScale()})...`);
+  try {
+    await resetIfNeeded(admin, sql);
 
-  for (const section of SECTIONS) {
-    const sectionStartedAt = Date.now();
-    await section.run(ctx);
-    console.log(`  ${section.name}: ${Date.now() - sectionStartedAt}ms`);
+    const ctx = createSeedContext(mulberry32(SEED_PRNG_SEED), admin, sql);
+    console.log(`Seeding (scale: ${getSeedScale()})...`);
+
+    for (const section of SECTIONS) {
+      const sectionStartedAt = Date.now();
+      await section.run(ctx);
+      console.log(`  ${section.name}: ${Date.now() - sectionStartedAt}ms`);
+    }
+
+    await assertCounts(ctx);
+    console.log(`Seed complete in ${Date.now() - startedAt}ms.`);
+  } finally {
+    await sql.end();
   }
-
-  console.log(`Seed complete in ${Date.now() - startedAt}ms.`);
 }
 
 main().catch((err: unknown) => {
