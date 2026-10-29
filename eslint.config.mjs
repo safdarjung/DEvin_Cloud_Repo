@@ -22,8 +22,11 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    // The service-role client is allow-listed to these paths only (CLAUDE.md rule 1, T-006).
-    files: ["scripts/**", "src/modules/jobs/**", "tests/**"],
+    // The service-role client is allow-listed to these paths only (CLAUDE.md
+    // rule 1, T-006). `src/lib/ai/**` added in T-035: `ai_usage_events` has
+    // no INSERT policy and its SELECT policy excludes teachers, who still
+    // hold `ai.generate` — see src/lib/supabase/admin.ts's "ai" caller.
+    files: ["scripts/**", "src/modules/jobs/**", "src/lib/ai/**", "tests/**"],
     rules: {
       "no-restricted-imports": "off",
     },

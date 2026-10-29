@@ -26,4 +26,13 @@ describe("createAdminClient guard (T7 — service-role allow-list)", () => {
     const { createAdminClient } = await import("@/lib/supabase/admin");
     expect(() => createAdminClient()).not.toThrow();
   });
+
+  it("AI gateway's service-role scope does not leave the guard unlocked afterwards", async () => {
+    delete process.env.SERVICE_ROLE_CALLER;
+    const { withAiServiceRole } = await import("@/lib/ai/usage");
+    expect(withAiServiceRole(() => process.env.SERVICE_ROLE_CALLER)).toBe("ai");
+    expect(process.env.SERVICE_ROLE_CALLER).toBeUndefined();
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    expect(() => createAdminClient()).toThrow(/SERVICE_ROLE_CALLER/);
+  });
 });

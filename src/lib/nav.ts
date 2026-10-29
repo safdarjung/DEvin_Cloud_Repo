@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Banknote,
+  BarChart3,
   Bell,
   BookOpen,
   Briefcase,
@@ -35,6 +36,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read" },
   { href: "/website", label: "Website", icon: Globe, permission: "website.edit" },
   { href: "/ai", label: "AI", icon: Sparkles, permission: "ai.generate" },
+  { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read" },
   { href: "/notifications", label: "Notifications", icon: Bell, permission: "notification.read" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage" },
   { href: "/settings", label: "Settings", icon: Settings, permission: "institution.settings.manage" },

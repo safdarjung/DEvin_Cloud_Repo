@@ -98,6 +98,7 @@ Exam marks are confidential at all times; pre-publication they are additionally 
 |---|---|---|
 | `scripts/seed/*`, `scripts/demo-reset.ts` | Seed and reset | CLI only; `DEMO_RESET_ALLOWED` for reset |
 | `src/modules/jobs/runner.ts` | Claim and process jobs across institutions | `CRON_SECRET` on the route; `SERVICE_ROLE_CALLER=jobs` |
+| `src/lib/ai/usage.ts` (T-035) | Read quota/rate counts and insert `ai_usage_events` metadata (never prompt text) for users who hold `ai.generate` but not `ai_usage_events` SELECT | Called only after `runStructured`'s `hasPermission(ctx, 'ai.generate')` check; queries filter by `ctx.institution.id`; `withAiServiceRole` sets `SERVICE_ROLE_CALLER=ai` only for the synchronous factory call |
 | SQL `security definer` functions | `app.submit_public_enquiry`, `app.enrol_applicant`, `app.generate_invoice`, `app.record_payment`, `app.publish_exam_results`, `app.apply_recheck_decision`, `app.publish_page`, `app.next_sequence`, `app.claim_job`, `app.enqueue_job`, `app.demo_reset`, `app.audit`, RLS helpers | Each checks `auth.uid()` membership/role internally where user-invoked; `execute` revoked from `anon`/`authenticated` except the user-invoked ones listed in each migration; `set search_path = ''` |
 
 Any new service-role or `security definer` usage must be added to this table in the same PR.
