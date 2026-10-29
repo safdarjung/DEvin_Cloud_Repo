@@ -63,6 +63,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"answer_sheets": {
+                  Row: {
+                    "created_at": string,"exam_paper_id": string,"id": string,"institution_id": string,"storage_path": string,"student_id": string,"updated_at": string,"uploaded_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"exam_paper_id": string,"id"?: string,"institution_id": string,"storage_path": string,"student_id": string,"updated_at"?: string,"uploaded_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"exam_paper_id"?: string,"id"?: string,"institution_id"?: string,"storage_path"?: string,"student_id"?: string,"updated_at"?: string,"uploaded_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "answer_sheets_exam_paper_id_fkey"
+      columns: ["exam_paper_id"]
+isOneToOne: false
+      referencedRelation: "exam_papers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "answer_sheets_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "answer_sheets_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "answer_sheets_uploaded_by_fkey"
+      columns: ["uploaded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"application_decisions": {
                   Row: {
                     "application_id": string,"created_at": string,"decided_by": string | null,"decision": string,"id": string,"institution_id": string,"note": string | null
@@ -615,6 +653,76 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"exam_papers": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"exam_id": string,"held_on": string | null,"id": string,"institution_id": string,"max_marks": number,"pass_marks": number,"subject_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"exam_id": string,"held_on"?: string | null,"id"?: string,"institution_id": string,"max_marks": number,"pass_marks": number,"subject_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"exam_id"?: string,"held_on"?: string | null,"id"?: string,"institution_id"?: string,"max_marks"?: number,"pass_marks"?: number,"subject_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "exam_papers_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_papers_exam_id_fkey"
+      columns: ["exam_id"]
+isOneToOne: false
+      referencedRelation: "exams"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_papers_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_papers_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"exams": {
+                  Row: {
+                    "academic_year_id": string,"created_at": string,"grading_scale_key": string,"id": string,"institution_id": string,"name": string,"published_at": string | null,"status": string,"term_id": string,"type": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"created_at"?: string,"grading_scale_key"?: string,"id"?: string,"institution_id": string,"name": string,"published_at"?: string | null,"status"?: string,"term_id": string,"type": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"created_at"?: string,"grading_scale_key"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"published_at"?: string | null,"status"?: string,"term_id"?: string,"type"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "exams_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exams_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exams_term_id_fkey"
+      columns: ["term_id"]
+isOneToOne: false
+      referencedRelation: "terms"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"fee_assignments": {
                   Row: {
                     "academic_year_id": string,"assigned_by": string | null,"created_at": string,"fee_structure_id": string,"id": string,"institution_id": string,"student_id": string,"updated_at": string
@@ -945,6 +1053,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"marks": {
+                  Row: {
+                    "created_at": string,"entered_by": string | null,"exam_paper_id": string,"id": string,"institution_id": string,"is_absent": boolean,"marks_obtained": number | null,"source": string,"student_id": string,"superseded_by": string | null,"version_no": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"entered_by"?: string | null,"exam_paper_id": string,"id"?: string,"institution_id": string,"is_absent"?: boolean,"marks_obtained"?: number | null,"source"?: string,"student_id": string,"superseded_by"?: string | null,"version_no"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"entered_by"?: string | null,"exam_paper_id"?: string,"id"?: string,"institution_id"?: string,"is_absent"?: boolean,"marks_obtained"?: number | null,"source"?: string,"student_id"?: string,"superseded_by"?: string | null,"version_no"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "marks_entered_by_fkey"
+      columns: ["entered_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "marks_exam_paper_id_fkey"
+      columns: ["exam_paper_id"]
+isOneToOne: false
+      referencedRelation: "exam_papers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "marks_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "marks_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "marks_superseded_by_fkey"
+      columns: ["superseded_by"]
+isOneToOne: false
+      referencedRelation: "marks"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"memberships": {
                   Row: {
                     "created_at": string,"guardian_id": string | null,"id": string,"institution_id": string,"role": string,"staff_id": string | null,"status": string,"student_id": string | null,"updated_at": string,"user_id": string
@@ -1165,6 +1317,126 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"recheck_decisions": {
+                  Row: {
+                    "applied_marks_id": string | null,"applied_result_id": string | null,"created_at": string,"decided_by": string | null,"decision": string,"id": string,"institution_id": string,"new_marks": number | null,"note": string | null,"request_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "applied_marks_id"?: string | null,"applied_result_id"?: string | null,"created_at"?: string,"decided_by"?: string | null,"decision": string,"id"?: string,"institution_id": string,"new_marks"?: number | null,"note"?: string | null,"request_id": string
+                  }
+                  Update: {
+                    "applied_marks_id"?: string | null,"applied_result_id"?: string | null,"created_at"?: string,"decided_by"?: string | null,"decision"?: string,"id"?: string,"institution_id"?: string,"new_marks"?: number | null,"note"?: string | null,"request_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recheck_decisions_applied_marks_id_fkey"
+      columns: ["applied_marks_id"]
+isOneToOne: false
+      referencedRelation: "marks"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_decisions_applied_result_id_fkey"
+      columns: ["applied_result_id"]
+isOneToOne: false
+      referencedRelation: "results"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_decisions_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_decisions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_decisions_request_id_fkey"
+      columns: ["request_id"]
+isOneToOne: false
+      referencedRelation: "recheck_requests"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"recheck_requests": {
+                  Row: {
+                    "created_at": string,"exam_paper_id": string,"id": string,"institution_id": string,"reason": string,"requested_by": string | null,"result_id": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"exam_paper_id": string,"id"?: string,"institution_id": string,"reason": string,"requested_by"?: string | null,"result_id": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"exam_paper_id"?: string,"id"?: string,"institution_id"?: string,"reason"?: string,"requested_by"?: string | null,"result_id"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "recheck_requests_exam_paper_id_fkey"
+      columns: ["exam_paper_id"]
+isOneToOne: false
+      referencedRelation: "exam_papers"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_requests_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_requests_requested_by_fkey"
+      columns: ["requested_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "recheck_requests_result_id_fkey"
+      columns: ["result_id"]
+isOneToOne: false
+      referencedRelation: "results"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"results": {
+                  Row: {
+                    "created_at": string,"exam_id": string,"grade": string,"id": string,"institution_id": string,"max_total": number,"percentage": number,"published_at": string,"snapshot": NonNullable<Json>,"student_id": string,"superseded_by": string | null,"total": number,"version_no": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"exam_id": string,"grade": string,"id"?: string,"institution_id": string,"max_total": number,"percentage": number,"published_at"?: string,"snapshot": NonNullable<Json>,"student_id": string,"superseded_by"?: string | null,"total": number,"version_no"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"exam_id"?: string,"grade"?: string,"id"?: string,"institution_id"?: string,"max_total"?: number,"percentage"?: number,"published_at"?: string,"snapshot"?: NonNullable<Json>,"student_id"?: string,"superseded_by"?: string | null,"total"?: number,"version_no"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "results_exam_id_fkey"
+      columns: ["exam_id"]
+isOneToOne: false
+      referencedRelation: "exams"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "results_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "results_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "results_superseded_by_fkey"
+      columns: ["superseded_by"]
+isOneToOne: false
+      referencedRelation: "results"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"staff": {
                   Row: {
                     "created_at": string,"department_id": string | null,"designation": string,"email": string | null,"employee_no": string,"full_name": string,"id": string,"institution_id": string,"is_teaching": boolean,"phone": string | null,"status": string,"updated_at": string,"user_id": string | null
@@ -1333,7 +1605,10 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
-            "correct_attendance":
+            "apply_recheck_decision":
+{ Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
+                           },
+"correct_attendance":
 { Args: { "p_institution_id": string,"p_new_status": string,"p_reason": string,"p_record_id": string }; Returns: {
               "created_at": string,
 "id": string,
@@ -1410,6 +1685,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"publish_exam_results":
+{ Args: { "p_exam_id": string }; Returns: Json
+                           },
 "publish_page":
 { Args: { "p_page_id": string,"p_version_id": string }; Returns: {
               "created_at": string,

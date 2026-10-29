@@ -323,4 +323,48 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "accountant"], // not guardian/student-visible
     write: [], // app.generate_invoice / app.record_payment only; immutable (block_mutation)
   },
+
+  // 0009 (T-017) — exams. app.exam_write_roles() (owner/principal/
+  // exam_controller) is narrower than app.exam_roles() (0001, +admin) —
+  // 07 §2.2 exam.manage/exam.result.publish/exam.recheck.review+decide all
+  // exclude admin (lesson #1); exam.result.read is the one row that keeps
+  // admin, matching app.exam_roles() exactly. "write" below reflects the
+  // generated suite's same-institution check only — teacher/guardian/
+  // student scoping (subject-level for marks, own-section for results,
+  // own-child for recheck_requests) is proved by tests/db/exams-schema.test.ts.
+  exams: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller"], // admin excluded (exam.manage)
+  },
+  exam_papers: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller"], // admin excluded (exam.manage)
+  },
+  marks: {
+    classes: ["C", "T"],
+    read: ["owner", "principal", "exam_controller", "teacher"], // teacher scoped to paper's section+subject; no admin, no guardian/student
+    write: ["owner", "principal", "exam_controller", "teacher"], // teacher scoped to paper's section+subject
+  },
+  results: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped to the student's current section; student/guardian own-scope
+    write: [], // app.publish_exam_results / app.apply_recheck_decision only
+  },
+  recheck_requests: {
+    classes: ["C", "O"],
+    read: ["owner", "principal", "exam_controller", "student", "guardian"], // student/guardian own-scope via the result they requested against
+    write: ["owner", "principal", "exam_controller", "student", "guardian"], // INSERT only; requested_by pinned to caller
+  },
+  recheck_decisions: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "exam_controller"],
+    write: [], // app.apply_recheck_decision only; append-only (block_mutation)
+  },
+  answer_sheets: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "exam_controller"],
+    write: ["owner", "principal", "admin", "exam_controller"],
+  },
 };
