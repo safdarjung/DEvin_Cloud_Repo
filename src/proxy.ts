@@ -49,5 +49,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|s/|api/public).*)"],
+  // `api/jobs/` (T-037): CRON_SECRET-authenticated, no user session — the
+  // route itself rejects bad/missing secrets. Without this exclusion the
+  // matcher's `isTenantPath` check treats `/api/jobs/run` as a tenant path
+  // and redirects every call (even an authorized cron) to `/login` before
+  // the route handler ever runs. Trailing slash matters: `api/jobs` (no
+  // slash) would also exclude an unrelated `/api/jobsx` route.
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|s/|api/public|api/jobs/).*)"],
 };

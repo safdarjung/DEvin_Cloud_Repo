@@ -825,7 +825,55 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "jobs_claim":
+{ Args: { "p_worker_id": string }; Returns: {
+              "attempts": number,
+"created_at": string,
+"id": string,
+"idempotency_key": string,
+"institution_id": string | null,
+"last_error": string | null,
+"locked_at": string | null,
+"locked_by": string | null,
+"max_attempts": number,
+"payload": NonNullable<Json>,
+"run_after": string,
+"status": string,
+"type": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "jobs"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"jobs_complete":
+{ Args: { "p_error"?: string,"p_id": string,"p_ok": boolean }; Returns: undefined
+                           },
+"jobs_requeue":
+{ Args: { "p_id": string,"p_institution_id": string }; Returns: {
+              "attempts": number,
+"created_at": string,
+"id": string,
+"idempotency_key": string,
+"institution_id": string | null,
+"last_error": string | null,
+"locked_at": string | null,
+"locked_by": string | null,
+"max_attempts": number,
+"payload": NonNullable<Json>,
+"run_after": string,
+"status": string,
+"type": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "jobs"
+        isOneToOne: true
+        isSetofReturn: false
+      } }
           }
           Enums: {
             [_ in never]: never

@@ -1,0 +1,29 @@
+import type { JobHandler } from "./types.ts";
+import {
+  generateTermInvoices,
+  notifyAttendanceAbsence,
+  notifyEnquiryReceived,
+  notifyEnrolmentWelcome,
+  notifyRecheckDecided,
+  notifyResultsPublished,
+} from "./handlers/index.ts";
+
+// Dispatch table for the runner (06 §7). A type not listed here is dead-
+// lettered immediately by `runOnceCore` with `last_error = 'unknown_type'`
+// and is never passed to a handler.
+export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
+  "notify.attendance_absence": notifyAttendanceAbsence,
+  "notify.results_published": notifyResultsPublished,
+  "notify.recheck_decided": notifyRecheckDecided,
+  "notify.enquiry_received": notifyEnquiryReceived,
+  "notify.enrolment_welcome": notifyEnrolmentWelcome,
+  "finance.generate_term_invoices": generateTermInvoices,
+};
+
+export function resolveHandler(type: string): JobHandler | undefined {
+  // Security review fix (T-037, MEDIUM): a plain `{}`-based lookup resolves
+  // inherited `Object.prototype` members too, so `resolveHandler("constructor")`
+  // would return `Object` and the job would be marked succeeded instead of
+  // dead-lettered. `Object.hasOwn` restricts the lookup to real entries.
+  return Object.hasOwn(JOB_REGISTRY, type) ? JOB_REGISTRY[type] : undefined;
+}
