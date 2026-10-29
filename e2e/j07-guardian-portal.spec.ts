@@ -69,14 +69,26 @@ test.describe("J-07: guardian portal", () => {
     expect(attendanceStudentId).toBe(firstStudentId);
 
     // Switch child, then confirm the attendance tab's data changed (the
-    // card re-renders for the new student id in the URL).
-    await portal.childLink("Ishaan").click().catch(async () => {
-      // Named child may not be "Ishaan" on this seed build — fall back to
-      // the second switcher link, whichever child it is.
-      const links = portal.childSwitcherNav.getByRole("link");
-      await links.nth(1).click();
-    });
-    await page.waitForLoadState("networkidle");
+    // card re-renders for the new student id in the URL). Fix round 2a:
+    // the previous version guessed a hardcoded child name ("Ishaan", who
+    // is guardian.two's child, not guardian.one's) and chained a `.catch`
+    // onto an auto-waiting Playwright action — a locator with 0 matches
+    // doesn't reject quickly, it waits out the actionTimeout first, which
+    // burned the whole 30s test budget before the fallback ever ran.
+    // guardian.one's second child, whichever it is, is just the switcher's
+    // second link — no name needed.
+    // Fix round 2b: `waitForLoadState("networkidle")` after the click is
+    // not the right readiness signal — confirmed by instrumenting
+    // request/response events, the RSC fetch for the new `?student=`
+    // completes well within the networkidle window, but reading
+    // `page.url()` immediately after still occasionally observed the old
+    // URL (client-side history update lagging the response by a beat).
+    // Wait for the actual condition — the URL containing the clicked
+    // link's own href — instead of a generic idle heuristic.
+    const secondChildLink = portal.childSwitcherNav.getByRole("link").nth(1);
+    const secondChildHref = await secondChildLink.getAttribute("href");
+    await secondChildLink.click();
+    await page.waitForURL(`**${secondChildHref}`);
     expect(portal.currentStudentId()).not.toBe(firstStudentId);
   });
 

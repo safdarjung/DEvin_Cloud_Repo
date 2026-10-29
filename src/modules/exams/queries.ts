@@ -576,6 +576,114 @@ export async function getResultHistory(ctx: TenantContext, examId: string, stude
   return Promise.all(data.map((row) => hydrateResultRow(supabase, ctx.institution.id, row as unknown as ResultRow)));
 }
 
+// ---------------------------------------------------------------------------
+// T-020 — recheck workflow reads (06 §W8). RLS (0009 recheck_requests_select,
+// unchanged by 0022) already scopes every one of these to the caller: a
+// guardian/student sees only their own result's requests, exam_write_roles
+// sees every request in the institution — the explicit institution_id/
+// result_id filters below are defense in depth on top of that, not a
+// replacement for it.
+// ---------------------------------------------------------------------------
+
+export interface RecheckStatusRow {
+  requestId: string;
+  examPaperId: string;
+  status: string;
+}
+
+/** Every recheck request (any status) against one result — ReportCard uses this to show "Request recheck" vs. the open request's status per paper. */
+export async function listRechecksForResult(ctx: TenantContext, resultId: string): Promise<RecheckStatusRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("recheck_requests")
+    .select("id, exam_paper_id, status")
+    .eq("institution_id", ctx.institution.id)
+    .eq("result_id", resultId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ requestId: row.id, examPaperId: row.exam_paper_id, status: row.status }));
+}
+
+export interface RecheckQueueRow {
+  id: string;
+  status: string;
+  reason: string;
+  requestedAt: string;
+  resultId: string;
+  examPaperId: string;
+  examId: string;
+  studentId: string;
+  maxMarks: number;
+  studentName: string;
+  subjectName: string;
+  examName: string;
+}
+
+interface RecheckQueueJoinRow {
+  id: string;
+  status: string;
+  reason: string;
+  created_at: string;
+  result_id: string;
+  exam_paper_id: string;
+  results: {
+    student_id: string;
+    exam_id: string;
+    students: { first_name: string; last_name: string | null } | null;
+    exams: { name: string } | null;
+  } | null;
+  exam_papers: { max_marks: number; subjects: { name: string } | null } | null;
+}
+
+const RECHECK_QUEUE_SELECT =
+  "id, status, reason, created_at, result_id, exam_paper_id, results(student_id, exam_id, students(first_name, last_name), exams(name)), exam_papers(max_marks, subjects(name))";
+
+function toQueueRow(row: RecheckQueueJoinRow): RecheckQueueRow {
+  const student = row.results?.students ?? null;
+  return {
+    id: row.id,
+    status: row.status,
+    reason: row.reason,
+    requestedAt: row.created_at,
+    resultId: row.result_id,
+    examPaperId: row.exam_paper_id,
+    examId: row.results?.exam_id ?? "",
+    studentId: row.results?.student_id ?? "",
+    maxMarks: row.exam_papers?.max_marks ?? 0,
+    studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
+    subjectName: row.exam_papers?.subjects?.name ?? "",
+    examName: row.results?.exams?.name ?? "",
+  };
+}
+
+/** The controller's recheck queue (`/exams/rechecks`), optionally filtered by status. */
+export async function listRecheckQueue(ctx: TenantContext, status?: string): Promise<RecheckQueueRow[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("recheck_requests")
+    .select(RECHECK_QUEUE_SELECT)
+    .eq("institution_id", ctx.institution.id)
+    .order("created_at", { ascending: false });
+  if (status) query = query.eq("status", status);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []).map((row) => toQueueRow(row as unknown as RecheckQueueJoinRow));
+}
+
+export async function getRecheck(ctx: TenantContext, requestId: string): Promise<RecheckQueueRow | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("recheck_requests")
+    .select(RECHECK_QUEUE_SELECT)
+    .eq("id", requestId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return toQueueRow(data as unknown as RecheckQueueJoinRow);
+}
+
 // dashboard — T-039.
 
 export interface ExamGradeDistribution {

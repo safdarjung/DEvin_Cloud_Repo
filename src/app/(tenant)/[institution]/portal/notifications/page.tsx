@@ -21,7 +21,7 @@ export default async function PortalNotificationsPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "notification.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/notifications`);
   const notifications = await listMyNotifications(ctx);
 
   return (

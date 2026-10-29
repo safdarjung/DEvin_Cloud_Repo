@@ -17,7 +17,7 @@ export default async function PortalAssignmentsPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "assignment.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assignments`);
   const assignments = await listStudentAssignments(ctx, selection.studentId);
 
   return (

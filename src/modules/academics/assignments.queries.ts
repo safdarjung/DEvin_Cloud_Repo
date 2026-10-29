@@ -7,7 +7,14 @@ import "server-only";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
-import { QuizContentSchema, redactQuizAnswers, type QuizContent } from "./assignments.schemas";
+import {
+  AnswerKeyContentSchema,
+  QuizStoredContentSchema,
+  mergeQuizContent,
+  type AnswerKeyContent,
+  type QuizContent,
+  type QuizStoredContent,
+} from "./assignments.schemas";
 import { managesWholeSection, taughtSectionIds } from "./teacher-scope";
 
 export interface AssignmentSummary {
@@ -53,11 +60,18 @@ function toSummary(row: AssignmentSummaryRow): AssignmentSummary {
 }
 
 // Unvalidated `content` jsonb never reaches a client as-is; only a value
-// that still matches QuizContentSchema is returned, since it may predate a
-// schema tightening.
-function parseContent(content: unknown): QuizContent | null {
+// that still matches QuizStoredContentSchema is returned, since it may
+// predate a schema tightening (DBT-21: `content` holds stems/options only
+// now — answers live in `assignment_answer_keys`, see getAssignment below).
+function parseStoredContent(content: unknown): QuizStoredContent | null {
   if (content == null) return null;
-  const parsed = QuizContentSchema.safeParse(content);
+  const parsed = QuizStoredContentSchema.safeParse(content);
+  return parsed.success ? parsed.data : null;
+}
+
+function parseAnswerKey(answers: unknown): AnswerKeyContent | null {
+  if (answers == null) return null;
+  const parsed = AnswerKeyContentSchema.safeParse(answers);
   return parsed.success ? parsed.data : null;
 }
 
@@ -103,16 +117,32 @@ export async function getAssignment(ctx: TenantContext, assignmentId: string): P
   if (!data) return null;
 
   const canManage = hasPermission(ctx, "assignment.manage");
-  const content = parseContent(data.content);
+  const stored = parseStoredContent(data.content);
+
+  // DBT-21: the answer key lives in a separate, staff-only-RLS table — only
+  // fetched for a caller who holds assignment.manage, so a guardian/student
+  // never even issues the query that could return answers (defense in
+  // depth alongside that table's own RLS, not a replacement for it).
+  let answers: AnswerKeyContent | null = null;
+  if (stored && canManage) {
+    const { data: keyRow, error: keyError } = await supabase
+      .from("assignment_answer_keys")
+      .select("answers")
+      .eq("assignment_id", assignmentId)
+      .eq("institution_id", ctx.institution.id)
+      .maybeSingle();
+    if (keyError) throw keyError;
+    answers = keyRow ? parseAnswerKey(keyRow.answers) : null;
+  }
 
   return {
     ...toSummary(data),
     instructions: data.instructions,
     curriculumUnitId: data.curriculum_unit_id,
-    // Answers/explanations never leave the server for a caller without
-    // assignment.manage (acceptance criterion 3) — stripped here, before
-    // this object reaches any component, not left to the UI to hide.
-    content: content && !canManage ? redactQuizAnswers(content) : content,
+    // `answers === null` (no assignment.manage, or no key row) yields the
+    // same "" / undefined shape redactQuizAnswers used to produce — rule 3,
+    // never left to the UI to hide.
+    content: stored ? mergeQuizContent(stored, answers) : null,
     createdBy: data.created_by,
   };
 }

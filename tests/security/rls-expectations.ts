@@ -163,6 +163,16 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["teacher", "student", "guardian"], // teacher scoped to their sections; no staff-wide read
     write: ["student"], // own submission only (P1)
   },
+  // T-036 phase 2 / DBT-21 (20261028000023) — answers/explanations moved out
+  // of assignments.content into this staff-only table; scoped to
+  // assignment.manage, narrower than assignments' own section-level
+  // app.teaches_section (uses app.my_taught_section_subjects, subject-level,
+  // DBT-19 lesson). No admin/exam_controller, no guardian/student.
+  assignment_answer_keys: {
+    classes: ["C"],
+    read: ["owner", "principal", "teacher"], // teacher scoped to the subject they teach in the assignment's own section, not every section
+    write: ["owner", "principal", "teacher"], // same scope
+  },
 
   // 0006 (T-014) — attendance. 07 §2.2 attendance.read: owner/principal/
   // admin/exam_controller full; teacher only sections they teach; student/
@@ -358,7 +368,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   recheck_requests: {
     classes: ["C", "O"],
     read: ["owner", "principal", "exam_controller", "student", "guardian"], // student/guardian own-scope via the result they requested against
-    write: ["owner", "principal", "exam_controller", "student", "guardian"], // INSERT only; requested_by pinned to caller
+    write: [], // T-020 Batch B (20261028000022): no direct INSERT policy any more — app.request_recheck only, which enforces the window/reason/one-open-request rules a bare policy couldn't
   },
   recheck_decisions: {
     classes: ["C"],

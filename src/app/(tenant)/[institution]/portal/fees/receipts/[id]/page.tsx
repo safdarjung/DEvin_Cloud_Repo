@@ -24,7 +24,7 @@ export default async function PortalReceiptPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "finance.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/fees/receipts/${id}`);
   const receipt = await getReceipt(ctx, id);
   if (!receipt || receipt.snapshot.studentId !== selection.studentId) notFound();
 

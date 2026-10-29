@@ -18,7 +18,7 @@ export default async function PortalFeesPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "finance.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/fees`);
   const receipts = await listReceiptsForStudent(ctx, selection.studentId);
 
   return (

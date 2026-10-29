@@ -31,7 +31,7 @@ export default async function PortalOverviewPage({
   requirePermission(ctx, "exam.result.read");
   requirePermission(ctx, "assignment.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal`);
   const profile = await getStudentProfile(ctx, selection.studentId);
   const termId = profile?.enrolment ? await getCurrentTermId(ctx, profile.enrolment.academicYearId) : null;
 

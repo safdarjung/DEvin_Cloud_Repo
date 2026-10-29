@@ -66,3 +66,35 @@ export const EnterMarksSchema = z
   });
 
 export type EnterMarksInput = z.infer<typeof EnterMarksSchema>;
+
+// T-020 — recheck workflow (06 §W8). The window/one-open-request/reason
+// checks are re-enforced in SQL (app.request_recheck, 20261028000022) since
+// a guardian/student JWT can call that RPC directly over PostgREST — this
+// schema is the first, not the only, line of validation (rule 4).
+export const RequestRecheckSchema = z
+  .object({
+    resultId: uuid,
+    examPaperId: uuid,
+    reason: z.string().trim().min(10).max(1000),
+  })
+  .strict();
+
+export type RequestRecheckInput = z.infer<typeof RequestRecheckSchema>;
+
+export const RecheckIdSchema = z.object({ requestId: uuid }).strict();
+export type RecheckIdInput = z.infer<typeof RecheckIdSchema>;
+
+export const DecideRecheckSchema = z
+  .object({
+    requestId: uuid,
+    decision: z.enum(["approve", "reject"]),
+    newMarks: money.optional(),
+    note: z.string().trim().min(1).max(1000).optional(),
+  })
+  .strict()
+  .refine((input) => input.decision !== "approve" || input.newMarks !== undefined, {
+    message: "newMarks is required to approve a recheck.",
+    path: ["newMarks"],
+  });
+
+export type DecideRecheckInput = z.infer<typeof DecideRecheckSchema>;

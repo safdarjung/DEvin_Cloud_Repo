@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { ReportCard } from "@/modules/exams/components/ReportCard";
@@ -18,7 +17,7 @@ export default async function PortalResultsPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "exam.result.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/results`);
   const results = await listResultsForStudent(ctx, selection.studentId);
 
   return (
@@ -35,15 +34,10 @@ export default async function PortalResultsPage({
       ) : (
         <div className="space-y-6">
           {results.map((result) => (
-            <div key={result.examId} className="space-y-2">
-              <ReportCard ctx={ctx} examId={result.examId} studentId={selection.studentId} />
-              {/* T-020 (recheck requests) isn't built yet — slot left here per the
-                  packet's assumption; disabled, not a <LimitedBadge /> (not a
-                  simulated feature, just not wired up yet). */}
-              <Button variant="outline" size="sm" disabled title="Coming soon (T-020)">
-                Request recheck
-              </Button>
-            </div>
+            // T-020 — the per-paper "Request recheck" affordance is now
+            // ReportCard's own "Recheck" column (guardian/student only); no
+            // extra slot needed here any more.
+            <ReportCard key={result.examId} ctx={ctx} examId={result.examId} studentId={selection.studentId} />
           ))}
         </div>
       )}

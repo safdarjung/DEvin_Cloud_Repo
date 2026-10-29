@@ -17,7 +17,7 @@ export default async function PortalAttendancePage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "attendance.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/attendance`);
   const profile = await getStudentProfile(ctx, selection.studentId);
   const termId = profile?.enrolment ? await getCurrentTermId(ctx, profile.enrolment.academicYearId) : null;
 

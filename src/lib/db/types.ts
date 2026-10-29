@@ -171,6 +171,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"assignment_answer_keys": {
+                  Row: {
+                    "answers": NonNullable<Json>,"assignment_id": string,"created_at": string,"id": string,"institution_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answers": NonNullable<Json>,"assignment_id": string,"created_at"?: string,"id"?: string,"institution_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "answers"?: NonNullable<Json>,"assignment_id"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "assignment_answer_keys_assignment_id_fkey"
+      columns: ["assignment_id"]
+isOneToOne: true
+      referencedRelation: "assignments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "assignment_answer_keys_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"assignment_submissions": {
                   Row: {
                     "assignment_id": string,"content": Json | null,"created_at": string,"feedback": string | null,"id": string,"institution_id": string,"score": number | null,"student_id": string,"submitted_at": string,"updated_at": string
@@ -1737,6 +1763,12 @@ isOneToOne: true
                            },
 "reopen_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
+                           },
+"request_recheck":
+{ Args: { "p_exam_paper_id": string,"p_institution_id": string,"p_reason": string,"p_result_id": string }; Returns: Json
+                           },
+"start_recheck_review":
+{ Args: { "p_institution_id": string,"p_request_id": string }; Returns: Json
                            },
 "submit_attendance":
 { Args: { "p_institution_id": string,"p_session_id": string }; Returns: {

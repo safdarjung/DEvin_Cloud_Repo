@@ -218,18 +218,20 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     );
   });
 
-  it("dispatch invokes the registered placeholder handler for a known type, which throws not_implemented", async () => {
+  it("dispatch invokes the real notify.recheck_decided handler for a known type, which validates its payload before touching the DB", async () => {
     const { admin } = fakeAdmin();
     const ports = createRunnerPorts(admin);
 
     // T-038 replaced the notify.attendance_absence placeholder with a real
-    // handler, T-031 replaced finance.generate_term_invoices's, and T-019
-    // replaced notify.results_published's; notify.recheck_decided is still
-    // a placeholder (06 §W8's `recheck_decisions` rows are T-020's to
-    // populate for real), which is what this case is actually testing.
-    await expect(ports.dispatch(makeJob({ type: "notify.recheck_decided" }))).rejects.toThrow(
-      /not_implemented/,
-    );
+    // handler, T-031 replaced finance.generate_term_invoices's, T-019
+    // replaced notify.results_published's, and T-020 replaces
+    // notify.recheck_decided's (06 §W8's `recheck_decisions` rows now exist
+    // for real) — every registered type is a real handler, so this case now
+    // tests the handler's own missing-payload guard instead of a
+    // not-implemented placeholder.
+    await expect(
+      ports.dispatch(makeJob({ type: "notify.recheck_decided", payload: {} })),
+    ).rejects.toThrow(/missing request_id/);
   });
 });
 

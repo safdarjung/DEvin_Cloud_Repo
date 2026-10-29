@@ -35,6 +35,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/academics", label: "Academics", icon: BookOpen, permission: "academics.read" },
   { href: "/assignments", label: "Assignments", icon: FileText, permission: "assignment.read" },
   { href: "/exams", label: "Exams", icon: GraduationCap, permission: "exam.result.read" },
+  // T-020: owner/principal/exam_controller only (07 §2.2 exam.recheck.review
+  // excludes admin, unlike exam.result.read above).
+  { href: "/exams/rechecks", label: "Rechecks", icon: ClipboardList, permission: "exam.recheck.review" },
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read" },
   { href: "/website", label: "Website", icon: Globe, permission: "website.edit" },
   { href: "/ai", label: "AI", icon: Sparkles, permission: "ai.generate" },

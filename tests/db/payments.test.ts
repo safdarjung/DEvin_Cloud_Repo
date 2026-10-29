@@ -322,7 +322,8 @@ describe("listLedgerEntries (T-032, AC4)", () => {
       const ctx = await buildContext(inst, "accountant");
       setActingClient(inst.clientAs("accountant"));
       try {
-        const today = new Date().toISOString().slice(0, 10);
+        // entry_date is institution-local (record_payment uses settings timezone), not UTC.
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
         const ledger = await listLedgerEntries(ctx, { from: today, to: today }, 1, 500);
         expect(ledger.balanced).toBe(true);
         expect(ledger.totalDebit).toBe(ledger.totalCredit);

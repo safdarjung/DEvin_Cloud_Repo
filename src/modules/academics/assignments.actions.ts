@@ -16,6 +16,7 @@ import {
   CreateAssignmentSchema,
   PublishAssignmentSchema,
   UpdateAssignmentSchema,
+  splitQuizContent,
   type CreateAssignmentInput,
   type PublishAssignmentInput,
   type UpdateAssignmentInput,
@@ -130,6 +131,10 @@ export const createAssignment = defineAction({
     }
     await assertTeacherScope(supabase, ctx, section, input.classSectionId, input.subjectId);
 
+    // DBT-21: answers/explanations never go into `assignments.content` —
+    // split before the insert, same split updateAssignment uses below.
+    const split = input.content ? splitQuizContent(input.content) : null;
+
     const { data, error } = await supabase
       .from("assignments")
       .insert({
@@ -139,7 +144,7 @@ export const createAssignment = defineAction({
         curriculum_unit_id: input.curriculumUnitId ?? null,
         title: input.title,
         instructions: input.instructions ?? null,
-        content: input.content ?? null,
+        content: split?.stored ?? null,
         due_at: input.dueAt ?? null,
         created_by: ctx.membership.staffId,
         ai_generated: input.aiGenerated ?? false,
@@ -147,6 +152,13 @@ export const createAssignment = defineAction({
       .select("id")
       .single();
     if (error) throwMapped(error);
+
+    if (split) {
+      const { error: keyError } = await supabase
+        .from("assignment_answer_keys")
+        .insert({ institution_id: ctx.institution.id, assignment_id: data.id as string, answers: split.answers });
+      if (keyError) throwMapped(keyError);
+    }
 
     revalidatePath(`/${ctx.institution.slug}/assignments`);
     return { id: data.id as string };
@@ -184,11 +196,15 @@ export const updateAssignment = defineAction({
       );
     }
 
+    // DBT-21: split before the patch — `assignments.content` never carries
+    // answers/explanations, same split createAssignment uses above.
+    const split = input.content !== undefined ? splitQuizContent(input.content) : null;
+
     const patch = {
       ...(input.title !== undefined && { title: input.title }),
       ...(input.instructions !== undefined && { instructions: input.instructions }),
       ...(input.dueAt !== undefined && { due_at: input.dueAt }),
-      ...(input.content !== undefined && { content: input.content }),
+      ...(input.content !== undefined && { content: split?.stored ?? null }),
       ...(input.curriculumUnitId !== undefined && { curriculum_unit_id: input.curriculumUnitId }),
       ...(input.aiGenerated !== undefined && { ai_generated: input.aiGenerated }),
     };
@@ -206,6 +222,16 @@ export const updateAssignment = defineAction({
       // Lost the race with a publish between the status check above and
       // this update — 0 rows matched, not success.
       if (!updated) throw new AppError("invalid_state", "Only draft assignments can be edited.");
+
+      if (split) {
+        const { error: keyError } = await supabase
+          .from("assignment_answer_keys")
+          .upsert(
+            { institution_id: ctx.institution.id, assignment_id: input.assignmentId, answers: split.answers },
+            { onConflict: "assignment_id" },
+          );
+        if (keyError) throwMapped(keyError);
+      }
     }
 
     revalidatePath(`/${ctx.institution.slug}/assignments/${input.assignmentId}`);
@@ -221,7 +247,7 @@ export const publishAssignment = defineAction({
     const supabase = await createClient();
     const { data: existing, error: fetchError } = await supabase
       .from("assignments")
-      .select("id, class_section_id, subject_id, status")
+      .select("id, class_section_id, subject_id, status, content")
       .eq("id", input.assignmentId)
       .eq("institution_id", ctx.institution.id)
       .maybeSingle();
@@ -233,6 +259,28 @@ export const publishAssignment = defineAction({
 
     const section = await loadSection(supabase, ctx.institution.id, existing.class_section_id);
     await assertTeacherScope(supabase, ctx, section, existing.class_section_id, existing.subject_id);
+
+    // Fix round 1 (review MED): createAssignment/updateAssignment write
+    // `assignments` and `assignment_answer_keys` in two separate statements
+    // (not a transaction) — a failure between them can leave a quiz with
+    // questions but no (or a stale) answer key, which `publishAssignment`
+    // previously never checked. A published assignment with questions and
+    // no matching answers is unrecoverable once live, so this is checked
+    // here, not left to the two-write race's "known limit" comment.
+    const questionCount = (existing.content as { questions?: unknown[] } | null)?.questions?.length ?? 0;
+    if (questionCount > 0) {
+      const { data: keyRow, error: keyError } = await supabase
+        .from("assignment_answer_keys")
+        .select("answers")
+        .eq("assignment_id", input.assignmentId)
+        .eq("institution_id", ctx.institution.id)
+        .maybeSingle();
+      if (keyError) throwMapped(keyError);
+      const answerCount = (keyRow?.answers as { questions?: unknown[] } | null)?.questions?.length ?? 0;
+      if (answerCount !== questionCount) {
+        throw new AppError("validation_failed", "Answer key missing or out of date — re-save the draft");
+      }
+    }
 
     const { data: published, error } = await supabase
       .from("assignments")

@@ -18,12 +18,18 @@ import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import {
   CreateExamPapersSchema,
   CreateExamSchema,
+  DecideRecheckSchema,
   EnterMarksSchema,
   ExamIdSchema,
+  RecheckIdSchema,
+  RequestRecheckSchema,
   type CreateExamInput,
   type CreateExamPapersInput,
+  type DecideRecheckInput,
   type EnterMarksInput,
   type ExamIdInput,
+  type RecheckIdInput,
+  type RequestRecheckInput,
 } from "./schemas";
 
 type ExamsClient = Awaited<ReturnType<typeof createClient>>;
@@ -242,6 +248,70 @@ export const publishExamResults = defineAction({
     revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}`);
     revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}/results`);
     return data as { exam_id: string; result_count: number };
+  },
+});
+
+// T-020 — recheck workflow (06 §W8). All three RPCs
+// (20261028000022_recheck_rpcs.sql) do their own role/ownership/state
+// checks and bypass RLS as `security definer` — same shape as
+// enterMarks/publishExamResults above; these actions never touch
+// `recheck_requests`/`marks`/`results` directly.
+export const requestRecheck = defineAction({
+  name: "exam.recheck.request",
+  schema: RequestRecheckSchema,
+  permission: "exam.recheck.request",
+  handler: async (input: RequestRecheckInput, ctx) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("request_recheck", {
+      p_institution_id: ctx.institution.id,
+      p_result_id: input.resultId,
+      p_exam_paper_id: input.examPaperId,
+      p_reason: input.reason,
+    });
+    if (error) throwMapped(error);
+    revalidatePath(`/${ctx.institution.slug}/portal/results`);
+    revalidatePath(`/${ctx.institution.slug}/exams/rechecks`);
+    return data as { request_id: string; status: string };
+  },
+});
+
+export const startRecheckReview = defineAction({
+  name: "exam.recheck.review",
+  schema: RecheckIdSchema,
+  permission: "exam.recheck.review",
+  handler: async (input: RecheckIdInput, ctx) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("start_recheck_review", {
+      p_institution_id: ctx.institution.id,
+      p_request_id: input.requestId,
+    });
+    if (error) throwMapped(error);
+    revalidatePath(`/${ctx.institution.slug}/exams/rechecks`);
+    revalidatePath(`/${ctx.institution.slug}/exams/rechecks/${input.requestId}`);
+    return data as { request_id: string; status: string };
+  },
+});
+
+export const decideRecheck = defineAction({
+  name: "exam.recheck.decide",
+  schema: DecideRecheckSchema,
+  permission: "exam.recheck.decide",
+  handler: async (input: DecideRecheckInput, ctx) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("apply_recheck_decision", {
+      p_request_id: input.requestId,
+      p_decision: input.decision,
+      // The generated RPC Args type doesn't reflect SQL nullability for
+      // scalar params — same cast precedent as admissions/finance actions
+      // (e.g. src/modules/admissions/actions.ts's p_note/p_roll_no).
+      p_new_marks: (input.newMarks ?? null) as number,
+      p_note: (input.note ?? null) as string,
+    });
+    if (error) throwMapped(error);
+    revalidatePath(`/${ctx.institution.slug}/exams/rechecks`);
+    revalidatePath(`/${ctx.institution.slug}/exams/rechecks/${input.requestId}`);
+    revalidatePath(`/${ctx.institution.slug}/portal/results`);
+    return data as { request_id: string; decision: string; marks_id?: string; result_id?: string; decision_id: string };
   },
 });
 
