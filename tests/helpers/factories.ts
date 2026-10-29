@@ -126,6 +126,39 @@ export async function createEnrolment(
   return row.id as string;
 }
 
+export async function createAttendanceSession(
+  institutionId: string,
+  classSectionId: string,
+  overrides: Partial<{ date: string; status: string }> = {},
+): Promise<string> {
+  const date = overrides.date ?? "2026-07-01";
+  const status = overrides.status ?? "open";
+
+  const [row] = await sql`
+    insert into public.attendance_sessions (institution_id, class_section_id, date, status)
+    values (${institutionId}, ${classSectionId}, ${date}, ${status})
+    returning id
+  `;
+  return row.id as string;
+}
+
+export async function createAttendanceRecord(
+  institutionId: string,
+  sessionId: string,
+  studentId: string,
+  overrides: Partial<{ status: string; note: string }> = {},
+): Promise<string> {
+  const status = overrides.status ?? "P";
+  const note = overrides.note ?? null;
+
+  const [row] = await sql`
+    insert into public.attendance_records (institution_id, session_id, student_id, status, note)
+    values (${institutionId}, ${sessionId}, ${studentId}, ${status}, ${note})
+    returning id
+  `;
+  return row.id as string;
+}
+
 export async function closeFactoriesHelper(): Promise<void> {
   await sql.end();
 }

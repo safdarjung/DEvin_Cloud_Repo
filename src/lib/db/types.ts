@@ -139,6 +139,102 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"attendance_corrections": {
+                  Row: {
+                    "corrected_by": string | null,"created_at": string,"id": string,"institution_id": string,"new_status": string,"old_status": string,"reason": string,"record_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "corrected_by"?: string | null,"created_at"?: string,"id"?: string,"institution_id": string,"new_status": string,"old_status": string,"reason": string,"record_id": string
+                  }
+                  Update: {
+                    "corrected_by"?: string | null,"created_at"?: string,"id"?: string,"institution_id"?: string,"new_status"?: string,"old_status"?: string,"reason"?: string,"record_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "attendance_corrections_corrected_by_fkey"
+      columns: ["corrected_by"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_corrections_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_corrections_record_id_fkey"
+      columns: ["record_id"]
+isOneToOne: false
+      referencedRelation: "attendance_records"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"attendance_records": {
+                  Row: {
+                    "created_at": string,"id": string,"institution_id": string,"note": string | null,"session_id": string,"status": string,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"institution_id": string,"note"?: string | null,"session_id": string,"status": string,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"institution_id"?: string,"note"?: string | null,"session_id"?: string,"status"?: string,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "attendance_records_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_records_session_id_fkey"
+      columns: ["session_id"]
+isOneToOne: false
+      referencedRelation: "attendance_sessions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_records_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"attendance_sessions": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"date": string,"id": string,"institution_id": string,"marked_by": string | null,"status": string,"submitted_at": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"date": string,"id"?: string,"institution_id": string,"marked_by"?: string | null,"status"?: string,"submitted_at"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"date"?: string,"id"?: string,"institution_id"?: string,"marked_by"?: string | null,"status"?: string,"submitted_at"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "attendance_sessions_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_sessions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_sessions_marked_by_fkey"
+      columns: ["marked_by"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"audit_events": {
                   Row: {
                     "action": string,"actor_user_id": string | null,"after": Json | null,"before": Json | null,"created_at": string,"entity_id": string | null,"entity_type": string,"id": string,"institution_id": string,"metadata": Json | null

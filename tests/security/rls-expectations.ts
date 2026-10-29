@@ -161,4 +161,29 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["teacher", "student", "guardian"], // teacher scoped to their sections; no staff-wide read
     write: ["student"], // own submission only (P1)
   },
+
+  // 0006 (T-014) — attendance. 07 §2.2 attendance.read: owner/principal/
+  // admin/exam_controller full; teacher only sections they teach; student/
+  // guardian own-scope; admissions/accountant none (no longer staff_roles()
+  // blanket read — HIGH finding, security review). The generated suite
+  // (rls-generated.test.ts) only proves cross-institution isolation per
+  // role, not within-institution section scoping — "teacher" below means
+  // scoped via app.teaches_section, not every section; that narrower claim
+  // is covered by explicit db tests in tests/db/attendance-schema.test.ts,
+  // not by this list.
+  attendance_sessions: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped to sections they teach
+    write: ["owner", "principal", "admin", "teacher"], // teacher scoped to sections they teach; INSERT/UPDATE also require the student to be enrolled in that section
+  },
+  attendance_records: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped via the record's session's section
+    write: ["owner", "principal", "admin", "teacher"], // teacher scoped via the record's session's section; student_id must be enrolled in that section (CRITICAL fix, security review)
+  },
+  attendance_corrections: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped via the corrected record's session's section
+    write: ["owner", "principal", "admin", "teacher"], // INSERT-only; append-only (block_mutation)
+  },
 };
