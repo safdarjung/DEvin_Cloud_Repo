@@ -49,6 +49,12 @@ The demo school looks real: twelve grades with six sections each, class teachers
 4. Every section has exactly one class teacher and ≥ 5 subject assignments; every student has exactly one primary guardian.
 5. Logged-in `teacher.vi-a` sees VI-A roster via RLS; `guardian.one` sees two children (DB-level checks with `clientAs`).
 
+## Demo-data contract (from `05 §8.1`, mandatory)
+- `guardian.one` = Priya Sharma `9800000001` with Aarav Sharma (VI-A, roll 7, `ADM/2024/00412`) and Ananya Sharma (X-A, roll 12, `ADM/2020/00133`); `guardian.two` = Rohit Mehta `9800000002` with Ishaan Mehta (VIII-B, roll 3); `student.one` = Ananya's login.
+- `teacher.x-a` is class teacher of X-A and subject teacher of X-A Mathematics; curriculum unit `UNIT-X-MATH-3` "Quadratic Equations" exists for Grade X Mathematics.
+- Every section has `capacity = 45` and 42 students; I-C and VI-B keep room for the live enrolments.
+- `SEED_SCALE=small` (CI) seeds 2 sections per grade but keeps every named entity.
+
 ## Tests (write failing tests first) and exact commands
 - `tests/db/seed-people-academics.test.ts` — criteria 1, 3, 4, 5 (runs after `pnpm seed` in `globalSetup` or reads the seeded DB; mark `@slow`).
 - Commands: `pnpm demo:reset`, `pnpm test:db -- tests/db/seed-people-academics.test.ts`.

@@ -37,7 +37,7 @@ Ports: API 54321, Postgres 54322, Studio 54323, Mailpit 54324. `supabase/config.
 
 ## 3. Demo tenant and logins
 
-Institution `st-josephs-demo` ("St. Joseph's Convent School (Demo)", `is_demo = true`). Users (`@demo.coolskool.test`): `principal`, `admin`, `admissions`, `accountant`, `examcontroller`, `teacher.vi-a`, `teacher.viii-b`, `teacher.x-a`, `guardian.one` (two children), `guardian.two`, `student.one`. Password from `SEED_DEMO_PASSWORD` (default `CoolSkool-Demo-2026`; change on hosted). The login page lists these when `NEXT_PUBLIC_DEMO_LOGIN_HINTS=true` (anon cannot read `institutions`; recorded as DBT-11), under the heading "Demo accounts".
+Institution `st-josephs-demo` ("St. Joseph's Convent School (Demo)", `is_demo = true`). Users (`@demo.coolskool.test`): `principal`, `admin`, `admissions`, `accountant`, `examcontroller`, `teacher.vi-a`, `teacher.viii-b`, `teacher.x-a` (also teaches X-A Mathematics), `guardian.one` (Priya Sharma; children Aarav in VI-A and Ananya in X-A), `guardian.two` (Rohit Mehta; Ishaan in VIII-B), `student.one` (Ananya Sharma). Named entities for the script: `05 §8.1`. Password from `SEED_DEMO_PASSWORD` (default `CoolSkool-Demo-2026`; change on hosted). The login page lists these when `NEXT_PUBLIC_DEMO_LOGIN_HINTS=true` (anon cannot read `institutions`; recorded as DBT-11), under the heading "Demo accounts".
 
 Dev/demo separation: the demo institution is the only `is_demo = true` tenant; reset and seed refuse everything else. A second non-demo institution exists only in test fixtures.
 
@@ -84,10 +84,51 @@ Same migrations and app build. Institution server: Docker Compose with self-host
 
 Logging: server logs include correlation ids and error codes, never prompt bodies, env values, or PII beyond ids. Vercel logs + Supabase logs are the demo monitoring surface; no APM.
 
-## 10. Demo script (13 steps, target < 25 minutes)
+## 10. Demo script (13 steps, target < 25 minutes; entities from `05 §8.1`)
 
-1. Public site → 2. Submit enquiry → 3. Admissions pipeline (login `admissions`) → 4. Decision → 5. Enrol (show admission no, guardian, section, invoice) → 6. Teacher attendance (`teacher.vi-a`), two absences, message log → 7. Guardian portal (`guardian.one`): attendance, fees, receipt → 8. Teacher: unit → AI quiz (local) → review → publish → guardian sees assignment → 9. Exam controller: marks entry + verification → 10. Publish → guardian report card → 11. Guardian recheck request → 12. Controller decision → corrected result → 13. Principal dashboard. Reset between runs: `pnpm demo:reset`.
+| # | Min | Login | Do | Say |
+|---|---|---|---|---|
+| 1 | 0–2 | visitor | Open `/s/st-josephs-demo`, scroll notices and events | "Your school's website, edited by your office, no agency" |
+| 2 | 2–3 | visitor | Submit enquiry for "Meera Kapoor", grade I, phone `9800000777` | "Every enquiry lands in admissions instantly" |
+| 3 | 3–6 | admissions | Pipeline board: move Meera to Contacted; open `APP-live-1` (Riya Verma) | "Nothing is lost between phone calls" |
+| 4 | 6–7 | admissions | Decision: accept `APP-live-2` is already accepted; show the decision trail | "Who decided, when, with what note" |
+| 5 | 7–10 | admissions | Enrol Riya into I-C; enrol Kabir Mehta into VI-B; open Kabir's profile: guardian `9800000002` already existed | "One click: admission number, parent, section, first invoice; the same parent is not duplicated" |
+| 6 | 10–12 | teacher.vi-a | Mark today's VI-A: Aarav Sharma + one more absent; submit; open message log | "Parents know by 10 am; SMS shown as simulated here" |
+| 7 | 12–15 | accountant → guardian.one | Record ₹ cash payment on Aarav's Term 2 invoice; print receipt; log in as the parent: two children, absence alert, paid invoice, receipt | "What a parent sees on the phone" |
+| 8 | 15–18 | teacher.x-a | Unit "Quadratic Equations" → Generate quiz (local AI) → edit one question → save → publish | "AI drafts, teacher decides; runs on a laptop, no data leaves the school" |
+| 9 | 18–20 | examcontroller | `PT2-X`: verification shows X-A Mathematics missing; enter marks; verification clean | "The system refuses to publish incomplete results" |
+| 10 | 20–21 | examcontroller → guardian.one | Publish; parent sees Ananya's report card | "252 report cards in one click, with grades per your scale" |
+| 11 | 21–22 | guardian.one | Request recheck on Mathematics with a reason | "Parents can ask, with a record" |
+| 12 | 22–24 | examcontroller | Approve with new marks; parent sees "Corrected on …"; controller sees version history | "Original never disappears" |
+| 13 | 24–25 | principal | Dashboard: today's attendance, collections, funnel, grade distribution | "Everything you asked your staff for this morning, live" |
+
+Reset between runs: `pnpm demo:reset` (≈ seed time). If the venue has no connectivity, play the Day 19 recording (`09 §8`).
 
 ## 11. Production-readiness gaps (after the demo)
 
 Real SMS/email providers (DLT registration), payment gateway, CSV import, backups policy and retention, consent records (DPDP), rate limiting at the edge (WAF/CAPTCHA), observability (APM, alerts), custom domains, storage policies for documents, multi-campus UI, table-driven permissions, void/refund flows, pen test by a third party.
+
+## 12. Environment matrix
+
+| Variable | Local dev | CI | Hosted demo |
+|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `..._PUBLISHABLE_KEY` | from `supabase start` | from `supabase start` in the job | Vercel env (project settings) |
+| `SUPABASE_SECRET_KEY`, `SUPABASE_DB_URL` | local values | local values | Vercel env (server only) and the operator's shell for seed |
+| `DEMO_RESET_ALLOWED` | `true` | `true` | `true` only on the demo project |
+| `NEXT_PUBLIC_DEMO_LOGIN_HINTS` | `true` | `false` | `true` |
+| `AI_CLOUD_ENABLED` / `ANTHROPIC_API_KEY` | `false` / unset | `false` / unset | `false` / unset (until a key exists) |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | unset (AI tests mocked; C-65 skipped) | laptop tunnel URL only during step 8, else unset → `ai_unavailable` message |
+| `CRON_SECRET` | any string | any string | Vercel env; Vercel Cron sends it |
+| `SEED_SCALE` | `full` | `small` | `full` |
+
+## 13. Runbooks
+
+| Situation | Steps |
+|---|---|
+| Reset needed between two demo runs | `DEMO_RESET_ALLOWED=true SERVICE_ROLE_CALLER=reset pnpm demo:reset` with hosted env; confirm counts page; log in as `principal` to warm the dashboard |
+| Jobs stuck (notifications missing) | Open `/jobs`; if queued jobs are old, hit `/api/jobs/run` with the secret or run `pnpm jobs:run` against hosted env; requeue dead jobs |
+| Ollama down at the venue | Step 8 shows the honest `ai_unavailable` message; say so, then show a pre-generated quiz saved as a draft assignment the day before (labelled "AI draft, generated on <date>") |
+| Wi-Fi loss | Switch to the Day 19 screen recording; resume live at the next step when connectivity returns |
+| Wrong data entered during the demo | Continue; corrections are part of the story (attendance correction, recheck); reset after the session |
+| Hosted migration fails on `db push` | Do not edit merged migrations; add a numbered fix migration (`10 §3`), test locally with `db reset`, push again |
+| Suspected leak or security finding | `07 §8` |

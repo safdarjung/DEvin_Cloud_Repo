@@ -50,6 +50,9 @@ None. New dev dependency `@axe-core/playwright` (justify in report).
 3. Draft page text never appears on the public site (J-01 negative assertion).
 4. a11y spec reports zero serious/critical violations (or each violation has a filed follow-up in the report).
 
+## Demo-data contract
+- Every spec uses only the handles in `05 §8.1` and the test-data map in `08 §9`; the narrative spec runs `pnpm demo:reset` first and asserts the `05 §8.2` counts before J-01.
+
 ## Tests (write failing tests first) and exact commands
 - `pnpm test:e2e -- e2e/j01-public-site.spec.ts` (start here; grows to all)
 - `pnpm test:e2e:narrative`

@@ -95,3 +95,21 @@ flowchart TD
 ## 4. Review requirements
 
 Mandatory `security-reviewer` + lead review before merge: T-003, T-004, T-005, T-006, T-007, T-008, T-009, T-010, T-011, T-012, T-014, T-017, T-023, T-026, T-030, T-035, T-036, T-037, T-042, T-044. `code-reviewer` for the rest.
+
+## 5. Interfaces fixed before dependent packets start
+
+| Interface | Defined by | Consumed by | Shape (authoritative text) |
+|---|---|---|---|
+| `TenantContext`, `getTenantContext(slug)` | T-007 | every lane | `04 §4` |
+| `ActionResult`, `ErrorCode`, `AppError`, `defineAction`, action registry | T-008 | every lane | `06 §1` |
+| `Permission` union and `ROLE_PERMISSIONS` | T-008 | every lane, T-042 | `07 §2` |
+| `app.*` helper and function signatures | T-003, T-005 | all migrations | `05 §5`, `06 §W12` |
+| `tests/helpers/roles.ts` (`createTestInstitution`, `clientAs`), `rls-expectations.ts` entry shape | T-009 | every migration packet | `08 §1` |
+| `SeedContext` and section `run(ctx)` contract, `SEED_SCALE` | T-012 | T-013, T-016, T-021, T-024, T-029, T-033 | `05 §8` |
+| `app.enqueue_job(institution_id, type, payload, idempotency_key)` | T-005 | T-015, T-019, T-020, T-024, T-030, T-031 | `06 §W12` |
+| Job handler signature `(job, services) => Promise<void>` and registry | T-037 | T-031, T-038 | `06 §W12` |
+| `Channel` adapter interface, notification job types | T-038 | T-015, T-019, T-020 (wired after T-038 merges) | `04 §7`, `06 §3` |
+| `gateway.runStructured(...)` | T-035 | T-036, T-040 | `04 §5` |
+| Portal component exports: `StudentAttendanceSummary`, `StudentInvoices`, `ReceiptView`, `ReportCard`, `StudentAssignments` | T-015, T-032, T-019, T-022 | T-034, T-028 | `09 §4` (guardian portal zone) |
+| `<SimulatedBadge />`, `<LimitedBadge />` in `src/components/honesty.tsx` | T-007 | every lane | `CLAUDE.md` rule 7 |
+| `src/lib/nav.ts` item shape `{ href, label, icon, permission }` | T-007 | every lane (one line each) | `09 §4` |

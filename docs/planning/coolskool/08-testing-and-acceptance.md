@@ -75,13 +75,13 @@ Vitest uses `test.projects`: `unit` (environment `node`), `db` and `security` (e
 | J-02 | Submit enquiry; reference shown; second submit → duplicate message | Row in enquiries |
 | J-03 | Admissions moves enquiry through stages; converts to application | Status trail |
 | J-04 | Decision offer → accept | Decisions listed |
-| J-05 | Enrol: pick section + fee structure → admission number; student profile shows guardian, section, invoice | Idempotent on re-click |
-| J-06 | Teacher marks VI-A with 2 absences; submit; message log shows 2 simulated SMS | Guardian notification appears |
-| J-07 | Guardian logs in; sees two children; attendance, invoice, receipt (print view), results | Scope correct |
+| J-05 | Enrol `APP-live-1` (new guardian) and `APP-live-2` (existing guardian `9800000002`): pick section + fee structure → admission numbers; student profile shows guardian, section, Term 2 invoice; `guardian.two` now has two children | Idempotent on re-click |
+| J-06 | `teacher.vi-a` marks today's VI-A session with Aarav Sharma and one other student absent; submit; message log shows 2 simulated SMS | `guardian.one` sees the absence notification |
+| J-07 | Accountant records a cash payment on `INV-T2-Aarav`; `guardian.one` logs in; sees two children; attendance, invoice now paid, receipt (print view), results | Scope correct; receipt number gap-free |
 | J-08 | Teacher opens unit → Generate quiz (local) → edits a question → saves draft → publishes | Guardian sees assignment |
-| J-09 | Exam controller enters marks for one paper; verification lists missing; fix; verification clean | — |
-| J-10 | Publish; guardian sees report card with grades | Snapshot |
-| J-11 | Guardian requests recheck with reason | Request visible to controller |
+| J-09 | Exam controller (or `teacher.x-a`) enters X-A Mathematics marks for `PT2-X`; verification lists the missing paper before, clean after | — |
+| J-10 | Publish `PT2-X`; `guardian.one` sees Ananya's report card with grades | Snapshot; 252 results |
+| J-11 | `guardian.one` requests a recheck on Ananya's `PT2-X` Mathematics result | Request visible to controller |
 | J-12 | Controller approves with new marks; guardian sees corrected result and "Corrected on" note; history visible to controller | v1 preserved |
 | J-13 | Principal dashboard shows attendance %, collections, funnel, grade distribution; numbers match seed assertions | Charts render |
 
@@ -121,3 +121,29 @@ Tool: `autocannon` via `pnpm dlx` for HTTP, SQL timing for bulk jobs. Environmen
 ## 8. Known limitations accepted for the demo
 
 AI quality depends on a 4B local model; SMS/email simulated; student portal has no dedicated UI; no payment void/refund; no CSV import; concurrency caps are per process; accessibility is smoke-tested only; load numbers are from one laptop and one Vercel region.
+
+## 9. Test data map (journeys → named demo entities in `05 §8.1`)
+
+| Journey | Logs in as | Uses | Leaves behind (reset clears) |
+|---|---|---|---|
+| J-02 | visitor | slug `st-josephs-demo` | one `enquiries` row (website) |
+| J-03/J-04 | admissions | the J-02 enquiry, or `ENQ-*` in `new` | status trail, one application |
+| J-05 | admissions | `APP-live-1`, `APP-live-2`, sections I-C and VI-B, grade fee structures | two students, one new guardian, two invoices |
+| J-06 | teacher.vi-a | `VI-A`, Aarav Sharma | today's session, 2 jobs, 2 notifications, 2 simulated SMS |
+| J-07 | accountant, guardian.one | `INV-T2-Aarav` | one payment, one receipt, ledger rows |
+| J-08 | teacher.x-a | `UNIT-X-MATH-3`, section `X-A` | one `ai_usage_events` row, one assignment |
+| J-09/J-10 | examcontroller | `PT2-X`, paper X-A Mathematics | 42 marks rows, 252 results, 252 jobs |
+| J-11/J-12 | guardian.one, examcontroller | Ananya's `PT2-X` result | request, decision, marks v2, result v2 |
+| J-13 | principal | everything above | — |
+
+## 10. CI workflow (`.github/workflows/ci.yml`)
+
+| Job | Steps | Budget |
+|---|---|---|
+| `static` | checkout → pnpm install (cache) → `pnpm lint` → `pnpm typecheck` → `pnpm build` | < 6 min |
+| `unit` | `pnpm test` | < 2 min |
+| `db` | `supabase/setup-cli@v3` → `supabase start` → `pnpm db:reset` (migrations + seed) → `pnpm test:db` → `pnpm test:security` | < 15 min (seed dominates; CI may use `SEED_SCALE=small` = 2 sections per grade, documented in `scripts/seed/config.ts`) |
+| `secrets` | gitleaks | < 1 min |
+| `e2e` (nightly, manual) | start Supabase, seed, `pnpm build && pnpm start`, `pnpm test:e2e` | < 25 min |
+
+`SEED_SCALE=small` is for CI only; every checkpoint runs the full seed locally.

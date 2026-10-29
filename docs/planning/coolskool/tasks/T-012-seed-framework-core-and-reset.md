@@ -54,6 +54,9 @@ A deterministic demo tenant with logins, year, terms, and settings that can be r
 4. Settings row passes `InstitutionSettingsSchema.parse`.
 5. Login as `principal@demo.coolskool.test` works (J-00 subset).
 
+## Seed scale
+- Support `SEED_SCALE=full|small` in `scripts/seed/config.ts` (`small` = 2 sections per grade, used by CI only); named demo entities (`05 §8.1`) must exist at both scales.
+
 ## Tests (write failing tests first) and exact commands
 - `tests/unit/seed-lib.test.ts` — PRNG determinism, UUID v5 stability, batch splitting.
 - `tests/unit/institution-settings.test.ts` — schema accepts the default, rejects a bad grading band.

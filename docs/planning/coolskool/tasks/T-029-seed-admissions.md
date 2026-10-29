@@ -50,6 +50,10 @@ None.
 4. Running the section twice changes no counts.
 5. J-03/J-04/J-05 can run from reset without creating data first.
 
+## Demo-data contract (from `05 §8.1`, mandatory)
+- `APP-live-1`: Riya Verma, grade I, `accepted`, guardian Sunita Verma `9800000101` (new); `APP-live-2`: Kabir Mehta, grade VI, `accepted`, guardian phone `9800000002` (= `guardian.two`, so live enrolment reuses the guardian).
+- Enquiry stage counts: 12 new, 10 contacted, 6 visit_scheduled, 5 application_sent, 4 converted, 3 closed; phones `98000002xx`, all synthetic.
+
 ## Tests (write failing tests first) and exact commands
 - `pnpm test:db -- tests/db/seed-admissions.test.ts` · `pnpm db:reset`
 

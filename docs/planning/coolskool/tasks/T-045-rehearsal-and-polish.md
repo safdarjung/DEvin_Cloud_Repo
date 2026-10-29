@@ -52,6 +52,9 @@ A principal watches the 13-step story in under 25 minutes with no technical expl
 4. `results/rehearsal-19.md` filled, including the G-2 gate with each line marked met/not met and evidence.
 5. Backup recording exists and its location is recorded.
 
+## Script and runbooks
+- Rehearse exactly `11 §10` (minute budget per step) twice from a reset; exercise the runbooks in `11 §13` once each (reset mid-session, jobs stuck, Ollama down, Wi-Fi loss) and record outcomes.
+
 ## Tests (write failing tests first) and exact commands
 - `e2e/demo-narrative.spec.ts` (existing) run twice: `pnpm demo:reset && PLAYWRIGHT_BASE_URL=<url> pnpm test:e2e -- e2e/demo-narrative.spec.ts`.
 - `e2e/a11y.spec.ts`, `e2e/responsive.spec.ts` (from T-041/T-014 day) rerun.

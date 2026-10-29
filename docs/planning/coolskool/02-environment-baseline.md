@@ -59,3 +59,13 @@ Docker (Supabase ≈ 2–3 GB RAM), the Next.js dev server, and Ollama share one
 ## 7. Boundaries of this planning run
 
 No application code, no dependency installs, no migrations, no Supabase project, no deployment, no destructive commands, no secrets. Nothing here has been tested, benchmarked, or load-tested.
+
+## 8. Implementation-agent environment (assumed, confirmed by T-001)
+
+- Agents run Claude Code on this laptop with Bash, file tools, and the skills named in `CLAUDE.md`; Context7 MCP was not present during planning, so `docs-lookup` may fall back to official docs via web fetch.
+- Docker, Supabase local, the Next dev server, Playwright, and Ollama share the laptop; only one agent should run `pnpm db:reset` at a time (lead coordinates; lanes use targeted tests).
+- No GitHub Actions minutes have been verified; CI is prepared by T-002 and first exercised on the first push after T-002.
+
+## 9. Venue assumptions for the demo (Day 19/20)
+
+Projector or large screen with a laptop; mobile phone for the guardian view; venue Wi-Fi uncertain → hosted deployment plus a laptop hotspot and the Day 19 screen recording as fallbacks (`11 §13`). Local inference is demonstrated from the laptop GPU through a tunnel only during step 8.

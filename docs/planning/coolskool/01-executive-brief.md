@@ -22,7 +22,7 @@ Ship, in 20 days, a sound foundation plus a demo that a non-technical principal 
 | 12 | Recheck decision → new marks version → re-snapshot → notification | Exam controller | Fully implemented and tested |
 | 13 | Principal dashboard (attendance, fees, admissions, exams) | Principal | Fully implemented (Recharts on live queries) |
 
-Payment recording (cash/UPI/bank reference) with sequential receipts is shown inside step 7/13 as fully implemented; no gateway.
+Payment recording (cash/UPI/bank reference) with sequential receipts is shown inside step 7 as fully implemented; no gateway. The seed ships the exact entities each step needs (`05 §8.1`); the minute-by-minute script is `11 §10`.
 
 ## 3. Baseline
 

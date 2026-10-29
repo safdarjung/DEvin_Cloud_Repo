@@ -51,6 +51,10 @@ None.
 4. One `recheck_requests` row `under_review`, one `applied` with marks v2 and results v2 for that student.
 5. `pnpm db:reset` completes; time recorded in the completion report.
 
+## Demo-data contract (from `05 §8.1`, mandatory)
+- `HY-2026` (`half_yearly`, Term 1): papers for all 72 sections, every student marked, published 2026-10-05 via `app.publish_exam_results`; recheck requests: Ishaan Mehta Science `applied` (61 → 64, marks v2 + result v2 present), one X-D student English `under_review`.
+- `PT2-X` (`unit_test`, Term 2, "Periodic Test 2 (Grade X)"): papers for X-A…X-F × subjects with max 40 / pass 13; status `marks_entry`; all marks entered except X-A Mathematics (42 students unmarked) so the demo enters, verifies, and publishes live; expected results after publish: 252.
+
 ## Tests (write failing tests first) and exact commands
 - `pnpm test:db -- tests/db/seed-exams.test.ts` · `time pnpm db:reset`
 

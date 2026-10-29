@@ -51,6 +51,10 @@ Seed order line in `scripts/seed/index.ts`.
 3. Dashboard-level totals reproducible run-to-run (same collected sum).
 4. `guardian.one`'s children have one paid and one part-paid invoice (chosen deterministically for the demo script).
 
+## Demo-data contract (from `05 §8.1`, mandatory)
+- `INV-T2-Aarav`: Aarav Sharma's Term 2 invoice issued 2026-10-01, due 2026-10-10, unpaid (the demo records the payment live); Ananya's and Ishaan's Term 2 invoices paid.
+- ≈70% of all invoices paid with deterministic modes/dates; receipt numbers gap-free per FY `2026-27`; counts match `05 §8.2`.
+
 ## Tests (write failing tests first) and exact commands
 - `tests/db/seed-finance.test.ts` (counts, balance, determinism across two runs) → `pnpm seed && pnpm test:db -- tests/db/seed-finance.test.ts`
 - Re-run C-51..C-53 → `pnpm test:db -- tests/db/finance.test.ts`

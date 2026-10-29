@@ -34,6 +34,7 @@ src/lib/auth/{context,permissions,require}.ts  getTenantContext · PERMISSIONS m
 src/lib/actions/{result,define-action,registry}.ts  ActionResult envelope · defineAction(schema, permission, handler) · registry (every action registers here for C-03)
 src/lib/ai/{gateway,policy,providers,redact,usage}.ts  the only path to any model
 src/lib/audit.ts                      audit(ctx, event) → audit_events
+src/components/honesty.tsx            <SimulatedBadge /> · <LimitedBadge /> (rule 7)
 src/modules/<domain>/{schemas,actions,queries,components}   core people academics attendance admissions finance exams website ai notifications jobs
 supabase/migrations/2026102800NN_<slug>.sql   one owner per numbered file; never edit a merged migration
 scripts/{seed/,demo-reset.ts,jobs-run.ts,ai-bench.ts}
@@ -50,10 +51,11 @@ One owning module per entity (`05-data-architecture.md` §3). Cross-module reads
 4. **Validation.** Zod schema per action in the module's `schemas.ts`; `defineAction` parses input before the handler runs.
 5. **Immutable history.** `payments`, `receipts`, `results`, `marks`, `audit_events` are never updated or deleted by application code; corrections insert new versions (`superseded_by`). Triggers enforce this; do not bypass them.
 6. **AI boundary.** All model calls go through `src/lib/ai/gateway.ts`. `local_only` never instantiates a cloud provider. AI output is a suggestion a human saves; AI never writes marks, payments, access, or welfare decisions.
-7. **Honesty labels.** Simulated channels and limited features show a visible badge (`<SimulatedBadge />`). Docs and UI must agree.
+7. **Honesty labels.** Simulated channels and limited features show a visible badge (`<SimulatedBadge />` / `<LimitedBadge />` from `src/components/honesty.tsx`). Docs and UI must agree.
 8. **No secrets in the repo.** Names go in `.env.example`; values never. Never print env values in logs or completion reports.
 9. **Migrations.** Append-only, numbered as reserved in `10-backlog-index.md`, one owner each, RLS policies for a table live in the migration that creates it, every table gets `created_at`/`updated_at` and the `app.set_updated_at()` trigger.
 10. **Surgical changes.** Touch only files your packet names. No reformatting, renaming, or drive-by refactors. New dependency only with a one-line justification in the completion report.
+11. **Demo data is a contract.** Seed sections must produce the named entities in `05-data-architecture.md` §8.1 exactly; E2E journeys and the demo script depend on them.
 
 ## Before you write code (pre-code protocol)
 

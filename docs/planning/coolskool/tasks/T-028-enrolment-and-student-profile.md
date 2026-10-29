@@ -53,6 +53,11 @@ Nav line for `/students`. Permissions exist.
 4. `/students/[id]` shows guardians, section, invoice total/paid, attendance %, and report cards when results exist; `/students?q=ADM/2026/00001` finds the student.
 5. J-05 passes.
 
+## Demo-data contract and limitation
+- J-05 enrols `APP-live-1` into I-C (new guardian) and `APP-live-2` into VI-B (guardian `9800000002` reused; `guardian.two` then shows two children in the portal).
+- No guardian login is provisioned by enrolment (DBT-12); the profile shows "Portal login: not yet invited" with `<LimitedBadge />`.
+- The Term 2 invoice is a full-term invoice (DBT-13), labelled "full term" on the profile.
+
 ## Tests (write failing tests first) and exact commands
 - `pnpm test:db -- tests/db/enrol-action.test.ts` · `pnpm test:e2e -- e2e/j05-enrol.spec.ts`
 

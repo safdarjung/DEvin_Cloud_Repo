@@ -21,6 +21,23 @@
 
 ## 2. Permission matrix
 
+### 2.1 Roles
+
+| Role | Who | Scope rule |
+|---|---|---|
+| owner | School management/trust | Everything in the institution |
+| principal | Head of school | Everything except member management of owners; approves decisions |
+| admin | Office administrator / ERP admin | Configuration, people, website publish, jobs |
+| admissions | Front office / admissions executive | Enquiries, applications, enrolment, website edits |
+| accountant | Accounts office | Fee structures, invoices, payments, finance reads |
+| exam_controller | Exam cell coordinator | Exam setup, verification, publish, recheck decisions |
+| teacher | Teaching staff | Own sections (class teacher or subject assignment) for attendance, marks, assignments |
+| student | Enrolled student with a login | Own records only |
+| guardian | Parent/guardian with a login | Linked children only (`guardian_students.portal_access`) |
+| platform_superadmin | CoolSkool operator (`profiles.is_platform_admin`) | `demo.reset`, `institution.create`; no tenant data access unless also a member |
+
+### 2.2 Matrix
+
 Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions · **acc** accountant · **exc** exam_controller · **tch** teacher · **stu** student · **grd** guardian. `platform_superadmin` = `profiles.is_platform_admin` (only `demo.reset`, `institution.create`). ✓ = granted; `s` = scoped by RLS to own sections (teacher) or own children/self (guardian/student).
 
 | Permission | own | pri | adm | ads | acc | exc | tch | stu | grd |
@@ -115,3 +132,25 @@ Any new service-role or `security definer` usage must be added to this table in 
 | C-91 | No secrets committed | `gitleaks` in CI |
 
 The suite is a Day 4 deliverable (T-009 scaffolds it; T-042 completes it) and runs at every checkpoint and in CI.
+
+## 7. Logging and retention rules
+
+| Data | Where | Content rules | Retention (demo) |
+|---|---|---|---|
+| Application logs | Vercel / stdout | correlation id, error code, route, institution id, user id; never prompt bodies, env values, phone numbers, or request bodies | Platform default |
+| `audit_events` | DB | actor, entity ids, before/after JSON for row changes (PII inside is confidential class) | Kept with the institution; reset with demo |
+| `ai_usage_events` | DB | metadata only (`07 §5`) | Kept; reset with demo |
+| `delivery_attempts` | DB | rendered message bodies (contain names and phones) → confidential; visible only to `notification.log.read` roles | Kept; reset with demo |
+| Supabase auth logs | Supabase | sign-in events | Platform default |
+| Load/bench results | `docs/planning/coolskool/results/`, `bench-results/` (git-ignored) | synthetic data only | Until superseded |
+
+## 8. Incident response during the project
+
+1. **Suspected data leak** (cross-tenant or cross-guardian): stop merging; reproduce with the generated suite; fix the policy in a new migration; rerun `pnpm test:security`; record in `12 §3` if a shortcut was involved. Demo data is synthetic, so no notification duty exists, but the rule is rehearsed as if it were real.
+2. **Secret committed:** rotate the key in Supabase/Vercel immediately, purge from history (`git filter-repo`), add a gitleaks rule, note in the completion report.
+3. **Cloud egress observed under `local_only`:** disable `AI_CLOUD_ENABLED`, capture the usage event, fix the policy resolver, add a regression test (C-62 variant).
+4. **Reset ran against the wrong institution:** impossible by design (`is_demo` check); if a non-demo institution ever exists on the demo host, the drill is restore from the latest dump (`11 §6`).
+
+## 9. Storage policy template (for F-STU-08 when it lands)
+
+Bucket `institution-files`, private. Object path `<institution_id>/<entity>/<id>/<filename>`. Policies on `storage.objects`: SELECT where `app.is_member((storage.foldername(name))[1]::uuid)` and entity-level scope mirrors the table's RLS class; INSERT with the same predicate plus a size/type check in the action; no UPDATE; DELETE by admin roles only. Access via signed URLs valid 10 minutes; never public buckets.

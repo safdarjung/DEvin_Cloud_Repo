@@ -36,6 +36,8 @@ Every authenticated page runs inside a verified institution context with a role-
 - `src/app/page.tsx` — institution picker: lists active memberships; one membership → redirect; zero → "No institution assigned".
 - `src/components/tenant/*` — sidebar, header, role badge, demo banner.
 
+- `src/components/honesty.tsx` — `<SimulatedBadge />` and `<LimitedBadge />` (shared honesty labels, `10 §5`).
+
 ## Must not modify
 - `src/lib/auth/permissions.ts` (lead-owned); `supabase/**`.
 

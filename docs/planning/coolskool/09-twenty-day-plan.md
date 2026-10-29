@@ -99,3 +99,23 @@ Agents: one lead (reviews, checkpoints, foundation Days 1–6) + four lane agent
 3. Note every moment that needed a technical explanation → fix copy/labels or cut from the script.
 4. Repeat from reset; second run must be clean.
 5. Record a screen capture as a backup for connectivity failure at the venue.
+
+## 9. Checkpoint procedure (lead; same script every time)
+
+1. Merge every packet that reports done and reviewed; regenerate `src/lib/db/types.ts` once.
+2. `pnpm db:reset` (full seed) and record wall time.
+3. `pnpm lint && pnpm typecheck && pnpm build`.
+4. `pnpm test && pnpm test:db && pnpm test:security`.
+5. `pnpm test:e2e` for the journeys available at that checkpoint (Day 4: J-00; Day 9: J-00, J-01, J-02, J-06; Day 13: all attempted; Day 16: all; Day 18: all on hosted).
+6. Walk the clickable part of the narrative by hand with the named entities (`05 §8.1`).
+7. Write `docs/planning/coolskool/results/checkpoint-<day>.md`: suite counts, failures, decisions, debt added, packets re-planned.
+8. Exit criteria per `08 §7`; a red checkpoint blocks new lane packets until green.
+
+## 10. Lead operating rhythm (Days 2–14)
+
+| Time | Activity |
+|---|---|
+| Start of day | Confirm deps merged for today's packets; reserve migration numbers / nav lines / permissions requested yesterday; assign packets with the packet file path and nothing else |
+| Mid-day | Review window 1: security-sensitive packets first (`10 §4`); spawn `security-reviewer` for RLS/finance/exams/AI/seed packets, `code-reviewer` for the rest |
+| End of day | Review window 2; merge; run targeted suites for merged packets; update `12 §3` debt and `10 §3` reservations; note slips against the critical path |
+| Day 4, 9, 13, 16, 18 | Checkpoint procedure (§9) replaces lane work for the lead |
