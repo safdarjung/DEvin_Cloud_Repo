@@ -11,6 +11,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/admissions",
     "/attendance",
     "/academics",
+    "/assignments",
     "/exams",
     "/finance",
     "/website",
@@ -26,6 +27,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/admissions",
     "/attendance",
     "/academics",
+    "/assignments",
     "/exams",
     "/finance",
     "/website",
@@ -41,6 +43,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/admissions",
     "/attendance",
     "/academics",
+    "/assignments",
     "/exams",
     "/finance",
     "/website",
@@ -53,9 +56,9 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   admissions: ["/dashboard", "/students", "/admissions", "/academics", "/website", "/notifications"],
   accountant: ["/dashboard", "/students", "/academics", "/finance", "/notifications"],
   exam_controller: ["/dashboard", "/students", "/attendance", "/academics", "/exams", "/notifications"],
-  teacher: ["/students", "/attendance", "/academics", "/exams", "/ai", "/notifications"],
-  student: ["/students", "/attendance", "/academics", "/exams", "/finance", "/notifications", "/portal"],
-  guardian: ["/students", "/attendance", "/academics", "/exams", "/finance", "/notifications", "/portal"],
+  teacher: ["/students", "/attendance", "/academics", "/assignments", "/exams", "/ai", "/notifications"],
+  student: ["/students", "/attendance", "/academics", "/assignments", "/exams", "/finance", "/notifications", "/portal"],
+  guardian: ["/students", "/attendance", "/academics", "/assignments", "/exams", "/finance", "/notifications", "/portal"],
 };
 
 describe("navItemsFor", () => {

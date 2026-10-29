@@ -1,12 +1,16 @@
 import postgres from "postgres";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ActionResult } from "@/lib/actions/result";
 import { permissionsFor } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
+import type { Database } from "@/lib/db/types";
 import type { FixtureRole, TestInstitution } from "./roles";
+import { setActingClient } from "./server-client-mock";
 
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 5 });
 
-async function buildContext(fixture: TestInstitution, role: FixtureRole): Promise<TenantContext> {
+/** Exported so test files can build a real per-role TenantContext for plain (non-action) query functions too — see server-client-mock.ts. */
+export async function buildContext(fixture: TestInstitution, role: FixtureRole): Promise<TenantContext> {
   const [institution] = await sql`
     select id, slug, name, settings, ai_policy, is_demo
     from public.institutions where id = ${fixture.institutionId}
@@ -51,11 +55,12 @@ async function buildContext(fixture: TestInstitution, role: FixtureRole): Promis
 /**
  * Calls a `defineAction`-built action as a specific fixture role, using
  * defineAction's `overrideCtx` escape hatch (T-008) built from the role's
- * real membership row — no mocked cookies/session needed. Proves the
- * permission gate and the handler's own logic faithfully; a handler that
- * calls `@/lib/supabase/server` itself for further DB work still runs
- * unauthenticated, since overrideCtx only replaces context resolution, not
- * the ambient request session — not a limitation any current handler hits.
+ * real membership row — no mocked cookies/session needed. Also points the
+ * opt-in `@/lib/supabase/server` mock (server-client-mock.ts) at that role's
+ * real signed-in client for the duration of the call, so a handler's own
+ * `createClient()` calls run with real RLS as that role too — but only for
+ * test files that actually `vi.mock` that module; every other db test's
+ * handlers still use the real cookie-backed client untouched.
  */
 export async function callAs<I, O>(
   fixture: TestInstitution,
@@ -64,7 +69,16 @@ export async function callAs<I, O>(
   input: I,
 ): Promise<ActionResult<O>> {
   const ctx = await buildContext(fixture, role);
-  return action(fixture.slug, input, ctx);
+  // Only load-bearing for test files that `vi.mock("@/lib/supabase/server", ...)`
+  // the opt-in mock (server-client-mock.ts) — a harmless no-op write into an
+  // unused module instance for every other db test, which still imports the
+  // real `@/lib/supabase/server`.
+  setActingClient(fixture.clientAs(role) as unknown as SupabaseClient<Database>);
+  try {
+    return await action(fixture.slug, input, ctx);
+  } finally {
+    setActingClient(null);
+  }
 }
 
 export async function closeActionsHelper(): Promise<void> {
