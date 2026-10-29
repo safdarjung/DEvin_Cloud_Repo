@@ -1611,6 +1611,9 @@ isOneToOne: true
 "apply_recheck_decision":
 { Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
                            },
+"close_marks_entry":
+{ Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
+                           },
 "convert_enquiry":
 { Args: { "p_academic_year_id": string,"p_applicant": Json,"p_enquiry_id": string,"p_grade_id": string,"p_guardian": Json,"p_institution_id": string }; Returns: Json
                            },
@@ -1636,6 +1639,12 @@ isOneToOne: true
                            },
 "enrol_applicant":
 { Args: { "p_application_id": string,"p_class_section_id": string,"p_fee_structure_id": string,"p_roll_no": number }; Returns: Json
+                           },
+"enter_marks":
+{ Args: { "p_institution_id": string,"p_paper_id": string,"p_rows": Json }; Returns: Json
+                           },
+"exam_verification":
+{ Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },
 "generate_invoice":
 { Args: { "p_student_id": string,"p_term_id": string }; Returns: string
@@ -1694,6 +1703,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"open_marks_entry":
+{ Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
+                           },
 "publish_exam_results":
 { Args: { "p_exam_id": string }; Returns: Json
                            },
@@ -1719,6 +1731,9 @@ isOneToOne: true
                            },
 "record_payment":
 { Args: { "p_amount": number,"p_idempotency_key": string,"p_invoice_id": string,"p_mode": string,"p_received_at": string,"p_reference": string }; Returns: Json
+                           },
+"reopen_marks_entry":
+{ Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },
 "submit_attendance":
 { Args: { "p_institution_id": string,"p_session_id": string }; Returns: {
