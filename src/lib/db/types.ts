@@ -1605,8 +1605,14 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
-            "apply_recheck_decision":
+            "add_enquiry_note":
+{ Args: { "p_enquiry_id": string,"p_institution_id": string,"p_text": string }; Returns: Json
+                           },
+"apply_recheck_decision":
 { Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
+                           },
+"convert_enquiry":
+{ Args: { "p_academic_year_id": string,"p_applicant": Json,"p_enquiry_id": string,"p_grade_id": string,"p_guardian": Json,"p_institution_id": string }; Returns: Json
                            },
 "correct_attendance":
 { Args: { "p_institution_id": string,"p_new_status": string,"p_reason": string,"p_record_id": string }; Returns: {
@@ -1625,6 +1631,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"decide_application":
+{ Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
+                           },
 "enrol_applicant":
 { Args: { "p_application_id": string,"p_class_section_id": string,"p_fee_structure_id": string,"p_roll_no": number }; Returns: Json
                            },

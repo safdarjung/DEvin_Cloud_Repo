@@ -183,6 +183,36 @@ export async function createApplication(
   return row.id as string;
 }
 
+// T-027 — admissions builder, same bypassing-RLS shape as above.
+
+export async function createEnquiry(
+  institutionId: string,
+  overrides: Partial<{
+    childName: string;
+    guardianName: string;
+    phone: string;
+    status: string;
+    gradeAppliedId: string | null;
+    assignedTo: string | null;
+    notes: postgres.JSONValue;
+  }> = {},
+): Promise<string> {
+  const childName = overrides.childName ?? "Test Child";
+  const guardianName = overrides.guardianName ?? "Test Guardian";
+  const phone = overrides.phone ?? "9800000800";
+  const status = overrides.status ?? "new";
+  const gradeAppliedId = overrides.gradeAppliedId ?? null;
+  const assignedTo = overrides.assignedTo ?? null;
+  const notes = overrides.notes === undefined ? null : sql.json(overrides.notes);
+
+  const [row] = await sql`
+    insert into public.enquiries (institution_id, child_name, guardian_name, phone, status, grade_applied_id, assigned_to, notes)
+    values (${institutionId}, ${childName}, ${guardianName}, ${phone}, ${status}, ${gradeAppliedId}, ${assignedTo}, ${notes})
+    returning id
+  `;
+  return row.id as string;
+}
+
 export async function createFeeStructure(
   institutionId: string,
   academicYearId: string,
