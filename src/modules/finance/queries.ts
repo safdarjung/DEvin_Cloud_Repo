@@ -275,7 +275,14 @@ export async function getInvoice(ctx: TenantContext, id: string): Promise<Invoic
 
 // T-032 — 06 §W9. Rendered from `receipts.snapshot` only (packet security
 // rule 2: "the receipt must not change if names change later") — no join to
-// students/invoices here, so the shape below carries ids, not names.
+// students/invoices here.
+// T-032 phase 2 (20261028000021): `app.record_payment` now captures the
+// display fields (school/student name, admission no, class/section,
+// invoice/term/receipt number) into the snapshot at payment time, so a
+// later rename never changes an already-printed receipt. Older receipts
+// (written before this migration) won't have these keys — the string
+// fields fall back to an empty string rather than "null"/"undefined" on
+// the page.
 export interface ReceiptHeadSnapshot {
   head: string;
   amount: number;
@@ -289,6 +296,13 @@ export interface ReceiptSnapshot {
   mode: string;
   reference: string | null;
   receivedAt: string;
+  receiptNo: string;
+  schoolName: string;
+  studentName: string;
+  admissionNo: string;
+  classLabel: string;
+  invoiceNo: string;
+  termName: string;
   heads: ReceiptHeadSnapshot[];
 }
 
@@ -329,6 +343,13 @@ export async function getReceipt(ctx: TenantContext, id: string): Promise<Receip
       mode: String(snap.mode),
       reference: snap.reference == null ? null : String(snap.reference),
       receivedAt: String(snap.received_at),
+      receiptNo: snap.receipt_no == null ? "" : String(snap.receipt_no),
+      schoolName: snap.school_name == null ? "" : String(snap.school_name),
+      studentName: snap.student_name == null ? "" : String(snap.student_name),
+      admissionNo: snap.admission_no == null ? "" : String(snap.admission_no),
+      classLabel: snap.class_label == null ? "" : String(snap.class_label),
+      invoiceNo: snap.invoice_no == null ? "" : String(snap.invoice_no),
+      termName: snap.term_name == null ? "" : String(snap.term_name),
       heads: Array.isArray(snap.heads) ? (snap.heads as Record<string, unknown>[]).map(toReceiptHeadSnapshot) : [],
     },
   };

@@ -31,7 +31,7 @@ export default async function ReceiptPage({
           <Link href={`/${institutionSlug}/finance/receipts/${id}/print`}>Print</Link>
         </Button>
       </div>
-      <ReceiptView receipt={receipt} institutionName={ctx.institution.name} />
+      <ReceiptView receipt={receipt} />
     </div>
   );
 }

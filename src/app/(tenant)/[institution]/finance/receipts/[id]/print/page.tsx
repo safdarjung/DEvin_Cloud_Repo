@@ -40,7 +40,7 @@ export default async function ReceiptPrintPage({
           <Link href={`/${institutionSlug}/finance/receipts/${id}`}>Back</Link>
         </Button>
       </div>
-      <ReceiptView receipt={receipt} institutionName={ctx.institution.name} />
+      <ReceiptView receipt={receipt} />
     </div>
   );
 }

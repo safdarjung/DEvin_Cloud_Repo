@@ -73,15 +73,18 @@ export type AssignFeeStructureInput = z.infer<typeof AssignFeeStructureSchema>;
 // Packet key format `invoices:<term_id>:<grade_id|all>` — singular gradeId,
 // not spec 06 §W9's `gradeIds?: uuid[]` (deviation recorded in the
 // completion report; packet is the authoritative instruction here).
-// Fix round 1 (code review, HIGH): `gradeId` is now required — the
+// Fix round 1 (code review, HIGH): `gradeId` was made required — the
 // synchronous action path has no bulk-enqueue fallback, so an unscoped
-// "all grades" run can time out a whole-school institution with no partial
-// progress reported. Whole-school runs are phase 2, through
-// `public.enqueue_term_invoices` (not built yet).
+// "all grades" run could time out a whole-school institution with no
+// partial progress reported.
+// T-031 phase 2: `gradeId` is optional again now that
+// `public.enqueue_term_invoices` (20261028000017) exists — omitting it
+// means "all grades", routed to the job queue instead of the synchronous
+// per-student loop (src/modules/finance/actions.ts `generateTermInvoices`).
 export const GenerateTermInvoicesSchema = z
   .object({
     termId: uuid,
-    gradeId: uuid,
+    gradeId: uuid.optional(),
   })
   .strict();
 

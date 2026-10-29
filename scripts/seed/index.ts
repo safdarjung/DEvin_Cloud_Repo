@@ -54,7 +54,16 @@ async function assertCounts(ctx: SeedContext): Promise<void> {
   const expectedStudents = expectedSections * 42;
 
   const counts: Record<string, number> = {};
-  for (const table of ["students", "guardians", "guardian_students", "staff", "class_sections", "enrolments"] as const) {
+  for (const table of [
+    "students",
+    "guardians",
+    "guardian_students",
+    "staff",
+    "class_sections",
+    "enrolments",
+    "attendance_sessions",
+    "attendance_records",
+  ] as const) {
     // "*" (not "id") — guardian_students has no `id` column, only a composite PK.
     const { count, error } = await ctx.admin
       .from(table)
@@ -70,6 +79,8 @@ async function assertCounts(ctx: SeedContext): Promise<void> {
     ["class_sections", expectedSections],
     ["staff", 106],
     ["enrolments", expectedStudents],
+    ["attendance_sessions", expectedSections * 60],
+    ["attendance_records", expectedStudents * 60],
   ];
   for (const [table, expected] of expectations) {
     if (counts[table] !== expected) {

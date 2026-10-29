@@ -1637,6 +1637,9 @@ isOneToOne: true
 "decide_application":
 { Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
                            },
+"enqueue_term_invoices":
+{ Args: { "p_grade_id"?: string,"p_institution_id": string,"p_term_id": string }; Returns: Json
+                           },
 "enrol_applicant":
 { Args: { "p_application_id": string,"p_class_section_id": string,"p_fee_structure_id": string,"p_roll_no": number }; Returns: Json
                            },

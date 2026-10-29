@@ -146,6 +146,17 @@ describe("T-013 integrity (AC4)", () => {
     }
   });
 
+  it("no staff member is class teacher of more than one section", async () => {
+    const rows = await sql`
+      select class_teacher_id, count(*)::int as n
+      from public.class_sections
+      where institution_id = ${institutionId}
+      group by class_teacher_id
+      having count(*) > 1
+    `;
+    expect(rows).toHaveLength(0);
+  });
+
   it("every student has exactly one primary guardian", async () => {
     const [row] = await sql`
       select count(*)::int as n

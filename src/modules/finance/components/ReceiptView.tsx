@@ -1,21 +1,25 @@
 // T-032 — 06 §W9 receipt render (AC1). Pure rendering over `ReceiptDetail`,
 // which `getReceipt` builds from `receipts.snapshot` only (packet security
-// rule 2) — no student/invoice join here, so no name is shown, only ids;
-// a live join would make the receipt's displayed content drift if a name
-// changed later, which is exactly what the snapshot exists to prevent.
+// rule 2) — no student/invoice join here; a live join would make the
+// receipt's displayed content drift if a name changed later, which is
+// exactly what the snapshot exists to prevent.
+// T-032 phase 2 (20261028000021): school/student name, admission no,
+// class/section, invoice/term/receipt number now all come from the
+// snapshot too (previously the school name was a live `ctx.institution.name`
+// prop) — every display field on this page is frozen at payment time.
 // Reused unchanged by both the normal view page and the print page.
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ReceiptDetail } from "@/modules/finance/queries";
 
-export function ReceiptView({ receipt, institutionName }: { receipt: ReceiptDetail; institutionName?: string }) {
+export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
   const { snapshot } = receipt;
 
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          {institutionName && <p className="text-sm font-medium">{institutionName}</p>}
+          {snapshot.schoolName && <p className="text-sm font-medium">{snapshot.schoolName}</p>}
           <h2 className="text-lg font-semibold">{receipt.receiptNo}</h2>
           <p className="text-muted-foreground text-sm">FY {receipt.financialYear}</p>
         </div>
@@ -23,6 +27,17 @@ export function ReceiptView({ receipt, institutionName }: { receipt: ReceiptDeta
       </div>
 
       <dl className="grid grid-cols-2 gap-1 text-sm sm:w-80">
+        <dt className="text-muted-foreground">Student</dt>
+        <dd className="text-right">{snapshot.studentName || "—"}</dd>
+        <dt className="text-muted-foreground">Admission no</dt>
+        <dd className="text-right">{snapshot.admissionNo || "—"}</dd>
+        <dt className="text-muted-foreground">Class</dt>
+        <dd className="text-right">{snapshot.classLabel || "—"}</dd>
+        <dt className="text-muted-foreground">Invoice</dt>
+        <dd className="text-right">
+          {snapshot.invoiceNo || "—"}
+          {snapshot.termName ? ` (${snapshot.termName})` : ""}
+        </dd>
         <dt className="text-muted-foreground">Received on</dt>
         <dd className="text-right">{new Date(snapshot.receivedAt).toLocaleString()}</dd>
         <dt className="text-muted-foreground">Reference</dt>

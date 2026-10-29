@@ -3,12 +3,15 @@ import { GenerateTermInvoicesSchema, RecordPaymentSchema } from "@/modules/finan
 
 // Fix round 1 (code review, HIGH): the sync `generateTermInvoices` action
 // has no deadline-safe way to cover a whole school in one request, so
-// `gradeId` is required — an "all grades" run is phase 2, through a future
-// `public.enqueue_term_invoices` job-queue wrapper, not this action.
+// `gradeId` was required for one phase — an "all grades" run went through
+// `public.enqueue_term_invoices` (job-queue wrapper) instead.
+// T-031 phase 2: `public.enqueue_term_invoices` (20261028000017) now
+// exists, so `gradeId` is optional again — omitting it means "all grades",
+// routed to that RPC instead of the synchronous per-student loop.
 describe("GenerateTermInvoicesSchema", () => {
-  it("rejects a payload with no gradeId", () => {
+  it("accepts a payload with no gradeId (all grades, enqueued)", () => {
     const result = GenerateTermInvoicesSchema.safeParse({ termId: crypto.randomUUID() });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
   });
 
   it("accepts termId + gradeId", () => {

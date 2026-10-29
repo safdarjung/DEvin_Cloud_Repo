@@ -13,6 +13,8 @@ import { buildContext, callAs, closeActionsHelper } from "../helpers/actions";
 import {
   closeFactoriesHelper,
   createAcademicYear,
+  createClassSection,
+  createEnrolment,
   createFeeAssignment,
   createFeeComponent,
   createFeeStructure,
@@ -233,6 +235,61 @@ describe("getReceipt (T-032)", () => {
         } finally {
           await other.cleanup();
         }
+      } finally {
+        setActingClient(null);
+      }
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  // T-032 phase 2 (20261028000021) — the snapshot's display fields are
+  // captured at payment time; renaming the student afterwards must not
+  // change an already-printed receipt (the whole point of a snapshot).
+  it("snapshot display fields are present and unchanged after the student is renamed", async () => {
+    const inst = await createTestInstitution("receipts-snapshot-rename");
+    try {
+      await setFinanceSettings(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const termId = await createTerm(inst.institutionId, yearId, { sequence: 1 });
+      const gradeId = await createGrade(inst.institutionId);
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId, { name: "A" });
+      const structureId = await createFeeStructure(inst.institutionId, yearId, gradeId);
+      await createFeeComponent(inst.institutionId, structureId, { head: "tuition", amount: 10000, frequency: "term" });
+      const studentId = await createStudent(inst.institutionId, "ADM-RCT-RENAME");
+      await createFeeAssignment(inst.institutionId, studentId, structureId, yearId);
+      await createEnrolment(inst.institutionId, studentId, sectionId, yearId, { rollNo: 1 });
+
+      const [{ id: invoiceId }] = await sql`select app.generate_invoice(${studentId}::uuid, ${termId}::uuid) as id`;
+
+      const paid = await callAs(inst, "accountant", recordPayment, {
+        invoiceId: invoiceId as string,
+        amount: 4000,
+        mode: "cash",
+        receivedAt: new Date(),
+        idempotencyKey: crypto.randomUUID(),
+      });
+      if (!paid.ok) throw new Error("setup payment failed");
+
+      const ctx = await buildContext(inst, "accountant");
+      setActingClient(inst.clientAs("accountant"));
+      try {
+        const before = await getReceipt(ctx, paid.data.receiptId);
+        expect(before?.snapshot.studentName).toBe("Test");
+        expect(before?.snapshot.admissionNo).toBe("ADM-RCT-RENAME");
+        expect(before?.snapshot.classLabel).toMatch(/-A$/);
+        expect(before?.snapshot.invoiceNo).toMatch(/^INV\//);
+        expect(before?.snapshot.termName).toBe("Term 1");
+        expect(before?.snapshot.receiptNo).toBe(paid.data.receiptNo);
+        expect(before?.snapshot.schoolName).toBeTruthy();
+
+        await sql`update public.students set first_name = 'Renamed', admission_no = 'ADM-RCT-CHANGED' where id = ${studentId}::uuid`;
+        await sql`update public.institutions set name = 'Renamed School' where id = ${inst.institutionId}::uuid`;
+
+        const after = await getReceipt(ctx, paid.data.receiptId);
+        expect(after?.snapshot.studentName).toBe(before?.snapshot.studentName);
+        expect(after?.snapshot.admissionNo).toBe(before?.snapshot.admissionNo);
+        expect(after?.snapshot.schoolName).toBe(before?.snapshot.schoolName);
       } finally {
         setActingClient(null);
       }

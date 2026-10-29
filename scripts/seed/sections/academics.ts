@@ -62,13 +62,25 @@ export async function run(ctx: SeedContext): Promise<void> {
   const enrolmentRows: Record<string, unknown>[] = [];
   let subjectTeacherCursor = 0;
 
+  // T-016 fix: unnamed sections must draw their class teacher from a pool
+  // that excludes the 3 named demo class teachers, and from a cursor of its
+  // own (not shared with subjectTeacherCursor) — otherwise modulo
+  // wraparound over 100 staff ids previously let the same staff member
+  // (sometimes one of the 3 named teachers) become class teacher of more
+  // than one section.
+  const namedClassTeacherIds = new Set(
+    Object.values(NAMED_CLASS_TEACHER_LOGIN).map((login) => ctx.linkIdByLogin[login]!),
+  );
+  const unnamedClassTeacherPool = ctx.teacherStaffIds.filter((id) => !namedClassTeacherIds.has(id));
+  let classTeacherCursor = 0;
+
   for (const grade of GRADES) {
     for (const sectionName of sectionNames(grade.code)) {
       const key = sectionKey(grade.code, sectionName);
       const namedLogin = NAMED_CLASS_TEACHER_LOGIN[key];
       const classTeacherId = namedLogin
         ? ctx.linkIdByLogin[namedLogin]!
-        : ctx.teacherStaffIds[subjectTeacherCursor++ % ctx.teacherStaffIds.length]!;
+        : unnamedClassTeacherPool[classTeacherCursor++ % unnamedClassTeacherPool.length]!;
 
       const sectionId = uuidV5("academics", `section:${key}`);
       sectionRows.push({

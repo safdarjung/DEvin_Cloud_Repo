@@ -6,15 +6,19 @@
 // safe (generate_invoice is idempotent) so the UI just invites another
 // click.
 // Fix round 1 (code review, HIGH): no "All grades" option — the sync path
-// has no deadline-safe way to cover a whole school in one request. A grade
-// is required (schema enforces it too). Whole-school runs are phase 2.
+// has no deadline-safe way to cover a whole school in one request.
+// T-031 phase 2: "All grades" is back, now routed through
+// `public.enqueue_term_invoices` (job queue) instead of the synchronous
+// per-student loop; picking a specific grade still uses the sync path.
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/actions/result";
-import { generateTermInvoices, type GenerateTermInvoicesResult } from "@/modules/finance/actions";
+import { generateTermInvoices, type EnqueueTermInvoicesResult, type GenerateTermInvoicesResult } from "@/modules/finance/actions";
 import type { PickerOption } from "@/modules/finance/queries";
+
+const ALL_GRADES = "__all__";
 
 interface GenerateInvoicesPanelProps {
   institutionSlug: string;
@@ -25,18 +29,21 @@ interface GenerateInvoicesPanelProps {
 export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: GenerateInvoicesPanelProps) {
   const router = useRouter();
   const [termId, setTermId] = useState(terms[0]?.id ?? "");
-  const [gradeId, setGradeId] = useState(grades[0]?.id ?? "");
+  const [gradeId, setGradeId] = useState(ALL_GRADES);
 
-  const [state, formAction, pending] = useActionState<ActionResult<GenerateTermInvoicesResult> | null, FormData>(
-    async () => {
-      const result = await generateTermInvoices(institutionSlug, { termId, gradeId });
-      if (result.ok) router.refresh();
-      return result;
-    },
-    null,
-  );
+  const [state, formAction, pending] = useActionState<
+    ActionResult<GenerateTermInvoicesResult | EnqueueTermInvoicesResult> | null,
+    FormData
+  >(async () => {
+    const result = await generateTermInvoices(institutionSlug, {
+      termId,
+      gradeId: gradeId === ALL_GRADES ? undefined : gradeId,
+    });
+    if (result.ok) router.refresh();
+    return result;
+  }, null);
 
-  if (terms.length === 0 || grades.length === 0) return null;
+  if (terms.length === 0) return null;
 
   return (
     <form action={formAction} className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-3">
@@ -66,6 +73,7 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={ALL_GRADES}>All grades</SelectItem>
             {grades.map((g) => (
               <SelectItem key={g.id} value={g.id}>
                 {g.label}
@@ -74,15 +82,17 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={pending || !termId || !gradeId}>
+      <Button type="submit" disabled={pending || !termId}>
         {pending ? "Generating…" : "Generate Term invoices"}
       </Button>
       {state && (
         <p className={state.ok ? "text-sm" : "text-destructive text-sm"} role="status">
           {state.ok
-            ? state.data.remaining > 0
-              ? `Generated ${state.data.generated}, ${state.data.alreadyExisted} already had one, ${state.data.failed} failed — ${state.data.remaining} remaining. Run again to continue.`
-              : `Generated ${state.data.generated}, ${state.data.alreadyExisted} already had one, ${state.data.failed} failed. Done.`
+            ? state.data.mode === "enqueued"
+              ? "Queued — invoices will be generated in the background."
+              : state.data.remaining > 0
+                ? `Generated ${state.data.generated}, ${state.data.alreadyExisted} already had one, ${state.data.failed} failed — ${state.data.remaining} remaining. Run again to continue.`
+                : `Generated ${state.data.generated}, ${state.data.alreadyExisted} already had one, ${state.data.failed} failed. Done.`
             : state.error.message}
         </p>
       )}

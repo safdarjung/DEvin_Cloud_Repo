@@ -36,7 +36,7 @@ export default async function PortalReceiptPage({
         selection={selection}
         activeHref="/fees"
       />
-      <ReceiptView receipt={receipt} institutionName={ctx.institution.name} />
+      <ReceiptView receipt={receipt} />
     </>
   );
 }

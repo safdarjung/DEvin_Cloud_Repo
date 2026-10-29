@@ -295,6 +295,7 @@ export const assignFeeStructure = defineAction({
 const DEFAULT_GENERATE_TERM_INVOICES_BUDGET_MS = 20_000;
 
 export interface GenerateTermInvoicesResult {
+  mode: "sync";
   studentCount: number;
   generated: number;
   alreadyExisted: number;
@@ -302,10 +303,18 @@ export interface GenerateTermInvoicesResult {
   remaining: number;
 }
 
+// T-031 phase 2: the "all grades" path enqueues instead of running
+// synchronously (see schemas.ts comment) — `public.enqueue_term_invoices`
+// (20261028000017) does the role/tenant checks and returns the job id.
+export interface EnqueueTermInvoicesResult {
+  mode: "enqueued";
+  jobId: string;
+}
+
 export async function runGenerateTermInvoices(
   supabase: FinanceClient,
   ctx: TenantContext,
-  input: GenerateTermInvoicesInput,
+  input: GenerateTermInvoicesInput & { gradeId: string },
   budgetMs: number = DEFAULT_GENERATE_TERM_INVOICES_BUDGET_MS,
 ): Promise<GenerateTermInvoicesResult> {
   const term = await requireTerm(supabase, ctx.institution.id, input.termId);
@@ -366,16 +375,33 @@ export async function runGenerateTermInvoices(
     metadata: { key },
   });
 
-  return { studentCount: studentIds.length, generated, alreadyExisted, failed, remaining };
+  return { mode: "sync", studentCount: studentIds.length, generated, alreadyExisted, failed, remaining };
 }
 
 export const generateTermInvoices = defineAction({
   name: "finance.invoice.generateTerm",
   schema: GenerateTermInvoicesSchema,
   permission: "finance.invoice.generate",
-  handler: async (input: GenerateTermInvoicesInput, ctx) => {
+  handler: async (input: GenerateTermInvoicesInput, ctx): Promise<GenerateTermInvoicesResult | EnqueueTermInvoicesResult> => {
     const supabase = await createClient();
-    const result = await runGenerateTermInvoices(supabase, ctx, input);
+
+    // No gradeId = "all grades" — enqueue (T-031 phase 2) instead of a
+    // synchronous whole-school loop. `public.enqueue_term_invoices` itself
+    // re-proves term/grade belong to this institution and re-checks the
+    // finance-write role (defense in depth, same shape as
+    // generate_invoice/record_payment's public wrappers).
+    if (!input.gradeId) {
+      const { data, error } = await supabase.rpc("enqueue_term_invoices", {
+        p_institution_id: ctx.institution.id,
+        p_term_id: input.termId,
+      });
+      if (error) throwMapped(error);
+      const jobId = (data as { jobId: string } | null)?.jobId;
+      revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
+      return { mode: "enqueued", jobId: jobId ?? "" };
+    }
+
+    const result = await runGenerateTermInvoices(supabase, ctx, { ...input, gradeId: input.gradeId });
     revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
     return result;
   },
