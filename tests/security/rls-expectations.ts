@@ -278,9 +278,12 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // ledger_entries have NO insert/update policy at all — written only by
   // app.generate_invoice/app.record_payment (security definer, bypass RLS
   // as the function owner), same shape as audit_events/jobs.
+  // 0019 (T-028, lead ruling) — fee_structures_select widened to also let
+  // "admissions" read (07 §2.2 admissions.enrol needs to pick a fee
+  // structure; writes stay finance_roles()-only, unchanged).
   fee_structures: {
     classes: ["C"],
-    read: ["owner", "principal", "admin", "accountant"],
+    read: ["owner", "principal", "admin", "accountant", "admissions"],
     write: ["owner", "principal", "admin", "accountant"],
   },
   fee_components: {

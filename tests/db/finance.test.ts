@@ -92,6 +92,37 @@ describe("finance module (T-030) — generate_invoice/record_payment + RLS (C-50
     }
   });
 
+  // 0019 (T-028, lead ruling): fee_structures_select widened so "admissions"
+  // (07 §2.2 admissions.enrol, EnrolDialog's fee-structure picker) can read
+  // fee structures too — writes stay finance_roles()-only (unchanged).
+  it("0019: admissions can read fee_structures in its own institution, 0 rows for another tenant's", async () => {
+    const instA = await createTestInstitution("finance-0019-a");
+    const instB = await createTestInstitution("finance-0019-b");
+    try {
+      const yearId = await createAcademicYear(instA.institutionId);
+      const gradeId = await createGrade(instA.institutionId);
+      await createFeeStructure(instA.institutionId, yearId, gradeId, { name: "Standard" });
+
+      const ownTenant = await instA.clientAs("admissions").from("fee_structures").select("*").eq("institution_id", instA.institutionId);
+      expect(ownTenant.error).toBeNull();
+      expect(ownTenant.data).toHaveLength(1);
+
+      const otherTenant = await instA.clientAs("admissions").from("fee_structures").select("*").eq("institution_id", instB.institutionId);
+      expect(otherTenant.error).toBeNull();
+      expect(otherTenant.data).toHaveLength(0);
+
+      // Writes stay finance_roles()-only — admissions can read, not create.
+      const insertAttempt = await instA
+        .clientAs("admissions")
+        .from("fee_structures")
+        .insert({ institution_id: instA.institutionId, academic_year_id: yearId, grade_id: gradeId, name: "Admissions-created" });
+      expect(insertAttempt.error).not.toBeNull();
+    } finally {
+      await instA.cleanup();
+      await instB.cleanup();
+    }
+  });
+
   it("Fix round 1 (CRITICAL): admin is forbidden from generate_invoice/record_payment; accountant and service_role succeed", async () => {
     const inst = await createTestInstitution("finance-fix1");
     try {

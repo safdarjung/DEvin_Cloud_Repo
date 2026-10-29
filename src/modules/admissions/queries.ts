@@ -205,6 +205,60 @@ export async function listApplicationDecisions(ctx: TenantContext, applicationId
   }));
 }
 
+export interface SectionCapacityOption {
+  id: string;
+  name: string;
+  gradeId: string;
+  capacity: number | null;
+  active: number;
+}
+
+// T-028 — sections for the EnrolDialog's picker (06 §W4 preconditions: "a
+// class section for the applied grade in the current year with free
+// capacity"). Reads class_sections/enrolments directly (academics module
+// has no shared query for this yet) — read-only, no academics/** files
+// touched.
+export async function listSectionsForGrade(
+  ctx: TenantContext,
+  gradeId: string,
+  academicYearId: string,
+): Promise<SectionCapacityOption[]> {
+  const supabase = await createClient();
+  const { data: sections, error } = await supabase
+    .from("class_sections")
+    .select("id, name, grade_id, capacity")
+    .eq("institution_id", ctx.institution.id)
+    .eq("grade_id", gradeId)
+    .eq("academic_year_id", academicYearId)
+    .order("name");
+  if (error) throw error;
+  if (!sections || sections.length === 0) return [];
+
+  const { data: enrolments, error: enrolError } = await supabase
+    .from("enrolments")
+    .select("class_section_id")
+    .eq("institution_id", ctx.institution.id)
+    .eq("status", "active")
+    .in(
+      "class_section_id",
+      sections.map((s) => s.id),
+    );
+  if (enrolError) throw enrolError;
+
+  const activeCounts = new Map<string, number>();
+  for (const row of enrolments ?? []) {
+    activeCounts.set(row.class_section_id, (activeCounts.get(row.class_section_id) ?? 0) + 1);
+  }
+
+  return sections.map((s) => ({
+    id: s.id,
+    name: s.name,
+    gradeId: s.grade_id,
+    capacity: s.capacity,
+    active: activeCounts.get(s.id) ?? 0,
+  }));
+}
+
 export interface AdmissionsFunnelCounts {
   enquiryStages: Record<string, number>;
   applicationStatuses: Record<ApplicationStatus, number>;

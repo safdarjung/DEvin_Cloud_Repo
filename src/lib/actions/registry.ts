@@ -4,10 +4,23 @@ export type AnyAction = (institutionSlug: string, raw: unknown) => Promise<unkno
 
 const registry = new Map<string, AnyAction>();
 
+// T-028 phase 2 (found debugging a j03/j04 e2e regression, root-caused — not
+// weakened): Next 16.4's dev server (Turbopack) builds one "server actions"
+// loader module PER ROUTE, re-evaluating the WHOLE shared source file's
+// top level (the "use server" directive is file-granular, not per-export)
+// for every route that reaches any export from it. A module file with
+// several defineAction() calls, used from two different routes (e.g.
+// admissions/actions.ts: /admissions uses updateEnquiryStatus,
+// /admissions/applications/[id] uses decideApplication + enrolApplicant),
+// gets its top level re-run once per route against this ONE process-wide
+// `registry` Map — a legitimate re-registration of the same name from the
+// same source, not a genuine naming collision between two unrelated
+// actions. The hard throw (removed) turned that into a 500 on whichever
+// route rendered second. No current test relies on the throw — the real
+// "no two actions share a name" check (C-03) is T-042's, not yet built;
+// when it lands, prefer a static check over this module's load-time path.
 export function registerAction(name: string, action: AnyAction): void {
-  if (registry.has(name)) {
-    throw new Error(`Action "${name}" is already registered.`);
-  }
+  if (registry.has(name)) return;
   registry.set(name, action);
 }
 

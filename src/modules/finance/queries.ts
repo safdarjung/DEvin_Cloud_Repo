@@ -141,6 +141,33 @@ export interface InvoiceSummary {
   dueOn: string | null;
 }
 
+interface InvoiceSummaryRow {
+  id: string;
+  invoice_no: string;
+  student_id: string;
+  status: string;
+  total: number;
+  paid_total: number;
+  due_on: string | null;
+  students: { first_name: string; last_name: string | null } | null;
+}
+
+// Phase 2 review (LOW): this mapping was copied in listInvoices,
+// listInvoicesForStudent and getInvoice — extracted once.
+function toInvoiceSummary(row: InvoiceSummaryRow): InvoiceSummary {
+  const student = row.students;
+  return {
+    id: row.id,
+    invoiceNo: row.invoice_no,
+    studentId: row.student_id,
+    studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
+    status: row.status,
+    total: Number(row.total),
+    paidTotal: Number(row.paid_total),
+    dueOn: row.due_on,
+  };
+}
+
 export async function listInvoices(
   ctx: TenantContext,
   filters: { termId?: string; status?: string; gradeId?: string } = {},
@@ -170,19 +197,22 @@ export async function listInvoices(
     rows = rows.filter((r) => studentIds.has(r.student_id));
   }
 
-  return rows.map((row) => {
-    const student = row.students as { first_name: string; last_name: string | null } | null;
-    return {
-      id: row.id,
-      invoiceNo: row.invoice_no,
-      studentId: row.student_id,
-      studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
-      status: row.status,
-      total: Number(row.total),
-      paidTotal: Number(row.paid_total),
-      dueOn: row.due_on,
-    };
-  });
+  return rows.map((row) => toInvoiceSummary(row as InvoiceSummaryRow));
+}
+
+// T-028 — per-student invoice list for the student profile page (the
+// packet's fallback: render a minimal table from here if T-032's
+// StudentInvoices component isn't merged yet; it isn't).
+export async function listInvoicesForStudent(ctx: TenantContext, studentId: string): Promise<InvoiceSummary[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("id, invoice_no, student_id, status, total, paid_total, due_on, students(first_name, last_name)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((row) => toInvoiceSummary(row as InvoiceSummaryRow));
 }
 
 export interface InvoiceLineDetail {
@@ -219,16 +249,8 @@ export async function getInvoice(ctx: TenantContext, id: string): Promise<Invoic
     .order("head");
   if (linesError) throw linesError;
 
-  const student = invoice.students as { first_name: string; last_name: string | null } | null;
   return {
-    id: invoice.id,
-    invoiceNo: invoice.invoice_no,
-    studentId: invoice.student_id,
-    studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
-    status: invoice.status,
-    total: Number(invoice.total),
-    paidTotal: Number(invoice.paid_total),
-    dueOn: invoice.due_on,
+    ...toInvoiceSummary(invoice as InvoiceSummaryRow),
     subtotal: Number(invoice.subtotal),
     concessionTotal: Number(invoice.concession_total),
     lines: (lines ?? []).map((l) => ({

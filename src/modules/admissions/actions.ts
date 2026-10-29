@@ -12,19 +12,23 @@ import { revalidatePath } from "next/cache";
 import { defineAction } from "@/lib/actions/define-action";
 import { audit } from "@/lib/audit";
 import { AppError, mapSqlError } from "@/lib/actions/result";
+import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
+import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { enquiryStagesFor } from "./queries";
 import {
   AddEnquiryNoteSchema,
   AssignEnquirySchema,
   ConvertEnquirySchema,
   DecideApplicationSchema,
+  EnrolApplicantSchema,
   UpdateEnquiryStatusSchema,
   type AddEnquiryNoteInput,
   type AssignEnquiryInput,
   type ConvertEnquiryInput,
   type DecideApplicationInput,
+  type EnrolApplicantInput,
   type UpdateEnquiryStatusInput,
 } from "./schemas";
 import { canDecide, canTransitionEnquiry, type ApplicationStatus } from "./state";
@@ -216,5 +220,79 @@ export const decideApplication = defineAction({
     const result = asJsonRecord(data);
     revalidatePath(`/${ctx.institution.slug}/admissions/applications/${input.applicationId}`);
     return { applicationId: result.application_id as string, status: result.status as string, decisionId: result.decision_id as string };
+  },
+});
+
+export const enrolApplicant = defineAction({
+  name: "admissions.enrol",
+  schema: EnrolApplicantSchema,
+  permission: "admissions.enrol",
+  handler: async (input: EnrolApplicantInput, ctx: TenantContext) => {
+    const supabase = await createClient();
+
+    // CLAUDE.md rule 1: re-verify applicationId/classSectionId name a row in
+    // ctx.institution before calling the RPC. feeStructureId is deliberately
+    // NOT pre-checked the same way: fee_structures_select RLS
+    // (20261028000008) is app.finance_roles() = owner/principal/admin/
+    // accountant, which excludes "admissions" — the very role 07 §2.2 grants
+    // admissions.enrol to. A pre-check with the caller's RLS-scoped client
+    // would 404 every admissions-role enrolment, breaking J-05. The RPC's
+    // own `exists(select ... fee_structures ...)` check is SECURITY DEFINER
+    // (bypasses RLS) and already returns a safe `validation_failed` for a
+    // foreign/mismatched id — reported in the completion report as an RLS
+    // finding for the lead, not fixed here (migrations are out of scope).
+    const [applicationCheck, sectionCheck] = await Promise.all([
+      supabase.from("applications").select("id").eq("id", input.applicationId).eq("institution_id", ctx.institution.id).maybeSingle(),
+      supabase.from("class_sections").select("id").eq("id", input.classSectionId).eq("institution_id", ctx.institution.id).maybeSingle(),
+    ]);
+    if (applicationCheck.error) throwMapped(applicationCheck.error);
+    if (sectionCheck.error) throwMapped(sectionCheck.error);
+    if (!applicationCheck.data) throw new AppError("not_found", "Application not found.");
+    if (!sectionCheck.data) throw new AppError("not_found", "Class section not found.");
+
+    const { data, error } = await supabase.rpc("enrol_applicant", {
+      p_application_id: input.applicationId,
+      p_class_section_id: input.classSectionId,
+      p_fee_structure_id: input.feeStructureId,
+      p_roll_no: (input.rollNo ?? null) as number,
+    });
+    if (error) {
+      // Known gap (T-030, packet item 1): a roll_no collision inside
+      // app.enrol_applicant hits enrolments_one_roll_no_per_section_idx
+      // directly and raises a raw 23505, not a code:conflict — mapSqlError
+      // would otherwise turn this into an opaque "internal" error. Reported
+      // in the completion report as a SQL-side fix candidate; handled here
+      // instead per the packet (no migration edits).
+      if (error.code === "23505" && error.message.includes("roll_no")) {
+        throw new AppError("conflict", "That roll number is already assigned in this section.");
+      }
+      throwMapped(error);
+    }
+
+    const result = asJsonRecord(data);
+    const alreadyEnrolled = result.already_enrolled === true;
+    const studentId = result.student_id as string;
+    let invoiceId = (result.invoice_id as string | undefined) ?? null;
+    if (alreadyEnrolled && !invoiceId && hasPermission(ctx, "finance.read")) {
+      // The idempotent early-return branch of app.enrol_applicant doesn't
+      // carry the invoice id (it never re-reads fee_assignments/invoices) —
+      // best-effort fill from the student's first invoice for the links in
+      // the dialog's success state. Gated on finance.read: invoices_select
+      // RLS (20261028000008) excludes "admissions" (admissions.enrol's own
+      // role), so the fetch would just come back empty for that caller —
+      // skip it rather than spend a round trip on a read we know RLS denies.
+      const invoices = await listInvoicesForStudent(ctx, studentId);
+      invoiceId = invoices[0]?.id ?? null;
+    }
+
+    revalidatePath(`/${ctx.institution.slug}/admissions/applications/${input.applicationId}`);
+    revalidatePath(`/${ctx.institution.slug}/students`);
+
+    return {
+      studentId,
+      admissionNo: result.admission_no as string,
+      invoiceId,
+      alreadyEnrolled,
+    };
   },
 });

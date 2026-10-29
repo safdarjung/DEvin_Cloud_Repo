@@ -82,3 +82,16 @@ export const DecideApplicationSchema = z
   .strict();
 
 export type DecideApplicationInput = z.infer<typeof DecideApplicationSchema>;
+
+// T-028 — 06 §W4 enrolApplicant. roll_no is optional (app.enrol_applicant
+// assigns max+1 for the section when omitted).
+export const EnrolApplicantSchema = z
+  .object({
+    applicationId: uuid,
+    classSectionId: uuid,
+    feeStructureId: uuid,
+    rollNo: z.number().int().positive().optional(),
+  })
+  .strict();
+
+export type EnrolApplicantInput = z.infer<typeof EnrolApplicantSchema>;

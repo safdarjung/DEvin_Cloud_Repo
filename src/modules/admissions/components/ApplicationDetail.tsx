@@ -1,9 +1,8 @@
 "use client";
 
 // T-027 — 06 §W4 application detail: decision buttons with confirm, plus
-// the decision timeline. The enrol button on an `accepted` application is a
-// placeholder here (packet assumption) — T-028 replaces it with the real
-// enrolApplicant flow.
+// the decision timeline. T-028 replaced the enrol placeholder with
+// EnrolDialog, the real enrolApplicant flow.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -17,19 +16,32 @@ import {
 } from "@/components/ui/dialog";
 import { decideApplication } from "@/modules/admissions/actions";
 import { canDecide, type ApplicationDecision, type ApplicationStatus } from "@/modules/admissions/state";
-import type { ApplicationDecisionRow, ApplicationRow } from "@/modules/admissions/queries";
+import type { ApplicationDecisionRow, ApplicationRow, SectionCapacityOption } from "@/modules/admissions/queries";
 import { DecisionTimeline } from "@/modules/admissions/components/DecisionTimeline";
+import { EnrolDialog } from "@/modules/admissions/components/EnrolDialog";
+import type { FeeStructureSummary } from "@/modules/finance/queries";
 
 interface ApplicationDetailProps {
   institutionSlug: string;
   application: ApplicationRow;
   decisions: ApplicationDecisionRow[];
   canDecideApplication: boolean;
+  canEnrol: boolean;
+  sections: SectionCapacityOption[];
+  feeStructures: FeeStructureSummary[];
 }
 
 const DECISIONS: ApplicationDecision[] = ["offer", "reject", "accept", "withdraw"];
 
-export function ApplicationDetail({ institutionSlug, application, decisions, canDecideApplication }: ApplicationDetailProps) {
+export function ApplicationDetail({
+  institutionSlug,
+  application,
+  decisions,
+  canDecideApplication,
+  canEnrol,
+  sections,
+  feeStructures,
+}: ApplicationDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -70,13 +82,20 @@ export function ApplicationDetail({ institutionSlug, application, decisions, can
               {decision}
             </Button>
           ))}
-          {application.status === "accepted" && (
-            <Button variant="secondary" size="sm" disabled title="Enrolment lands with T-028">
-              Enrol (coming soon)
-            </Button>
-          )}
         </div>
       )}
+
+      {/* Always mounted (not gated by status here) — see EnrolDialog's own
+          comment: gating the mount itself unmounts it, and its local
+          success state, the instant enrolment flips the status it was
+          gated on. */}
+      <EnrolDialog
+        institutionSlug={institutionSlug}
+        applicationId={application.id}
+        sections={sections}
+        feeStructures={feeStructures}
+        enabled={canEnrol}
+      />
 
       <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
         <DialogContent>
