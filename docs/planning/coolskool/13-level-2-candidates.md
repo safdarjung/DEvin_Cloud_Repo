@@ -17,3 +17,10 @@ Level 1 = the 45 packets in `10-backlog-index.md` (demo-ready foundation). Level
   - Features with student data (report remarks, summaries, anything with names/marks/attendance) may use only the local model or a paid tier whose terms exclude training on customer data.
 - **Fits:** the gateway's provider abstraction (T-035) and Fabric's user-owned credits direction (D26).
 - **Acceptance sketch:** key entry and rotation UI behind a settings permission; per-feature data-class table enforced in `resolvePlan`; tests that a student-data feature never routes to a free-tier provider; usage and cost attributed per key.
+
+## L2-03 — Forecasting on the principal dashboard with TimesFM (owner-approved 2026-10-29)
+
+- **What:** forecasts with uncertainty bands for school-level time series, starting with **term fee collections** (expected collections and shortfall), then **school/grade attendance trends**; enquiry volume only once a full admissions season of history exists. Model: Google Research TimesFM (open weights; confirm current version and licence before adoption) run by a Python worker or nightly job on the existing GPU/CPU, writing a `forecasts` table that the dashboard reads under normal RLS.
+- **Guardrails:** every series is backtested against simple baselines (seasonal naive, moving average); the dashboard shows TimesFM only where it beats them, else the baseline. Show the band, the data cut-off date, and a "Forecast" label; feed the academic calendar (holidays, exam weeks) as context. Short histories (a new school, the 60-day demo) are labelled low-confidence.
+- **Out of scope:** per-student predictions (marks, dropout) — a classification problem with fairness concerns, not time-series forecasting; and causal "what if we change X" questions, which need a separate scenario model (Fabric's simulation work), not a forecast.
+- **Acceptance sketch:** reproducible backtest report per series; forecasts regenerated nightly by a job; worker isolated from tenant data except the aggregated series it needs; no PII leaves the aggregate.
