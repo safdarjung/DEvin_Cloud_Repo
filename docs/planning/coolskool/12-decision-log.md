@@ -141,6 +141,12 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 - **Not now:** personal workspace, domain-pack registry, forecasting/simulation, module studio, entitlements/billing, on-device runtimes. Each needs its own ADR with a concrete use case and measurable benefit.
 - **Revisit:** after T-045, before starting a second domain or any personal-account feature.
 
+### D27 — App-layer audit events go through `public.record_audit_event`
+- **Context:** `04 §D20` has actions call `audit(ctx, …)`, and T-015/T-027 import `src/lib/audit.ts`, but no packet created it, and `app.audit()` is in the unexposed `app` schema.
+- **Options:** service-role insert from server code (new allow-list caller); an RLS INSERT policy on `audit_events`; a `security definer` wrapper callable by `authenticated`.
+- **Choice:** wrapper (migration 0013). The actor is always `app.current_user_id()`, never a parameter; the caller must be a member of the institution; action/entity names are format-checked. Trade-off: a member could add misleading events, but only attributed to themselves in their own institution; no new service-role surface. Privileged SQL functions (e.g. `jobs_requeue`) keep calling `app.audit()` directly.
+- **Revisit:** if audit events need tamper-evidence beyond self-attribution. **Evidence:** `tests/db/audit-event.test.ts`.
+
 ## 2. Phase 0 verified facts (2026-10-28)
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.

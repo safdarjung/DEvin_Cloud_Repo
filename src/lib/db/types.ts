@@ -873,7 +873,10 @@ isOneToOne: false
         to: "jobs"
         isOneToOne: true
         isSetofReturn: false
-      } }
+      } },
+"record_audit_event":
+{ Args: { "p_action": string,"p_after"?: Json,"p_before"?: Json,"p_entity_id"?: string,"p_entity_type": string,"p_institution_id": string,"p_metadata"?: Json }; Returns: string
+                           }
           }
           Enums: {
             [_ in never]: never
