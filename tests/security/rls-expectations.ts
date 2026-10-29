@@ -267,4 +267,60 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     write: ["owner", "principal", "admin", "admissions"],
     anonRead: true,
   },
+
+  // 0008 (T-030) — finance. Class C: app.finance_roles() = owner/principal/
+  // admin/accountant (07 §2.2 finance.* rows all grant exactly this set).
+  // fee_structures/fee_components/fee_assignments/concessions are
+  // finance_roles()-only config tables with direct writes (FK-scoped `with
+  // check`, lead instruction). invoices/invoice_lines/payments/receipts add
+  // guardian/student own-scope SELECT (05 §5's stated list); ledger_entries
+  // does not (not in that list). invoices/invoice_lines/payments/receipts/
+  // ledger_entries have NO insert/update policy at all — written only by
+  // app.generate_invoice/app.record_payment (security definer, bypass RLS
+  // as the function owner), same shape as audit_events/jobs.
+  fee_structures: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  fee_components: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  fee_assignments: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  concessions: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  invoices: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // student/guardian scoped to own
+    write: [], // app.generate_invoice / app.record_payment only
+  },
+  invoice_lines: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the line's invoice
+    write: [], // app.generate_invoice only; immutable (block_mutation)
+  },
+  payments: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the payment's invoice
+    write: [], // app.record_payment only; immutable (block_mutation)
+  },
+  receipts: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the receipt's payment's invoice
+    write: [], // app.record_payment only; immutable (block_mutation)
+  },
+  ledger_entries: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"], // not guardian/student-visible
+    write: [], // app.generate_invoice / app.record_payment only; immutable (block_mutation)
+  },
 };

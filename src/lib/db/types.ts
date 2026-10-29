@@ -383,6 +383,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"concessions": {
+                  Row: {
+                    "amount": number | null,"approved_by": string,"created_at": string,"fee_assignment_id": string,"head": string | null,"id": string,"institution_id": string,"kind": string,"percent": number | null,"reason": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount"?: number | null,"approved_by": string,"created_at"?: string,"fee_assignment_id": string,"head"?: string | null,"id"?: string,"institution_id": string,"kind": string,"percent"?: number | null,"reason": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number | null,"approved_by"?: string,"created_at"?: string,"fee_assignment_id"?: string,"head"?: string | null,"id"?: string,"institution_id"?: string,"kind"?: string,"percent"?: number | null,"reason"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "concessions_approved_by_fkey"
+      columns: ["approved_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "concessions_fee_assignment_id_fkey"
+      columns: ["fee_assignment_id"]
+isOneToOne: false
+      referencedRelation: "fee_assignments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "concessions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"curriculum_units": {
                   Row: {
                     "created_at": string,"description": string | null,"grade_id": string,"id": string,"institution_id": string,"sequence": number,"subject_id": string,"title": string,"updated_at": string
@@ -583,6 +615,108 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"fee_assignments": {
+                  Row: {
+                    "academic_year_id": string,"assigned_by": string | null,"created_at": string,"fee_structure_id": string,"id": string,"institution_id": string,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"assigned_by"?: string | null,"created_at"?: string,"fee_structure_id": string,"id"?: string,"institution_id": string,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"assigned_by"?: string | null,"created_at"?: string,"fee_structure_id"?: string,"id"?: string,"institution_id"?: string,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fee_assignments_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_assignments_assigned_by_fkey"
+      columns: ["assigned_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_assignments_fee_structure_id_fkey"
+      columns: ["fee_structure_id"]
+isOneToOne: false
+      referencedRelation: "fee_structures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_assignments_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_assignments_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"fee_components": {
+                  Row: {
+                    "amount": number,"applies_to_new_only": boolean,"created_at": string,"fee_structure_id": string,"frequency": string,"head": string,"id": string,"institution_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"applies_to_new_only"?: boolean,"created_at"?: string,"fee_structure_id": string,"frequency": string,"head": string,"id"?: string,"institution_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"applies_to_new_only"?: boolean,"created_at"?: string,"fee_structure_id"?: string,"frequency"?: string,"head"?: string,"id"?: string,"institution_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fee_components_fee_structure_id_fkey"
+      columns: ["fee_structure_id"]
+isOneToOne: false
+      referencedRelation: "fee_structures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_components_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"fee_structures": {
+                  Row: {
+                    "academic_year_id": string,"created_at": string,"grade_id": string,"id": string,"institution_id": string,"is_default": boolean,"name": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"created_at"?: string,"grade_id": string,"id"?: string,"institution_id": string,"is_default"?: boolean,"name": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"created_at"?: string,"grade_id"?: string,"id"?: string,"institution_id"?: string,"is_default"?: boolean,"name"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fee_structures_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_structures_grade_id_fkey"
+      columns: ["grade_id"]
+isOneToOne: false
+      referencedRelation: "grades"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_structures_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"grades": {
                   Row: {
                     "code": string,"created_at": string,"display_name": string,"grade_group": string,"id": string,"institution_id": string,"sort_key": number,"updated_at": string
@@ -695,6 +829,70 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"invoice_lines": {
+                  Row: {
+                    "amount": number,"concession_amount": number,"created_at": string,"description": string,"head": string,"id": string,"institution_id": string,"invoice_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"concession_amount"?: number,"created_at"?: string,"description": string,"head": string,"id"?: string,"institution_id": string,"invoice_id": string
+                  }
+                  Update: {
+                    "amount"?: number,"concession_amount"?: number,"created_at"?: string,"description"?: string,"head"?: string,"id"?: string,"institution_id"?: string,"invoice_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "invoice_lines_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_lines_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"invoices": {
+                  Row: {
+                    "academic_year_id": string,"concession_total": number,"created_at": string,"due_on": string | null,"id": string,"institution_id": string,"invoice_no": string,"paid_total": number,"status": string,"student_id": string,"subtotal": number,"term_id": string,"total": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"concession_total"?: number,"created_at"?: string,"due_on"?: string | null,"id"?: string,"institution_id": string,"invoice_no": string,"paid_total"?: number,"status"?: string,"student_id": string,"subtotal"?: number,"term_id": string,"total"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"concession_total"?: number,"created_at"?: string,"due_on"?: string | null,"id"?: string,"institution_id"?: string,"invoice_no"?: string,"paid_total"?: number,"status"?: string,"student_id"?: string,"subtotal"?: number,"term_id"?: string,"total"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "invoices_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoices_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoices_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoices_term_id_fkey"
+      columns: ["term_id"]
+isOneToOne: false
+      referencedRelation: "terms"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"jobs": {
                   Row: {
                     "attempts": number,"created_at": string,"id": string,"idempotency_key": string,"institution_id": string | null,"last_error": string | null,"locked_at": string | null,"locked_by": string | null,"max_attempts": number,"payload": NonNullable<Json>,"run_after": string,"status": string,"type": string,"updated_at": string
@@ -712,6 +910,38 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"ledger_entries": {
+                  Row: {
+                    "account": string,"created_at": string,"credit": number,"debit": number,"entry_date": string,"id": string,"institution_id": string,"invoice_id": string | null,"memo": string | null,"payment_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "account": string,"created_at"?: string,"credit"?: number,"debit"?: number,"entry_date": string,"id"?: string,"institution_id": string,"invoice_id"?: string | null,"memo"?: string | null,"payment_id"?: string | null
+                  }
+                  Update: {
+                    "account"?: string,"created_at"?: string,"credit"?: number,"debit"?: number,"entry_date"?: string,"id"?: string,"institution_id"?: string,"invoice_id"?: string | null,"memo"?: string | null,"payment_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ledger_entries_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ledger_entries_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ledger_entries_payment_id_fkey"
+      columns: ["payment_id"]
+isOneToOne: false
+      referencedRelation: "payments"
       referencedColumns: ["id"]
     }
                   ]
@@ -863,6 +1093,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"payments": {
+                  Row: {
+                    "amount": number,"created_at": string,"id": string,"idempotency_key": string,"institution_id": string,"invoice_id": string,"mode": string,"received_at": string,"received_by": string | null,"reference": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"id"?: string,"idempotency_key": string,"institution_id": string,"invoice_id": string,"mode": string,"received_at": string,"received_by"?: string | null,"reference"?: string | null
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"id"?: string,"idempotency_key"?: string,"institution_id"?: string,"invoice_id"?: string,"mode"?: string,"received_at"?: string,"received_by"?: string | null,"reference"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payments_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payments_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payments_received_by_fkey"
+      columns: ["received_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "avatar_path": string | null,"created_at": string,"full_name": string | null,"id": string,"is_platform_admin": boolean,"phone": string | null,"updated_at": string
@@ -876,6 +1138,32 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"receipts": {
+                  Row: {
+                    "created_at": string,"financial_year": string,"id": string,"institution_id": string,"payment_id": string,"receipt_no": string,"snapshot": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"financial_year": string,"id"?: string,"institution_id": string,"payment_id": string,"receipt_no": string,"snapshot": NonNullable<Json>
+                  }
+                  Update: {
+                    "created_at"?: string,"financial_year"?: string,"id"?: string,"institution_id"?: string,"payment_id"?: string,"receipt_no"?: string,"snapshot"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "receipts_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "receipts_payment_id_fkey"
+      columns: ["payment_id"]
+isOneToOne: true
+      referencedRelation: "payments"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"staff": {
                   Row: {
@@ -1062,6 +1350,12 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"enrol_applicant":
+{ Args: { "p_application_id": string,"p_class_section_id": string,"p_fee_structure_id": string,"p_roll_no": number }; Returns: Json
+                           },
+"generate_invoice":
+{ Args: { "p_student_id": string,"p_term_id": string }; Returns: string
+                           },
 "get_public_site":
 { Args: { "p_slug": string }; Returns: {
               "institution_id": string,"institution_name": string,"nav": Json,"theme": Json,"website_id": string
@@ -1135,6 +1429,9 @@ isOneToOne: true
       } },
 "record_audit_event":
 { Args: { "p_action": string,"p_after"?: Json,"p_before"?: Json,"p_entity_id"?: string,"p_entity_type": string,"p_institution_id": string,"p_metadata"?: Json }; Returns: string
+                           },
+"record_payment":
+{ Args: { "p_amount": number,"p_idempotency_key": string,"p_invoice_id": string,"p_mode": string,"p_received_at": string,"p_reference": string }; Returns: Json
                            },
 "submit_attendance":
 { Args: { "p_institution_id": string,"p_session_id": string }; Returns: {

@@ -159,6 +159,79 @@ export async function createAttendanceRecord(
   return row.id as string;
 }
 
+// T-030 — finance + admissions builders, same bypassing-RLS shape as above.
+
+export async function createApplication(
+  institutionId: string,
+  gradeAppliedId: string,
+  academicYearId: string,
+  overrides: Partial<{
+    status: string;
+    applicant: Record<string, string>;
+    guardian: Record<string, string>;
+  }> = {},
+): Promise<string> {
+  const status = overrides.status ?? "accepted";
+  const applicant = overrides.applicant ?? { firstName: "Test", lastName: "Applicant", dob: "2015-01-01", gender: "other" };
+  const guardian = overrides.guardian ?? { fullName: "Test Guardian", phone: "9800000900", relationship: "father" };
+
+  const [row] = await sql`
+    insert into public.applications (institution_id, applicant, guardian, grade_applied_id, academic_year_id, status)
+    values (${institutionId}, ${sql.json(applicant)}, ${sql.json(guardian)}, ${gradeAppliedId}, ${academicYearId}, ${status})
+    returning id
+  `;
+  return row.id as string;
+}
+
+export async function createFeeStructure(
+  institutionId: string,
+  academicYearId: string,
+  gradeId: string,
+  overrides: Partial<{ name: string; isDefault: boolean }> = {},
+): Promise<string> {
+  const name = overrides.name ?? "Standard";
+  const isDefault = overrides.isDefault ?? true;
+
+  const [row] = await sql`
+    insert into public.fee_structures (institution_id, academic_year_id, grade_id, name, is_default)
+    values (${institutionId}, ${academicYearId}, ${gradeId}, ${name}, ${isDefault})
+    returning id
+  `;
+  return row.id as string;
+}
+
+export async function createFeeComponent(
+  institutionId: string,
+  feeStructureId: string,
+  overrides: Partial<{ head: string; amount: number; frequency: string; appliesToNewOnly: boolean }> = {},
+): Promise<string> {
+  const head = overrides.head ?? "tuition";
+  const amount = overrides.amount ?? 10000;
+  const frequency = overrides.frequency ?? "term";
+  const appliesToNewOnly = overrides.appliesToNewOnly ?? false;
+
+  const [row] = await sql`
+    insert into public.fee_components (institution_id, fee_structure_id, head, amount, frequency, applies_to_new_only)
+    values (${institutionId}, ${feeStructureId}, ${head}, ${amount}, ${frequency}, ${appliesToNewOnly})
+    returning id
+  `;
+  return row.id as string;
+}
+
+export async function createFeeAssignment(
+  institutionId: string,
+  studentId: string,
+  feeStructureId: string,
+  academicYearId: string,
+): Promise<string> {
+  const [row] = await sql`
+    insert into public.fee_assignments (institution_id, student_id, fee_structure_id, academic_year_id)
+    values (${institutionId}, ${studentId}, ${feeStructureId}, ${academicYearId})
+    returning id
+  `;
+  return row.id as string;
+}
+
 export async function closeFactoriesHelper(): Promise<void> {
   await sql.end();
 }
