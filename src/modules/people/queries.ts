@@ -67,7 +67,20 @@ export async function listStudents(ctx: TenantContext, query: string | undefined
   const trimmed = query?.trim();
   if (trimmed) {
     const term = quoteOrValue(`%${escapeIlike(trimmed)}%`);
-    builder = builder.or(`admission_no.ilike.${term},first_name.ilike.${term},last_name.ilike.${term}`);
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    if (words.length >= 2) {
+      // "Aarav Sharma": the single-term OR below only ever matches one of
+      // first_name/last_name, never the pair together. and(...) nested
+      // inside or(...) is valid PostgREST filter syntax (quoteOrValue
+      // already guards each value against the `,`/`(`/`)` split).
+      const first = quoteOrValue(`%${escapeIlike(words[0]!)}%`);
+      const rest = quoteOrValue(`%${escapeIlike(words.slice(1).join(" "))}%`);
+      builder = builder.or(
+        `admission_no.ilike.${term},first_name.ilike.${term},last_name.ilike.${term},and(first_name.ilike.${first},last_name.ilike.${rest})`,
+      );
+    } else {
+      builder = builder.or(`admission_no.ilike.${term},first_name.ilike.${term},last_name.ilike.${term}`);
+    }
   }
 
   const { data, error, count } = await builder;

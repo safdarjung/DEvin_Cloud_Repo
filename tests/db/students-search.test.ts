@@ -65,6 +65,24 @@ describe("listStudents search (T-028 phase 2 fix: quoteOrValue)", () => {
     }
   });
 
+  it('a two-word query ("Aarav Sharma") matches a student by first+last name together, not another student sharing only one half', async () => {
+    const inst = await createTestInstitution("students-search-fullname");
+    try {
+      await insertStudent(inst.institutionId, "ADM-FULL-1", "Aarav", "Sharma");
+      await insertStudent(inst.institutionId, "ADM-FULL-2", "Aarav", "Gupta");
+      await insertStudent(inst.institutionId, "ADM-FULL-3", "Ishaan", "Sharma");
+
+      const ctx = await buildContext(inst, "admin");
+      setActingClient(inst.clientAs("admin"));
+      const result = await listStudents(ctx, "Aarav Sharma", 1);
+      setActingClient(null);
+
+      expect(result.students.map((s) => s.admissionNo)).toEqual(["ADM-FULL-1"]);
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
   it("a literal %/_ in the query matches only the exact admission no, not every row (ILIKE wildcard escape)", async () => {
     const inst = await createTestInstitution("students-search-wildcard");
     try {
