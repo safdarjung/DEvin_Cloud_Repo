@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { AttendanceChart } from "@/modules/core/components/dashboard/AttendanceChart";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
+import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
@@ -27,10 +28,25 @@ export default async function DashboardPage({
   const basePath = `/${institutionSlug}`;
   const enrolledCount = data.funnel.applicationStatuses.enrolled ?? 0;
   const openEnquiries = Object.values(data.funnel.enquiryStages).reduce((sum, n) => sum + n, 0);
+  // Fix round 1 (security review, LOW-4): accountant/exam_controller have
+  // `dashboard.view` but not `ai.generate` — never render the button for a
+  // role that can only get `forbidden` back from the route.
+  const canGenerateBriefing = hasPermission(ctx, "ai.generate");
 
   return (
     <div className="space-y-6">
       <h1 className="text-xl font-semibold">Dashboard</h1>
+
+      {canGenerateBriefing && (
+        <DailyBriefing
+          institutionSlug={institutionSlug}
+          attendancePercent={data.attendanceToday.percentage}
+          sectionsAtRiskCount={data.sectionsAtRisk.length}
+          openEnquiries={openEnquiries}
+          enrolledCount={enrolledCount}
+          collections={data.collections ? { collectedPaise: data.collections.collectedPaise, duePaise: data.collections.duePaise } : null}
+        />
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiTile

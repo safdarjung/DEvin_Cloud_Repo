@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { createClient } from "@/lib/supabase/server";
+import { canDraftRemarkForResult } from "@/modules/ai/remark-scope";
 import { ReportCard } from "@/modules/exams/components/ReportCard";
+import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
 import { ResultVersionHistory } from "@/modules/exams/components/ResultVersionHistory";
-import { getCurrentResult, getResultHistory } from "@/modules/exams/queries";
+import { getCurrentResult, getResultHistory, getResultRemark } from "@/modules/exams/queries";
 
 // T-019 — one student's report card. `getCurrentResult` is pure RLS scope
 // (0009 results_select): a guardian/student requesting another student's
@@ -25,9 +28,28 @@ export default async function StudentReportCardPage({
 
   const history = await getResultHistory(ctx, examId, studentId);
 
+  // Staff-editing view only (CLAUDE.md rule 7) — the guardian/student
+  // report card (ReportCard.tsx, reused by the portal) never shows this
+  // button; it only renders the saved remark plainly once reviewed.
+  let canDraftRemark = hasPermission(ctx, "exam.marks.enter");
+  if (canDraftRemark) {
+    const supabase = await createClient();
+    canDraftRemark = await canDraftRemarkForResult(supabase, ctx, studentId);
+  }
+  const initialRemark = canDraftRemark ? await getResultRemark(ctx, current.id) : null;
+
   return (
     <div className="space-y-6 print:space-y-4">
       <ReportCard ctx={ctx} examId={examId} studentId={studentId} />
+      {canDraftRemark && (
+        <RemarkDraftEditor
+          institutionSlug={institutionSlug}
+          resultId={current.id}
+          studentName={current.studentName}
+          initialRemark={initialRemark}
+          aiPolicy={ctx.institution.ai_policy}
+        />
+      )}
       <ResultVersionHistory history={history} />
     </div>
   );

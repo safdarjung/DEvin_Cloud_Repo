@@ -684,6 +684,21 @@ export async function getRecheck(ctx: TenantContext, requestId: string): Promise
   return toQueueRow(data as unknown as RecheckQueueJoinRow);
 }
 
+// T-0NN — result remarks (07 §2.2). Pure RLS scope (0047
+// result_remarks_select), same shape as getCurrentResult: a caller outside
+// the row's scope simply gets no row back.
+export async function getResultRemark(ctx: TenantContext, resultId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("result_remarks")
+    .select("remark")
+    .eq("institution_id", ctx.institution.id)
+    .eq("result_id", resultId)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.remark ?? null;
+}
+
 // dashboard — T-039.
 
 export interface ExamGradeDistribution {

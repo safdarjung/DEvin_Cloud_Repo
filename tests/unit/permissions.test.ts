@@ -50,7 +50,7 @@ const MATRIX: Row[] = [
   ["exam.recheck.decide", true, true, false, false, false, true, false, false, false],
   ["assignment.manage", true, true, false, false, false, false, true, false, false],
   ["assignment.read", true, true, true, false, false, false, true, true, true],
-  ["ai.generate", true, true, true, false, false, false, true, false, false],
+  ["ai.generate", true, true, true, true, false, false, true, false, false],
   ["ai.usage.read", true, true, true, false, false, false, false, false, false],
   ["website.edit", true, true, true, true, false, false, false, false, false],
   ["website.publish", true, true, true, false, false, false, false, false, false],

@@ -380,4 +380,15 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "exam_controller"],
     write: ["owner", "principal", "admin", "exam_controller"],
   },
+
+  // 0047 (T-0NN) — result_remarks. Mutable (rule 5 does not apply —
+  // editorial commentary, not a mark). SELECT mirrors results_select
+  // exactly (admin included, same as `results` above); write mirrors
+  // app.exam_write_roles() (admin excluded, lesson #1) plus the result's
+  // taught teacher, scoped the same way marks' teacher branch is.
+  result_remarks: {
+    classes: ["C", "T", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher/student/guardian own-scope via the result
+    write: ["owner", "principal", "exam_controller", "teacher"], // teacher scoped to a student they teach; no admin
+  },
 };

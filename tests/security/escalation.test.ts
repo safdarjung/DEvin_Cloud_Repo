@@ -49,6 +49,7 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "exam.recheck.review": { permission: "exam.recheck.review", input: () => ({ requestId: U() }) },
   "exam.recheck.decide": { permission: "exam.recheck.decide", input: () => ({ requestId: U(), decision: "reject" }) },
+  "exam.remark.save": { permission: "exam.marks.enter", input: () => ({ resultId: U(), remark: "Probe remark." }) },
   "finance.structure.upsert": {
     permission: "finance.structure.manage",
     input: () => ({

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { RecheckRequestForm } from "@/modules/exams/components/RecheckRequestForm";
-import { getCurrentResult, listRechecksForResult } from "@/modules/exams/queries";
+import { getCurrentResult, getResultRemark, listRechecksForResult } from "@/modules/exams/queries";
 
 interface ReportCardProps {
   ctx: TenantContext;
@@ -38,6 +38,12 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
   const rechecksByPaper = canRequestRecheck
     ? new Map((await listRechecksForResult(ctx, result.id)).map((r) => [r.examPaperId, r]))
     : null;
+
+  // A human (teacher/controller) already reviewed and saved this remark
+  // (RemarkDraftEditor's "AI draft — review before saving" step) before it
+  // ever reaches here, so it renders plainly — no AI/draft language on this
+  // component, which both the staff page and the guardian/student portal share.
+  const remark = await getResultRemark(ctx, result.id);
 
   return (
     <Card className="print:shadow-none" data-testid="report-card">
@@ -111,6 +117,8 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
           <span>Percentage: {result.percentage}%</span>
           <span>Attendance: {result.attendancePercentage}%</span>
         </div>
+
+        {remark && <p className="text-sm italic">{remark}</p>}
       </CardContent>
     </Card>
   );

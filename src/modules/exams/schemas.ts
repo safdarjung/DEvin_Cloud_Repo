@@ -98,3 +98,15 @@ export const DecideRecheckSchema = z
   });
 
 export type DecideRecheckInput = z.infer<typeof DecideRecheckSchema>;
+
+// T-0NN — result remarks (07 §2.2 exam.marks.enter). RLS (0047
+// result_remarks_insert/_update) re-enforces the write scope; this schema
+// is the first line of validation (rule 4).
+export const SaveResultRemarkSchema = z
+  .object({
+    resultId: uuid,
+    remark: z.string().trim().min(1).max(500),
+  })
+  .strict();
+
+export type SaveResultRemarkInput = z.infer<typeof SaveResultRemarkSchema>;

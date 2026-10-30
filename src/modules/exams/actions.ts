@@ -13,6 +13,7 @@
 import { revalidatePath } from "next/cache";
 import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
+import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import {
@@ -23,6 +24,7 @@ import {
   ExamIdSchema,
   RecheckIdSchema,
   RequestRecheckSchema,
+  SaveResultRemarkSchema,
   type CreateExamInput,
   type CreateExamPapersInput,
   type DecideRecheckInput,
@@ -30,6 +32,7 @@ import {
   type ExamIdInput,
   type RecheckIdInput,
   type RequestRecheckInput,
+  type SaveResultRemarkInput,
 } from "./schemas";
 
 type ExamsClient = Awaited<ReturnType<typeof createClient>>;
@@ -312,6 +315,90 @@ export const decideRecheck = defineAction({
     revalidatePath(`/${ctx.institution.slug}/exams/rechecks/${input.requestId}`);
     revalidatePath(`/${ctx.institution.slug}/portal/results`);
     return data as { request_id: string; decision: string; marks_id?: string; result_id?: string; decision_id: string };
+  },
+});
+
+// T-0NN — result remarks (07 §2.2 exam.marks.enter). `result_remarks`
+// (0047) is mutable (rule 5 does not apply — editorial commentary, not a
+// mark), but a Postgrest upsert would set `created_by = excluded.created_by`
+// on every column in the payload including on the UPDATE path, which trips
+// 0047's created_by-immutability guard trigger the moment a *different*
+// in-scope teacher (or exam_controller) edits an existing remark. Select-
+// then-branch instead: UPDATE never touches `created_by`; only a fresh
+// INSERT sets it. RLS (result_remarks_insert/_update) is the real write-
+// scope enforcement either way; this action only proves the result belongs
+// to the caller's institution first (rule 10).
+//
+// Fix round 1 (independent security review):
+//   LOW-1 — the `results` lookup now also requires `superseded_by is null`
+//   (app-layer mirror of 0048's RLS fix), so writing against a
+//   since-superseded result version reports a clean `not_found` instead of
+//   a raw RLS-policy-violation error, and the remark can never be orphaned
+//   against a version a recheck has already replaced.
+//   MED-3 — any in-scope teacher/controller can overwrite another's saved
+//   remark with no audit trail before this fix. `audit()` now runs on
+//   every save (create or update), recording the real actor + timestamp via
+//   `record_audit_event` — never the remark text itself (no free-form user
+//   content in audit before/after/metadata). Chosen over adding an
+//   `updated_by` column: smaller change, no RLS/schema touch.
+export const saveResultRemark = defineAction({
+  name: "exam.remark.save",
+  schema: SaveResultRemarkSchema,
+  permission: "exam.marks.enter",
+  handler: async (input: SaveResultRemarkInput, ctx) => {
+    const supabase = await createClient();
+
+    const { data: result, error: resultError } = await supabase
+      .from("results")
+      .select("id")
+      .eq("id", input.resultId)
+      .eq("institution_id", ctx.institution.id)
+      .is("superseded_by", null)
+      .maybeSingle();
+    if (resultError) throwMapped(resultError);
+    if (!result) throw new AppError("not_found", "Result not found.");
+
+    const { data: existing, error: existingError } = await supabase
+      .from("result_remarks")
+      .select("id")
+      .eq("result_id", input.resultId)
+      .eq("institution_id", ctx.institution.id)
+      .maybeSingle();
+    if (existingError) throwMapped(existingError);
+
+    let saved: { id: string; remark: string };
+    if (existing) {
+      const { data, error } = await supabase
+        .from("result_remarks")
+        .update({ remark: input.remark })
+        .eq("id", existing.id)
+        .select("id, remark")
+        .single();
+      if (error) throwMapped(error);
+      saved = { id: data.id as string, remark: data.remark as string };
+    } else {
+      const { data, error } = await supabase
+        .from("result_remarks")
+        .insert({
+          institution_id: ctx.institution.id,
+          result_id: input.resultId,
+          remark: input.remark,
+          created_by: ctx.user.id,
+        })
+        .select("id, remark")
+        .single();
+      if (error) throwMapped(error);
+      saved = { id: data.id as string, remark: data.remark as string };
+    }
+
+    await audit(ctx, {
+      action: "exam.remark.save",
+      entityType: "result_remark",
+      entityId: saved.id,
+      metadata: { resultId: input.resultId, created: !existing },
+    });
+
+    return saved;
   },
 });
 

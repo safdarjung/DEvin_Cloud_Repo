@@ -318,3 +318,184 @@ export async function sectionsBelowThreshold(ctx: TenantContext): Promise<Sectio
     .filter((s) => s.percentage < settings.thresholds.critical)
     .sort((a, b) => a.percentage - b.percentage);
 }
+
+// New — attendance-pattern-insight AI feature (sits beside
+// `StudentAttendanceSummary`'s existing static threshold badge; does not
+// replace it). `AttendanceStudentPattern` carries the student's name for
+// this module's own server-side rendering ONLY — it must never be passed
+// to anything that talks to the AI gateway. `buildAnonymizedAttendancePatterns`
+// is the one function allowed to cross that boundary: it strips every
+// field except a position-based `index` and plain numbers/booleans.
+// Widening `AnonymizedAttendancePattern` to carry a name/id is the thing a
+// reviewer should catch, same discipline as `modules/ai/prompts/quiz.ts`.
+
+export interface AttendanceStudentPattern {
+  studentId: string;
+  name: string;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  /** Day-offsets (0 = most recent school day) among the last `RECENT_SCHOOL_DAYS` school days this student was not fully present. */
+  recentAbsentDayOffsets: number[];
+}
+
+export interface AnonymizedAttendancePattern {
+  index: number;
+  presentCount: number;
+  absentCount: number;
+  lateCount: number;
+  recentAbsentDayOffsets: number[];
+}
+
+/** Pure, PII-free projection — this is the exact shape ever serialized into the AI request body. */
+export function buildAnonymizedAttendancePatterns(
+  students: readonly AttendanceStudentPattern[],
+): AnonymizedAttendancePattern[] {
+  return students.map((student, index) => ({
+    index,
+    presentCount: student.presentCount,
+    absentCount: student.absentCount,
+    lateCount: student.lateCount,
+    recentAbsentDayOffsets: [...student.recentAbsentDayOffsets],
+  }));
+}
+
+export interface SectionAttendancePatterns {
+  classTeacherId: string | null;
+  students: AttendanceStudentPattern[];
+}
+
+const RECENT_SCHOOL_DAYS = 10;
+// Defensive match with the route's own cap (DBT-style lesson 9: bound
+// array-of-object inputs) — this is not itself the enforcement point.
+const MAX_PATTERN_STUDENTS = 60;
+
+/**
+ * Per-enrolled-student attendance counts for a term, plus which of the
+ * last `RECENT_SCHOOL_DAYS` school days (for this section) were days the
+ * student was not fully present — the source data for the
+ * attendance-pattern-insight AI feature. Returns `null` only when the
+ * section itself doesn't exist/isn't in this institution; an unknown term
+ * returns an empty student list rather than throwing, same shape either way.
+ */
+export async function getSectionAttendancePatterns(
+  ctx: TenantContext,
+  classSectionId: string,
+  termId: string,
+): Promise<SectionAttendancePatterns | null> {
+  const supabase = await createClient();
+  const settings = getAttendanceSettings(ctx);
+  const byCode = new Map(settings.statuses.map((s) => [s.code, s]));
+
+  const { data: section, error: sectionError } = await supabase
+    .from("class_sections")
+    .select("id, class_teacher_id")
+    .eq("id", classSectionId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (sectionError) throw sectionError;
+  if (!section) return null;
+
+  const { data: term, error: termError } = await supabase
+    .from("terms")
+    .select("starts_on, ends_on")
+    .eq("id", termId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (termError) throw termError;
+  if (!term) return { classTeacherId: section.class_teacher_id, students: [] };
+
+  const { data: enrolments, error: enrolError } = await supabase
+    .from("enrolments")
+    .select("student_id, students(first_name, last_name)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("class_section_id", classSectionId)
+    .eq("status", "active")
+    .order("roll_no", { ascending: true, nullsFirst: false });
+  if (enrolError) throw enrolError;
+  const enrolmentRows = (enrolments ?? []).slice(0, MAX_PATTERN_STUDENTS);
+
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("attendance_sessions")
+    .select("id, date")
+    .eq("institution_id", ctx.institution.id)
+    .eq("class_section_id", classSectionId)
+    .gte("date", term.starts_on)
+    .lte("date", term.ends_on)
+    .order("date", { ascending: false });
+  if (sessionsError) throw sessionsError;
+  const allSessions = sessions ?? [];
+  const recentOffsetBySessionId = new Map(
+    allSessions.slice(0, RECENT_SCHOOL_DAYS).map((s, offset) => [s.id as string, offset]),
+  );
+
+  const sessionIds = allSessions.map((s) => s.id);
+  const recordsByStudent = new Map<string, { sessionId: string; status: string }[]>();
+  if (sessionIds.length > 0) {
+    // Fix round 1 (security review, MED-4): PostgREST defaults to a 1,000-row
+    // page — without `.range()`, a term with >1,000 attendance_records for
+    // this section (the seeded demo tenant already has 1,764/section for
+    // Term 1) silently returned only the first 1,000, in no fixed order, so
+    // counts/recent-offsets were wrong for whichever students happened to
+    // fall outside that page. Same fix shape as the T-043 invoice-generation
+    // job (`src/modules/jobs/handlers/finance.generate_term_invoices.ts`):
+    // paged with an explicit stable `order("id")` rather than aggregated in
+    // SQL — a grouped-select/view would need a new migration, and this
+    // packet is not DB owner this round (no migrations).
+    const PAGE_SIZE = 1000;
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data: page, error: recordsError } = await supabase
+        .from("attendance_records")
+        .select("student_id, session_id, status")
+        .eq("institution_id", ctx.institution.id)
+        .in("session_id", sessionIds)
+        .order("id")
+        .range(from, from + PAGE_SIZE - 1);
+      if (recordsError) throw recordsError;
+      for (const r of page ?? []) {
+        const list = recordsByStudent.get(r.student_id) ?? [];
+        list.push({ sessionId: r.session_id, status: r.status });
+        recordsByStudent.set(r.student_id, list);
+      }
+      if (!page || page.length < PAGE_SIZE) break;
+    }
+  }
+
+  const students: AttendanceStudentPattern[] = enrolmentRows.map((e) => {
+    const student = e.students as { first_name: string; last_name: string | null } | null;
+    const name = [student?.first_name, student?.last_name].filter(Boolean).join(" ");
+    const records = recordsByStudent.get(e.student_id) ?? [];
+
+    let presentCount = 0;
+    let absentCount = 0;
+    let lateCount = 0;
+    const recentAbsentDayOffsets: number[] = [];
+
+    for (const r of records) {
+      const status = byCode.get(r.status);
+      if (!status || !status.inDenominator) continue;
+      const fullyPresent = status.countsPresent >= 1;
+      const isLate = r.status.toLowerCase() === "late";
+
+      if (fullyPresent) presentCount += 1;
+      else if (isLate) lateCount += 1;
+      else absentCount += 1;
+
+      if (!fullyPresent) {
+        const offset = recentOffsetBySessionId.get(r.sessionId);
+        if (offset !== undefined) recentAbsentDayOffsets.push(offset);
+      }
+    }
+
+    return {
+      studentId: e.student_id,
+      name,
+      presentCount,
+      absentCount,
+      lateCount,
+      recentAbsentDayOffsets: recentAbsentDayOffsets.sort((a, b) => a - b),
+    };
+  });
+
+  return { classTeacherId: section.class_teacher_id, students };
+}

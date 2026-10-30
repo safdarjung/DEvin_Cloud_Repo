@@ -1425,6 +1425,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"result_remarks": {
+                  Row: {
+                    "created_at": string,"created_by": string,"id": string,"institution_id": string,"remark": string,"result_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"id"?: string,"institution_id": string,"remark": string,"result_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"id"?: string,"institution_id"?: string,"remark"?: string,"result_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "result_remarks_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "result_remarks_result_id_fkey"
+      columns: ["result_id"]
+isOneToOne: true
+      referencedRelation: "results"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"results": {
                   Row: {
                     "created_at": string,"exam_id": string,"grade": string,"id": string,"institution_id": string,"max_total": number,"percentage": number,"published_at": string,"snapshot": NonNullable<Json>,"student_id": string,"superseded_by": string | null,"total": number,"version_no": number

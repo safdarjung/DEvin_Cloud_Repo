@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addEnquiryNote, assignEnquiry, convertEnquiryToApplication } from "@/modules/admissions/actions";
 import type { EnquiryRow } from "@/modules/admissions/queries";
+import { EnquiryReplyDraft } from "@/modules/ai/components/EnquiryReplyDraft";
 
 interface StaffOption {
   id: string;
@@ -40,9 +41,17 @@ interface EnquiryDetailProps {
   staffOptions: StaffOption[];
   gradeOptions: GradeOption[];
   academicYearOptions: AcademicYearOption[];
+  aiPolicy: string;
 }
 
-export function EnquiryDetail({ institutionSlug, enquiry, staffOptions, gradeOptions, academicYearOptions }: EnquiryDetailProps) {
+export function EnquiryDetail({
+  institutionSlug,
+  enquiry,
+  staffOptions,
+  gradeOptions,
+  academicYearOptions,
+  aiPolicy,
+}: EnquiryDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -232,6 +241,8 @@ export function EnquiryDetail({ institutionSlug, enquiry, staffOptions, gradeOpt
           </DialogContent>
         </Dialog>
       </div>
+
+      <EnquiryReplyDraft institutionSlug={institutionSlug} enquiryId={enquiry.id} aiPolicy={aiPolicy} />
 
       <div className="space-y-2">
         <h2 className="text-sm font-medium">Notes</h2>

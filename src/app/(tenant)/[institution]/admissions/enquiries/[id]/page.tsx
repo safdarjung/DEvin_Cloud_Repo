@@ -31,6 +31,7 @@ export default async function EnquiryDetailPage({
       staffOptions={(staff ?? []).map((s) => ({ id: s.id, name: s.full_name }))}
       gradeOptions={(grades ?? []).map((g) => ({ id: g.id, label: g.display_name ?? g.code }))}
       academicYearOptions={(years ?? []).map((y) => ({ id: y.id, label: y.name }))}
+      aiPolicy={ctx.institution.ai_policy}
     />
   );
 }

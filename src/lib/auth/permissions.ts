@@ -174,6 +174,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "admissions.application.decide",
     "admissions.enrol",
     "academics.read",
+    // Admissions staff draft routine enquiry-reply/call-notes via AI (this
+    // packet) — the same "AI drafts, human saves" boundary as teacher quizzes.
+    "ai.generate",
     "website.edit",
     "notification.read",
     "notification.log.read",
