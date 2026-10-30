@@ -5,10 +5,15 @@ import { permissionsFor, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
 
 const generateTextMock = vi.fn();
+const streamTextMock = vi.fn();
 
 vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
-  return { ...actual, generateText: (...args: unknown[]) => generateTextMock(...args) };
+  return {
+    ...actual,
+    generateText: (...args: unknown[]) => generateTextMock(...args),
+    streamText: (...args: unknown[]) => streamTextMock(...args),
+  };
 });
 
 vi.mock("@/lib/ai/providers", () => ({
@@ -31,7 +36,7 @@ vi.mock("@/lib/ai/usage", () => ({
   })),
 }));
 
-const { runStructured } = await import("@/lib/ai/gateway");
+const { runStructured, streamAgent } = await import("@/lib/ai/gateway");
 const providers = await import("@/lib/ai/providers");
 const usage = await import("@/lib/ai/usage");
 
@@ -198,5 +203,150 @@ describe("runStructured", () => {
 
     expect(result).toMatchObject({ ok: false, error: { code: "dependency_failed" } });
     expect(generateTextMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("streamAgent (D31/D32/GU-05)", () => {
+  const baseStreamInput = {
+    feature: "study",
+    permission: "ai.generate" as const,
+    dataClass: "general" as const,
+    system: "You help.",
+    messages: [],
+    tools: {},
+    abortSignal: new AbortController().signal,
+  };
+
+  function streamResult(usagePromise: Promise<{ inputTokens: number; outputTokens: number }> = Promise.resolve({ inputTokens: 5, outputTokens: 7 })) {
+    return { totalUsage: usagePromise };
+  }
+
+  it("local_only succeeds via local and never touches the cloud factory", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult());
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.provider).toBe("local");
+      expect(result.modelId).toBe("qwen3:4b-instruct-2507-q4_K_M");
+    }
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
+  });
+
+  it("forbids a role without the caller-named permission", async () => {
+    const result = await streamAgent({ ctx: fakeCtx("local_only", "accountant"), ...baseStreamInput });
+
+    expect(result).toEqual({ ok: false, error: { code: "forbidden", message: "You do not have permission to use AI features." } });
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("D32: student_personal is blocked before any provider call when the policy isn't local_only", async () => {
+    const result = await streamAgent({ ctx: fakeCtx("cloud_allowed"), ...baseStreamInput, dataClass: "student_personal" });
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "ai_policy_blocked", message: "This feature is only available on a local-only AI policy for now." },
+    });
+    expect(streamTextMock).not.toHaveBeenCalled();
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
+  });
+
+  it("D32: student_personal is blocked on local_with_cloud_fallback too, not just cloud_allowed (HIGH-1)", async () => {
+    const result = await streamAgent({ ctx: fakeCtx("local_with_cloud_fallback"), ...baseStreamInput, dataClass: "student_personal" });
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "ai_policy_blocked", message: "This feature is only available on a local-only AI policy for now." },
+    });
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("D32: student_personal succeeds on a local_only institution", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult());
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput, dataClass: "student_personal" });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("HIGH-2: never reaches the cloud step even when cloud is fully configured and the plan is cloud-only", async () => {
+    process.env.AI_CLOUD_ENABLED = "true";
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    const result = await streamAgent({ ctx: fakeCtx("cloud_allowed"), ...baseStreamInput });
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "ai_unavailable", message: "Cloud AI provider is not reachable (policy: cloud_allowed)." },
+    });
+    expect(streamTextMock).not.toHaveBeenCalled();
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
+  });
+
+  it("returns quota_exceeded without calling streamText", async () => {
+    vi.mocked(usage.checkLimits).mockResolvedValueOnce({ ok: false, code: "quota_exceeded" });
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+
+    expect(result).toEqual({
+      ok: false,
+      error: { code: "quota_exceeded", message: "Daily AI usage quota exceeded for this institution." },
+    });
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the next step if a concurrency slot can't be acquired, failing closed if none are available", async () => {
+    vi.mocked(usage.acquireConcurrencySlot).mockReturnValue(false);
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe("ai_unavailable");
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("releases the already-acquired concurrency slot when provider setup fails, before any token streams", async () => {
+    vi.mocked(providers.getLocalModel).mockImplementationOnce(() => {
+      throw new Error("not configured");
+    });
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+
+    expect(result.ok).toBe(false);
+    expect(usage.releaseConcurrencySlot).toHaveBeenCalledWith("inst-1", "local");
+    expect(streamTextMock).not.toHaveBeenCalled();
+  });
+
+  it("logs usage once the stream's total usage resolves, and releases the concurrency slot", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult(Promise.resolve({ inputTokens: 5, outputTokens: 7 })));
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+    expect(result.ok).toBe(true);
+    await vi.waitFor(() => expect(usage.releaseConcurrencySlot).toHaveBeenCalledWith("inst-1", "local"));
+
+    expect(usage.logUsage).toHaveBeenCalledWith(
+      expect.objectContaining({ ok: true, provider: "local", inputTokens: 5, outputTokens: 7, redactions: 0 }),
+    );
+  });
+
+  it("logs a failed usage event and still releases the slot when totalUsage rejects", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult(Promise.reject(new Error("stream failed"))));
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+    expect(result.ok).toBe(true);
+    await vi.waitFor(() => expect(usage.releaseConcurrencySlot).toHaveBeenCalledWith("inst-1", "local"));
+
+    expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ ok: false, errorCode: "ai_unavailable" }));
+  });
+
+  it("falls back to local when cloud-only policy has no cloud key configured, matching runStructured's own rule", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult());
+
+    const result = await streamAgent({ ctx: fakeCtx("cloud_allowed"), ...baseStreamInput });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.provider).toBe("local");
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
   });
 });
