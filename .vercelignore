@@ -1,0 +1,10 @@
+# Never upload local env files (secrets, DEMO_RESET_ALLOWED) to Vercel builds.
+.env*
+!.env.example
+.superpowers
+.claude
+supabase/.temp
+node_modules
+.next
+test-results
+playwright-report

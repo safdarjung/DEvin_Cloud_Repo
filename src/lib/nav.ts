@@ -3,7 +3,6 @@ import {
   Banknote,
   BarChart3,
   Bell,
-  BookOpen,
   Briefcase,
   CalendarCheck,
   ClipboardList,
@@ -11,8 +10,6 @@ import {
   Globe,
   GraduationCap,
   LayoutDashboard,
-  Settings,
-  Sparkles,
   UserCircle,
   Users,
 } from "lucide-react";
@@ -32,7 +29,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/students", label: "Students", icon: Users, permission: "student.read" },
   { href: "/admissions", label: "Admissions", icon: ClipboardList, permission: "admissions.enquiry.read" },
   { href: "/attendance", label: "Attendance", icon: CalendarCheck, permission: "attendance.read" },
-  { href: "/academics", label: "Academics", icon: BookOpen, permission: "academics.read" },
   { href: "/assignments", label: "Assignments", icon: FileText, permission: "assignment.read" },
   { href: "/exams", label: "Exams", icon: GraduationCap, permission: "exam.result.read" },
   // T-020: owner/principal/exam_controller only (07 §2.2 exam.recheck.review
@@ -40,11 +36,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/exams/rechecks", label: "Rechecks", icon: ClipboardList, permission: "exam.recheck.review" },
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read" },
   { href: "/website", label: "Website", icon: Globe, permission: "website.edit" },
-  { href: "/ai", label: "AI", icon: Sparkles, permission: "ai.generate" },
   { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read" },
   { href: "/notifications", label: "Notifications", icon: Bell, permission: "notification.read" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage" },
-  { href: "/settings", label: "Settings", icon: Settings, permission: "institution.settings.manage" },
   // No dedicated "portal.view" permission exists (07 §2.2); exam.recheck.request
   // is the only row granted to exactly {student, guardian} and no staff role,
   // which is exactly who the portal link is for.
