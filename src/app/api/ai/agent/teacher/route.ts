@@ -44,9 +44,16 @@ const MAX_BODY_BYTES = 64 * 1024;
 // rejected outright.
 const TOOL_NAMES = ["findStudent", "findCurriculumUnit", "getAttendancePattern", "generateQuiz", "draftResultRemark"] as const;
 
+// Fix round 2 (live bug, D28): `.strict()` on the text part rejected
+// `state`/`providerMetadata` — TextUIPart's own optional fields (ai
+// 7.0.155's index.d.ts) that the SDK stamps on an assistant's text part and
+// echoes back on every later turn (useChat resends the full history). The
+// HIGH fix's security boundary is the part TYPE allowlist below, not the
+// field set on an already-allowed type — `.passthrough()` here accepts the
+// SDK's own metadata without reopening the file/data-*/reasoning hole.
 const UIMessagePartSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text"), text: z.string().max(4000) }).strict(),
-  z.object({ type: z.literal("step-start") }).strict(),
+  z.object({ type: z.literal("text"), text: z.string().max(4000) }).passthrough(),
+  z.object({ type: z.literal("step-start") }).passthrough(),
   ...TOOL_NAMES.map((name) => z.object({ type: z.literal(`tool-${name}` as const) }).passthrough()),
 ]);
 const UIMessageRequestSchema = z

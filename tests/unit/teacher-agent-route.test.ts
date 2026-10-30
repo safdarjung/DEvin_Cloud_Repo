@@ -139,6 +139,43 @@ describe("POST /api/ai/agent/teacher", () => {
     expect(res.status).toBe(422);
   });
 
+  // Real bug, live hosted (D28 fix round 2): useChat echoes the FULL message
+  // history back on every turn, including prior assistant text parts the
+  // AI SDK itself stamped with `state`/`providerMetadata` (TextUIPart's own
+  // optional fields, ai 7.0.155's index.d.ts) — the second message in any
+  // real conversation 422'd with "Unrecognized keys: providerMetadata,
+  // state". The HIGH fix's part-TYPE allowlist (no file/data-*/reasoning)
+  // was correct; `.strict()` on the text part's extra FIELDS was not.
+  it("accepts a round-tripped assistant text part carrying state and providerMetadata", async () => {
+    getTenantContextMock.mockResolvedValueOnce(teacherCtx());
+    const streamResponse = new Response("stream");
+    streamTextMock.mockReturnValueOnce({
+      totalUsage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
+      toUIMessageStreamResponse: () => streamResponse,
+    });
+    const res = await POST(
+      request({
+        institutionSlug: "demo",
+        messages: [
+          {
+            id: "m1",
+            role: "assistant",
+            parts: [
+              {
+                type: "text",
+                text: "Looking up the student — done.",
+                state: "done",
+                providerMetadata: { google: { groundingMetadata: null } },
+              },
+            ],
+          },
+          { id: "m2", role: "user", parts: [{ type: "text", text: "how many students?" }] },
+        ],
+      }),
+    );
+    expect(res).toBe(streamResponse);
+  });
+
   it("maps a NEXT_REDIRECT tenant-context signal to unauthenticated", async () => {
     getTenantContextMock.mockRejectedValueOnce({ digest: "NEXT_REDIRECT;replace;/login" });
     const res = await POST(request(validBody()));
