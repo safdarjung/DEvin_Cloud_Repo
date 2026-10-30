@@ -488,6 +488,63 @@ describe("finance.generate_term_invoices job handler (T-031) — idempotency and
     }
   });
 
+  it("T-043 load-test finding: processes more than 1,000 active enrolments, not just PostgREST's default page", async () => {
+    const inst = await createTestInstitution("finance-job-over-page-size");
+    try {
+      await setFinanceSettings(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const termId = await createTerm(inst.institutionId, yearId, { sequence: 1 });
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId, { name: "A" });
+
+      const structResult = await callAs(inst, "accountant", upsertFeeStructure, {
+        academicYearId: yearId,
+        gradeId,
+        name: "Standard",
+        components: [{ head: "tuition", amount: 1000, frequency: "term" }],
+      });
+      if (!structResult.ok) throw new Error("fixture setup failed");
+
+      // Bulk SQL instead of the per-student factory/action loop used
+      // elsewhere in this file — 1,001 rows need to clear PostgREST's
+      // 1,000-row default page, and this only needs to be fast, not go
+      // through RLS (it's fixture setup, not the thing under test).
+      const STUDENT_COUNT = 1001;
+      await sql`
+        insert into public.students (institution_id, admission_no, first_name, dob, gender)
+        select ${inst.institutionId}, 'ADM-OVERPAGE-' || g, 'Test', '2015-01-01', 'other'
+        from generate_series(1, ${STUDENT_COUNT}) as g
+      `;
+      // Scoped to this test's own admission_no prefix, not `institution_id`
+      // alone — `createTestInstitution` also creates its own "student" role
+      // fixture in this institution, which must not be swept into these
+      // bulk inserts (it would silently inflate the expected count by one).
+      await sql`
+        insert into public.enrolments (institution_id, student_id, class_section_id, academic_year_id, roll_no, started_on, status)
+        select ${inst.institutionId}, s.id, ${sectionId}, ${yearId}, row_number() over (order by s.id), '2026-04-01', 'active'
+        from public.students s
+        where s.institution_id = ${inst.institutionId} and s.admission_no like 'ADM-OVERPAGE-%'
+      `;
+      await sql`
+        insert into public.fee_assignments (institution_id, student_id, fee_structure_id, academic_year_id)
+        select ${inst.institutionId}, s.id, ${structResult.data.id}::uuid, ${yearId}
+        from public.students s
+        where s.institution_id = ${inst.institutionId} and s.admission_no like 'ADM-OVERPAGE-%'
+      `;
+
+      const job = fakeJob(inst.institutionId, { term_id: termId, grade_id: null });
+      await generateTermInvoicesHandler(job, { admin });
+
+      const [{ count }] = await sql`
+        select count(*)::int as count from public.invoices
+        where institution_id = ${inst.institutionId} and term_id = ${termId}::uuid and status <> 'cancelled'
+      `;
+      expect(count).toBe(STUDENT_COUNT);
+    } finally {
+      await inst.cleanup();
+    }
+  }, 60_000);
+
   it("is scoped to the job row's institution_id, not the payload: a term from another institution is rejected", async () => {
     await withTwoInstitutions(async (instA, instB) => {
       const { termId: termIdB } = await setupTermWithStudents(instB, 1);

@@ -59,19 +59,33 @@ export const generateTermInvoices: JobHandler = async (job, { admin }) => {
     if (!grade) throw new Error("finance.generate_term_invoices: grade not found for this institution");
   }
 
-  let enrolmentQuery = admin
-    .from("enrolments")
-    .select("student_id, class_sections!inner(grade_id)")
-    .eq("institution_id", job.institution_id)
-    .eq("academic_year_id", term.academic_year_id)
-    .eq("status", "active");
-  if (gradeId) {
-    enrolmentQuery = enrolmentQuery.eq("class_sections.grade_id", gradeId);
+  // T-043 load-test finding: PostgREST defaults to a 1,000-row page. Without
+  // `.range()`, a term with >1,000 active enrolments (3,024 in the seeded
+  // demo tenant) silently got invoices for only the first 1,000 students —
+  // the job still reported `succeeded`, no error, no `outOfBudget`. Paged
+  // explicitly here; the per-page cap is PostgREST's own, not a magic
+  // number chosen for this fix.
+  const PAGE_SIZE = 1000;
+  const enrolments: Array<{ student_id: string }> = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    let enrolmentQuery = admin
+      .from("enrolments")
+      .select("student_id, class_sections!inner(grade_id)")
+      .eq("institution_id", job.institution_id)
+      .eq("academic_year_id", term.academic_year_id)
+      .eq("status", "active")
+      .order("id") // stable order, or pages can skip/repeat rows
+      .range(from, from + PAGE_SIZE - 1);
+    if (gradeId) {
+      enrolmentQuery = enrolmentQuery.eq("class_sections.grade_id", gradeId);
+    }
+    const { data: page, error: enrolError } = await enrolmentQuery;
+    if (enrolError) throw enrolError;
+    enrolments.push(...(page ?? []));
+    if (!page || page.length < PAGE_SIZE) break;
   }
-  const { data: enrolments, error: enrolError } = await enrolmentQuery;
-  if (enrolError) throw enrolError;
 
-  const studentIds = Array.from(new Set((enrolments ?? []).map((e) => e.student_id)));
+  const studentIds = Array.from(new Set(enrolments.map((e) => e.student_id)));
 
   const deadline = Date.now() + SOFT_BUDGET_MS;
   let processed = 0;

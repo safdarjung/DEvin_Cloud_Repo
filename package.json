@@ -24,7 +24,11 @@
     "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
     "demo:reset": "node --env-file-if-exists=.env.local scripts/demo-reset.ts",
     "jobs:run": "node --env-file-if-exists=.env.local scripts/jobs-run.ts",
-    "ai:bench": "node --env-file-if-exists=.env.local scripts/ai-bench/bench.ts"
+    "ai:bench": "node --env-file-if-exists=.env.local scripts/ai-bench/bench.ts",
+    "load:l1": "node --env-file-if-exists=.env.local scripts/load/l1-attendance-burst.ts",
+    "load:l2": "node --env-file-if-exists=.env.local scripts/load/l2-portal-results.ts",
+    "load:l3": "node --env-file-if-exists=.env.local scripts/load/l3-bulk-invoices.ts",
+    "load:l4": "node --env-file-if-exists=.env.local scripts/load/l4-public-site.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.90",
@@ -50,10 +54,12 @@
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
+    "@types/autocannon": "^7.12.7",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.2",
+    "autocannon": "^8.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "postgres": "^3.4.9",
