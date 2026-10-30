@@ -1,6 +1,8 @@
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { isFeatureEnabled } from "@/lib/auth/entitlements";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { TeacherAgentChat } from "@/modules/ai/components/TeacherAgentChat";
+import { TeacherAgentFeatureToggle } from "@/modules/core/components/TeacherAgentFeatureToggle";
 
 // T-0NN — first real page at `/ai` (the nav's `/ai/usage` link already
 // existed). D28 scopes the tool-calling agent to the teacher role only;
@@ -19,9 +21,24 @@ export default async function AiAssistantPage({
 
   if (ctx.membership.role !== "teacher") {
     return (
-      <div className="space-y-2">
+      <div className="space-y-4">
         <h1 className="text-xl font-semibold">AI Assistant</h1>
         <p className="text-muted-foreground text-sm">Not available for your role yet.</p>
+        {hasPermission(ctx, "institution.settings.manage") && (
+          <TeacherAgentFeatureToggle
+            institutionSlug={institutionSlug}
+            initialEnabled={isFeatureEnabled(ctx, "teacher_ai_agent")}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (!isFeatureEnabled(ctx, "teacher_ai_agent")) {
+    return (
+      <div className="space-y-2">
+        <h1 className="text-xl font-semibold">AI Assistant</h1>
+        <p className="text-muted-foreground text-sm">The AI assistant is not included in this school&apos;s plan.</p>
       </div>
     );
   }
