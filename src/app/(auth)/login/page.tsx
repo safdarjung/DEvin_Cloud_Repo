@@ -1,20 +1,7 @@
+import { DEMO_ACCOUNT_EMAILS, DEMO_ACCOUNT_LABELS } from "@/lib/auth/demo-accounts";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
 import { LoginForm } from "./login-form";
-
-// 11 §3 — named demo logins (passwords are never hardcoded; SEED_DEMO_PASSWORD only).
-const DEMO_ACCOUNT_EMAILS = [
-  "principal@demo.coolskool.test",
-  "admin@demo.coolskool.test",
-  "admissions@demo.coolskool.test",
-  "accountant@demo.coolskool.test",
-  "examcontroller@demo.coolskool.test",
-  "teacher.vi-a@demo.coolskool.test",
-  "teacher.viii-b@demo.coolskool.test",
-  "teacher.x-a@demo.coolskool.test",
-  "guardian.one@demo.coolskool.test",
-  "guardian.two@demo.coolskool.test",
-  "student.one@demo.coolskool.test",
-];
+import { DemoLoginButton } from "./demo-login-button";
 
 export default async function LoginPage({
   searchParams,
@@ -33,11 +20,13 @@ export default async function LoginPage({
       </div>
       <LoginForm next={next === "/" ? undefined : next} />
       {showDemoHints && (
-        <section aria-label="Demo accounts" className="flex max-w-sm flex-col gap-2 text-center">
-          <h2 className="text-sm font-medium">Demo accounts</h2>
-          <ul className="text-xs text-muted-foreground">
+        <section aria-label="Demo accounts" className="flex w-full max-w-sm flex-col gap-2">
+          <h2 className="text-center text-sm font-medium">Demo accounts — sign in with one click</h2>
+          <ul className="flex flex-col gap-1.5">
             {DEMO_ACCOUNT_EMAILS.map((email) => (
-              <li key={email}>{email}</li>
+              <li key={email}>
+                <DemoLoginButton email={email} label={DEMO_ACCOUNT_LABELS[email] ?? email} next={next} />
+              </li>
             ))}
           </ul>
         </section>
