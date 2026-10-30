@@ -306,7 +306,13 @@ describe("teacherTools", () => {
         { curriculumUnitId: "u1", difficulty: "easy", questionCount: 1 },
         { toolCallId: "1", messages: [], context: {} },
       );
-      expect(result).toMatchObject({ draft: true, questions: [question] });
+      expect(result).toMatchObject({
+        draft: true,
+        curriculumUnitId: "u1",
+        subjectId: "sub1",
+        defaultTitle: "Unit",
+        questions: [question],
+      });
     });
   });
 
@@ -330,7 +336,7 @@ describe("teacherTools", () => {
       expect(result).toBe("You do not teach this student.");
     });
 
-    it("returns a labeled draft on success", async () => {
+    it("returns a labeled draft, substituting the real student name for the placeholder", async () => {
       vi.mocked(serverClient.createClient).mockResolvedValueOnce(
         fakeSupabase({
           results: [
@@ -341,6 +347,7 @@ describe("teacherTools", () => {
               percentage: 80,
               grade: "A",
               exams: { name: "Half-Yearly" },
+              students: { first_name: "Aarav", last_name: "Sharma" },
             },
           ],
           subjects: [{ id: "sub1", name: "Science" }],
@@ -349,11 +356,11 @@ describe("teacherTools", () => {
       canDraftRemarkForResultMock.mockResolvedValueOnce(true);
       runStructuredMock.mockResolvedValueOnce({
         ok: true,
-        data: { data: { remark: "Great work." }, provider: "cloud", model: "m", fallback: false },
+        data: { data: { remark: "{studentLabel} did great work." }, provider: "cloud", model: "m", fallback: false },
       });
       const tools = await teacherTools(baseCtx());
       const result = await tools.draftResultRemark.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
-      expect(result).toMatchObject({ draft: true, remark: "Great work." });
+      expect(result).toMatchObject({ draft: true, resultId: "r1", studentName: "Aarav Sharma", remark: "Aarav Sharma did great work." });
     });
   });
 });

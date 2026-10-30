@@ -11,9 +11,44 @@ import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
+import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
+import type { QuizContent } from "@/modules/academics/assignments.schemas";
 
 interface TeacherAgentChatProps {
   institutionSlug: string;
+  aiPolicy: string;
+  /** Teacher's own teachable sections (D28's `generateQuiz` is unit-scoped, not section-scoped), for the in-chat "save as assignment" form. */
+  teachableSections: Array<{ id: string; label: string }>;
+}
+
+// Teacher-agent follow-up (D30 decision log) — the two draft tools' output
+// shapes, narrowed from the generic `unknown` tool output so the matching
+// review/save component (already used by the non-agent /ai/quiz and
+// /ai/report-remark flows) can be rendered right in the chat. Saving still
+// goes through those components' own existing actions unchanged — this is
+// only presentation wiring, never a new write path.
+interface QuizDraftOutput {
+  draft: true;
+  curriculumUnitId: string;
+  subjectId: string;
+  defaultTitle: string;
+  questions: QuizContent["questions"];
+}
+
+function isQuizDraftOutput(output: unknown): output is QuizDraftOutput {
+  return typeof output === "object" && output !== null && (output as { draft?: unknown }).draft === true && "curriculumUnitId" in output;
+}
+
+interface RemarkDraftOutput {
+  draft: true;
+  resultId: string;
+  studentName: string;
+  remark: string;
+}
+
+function isRemarkDraftOutput(output: unknown): output is RemarkDraftOutput {
+  return typeof output === "object" && output !== null && (output as { draft?: unknown }).draft === true && "resultId" in output;
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -31,7 +66,14 @@ function toolLabel(type: string): string {
   return TOOL_LABELS[name] ?? `Using ${name}…`;
 }
 
-function MessageParts({ message }: { message: UIMessage }) {
+interface MessagePartsProps {
+  message: UIMessage;
+  institutionSlug: string;
+  aiPolicy: string;
+  teachableSections: Array<{ id: string; label: string }>;
+}
+
+function MessageParts({ message, institutionSlug, aiPolicy, teachableSections }: MessagePartsProps) {
   return (
     <>
       {message.parts.map((part, index) => {
@@ -45,12 +87,54 @@ function MessageParts({ message }: { message: UIMessage }) {
         if (isToolUIPart(part)) {
           const label = toolLabel(part.type);
           const done = part.state === "output-available" || part.state === "output-error";
-          return (
-            <div key={index} className="text-muted-foreground border-l-2 pl-2 text-xs italic">
+          const statusLine = (
+            <div className="text-muted-foreground border-l-2 pl-2 text-xs italic">
               {done ? label.replace("…", " — done.") : label}
               {part.state === "output-error" && part.errorText ? ` (${part.errorText})` : ""}
             </div>
           );
+
+          if (part.state === "output-available" && part.type === "tool-generateQuiz" && isQuizDraftOutput(part.output)) {
+            return (
+              <div key={index} className="space-y-2">
+                {statusLine}
+                {/* shortcut: `teachableSections` is this teacher's full section
+                    list, not filtered to the unit's own grade+subject (the
+                    manual /assignments/units/[unitId] flow filters it
+                    server-side via listSectionSubjects). Picking a
+                    mismatched section here still fails safely —
+                    createAssignment re-checks scope — just with a save
+                    error instead of a pre-filtered picker. Upgrade: add
+                    gradeId to this tool's output and filter the same way. */}
+                <QuizReviewEditor
+                  institutionSlug={institutionSlug}
+                  curriculumUnitId={part.output.curriculumUnitId}
+                  subjectId={part.output.subjectId}
+                  defaultTitle={part.output.defaultTitle}
+                  sections={teachableSections}
+                  aiPolicy={aiPolicy}
+                  initialContent={{ questions: part.output.questions }}
+                />
+              </div>
+            );
+          }
+
+          if (part.state === "output-available" && part.type === "tool-draftResultRemark" && isRemarkDraftOutput(part.output)) {
+            return (
+              <div key={index} className="space-y-2">
+                {statusLine}
+                <RemarkDraftEditor
+                  institutionSlug={institutionSlug}
+                  resultId={part.output.resultId}
+                  studentName={part.output.studentName}
+                  initialRemark={part.output.remark}
+                  aiPolicy={aiPolicy}
+                />
+              </div>
+            );
+          }
+
+          return <div key={index}>{statusLine}</div>;
         }
         return null;
       })}
@@ -58,7 +142,7 @@ function MessageParts({ message }: { message: UIMessage }) {
   );
 }
 
-export function TeacherAgentChat({ institutionSlug }: TeacherAgentChatProps) {
+export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections }: TeacherAgentChatProps) {
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, error } = useChat({
     transport: new DefaultChatTransport({
@@ -95,7 +179,8 @@ export function TeacherAgentChat({ institutionSlug }: TeacherAgentChatProps) {
         <CardContent className="flex h-[480px] flex-col gap-3 overflow-y-auto p-4 text-sm">
           {messages.length === 0 && (
             <p className="text-muted-foreground">
-              Ask about a student, their attendance pattern, or draft a quiz or report-card remark.
+              Ask about a student, their attendance pattern, or draft a quiz or report-card remark — you can
+              review and save a draft right here in the chat.
             </p>
           )}
           {messages.map((message) => (
@@ -103,7 +188,12 @@ export function TeacherAgentChat({ institutionSlug }: TeacherAgentChatProps) {
               key={message.id}
               className={message.role === "user" ? "self-end text-right" : "self-start"}
             >
-              <MessageParts message={message} />
+              <MessageParts
+                message={message}
+                institutionSlug={institutionSlug}
+                aiPolicy={aiPolicy}
+                teachableSections={teachableSections}
+              />
             </div>
           ))}
           {error && <p className="text-destructive text-sm">{error.message}</p>}

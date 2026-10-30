@@ -334,7 +334,10 @@ export async function teacherTools(ctx: TenantContext) {
 
           return {
             draft: true,
-            note: "This is a draft only, not saved — review and save it from Assignments.",
+            note: "This is a draft only, not saved — review and save it from Assignments, or use the save form in this chat.",
+            curriculumUnitId,
+            subjectId: unit.subject_id,
+            defaultTitle: unit.title,
             questions: strict.data.questions,
           };
         } catch (err) {
@@ -351,7 +354,7 @@ export async function teacherTools(ctx: TenantContext) {
         try {
           const { data: rows, error: resultsError } = await supabase
             .from("results")
-            .select("id, student_id, snapshot, percentage, grade, exams(name)")
+            .select("id, student_id, snapshot, percentage, grade, exams(name), students(first_name, last_name)")
             .eq("institution_id", ctx.institution.id)
             .eq("student_id", studentId)
             .is("superseded_by", null)
@@ -408,10 +411,22 @@ export async function teacherTools(ctx: TenantContext) {
           });
           if (!generated.ok) return `Remark draft failed: ${generated.error.message}`;
 
+          // Same substitution as RemarkDraftEditor's own `handleGenerate`
+          // (the model never sees the real name — `prompts/remark.ts`):
+          // substituting a real name for the placeholder can push the text
+          // past the 500-char save limit even though the model's draft
+          // stayed under it with the short placeholder, so it's truncated
+          // here too, before the model (or the chat UI) ever sees it.
+          const student = candidate.students as { first_name: string; last_name: string | null } | null;
+          const studentName = student ? [student.first_name, student.last_name].filter(Boolean).join(" ") : "this student";
+          const remark = generated.data.data.remark.split("{studentLabel}").join(studentName).slice(0, 500);
+
           return {
             draft: true,
-            note: "This is a draft only, not saved — review and save it from the student's exam result.",
-            remark: generated.data.data.remark,
+            note: "This is a draft only, not saved — review and save it from the student's exam result, or use the save form in this chat.",
+            resultId: candidate.id,
+            studentName,
+            remark,
           };
         } catch (err) {
           return toolErrorMessage("draftResultRemark", err);

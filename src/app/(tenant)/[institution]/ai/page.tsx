@@ -1,6 +1,7 @@
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { listTeachableSections } from "@/modules/academics/assignments.queries";
 import { TeacherAgentChat } from "@/modules/ai/components/TeacherAgentChat";
 import { TeacherAgentFeatureToggle } from "@/modules/core/components/TeacherAgentFeatureToggle";
 
@@ -43,5 +44,13 @@ export default async function AiAssistantPage({
     );
   }
 
-  return <TeacherAgentChat institutionSlug={institutionSlug} />;
+  const teachableSections = await listTeachableSections(ctx);
+
+  return (
+    <TeacherAgentChat
+      institutionSlug={institutionSlug}
+      aiPolicy={ctx.institution.ai_policy}
+      teachableSections={teachableSections}
+    />
+  );
 }

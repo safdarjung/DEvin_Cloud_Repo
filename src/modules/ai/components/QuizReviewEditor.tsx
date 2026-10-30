@@ -46,6 +46,15 @@ interface QuizReviewEditorProps {
   defaultTitle: string;
   sections: SectionOption[];
   aiPolicy: string;
+  /**
+   * D30/teacher-agent follow-up — when the quiz was already drafted
+   * elsewhere (the chat agent's `generateQuiz` tool), skip the
+   * `QuizGenerateButton` step and start straight in review mode. Saving
+   * still goes through the same `createAssignment` call below: the agent
+   * only fills the draft, this component's existing review-then-save
+   * flow is the deterministic part, unchanged for either caller.
+   */
+  initialContent?: QuizContent;
 }
 
 export function QuizReviewEditor({
@@ -55,10 +64,12 @@ export function QuizReviewEditor({
   defaultTitle,
   sections,
   aiPolicy,
+  initialContent,
 }: QuizReviewEditorProps) {
   const router = useRouter();
   const [generated, setGenerated] = useState<QuizGenerateResult | null>(null);
-  const [questions, setQuestions] = useState<QuestionDraft[]>([]);
+  const [started, setStarted] = useState(Boolean(initialContent));
+  const [questions, setQuestions] = useState<QuestionDraft[]>(initialContent ? toDrafts(initialContent) : []);
   const [title, setTitle] = useState(defaultTitle);
   const [sectionId, setSectionId] = useState(sections[0]?.id ?? "");
   const [saving, setSaving] = useState(false);
@@ -66,6 +77,7 @@ export function QuizReviewEditor({
 
   function handleGenerated(result: QuizGenerateResult) {
     setGenerated(result);
+    setStarted(true);
     setQuestions(toDrafts(result.content));
   }
 
@@ -114,7 +126,7 @@ export function QuizReviewEditor({
     }
   }
 
-  if (!generated) {
+  if (!started) {
     return (
       <QuizGenerateButton
         institutionSlug={institutionSlug}
@@ -130,9 +142,9 @@ export function QuizReviewEditor({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-semibold">AI draft — review before publishing</h2>
-          <p className="text-muted-foreground text-xs">{generated.model}</p>
+          {generated && <p className="text-muted-foreground text-xs">{generated.model}</p>}
         </div>
-        <ProviderBadge provider={generated.provider} />
+        {generated && <ProviderBadge provider={generated.provider} />}
       </div>
 
       <div>
