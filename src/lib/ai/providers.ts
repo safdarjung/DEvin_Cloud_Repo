@@ -51,6 +51,27 @@ export async function getGeminiModel(): Promise<LanguageModel> {
   return google(geminiModelId());
 }
 
+// D29 — the teacher agent's "routine" tier, routed alongside Gemini (see
+// 12-decision-log.md ADR D29 for the routing rule and its honest limits).
+// `openai/gpt-oss-120b` measured faster AND no worse than the smaller
+// `openai/gpt-oss-20b` on this key — no real tradeoff, so no separate
+// "cheap" env knob the way cloudModelId() has one.
+export function groqModelId(): string {
+  return process.env.GROQ_MODEL ?? "openai/gpt-oss-120b";
+}
+
+/** Same contract as `getGeminiModel`: lazy import (C-62 shape), throws if
+ * `GROQ_API_KEY` is unset — the caller maps that to `ai_unavailable`. */
+export async function getGroqModel(): Promise<LanguageModel> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY is not configured.");
+  }
+  const { createGroq } = await import("@ai-sdk/groq");
+  const groq = createGroq({ apiKey });
+  return groq(groqModelId());
+}
+
 /**
  * The ONLY place `@ai-sdk/anthropic` is imported — lazily and dynamically,
  * so the module is never loaded into the process when the plan never

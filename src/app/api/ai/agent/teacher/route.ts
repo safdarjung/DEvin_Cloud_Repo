@@ -1,8 +1,10 @@
 import "server-only";
-// T-0NN — teacher tool-calling chat agent route (D28: a parallel, Gemini-only
-// path, deliberately out of band from runStructured/resolvePlan/gateway.ts's
+// T-0NN — teacher tool-calling chat agent route (D28: a parallel path,
+// deliberately out of band from runStructured/resolvePlan/gateway.ts's
 // local/cloud institution policy — see 12-decision-log.md ADR D28 for the
-// full rationale and the measured latency numbers behind that choice).
+// full rationale. D29 adds Groq as a second, routine-tier provider,
+// routed by `pickAgentProvider` — see that ADR for the routing rule and
+// its honest limits).
 // Shares the quiz/report-remark routes' cross-site guard, body cap, and
 // tenant-context/permission-error mapping; shares the gateway's own quota,
 // concurrency, and usage-logging discipline (`checkLimits`,
@@ -10,14 +12,15 @@ import "server-only";
 // touching the gateway module itself.
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
+import { convertToModelMessages, stepCountIs, streamText, type LanguageModel, type UIMessage } from "ai";
 import { AppError, fail, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import { estimateCost } from "@/lib/ai/pricing";
-import { geminiModelId, getGeminiModel } from "@/lib/ai/providers";
+import { geminiModelId, getGeminiModel, getGroqModel, groqModelId } from "@/lib/ai/providers";
+import { pickAgentProvider, type AgentProvider } from "@/modules/ai/agent/provider-routing";
 import { teacherTools } from "@/modules/ai/agent/teacher-tools";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 
@@ -39,23 +42,35 @@ const MAX_BODY_BYTES = 64 * 1024;
 // schema let a client smuggle in a `file` part with an arbitrary https
 // URL — the AI SDK downloads it server-side (cap ~2 GiB) before this
 // route's own 64 KB body cap ever applies, a DoS/cost vector against this
-// server. Only the part shapes this agent actually produces/consumes are
-// allowed; everything else (file, data-*, reasoning, source-url, ...) is
-// rejected outright.
-const TOOL_NAMES = ["findStudent", "findCurriculumUnit", "getAttendancePattern", "generateQuiz", "draftResultRemark"] as const;
+// server.
+//
+// Fix round 3 (live bug, D28): the first two fix rounds hand-maintained an
+// ALLOWLIST of exact part types (text/step-start/tool-*) — twice, a real
+// SDK-emitted type round-tripped through assistant history and 422'd (first
+// TextUIPart's own `state`/`providerMetadata` fields under `.strict()`,
+// then a whole missing type, `reasoning`, which Gemini emits and ai
+// 7.0.155's UIMessagePart union always allowed: text, step-start, reasoning,
+// custom, dynamic-tool, tool-*). An allowlist can't anticipate every
+// legitimate type; the actual HIGH boundary is narrower than "every type
+// we didn't think of" — only the types below carry a `url`/fetchable
+// content field the AI SDK downloads server-side (FileUIPart,
+// SourceUrlUIPart, SourceDocumentUIPart, ReasoningFileUIPart) or are
+// free-form payloads this server never itself emits (`data-*`, per
+// DataUIPart). Denying exactly those, and allowing everything else through
+// `.passthrough()`, closes the same hole without this bug recurring a
+// fourth time.
+const DENIED_PART_TYPES = new Set(["file", "source-url", "source-document", "reasoning-file"]);
 
-// Fix round 2 (live bug, D28): `.strict()` on the text part rejected
-// `state`/`providerMetadata` — TextUIPart's own optional fields (ai
-// 7.0.155's index.d.ts) that the SDK stamps on an assistant's text part and
-// echoes back on every later turn (useChat resends the full history). The
-// HIGH fix's security boundary is the part TYPE allowlist below, not the
-// field set on an already-allowed type — `.passthrough()` here accepts the
-// SDK's own metadata without reopening the file/data-*/reasoning hole.
-const UIMessagePartSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("text"), text: z.string().max(4000) }).passthrough(),
-  z.object({ type: z.literal("step-start") }).passthrough(),
-  ...TOOL_NAMES.map((name) => z.object({ type: z.literal(`tool-${name}` as const) }).passthrough()),
-]);
+const UIMessagePartSchema = z
+  .object({ type: z.string().max(100) })
+  .passthrough()
+  .refine(
+    (part) => !DENIED_PART_TYPES.has(part.type) && !part.type.startsWith("data-"),
+    { message: "This message part type is not allowed." },
+  )
+  .refine((part) => part.type !== "text" || (typeof part.text === "string" && part.text.length <= 4000), {
+    message: "A text part must be a string of at most 4000 characters.",
+  });
 const UIMessageRequestSchema = z
   .object({
     id: z.string(),
@@ -71,10 +86,13 @@ const TeacherAgentRequestSchema = z
   })
   .passthrough();
 
+// D29 — provider-agnostic wording: a single system prompt serves either
+// cloud provider the request was routed to (pickAgentProvider), so it
+// must stay accurate for both, not name one specifically.
 const SYSTEM_PROMPT =
-  "You are an AI assistant for teachers at this school, running on Google Gemini (cloud) — " +
+  "You are an AI assistant for teachers at this school, running on a cloud AI provider — " +
   "not the school's local AI. Everything the teacher types, plus anything you look up (students, " +
-  "curriculum units, attendance patterns, exam results), is sent to Google. " +
+  "curriculum units, attendance patterns, exam results), is sent to that provider. " +
   "You can look up a student by name or admission number, find a curriculum unit you teach, check a " +
   "student's attendance pattern this term, and draft (never save) a quiz or a report-card remark. " +
   "Every quiz or remark you produce is a DRAFT ONLY: say so plainly, and tell the teacher they must " +
@@ -101,6 +119,29 @@ function json(result: ActionResult<never>): NextResponse {
 
 function internalError(correlationId: string): ActionResult<never> {
   return fail("internal", `Something went wrong. Reference: ${correlationId}`);
+}
+
+// D29 — the model only sees the ALREADY schema-validated request, so this
+// is a plain text extraction, not a second round of untrusted-input
+// handling. Only the most recent user turn drives routing; the model
+// itself still sees the full conversation (`convertToModelMessages` below,
+// unaffected by this).
+function latestUserText(messages: z.infer<typeof TeacherAgentRequestSchema>["messages"]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role !== "user") continue;
+    return message.parts
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
+      .map((part) => part.text)
+      .join(" ");
+  }
+  return undefined;
+}
+
+function resolveAgentModel(provider: AgentProvider): { modelId: string; getModel: () => Promise<LanguageModel> } {
+  return provider === "groq"
+    ? { modelId: groqModelId(), getModel: getGroqModel }
+    : { modelId: geminiModelId(), getModel: getGeminiModel };
 }
 
 // Same shape as the quiz/report-remark routes — `getTenantContext` throws
@@ -134,6 +175,8 @@ export async function POST(request: Request): Promise<Response> {
     return json(fail("validation_failed", "Invalid input.", fieldErrors as Record<string, string[]>));
   }
   const input = parsedRequest.data;
+  const provider = pickAgentProvider(latestUserText(input.messages));
+  const { modelId, getModel } = resolveAgentModel(provider);
 
   let ctx: TenantContext;
   try {
@@ -170,7 +213,7 @@ export async function POST(request: Request): Promise<Response> {
       ctx,
       feature: FEATURE,
       provider: "cloud",
-      model: geminiModelId(),
+      model: modelId,
       inputTokens: 0,
       outputTokens: 0,
       latencyMs: 0,
@@ -193,7 +236,7 @@ export async function POST(request: Request): Promise<Response> {
   // argument (rather than widening `ProviderStep`, which belongs to
   // gateway.ts's policy types this packet must not touch) gets a separate
   // bucket for free.
-  const concurrencyId = `${ctx.institution.id}:gemini`;
+  const concurrencyId = `${ctx.institution.id}:${provider}`;
 
   const settings = aiSettingsFor(ctx);
   if (!acquireConcurrencySlot(concurrencyId, "cloud", settings.max_concurrent_cloud)) {
@@ -203,14 +246,14 @@ export async function POST(request: Request): Promise<Response> {
   const startedAt = Date.now();
   let model;
   try {
-    model = await getGeminiModel();
+    model = await getModel();
   } catch {
     releaseConcurrencySlot(concurrencyId, "cloud");
     await logUsage({
       ctx,
       feature: FEATURE,
       provider: "cloud",
-      model: geminiModelId(),
+      model: modelId,
       inputTokens: 0,
       outputTokens: 0,
       latencyMs: Date.now() - startedAt,
@@ -262,11 +305,11 @@ export async function POST(request: Request): Promise<Response> {
         ctx,
         feature: FEATURE,
         provider: "cloud",
-        model: geminiModelId(),
+        model: modelId,
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
         latencyMs: Date.now() - startedAt,
-        costEstimateUsd: estimateCost("cloud", geminiModelId(), usage.inputTokens ?? 0, usage.outputTokens ?? 0),
+        costEstimateUsd: estimateCost("cloud", modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0),
         ok: true,
         errorCode: null,
         redactions: 0,
@@ -279,11 +322,11 @@ export async function POST(request: Request): Promise<Response> {
         ctx,
         feature: FEATURE,
         provider: "cloud",
-        model: geminiModelId(),
+        model: modelId,
         inputTokens: accumulatedUsage.inputTokens,
         outputTokens: accumulatedUsage.outputTokens,
         latencyMs: Date.now() - startedAt,
-        costEstimateUsd: estimateCost("cloud", geminiModelId(), accumulatedUsage.inputTokens, accumulatedUsage.outputTokens),
+        costEstimateUsd: estimateCost("cloud", modelId, accumulatedUsage.inputTokens, accumulatedUsage.outputTokens),
         ok: false,
         errorCode: "ai_unavailable",
         redactions: 0,

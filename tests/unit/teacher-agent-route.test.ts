@@ -21,6 +21,7 @@ const aiSettingsForMock = vi.fn(() => ({
   max_concurrent_cloud: 4,
 }));
 const getGeminiModelMock = vi.fn(async () => "gemini-model-handle");
+const getGroqModelMock = vi.fn(async () => "groq-model-handle");
 const teacherToolsMock = vi.fn(async () => ({}));
 const streamTextMock = vi.fn();
 
@@ -39,6 +40,8 @@ vi.mock("@/lib/ai/usage", () => ({
 vi.mock("@/lib/ai/providers", () => ({
   getGeminiModel: getGeminiModelMock,
   geminiModelId: () => "gemini-flash-lite-latest",
+  getGroqModel: getGroqModelMock,
+  groqModelId: () => "openai/gpt-oss-120b",
 }));
 vi.mock("@/modules/ai/agent/teacher-tools", () => ({ teacherTools: teacherToolsMock }));
 vi.mock("ai", async () => {
@@ -110,23 +113,68 @@ describe("POST /api/ai/agent/teacher", () => {
   // downloads server-side (~2 GiB cap) before this route's own 64 KB body
   // cap ever applies — a DoS/cost vector. The strict parts schema must
   // reject this outright, under the body-cap size, never reaching streamText.
-  it("rejects a message part type other than text/step-start/tool-*", async () => {
+  // Fix round 3 (live bug, D28): a real part type the HIGH fix's allowlist
+  // never anticipated — "Invalid discriminator value" 422'd the moment any
+  // conversation included one. Each case below is one real part type from
+  // `ai` 7.0.155's UIMessagePart union; only the five with a `url`/content
+  // field the SDK fetches server-side stay rejected, matching the original
+  // finding exactly — everything else is allowed through, by design, so a
+  // sixth unanticipated type can't repeat this bug a third time.
+  for (const type of ["file", "source-url", "source-document", "reasoning-file"]) {
+    it(`rejects a "${type}" part (download-capable, the original HIGH finding)`, async () => {
+      const res = await POST(
+        request({
+          institutionSlug: "demo",
+          messages: [
+            { id: "m1", role: "user", parts: [{ type, url: "https://evil.example/huge.bin" }] },
+          ],
+        }),
+      );
+      expect(res.status).toBe(422);
+      const body = await json(res);
+      expect(body.error.code).toBe("validation_failed");
+      expect(streamTextMock).not.toHaveBeenCalled();
+    });
+  }
+
+  it('rejects a "data-*" part (the server never emits one; free-form client-injectable content otherwise)', async () => {
+    const res = await POST(
+      request({
+        institutionSlug: "demo",
+        messages: [{ id: "m1", role: "user", parts: [{ type: "data-anything", payload: "x" }] }],
+      }),
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it('accepts a real "reasoning" part echoed back in assistant history (the live bug)', async () => {
+    getTenantContextMock.mockResolvedValueOnce(teacherCtx());
+    const streamResponse = new Response("stream");
+    streamTextMock.mockReturnValueOnce({
+      totalUsage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
+      toUIMessageStreamResponse: () => streamResponse,
+    });
     const res = await POST(
       request({
         institutionSlug: "demo",
         messages: [
+          { id: "m1", role: "user", parts: [{ type: "text", text: "hi" }] },
           {
-            id: "m1",
-            role: "user",
-            parts: [{ type: "file", url: "https://evil.example/huge.bin", mediaType: "application/octet-stream" }],
+            id: "m2",
+            role: "assistant",
+            parts: [
+              { type: "step-start" },
+              { type: "reasoning", text: "thinking...", state: "done" },
+              { type: "tool-findStudent", state: "output-available", toolCallId: "t1", input: {}, output: [] },
+              { type: "step-start" },
+              { type: "text", text: "Found them." },
+            ],
           },
+          { id: "m3", role: "user", parts: [{ type: "text", text: "and now?" }] },
         ],
       }),
     );
-    expect(res.status).toBe(422);
-    const body = await json(res);
-    expect(body.error.code).toBe("validation_failed");
-    expect(streamTextMock).not.toHaveBeenCalled();
+    expect(res).toBe(streamResponse);
   });
 
   it("rejects a text part over 4000 characters", async () => {
@@ -218,14 +266,61 @@ describe("POST /api/ai/agent/teacher", () => {
     expect(body.error.code).toBe("rate_limited");
   });
 
-  it("fails closed as ai_unavailable when GEMINI_API_KEY is unset, releasing the slot", async () => {
+  // D29 — "hi" (validBody's message) is short with no multi-part cue, so
+  // pickAgentProvider routes it to groq; each provider gets its own
+  // concurrency bucket (`${inst}:${provider}`) and fails closed on its own.
+  it("fails closed as ai_unavailable when GROQ_API_KEY is unset, releasing the groq slot", async () => {
     getTenantContextMock.mockResolvedValueOnce(teacherCtx());
-    getGeminiModelMock.mockRejectedValueOnce(new Error("GEMINI_API_KEY is not configured."));
+    getGroqModelMock.mockRejectedValueOnce(new Error("GROQ_API_KEY is not configured."));
     const res = await POST(request(validBody()));
     expect(res.status).toBe(502);
     const body = await json(res);
     expect(body.error.code).toBe("ai_unavailable");
+    expect(releaseConcurrencySlotMock).toHaveBeenCalledWith("inst-1:groq", "cloud");
+  });
+
+  it("fails closed as ai_unavailable when GEMINI_API_KEY is unset, for a message routed to gemini", async () => {
+    getTenantContextMock.mockResolvedValueOnce(teacherCtx());
+    getGeminiModelMock.mockRejectedValueOnce(new Error("GEMINI_API_KEY is not configured."));
+    const longBody = {
+      institutionSlug: "demo",
+      messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "a".repeat(221) }] }],
+    };
+    const res = await POST(request(longBody));
+    expect(res.status).toBe(502);
+    const body = await json(res);
+    expect(body.error.code).toBe("ai_unavailable");
     expect(releaseConcurrencySlotMock).toHaveBeenCalledWith("inst-1:gemini", "cloud");
+  });
+
+  it("routes a short message's stream through the groq model", async () => {
+    getTenantContextMock.mockResolvedValueOnce(teacherCtx());
+    const streamResponse = new Response("stream");
+    streamTextMock.mockReturnValueOnce({
+      totalUsage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
+      toUIMessageStreamResponse: () => streamResponse,
+    });
+    await POST(request(validBody()));
+    expect(getGroqModelMock).toHaveBeenCalledOnce();
+    expect(getGeminiModelMock).not.toHaveBeenCalled();
+    expect(streamTextMock).toHaveBeenCalledWith(expect.objectContaining({ model: "groq-model-handle" }));
+  });
+
+  it("routes a long message's stream through the gemini model", async () => {
+    getTenantContextMock.mockResolvedValueOnce(teacherCtx());
+    const streamResponse = new Response("stream");
+    streamTextMock.mockReturnValueOnce({
+      totalUsage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }),
+      toUIMessageStreamResponse: () => streamResponse,
+    });
+    const longBody = {
+      institutionSlug: "demo",
+      messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "a".repeat(221) }] }],
+    };
+    await POST(request(longBody));
+    expect(getGeminiModelMock).toHaveBeenCalledOnce();
+    expect(getGroqModelMock).not.toHaveBeenCalled();
+    expect(streamTextMock).toHaveBeenCalledWith(expect.objectContaining({ model: "gemini-model-handle" }));
   });
 
   it("streams a response and releases the slot after usage logging on success", async () => {
@@ -243,7 +338,7 @@ describe("POST /api/ai/agent/teacher", () => {
     expect(streamTextMock).toHaveBeenCalledWith(
       expect.objectContaining({ maxOutputTokens: 1024, toolCallConcurrency: 1, abortSignal: req.signal }),
     );
-    await vi.waitFor(() => expect(releaseConcurrencySlotMock).toHaveBeenCalledWith("inst-1:gemini", "cloud"));
+    await vi.waitFor(() => expect(releaseConcurrencySlotMock).toHaveBeenCalledWith("inst-1:groq", "cloud"));
     expect(logUsageMock).toHaveBeenCalledWith(expect.objectContaining({ ok: true, inputTokens: 10, outputTokens: 5 }));
   });
 

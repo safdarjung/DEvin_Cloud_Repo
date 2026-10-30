@@ -80,9 +80,12 @@ export function TeacherAgentChat({ institutionSlug }: TeacherAgentChatProps) {
       <div>
         <h1 className="text-xl font-semibold">AI Assistant</h1>
         <div className="mt-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
-          Google Gemini (cloud) — this assistant sends what you type, plus the data it looks up (students,
-          curriculum, attendance, exam results), to Google. It only drafts quizzes and remarks; you decide
-          what to save.
+          {/* D29 — each message is routed to one of two cloud providers
+              (Google Gemini or Groq); this banner must stay accurate for
+              either, so it names both rather than claiming one. */}
+          Google Gemini or Groq (cloud) — this assistant sends what you type, plus the data it looks up
+          (students, curriculum, attendance, exam results), to one of these providers. It only drafts
+          quizzes and remarks; you decide what to save.
         </div>
       </div>
 
