@@ -21,4 +21,14 @@ describe("InstitutionSettingsSchema", () => {
 
     expect(() => InstitutionSettingsSchema.parse(broken)).toThrow();
   });
+
+  // D33 — features moved from an open z.record to a closed, named set.
+  it("rejects an unknown feature key", () => {
+    const broken = structuredClone(DEFAULT_INSTITUTION_SETTINGS) as typeof DEFAULT_INSTITUTION_SETTINGS & {
+      features: Record<string, boolean>;
+    };
+    broken.features.not_a_real_feature = true;
+
+    expect(() => InstitutionSettingsSchema.parse(broken)).toThrow();
+  });
 });

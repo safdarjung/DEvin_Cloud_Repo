@@ -1,12 +1,12 @@
 "use client";
 
-// D30 — the only UI for toggling `institutions.settings.features
+// D30/D33 — the only UI for toggling `institutions.settings.features
 // .teacher_ai_agent`. Shown to owner/principal/admin (who hold
 // `institution.settings.manage`) on the page teachers otherwise use the
 // agent from, so the effect of the toggle is visible in context.
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { setTeacherAgentEnabled } from "@/modules/core/actions";
+import { setFeatureEnabled } from "@/modules/core/actions";
 
 interface TeacherAgentFeatureToggleProps {
   institutionSlug: string;
@@ -22,7 +22,7 @@ export function TeacherAgentFeatureToggle({ institutionSlug, initialEnabled }: T
     setSaving(true);
     setError(null);
     const next = !enabled;
-    const result = await setTeacherAgentEnabled(institutionSlug, { enabled: next });
+    const result = await setFeatureEnabled(institutionSlug, { key: "teacher_ai_agent", enabled: next });
     if (!result.ok) {
       setError(result.error.message);
     } else {

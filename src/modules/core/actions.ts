@@ -1,27 +1,32 @@
 "use server";
 
-// D30 (12-decision-log.md) — v1 entitlements toggle. Owners/principals/
-// admins already hold `institution.settings.manage`; this is the only
-// write path for `institutions.settings.features`, kept to the one real
-// flag (`teacher_ai_agent`) rather than a generic "set any settings key"
-// action, matching the ADR's deliberately narrow v1 scope.
+// D30/D33 (12-decision-log.md) — the entitlements toggle. Owners/
+// principals/admins hold `institution.settings.manage`; this is the only
+// write path for `institutions.settings.features`. D33 generalized this
+// from a single hardcoded `teacher_ai_agent` setter to any closed
+// `FeatureKey` — the plan's own §7 suggestion to move toggling to
+// `is_platform_admin` only was explicitly NOT taken (owner ruling,
+// 2026-10-30): authority stays exactly where D30 put it.
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
+import { FEATURE_CATALOG, type FeatureKey } from "@/lib/auth/entitlements";
 import { createClient } from "@/lib/supabase/server";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 
-export const setTeacherAgentEnabled = defineAction({
-  name: "core.feature.teacher_ai_agent.set",
-  schema: z.object({ enabled: z.boolean() }),
+const FEATURE_KEYS = Object.keys(FEATURE_CATALOG) as [FeatureKey, ...FeatureKey[]];
+
+export const setFeatureEnabled = defineAction({
+  name: "core.feature.set",
+  schema: z.object({ key: z.enum(FEATURE_KEYS), enabled: z.boolean() }),
   permission: "institution.settings.manage",
-  handler: async ({ enabled }, ctx) => {
+  handler: async ({ key, enabled }, ctx) => {
     const existingFeatures = ctx.institution.settings.features;
     const features = {
       ...(typeof existingFeatures === "object" && existingFeatures !== null ? existingFeatures : {}),
-      teacher_ai_agent: enabled,
+      [key]: enabled,
     };
 
     // Only this sub-key is validated (same per-key pattern as
@@ -47,13 +52,13 @@ export const setTeacherAgentEnabled = defineAction({
     }
 
     await audit(ctx, {
-      action: "core.feature.teacher_ai_agent.set",
+      action: "core.feature.set",
       entityType: "institution",
       entityId: ctx.institution.id,
-      after: { teacher_ai_agent: enabled },
+      after: { [key]: enabled },
     });
 
     revalidatePath(`/${ctx.institution.slug}/ai`);
-    return { enabled };
+    return { key, enabled };
   },
 });

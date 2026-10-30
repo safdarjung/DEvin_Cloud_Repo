@@ -101,13 +101,28 @@ export const InstitutionSettingsSchema = z
         sms_sender: z.string().min(1),
       })
       .strict(),
-    // D30 — per-institution feature entitlements (what the platform gives
-    // this customer), separate from role permissions (who within the
-    // institution can use it). A key missing from this map is treated as
-    // enabled by `isFeatureEnabled` — only an explicit `false` disables a
-    // feature, so adding a new gated feature here never silently disables
-    // it for institutions whose settings predate the key.
-    features: z.record(z.string(), z.boolean()),
+    // D30/D33 — per-institution feature entitlements (what the platform
+    // gives this customer), separate from role permissions (who within the
+    // institution can use it). This is the closed set of feature keys
+    // (`src/lib/auth/entitlements.ts`'s `FeatureKey` is derived from this
+    // object's keys, not hand-duplicated) — a typo'd or retired key is a
+    // Zod validation error, not a silently-ignored flag. Each key is
+    // optional: a missing key falls back to `FEATURE_CATALOG`'s per-key
+    // default in `isFeatureEnabled`, not a blanket "enabled" (D33
+    // supersedes D30's blanket default for every key added after D30;
+    // `teacher_ai_agent`'s own default stays `true`, unchanged).
+    features: z
+      .object({
+        teacher_ai_agent: z.boolean().optional(),
+        teacher_ai_visuals: z.boolean().optional(),
+        teacher_ai_class_insights: z.boolean().optional(),
+        teacher_ai_lesson_plans: z.boolean().optional(),
+        teacher_ai_parent_messages: z.boolean().optional(),
+        student_ai_study: z.boolean().optional(),
+        student_ai_visuals: z.boolean().optional(),
+        student_ai_notebook: z.boolean().optional(),
+      })
+      .strict(),
   })
   .strict();
 

@@ -1,6 +1,6 @@
-// D30 — per-institution feature entitlements.
+// D30/D33 — per-institution feature entitlements.
 import { describe, expect, it } from "vitest";
-import { isFeatureEnabled } from "@/lib/auth/entitlements";
+import { FEATURE_CATALOG, isFeatureEnabled } from "@/lib/auth/entitlements";
 import type { TenantContext } from "@/lib/auth/types";
 
 function ctxWithSettings(settings: Record<string, unknown>): TenantContext {
@@ -14,18 +14,34 @@ function ctxWithSettings(settings: Record<string, unknown>): TenantContext {
 
 describe("isFeatureEnabled", () => {
   it("is enabled when explicitly true", () => {
-    expect(isFeatureEnabled(ctxWithSettings({ features: { x: true } }), "x")).toBe(true);
+    expect(isFeatureEnabled(ctxWithSettings({ features: { teacher_ai_agent: true } }), "teacher_ai_agent")).toBe(true);
   });
 
-  it("is disabled only when explicitly false", () => {
-    expect(isFeatureEnabled(ctxWithSettings({ features: { x: false } }), "x")).toBe(false);
+  it("is disabled when explicitly false, even for a key whose catalog default is true", () => {
+    expect(isFeatureEnabled(ctxWithSettings({ features: { teacher_ai_agent: false } }), "teacher_ai_agent")).toBe(false);
   });
 
-  it("defaults to enabled when the key is missing from the features map", () => {
-    expect(isFeatureEnabled(ctxWithSettings({ features: { other: false } }), "x")).toBe(true);
+  it("falls back to the catalog default (true) when the key is missing from the features map", () => {
+    expect(isFeatureEnabled(ctxWithSettings({ features: { student_ai_study: false } }), "teacher_ai_agent")).toBe(true);
   });
 
-  it("defaults to enabled when settings has no features map at all", () => {
-    expect(isFeatureEnabled(ctxWithSettings({}), "x")).toBe(true);
+  it("falls back to the catalog default (false) when settings has no features map at all", () => {
+    expect(isFeatureEnabled(ctxWithSettings({}), "student_ai_study")).toBe(false);
+  });
+
+  it("D33: a sub-feature is disabled while its parent is off, even if stored true", () => {
+    const ctx = ctxWithSettings({ features: { teacher_ai_agent: false, teacher_ai_visuals: true } });
+    expect(isFeatureEnabled(ctx, "teacher_ai_visuals")).toBe(false);
+  });
+
+  it("D33: a sub-feature follows its own stored value once its parent is on", () => {
+    const ctx = ctxWithSettings({ features: { teacher_ai_agent: true, teacher_ai_visuals: true } });
+    expect(isFeatureEnabled(ctx, "teacher_ai_visuals")).toBe(true);
+  });
+
+  it("D33: every key defaults off except teacher_ai_agent", () => {
+    for (const [key, entry] of Object.entries(FEATURE_CATALOG)) {
+      expect(entry.default).toBe(key === "teacher_ai_agent");
+    }
   });
 });

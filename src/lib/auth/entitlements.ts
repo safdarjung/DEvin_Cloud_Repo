@@ -1,15 +1,39 @@
-// D30 — per-institution feature entitlements: what the platform gives this
-// customer, orthogonal to `permissions.ts` (who within the institution can
-// use it). Stored in `institutions.settings.features` (reuses the existing
-// jsonb column; no migration). A key missing or settings that fail to parse
-// means enabled — only an explicit `false` disables a feature, so this can
-// never silently take a feature away from an institution whose settings
-// predate it.
+// D30/D33 — per-institution feature entitlements: what the platform gives
+// this customer, orthogonal to `permissions.ts` (who within the institution
+// can use it). Stored in `institutions.settings.features`, whose closed key
+// set is owned by `InstitutionSettingsSchema` (src/modules/core/schemas.ts)
+// — `FeatureKey` below is derived from it, never hand-duplicated, so a key
+// added there without a matching `FEATURE_CATALOG` entry is a compile error.
+import type { InstitutionSettings } from "@/modules/core/schemas";
 import type { TenantContext } from "@/lib/auth/types";
 
-export function isFeatureEnabled(ctx: TenantContext, feature: string): boolean {
+export type FeatureKey = keyof NonNullable<InstitutionSettings["features"]>;
+
+interface FeatureCatalogEntry {
+  /** Used only when the institution's settings have no explicit value for this key. */
+  default: boolean;
+  /** D33 — a sub-feature is never enabled while its parent is off, regardless of its own stored value. */
+  parent?: FeatureKey;
+}
+
+// D33 — every key here defaults to `false` except `teacher_ai_agent`
+// (D30's own promise, kept exactly: existing customers keep what they had).
+export const FEATURE_CATALOG: Record<FeatureKey, FeatureCatalogEntry> = {
+  teacher_ai_agent: { default: true },
+  teacher_ai_visuals: { default: false, parent: "teacher_ai_agent" },
+  teacher_ai_class_insights: { default: false, parent: "teacher_ai_agent" },
+  teacher_ai_lesson_plans: { default: false, parent: "teacher_ai_agent" },
+  teacher_ai_parent_messages: { default: false, parent: "teacher_ai_agent" },
+  student_ai_study: { default: false },
+  student_ai_visuals: { default: false, parent: "student_ai_study" },
+  student_ai_notebook: { default: false, parent: "student_ai_study" },
+};
+
+export function isFeatureEnabled(ctx: TenantContext, key: FeatureKey): boolean {
+  const entry = FEATURE_CATALOG[key];
+  if (entry.parent && !isFeatureEnabled(ctx, entry.parent)) return false;
+
   const features = ctx.institution.settings.features;
-  if (typeof features !== "object" || features === null) return true;
-  const flag = (features as Record<string, unknown>)[feature];
-  return flag !== false;
+  const stored = typeof features === "object" && features !== null ? (features as Record<string, unknown>)[key] : undefined;
+  return typeof stored === "boolean" ? stored : entry.default;
 }
