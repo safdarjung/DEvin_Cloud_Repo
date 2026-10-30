@@ -20,6 +20,8 @@ const TOOL_LABELS: Record<string, string> = {
   findStudent: "Looking up the student…",
   findCurriculumUnit: "Looking up the curriculum unit…",
   getAttendancePattern: "Checking attendance pattern…",
+  getExamResults: "Looking up exam results…",
+  getAssignmentStatus: "Looking up assignments…",
   generateQuiz: "Drafting a quiz…",
   draftResultRemark: "Drafting a report-card remark…",
 };

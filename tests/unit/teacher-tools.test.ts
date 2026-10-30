@@ -15,6 +15,7 @@ const getSectionAttendancePatternsMock = vi.fn();
 const canGenerateQuizForUnitMock = vi.fn();
 const canDraftRemarkForResultMock = vi.fn();
 const runStructuredMock = vi.fn();
+const listStudentAssignmentsMock = vi.fn();
 
 vi.mock("@/modules/people/queries", () => ({
   listStudents: listStudentsMock,
@@ -23,6 +24,9 @@ vi.mock("@/modules/people/queries", () => ({
 }));
 vi.mock("@/modules/attendance/queries", () => ({
   getSectionAttendancePatterns: getSectionAttendancePatternsMock,
+}));
+vi.mock("@/modules/academics/assignments.queries", () => ({
+  listStudentAssignments: listStudentAssignmentsMock,
 }));
 vi.mock("@/modules/ai/quiz-scope", () => ({ canGenerateQuizForUnit: canGenerateQuizForUnitMock }));
 vi.mock("@/modules/ai/remark-scope", () => ({ canDraftRemarkForResult: canDraftRemarkForResultMock }));
@@ -176,6 +180,94 @@ describe("teacherTools", () => {
       const tools = await teacherTools(baseCtx());
       const result = await tools.getAttendancePattern.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
       expect(result).toEqual({ presentCount: 40, absentCount: 2, lateCount: 1, recentAbsentDayOffsets: [3] });
+    });
+  });
+
+  describe("getExamResults", () => {
+    it("errors when the teacher does not teach this student", async () => {
+      vi.mocked(serverClient.createClient).mockResolvedValueOnce(
+        fakeSupabase({
+          results: [{ id: "r1", student_id: "s1", snapshot: { subjects: [] }, percentage: 80, grade: "A", exams: { name: "Half-Yearly" } }],
+        }),
+      );
+      canDraftRemarkForResultMock.mockResolvedValueOnce(false);
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getExamResults.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toBe("You do not teach this student.");
+    });
+
+    it("errors when no exam result exists for the student", async () => {
+      canDraftRemarkForResultMock.mockResolvedValueOnce(true);
+      vi.mocked(serverClient.createClient).mockResolvedValueOnce(fakeSupabase({ results: [] }));
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getExamResults.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toBe("No exam results found for this student.");
+    });
+
+    it("returns per-subject marks for the matching results", async () => {
+      canDraftRemarkForResultMock.mockResolvedValueOnce(true);
+      vi.mocked(serverClient.createClient).mockResolvedValueOnce(
+        fakeSupabase({
+          results: [
+            {
+              id: "r1",
+              student_id: "s1",
+              snapshot: { subjects: [{ subject_id: "sub1", marks_obtained: 80, max_marks: 100, is_absent: false, grade: "A" }] },
+              percentage: 80,
+              grade: "A",
+              exams: { name: "Half-Yearly" },
+            },
+          ],
+          subjects: [{ id: "sub1", name: "Science" }],
+        }),
+      );
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getExamResults.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toEqual([
+        {
+          examName: "Half-Yearly",
+          percentage: 80,
+          grade: "A",
+          subjects: [{ subjectName: "Science", marksObtained: 80, maxMarks: 100, isAbsent: false, grade: "A" }],
+        },
+      ]);
+    });
+  });
+
+  describe("getAssignmentStatus", () => {
+    it("errors when the teacher does not teach this student", async () => {
+      canDraftRemarkForResultMock.mockResolvedValueOnce(false);
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getAssignmentStatus.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toBe("You do not teach this student.");
+    });
+
+    it("errors when the student has no published assignments", async () => {
+      canDraftRemarkForResultMock.mockResolvedValueOnce(true);
+      listStudentAssignmentsMock.mockResolvedValueOnce([]);
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getAssignmentStatus.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toBe("No published assignments found for this student.");
+    });
+
+    it("returns title/subject/due date for each assignment", async () => {
+      canDraftRemarkForResultMock.mockResolvedValueOnce(true);
+      listStudentAssignmentsMock.mockResolvedValueOnce([
+        {
+          id: "a1",
+          title: "Algebra basics",
+          status: "published",
+          classSectionId: "sec1",
+          subjectId: "sub1",
+          dueAt: "2026-11-01",
+          aiGenerated: false,
+          createdAt: "2026-10-01",
+        },
+      ]);
+      vi.mocked(serverClient.createClient).mockResolvedValueOnce(fakeSupabase({ subjects: [{ id: "sub1", name: "Maths" }] }));
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getAssignmentStatus.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toEqual([{ title: "Algebra basics", subjectName: "Maths", dueAt: "2026-11-01", aiGenerated: false }]);
     });
   });
 

@@ -15,6 +15,7 @@ import { uuid } from "@/lib/schemas/common";
 import type { TenantContext } from "@/lib/auth/types";
 import { listStudents, getStudentProfile, getCurrentTermId } from "@/modules/people/queries";
 import { getSectionAttendancePatterns } from "@/modules/attendance/queries";
+import { listStudentAssignments } from "@/modules/academics/assignments.queries";
 import { managesWholeSection } from "@/modules/academics/teacher-scope";
 import { canGenerateQuizForUnit } from "@/modules/ai/quiz-scope";
 import { canDraftRemarkForResult } from "@/modules/ai/remark-scope";
@@ -168,6 +169,113 @@ export async function teacherTools(ctx: TenantContext) {
           };
         } catch (err) {
           return toolErrorMessage("getAttendancePattern", err);
+        }
+      },
+    }),
+
+    getExamResults: tool({
+      description:
+        "Look up a student's published exam results: grade, percentage, and per-subject marks. Only works for students this teacher teaches. Returns up to 5 most recent results, or one named exam if given.",
+      inputSchema: z.object({ studentId: uuid, examName: z.string().trim().min(1).max(200).optional() }),
+      execute: async ({ studentId, examName }) => {
+        try {
+          // Reused from the remark-drafting tool: "may this teacher see
+          // this student's results" is the same "teaches this student"
+          // bar as "may draft a remark for them" (remark-scope.ts), not an
+          // exam-specific check.
+          const allowed = await canDraftRemarkForResult(supabase, ctx, studentId);
+          if (!allowed) return "You do not teach this student.";
+
+          const { data: rows, error } = await supabase
+            .from("results")
+            .select("id, snapshot, percentage, grade, exams(name)")
+            .eq("institution_id", ctx.institution.id)
+            .eq("student_id", studentId)
+            .is("superseded_by", null)
+            .order("published_at", { ascending: false })
+            .limit(20);
+          if (error) throw error;
+
+          const matches = examName
+            ? (rows ?? []).filter(
+                (row) => (row.exams as { name: string } | null)?.name?.toLowerCase() === examName.toLowerCase(),
+              )
+            : (rows ?? []);
+          if (matches.length === 0) {
+            return examName
+              ? `No exam result named "${examName}" found for this student.`
+              : "No exam results found for this student.";
+          }
+
+          const subjectIds = [
+            ...new Set(
+              matches.flatMap((row) => {
+                const snapshot = row.snapshot as { subjects: Array<{ subject_id: string }> };
+                return snapshot.subjects.map((s) => s.subject_id);
+              }),
+            ),
+          ];
+          const { data: subjectRows, error: subjectsError } =
+            subjectIds.length > 0
+              ? await supabase.from("subjects").select("id, name").eq("institution_id", ctx.institution.id).in("id", subjectIds)
+              : { data: [], error: null };
+          if (subjectsError) throw subjectsError;
+          const subjectNameById = new Map((subjectRows ?? []).map((s) => [s.id, s.name]));
+
+          return matches.slice(0, 5).map((row) => {
+            const exam = row.exams as { name: string } | null;
+            const snapshot = row.snapshot as {
+              subjects: Array<{ subject_id: string; marks_obtained: number | null; max_marks: number; is_absent: boolean; grade: string | null }>;
+            };
+            return {
+              examName: exam?.name ?? "",
+              percentage: row.percentage,
+              grade: row.grade,
+              subjects: snapshot.subjects.map((s) => ({
+                subjectName: subjectNameById.get(s.subject_id) ?? "",
+                marksObtained: s.marks_obtained,
+                maxMarks: s.max_marks,
+                isAbsent: s.is_absent,
+                grade: s.grade,
+              })),
+            };
+          });
+        } catch (err) {
+          return toolErrorMessage("getExamResults", err);
+        }
+      },
+    }),
+
+    getAssignmentStatus: tool({
+      description:
+        "List a student's published assignments: title, subject, due date. Only works for students this teacher teaches. " +
+        "This does not track individual student submissions — it cannot say whether a specific student has submitted.",
+      inputSchema: z.object({ studentId: uuid }),
+      execute: async ({ studentId }) => {
+        try {
+          const allowed = await canDraftRemarkForResult(supabase, ctx, studentId);
+          if (!allowed) return "You do not teach this student.";
+
+          const assignments = await listStudentAssignments(ctx, studentId);
+          if (assignments.length === 0) return "No published assignments found for this student.";
+
+          const subjectIds = [...new Set(assignments.map((a) => a.subjectId))];
+          const { data: subjectRows, error } = await supabase
+            .from("subjects")
+            .select("id, name")
+            .eq("institution_id", ctx.institution.id)
+            .in("id", subjectIds);
+          if (error) throw error;
+          const subjectNameById = new Map((subjectRows ?? []).map((s) => [s.id, s.name]));
+
+          return assignments.map((a) => ({
+            title: a.title,
+            subjectName: subjectNameById.get(a.subjectId) ?? "",
+            dueAt: a.dueAt,
+            aiGenerated: a.aiGenerated,
+          }));
+        } catch (err) {
+          return toolErrorMessage("getAssignmentStatus", err);
         }
       },
     }),
