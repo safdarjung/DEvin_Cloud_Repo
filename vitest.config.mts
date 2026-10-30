@@ -61,7 +61,17 @@ export default defineConfig({
         test: {
           name: "security",
           environment: "node",
-          include: ["tests/security/**/*.test.ts"],
+          // T-042: `pnpm test:security` runs every 07 §6 C-id. Ids already
+          // proven by a unit/db file are run from that file, not duplicated.
+          include: [
+            "tests/security/**/*.test.ts",
+            "tests/unit/permissions.test.ts", // C-03 matrix snapshot
+            "tests/unit/ai-policy.test.ts", // C-62, C-63
+            "tests/unit/ai-gateway.test.ts", // C-62, C-63
+            "tests/db/website-schema.test.ts", // C-80
+            "tests/db/public-enquiry-route.test.ts", // C-81, C-83
+            "tests/db/demo-reset.test.ts", // C-04 (SQL guard)
+          ],
         },
       },
     ],

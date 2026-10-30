@@ -102,7 +102,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   students: {
     classes: ["S+G"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // teacher: active enrolment in a taught section (DBT-17, 0025)
     write: ["owner", "principal", "admin", "admissions"],
   },
   guardians: {
@@ -112,7 +112,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   guardian_students: {
     classes: ["S+G"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "teacher", "guardian"], // 07 §2.2 guardian.read (no exam_controller, no student — 0040); teacher: students in a taught section (DBT-17, 0025); guardian: own links
     write: ["owner", "principal", "admin", "admissions"],
   },
 
@@ -140,12 +140,12 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   enrolments: {
     classes: ["S+G"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // teacher: taught sections only (DBT-17, 0025)
     write: ["owner", "principal", "admin", "admissions"],
   },
   enrolment_status_history: {
     classes: ["A"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // teacher: taught sections only (DBT-17, 0025)
     write: [], // trigger-only
   },
   curriculum_units: {
@@ -155,8 +155,8 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   assignments: {
     classes: ["S+G", "T"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
-    write: ["owner", "principal", "teacher"], // teacher scoped to sections they teach
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"], // 07 §2.2 assignment.read (DBT-17, 0025): teacher taught sections; student/guardian published, own sections
+    write: ["owner", "principal", "teacher"], // teacher: class teacher of the section (any subject) or subject teacher of exactly that subject (DBT-19, 0026)
   },
   assignment_submissions: {
     classes: ["O", "T"],
@@ -170,7 +170,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // DBT-19 lesson). No admin/exam_controller, no guardian/student.
   assignment_answer_keys: {
     classes: ["C"],
-    read: ["owner", "principal", "teacher"], // teacher scoped to the subject they teach in the assignment's own section, not every section
+    read: ["owner", "principal", "teacher"], // teacher: the assignment section's class teacher, or the subject they teach in that section (0023, 0034)
     write: ["owner", "principal", "teacher"], // same scope
   },
 
@@ -250,7 +250,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   websites: {
     classes: ["P"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
-    write: ["owner", "principal", "admin", "admissions"],
+    write: ["owner", "principal", "admin", "admissions"], // is_live only owner/principal/admin — website.publish trigger (DBT-28, 0028)
     anonRead: true,
   },
   pages: {
@@ -347,7 +347,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // own-child for recheck_requests) is proved by tests/db/exams-schema.test.ts.
   exams: {
     classes: ["S"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // student/guardian: published exams their own/linked students have results in (T-042, 0030)
     write: ["owner", "principal", "exam_controller"], // admin excluded (exam.manage)
   },
   exam_papers: {

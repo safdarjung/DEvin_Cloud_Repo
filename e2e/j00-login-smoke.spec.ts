@@ -7,14 +7,10 @@ import { type DemoRole, DEMO_ROLES, loginAs, SLUG } from "./fixtures";
 // against the freshly globalSetup-reset demo tenant, proves the reset left
 // every role loggable-in.
 //
-// The tenant root (`/[institution]`) redirects by `dashboard.view`
-// (principal/admin/admissions/accountant/examcontroller -> /dashboard,
-// everyone else -> /portal). `teacher` is neither "has dashboard.view" nor
-// guardian/student-shaped, so the root sends it to /portal, which correctly
-// 404s (no children, not a student) — real, not a bug: a teacher never
-// visits the bare tenant root in the actual demo script (11 §10), they go
-// straight to /attendance. This spec checks the page teachers actually
-// use instead of the root-redirect's edge case.
+// The tenant root (`/[institution]`) redirects via `homePathFor`
+// (src/lib/nav.ts): dashboard.view -> /dashboard, guardian/student ->
+// /portal, teacher -> /attendance (T-042; it used to send teachers to
+// /portal, which threw for them).
 const DASHBOARD_ROLES: DemoRole[] = ["principal", "admin", "admissions", "accountant", "examcontroller"];
 const TEACHER_ROLES: DemoRole[] = ["teacher.vi-a", "teacher.viii-b", "teacher.x-a"];
 const PORTAL_ROLES: Record<string, string> = {
@@ -40,14 +36,15 @@ test.describe("J-00: login smoke, every demo role", () => {
   }
 
   for (const role of TEACHER_ROLES) {
-    test(`${role} reaches /attendance with no console errors`, async ({ page }) => {
+    test(`${role} lands on /attendance from the tenant root with no console errors`, async ({ page }) => {
       const errors: string[] = [];
       page.on("console", (msg) => {
         if (msg.type() === "error") errors.push(msg.text());
       });
 
       await loginAs(page, role);
-      await page.goto(`/${SLUG}/attendance`);
+      await page.goto(`/${SLUG}`);
+      await expect(page).toHaveURL(new RegExp(`/${SLUG}/attendance$`));
       await expect(page.getByRole("heading", { name: "Attendance" })).toBeVisible();
       expect(errors).toEqual([]);
     });

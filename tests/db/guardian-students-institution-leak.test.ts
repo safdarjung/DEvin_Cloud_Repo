@@ -126,14 +126,15 @@ describe("P-01 fix round 1 — guardian_students institution-mismatch no longer 
     });
   });
 
-  it("student branch: a membership whose student_id points at another institution's student sees nothing for that student", async () => {
+  // T-042 / DBT-32: the attack fixture itself is now impossible —
+  // app.validate_membership_link (20261028000029) rejects a membership whose
+  // student_id belongs to another institution, so no RLS helper can ever see one.
+  it("student branch: a membership whose student_id points at another institution's student is rejected outright", async () => {
     await withTwoInstitutions(async (instA, instB) => {
       const [membershipB] = await sql`
         select student_id from public.memberships where institution_id = ${instB.institutionId} and role = 'student'
       `;
 
-      // Attack fixture: a fresh user, membership in institution A, but
-      // student_id borrowed from institution B.
       const admin = adminClient();
       const email = `test-portal-scope-mismatched-student-${crypto.randomUUID()}@test.coolskool.test`;
       const { data: userData, error: userError } = await admin.auth.admin.createUser({
@@ -143,22 +144,13 @@ describe("P-01 fix round 1 — guardian_students institution-mismatch no longer 
       });
       if (userError || !userData.user) throw userError ?? new Error("failed to create mismatched-student test user");
 
-      await sql`
-        insert into public.memberships (institution_id, user_id, role, student_id)
-        values (${instA.institutionId}, ${userData.user.id}, 'student', ${membershipB.student_id})
-      `;
-
       try {
-        const client = createClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-          process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY as string,
-        );
-        const { error: signInError } = await client.auth.signInWithPassword({ email, password: PASSWORD });
-        if (signInError) throw signInError;
-
-        const studentRows = await client.from("students").select("id").eq("id", membershipB.student_id);
-        expect(studentRows.error).toBeNull();
-        expect(studentRows.data).toHaveLength(0);
+        await expect(
+          sql`
+            insert into public.memberships (institution_id, user_id, role, student_id)
+            values (${instA.institutionId}, ${userData.user.id}, 'student', ${membershipB.student_id})
+          `,
+        ).rejects.toThrow(/validation_failed/);
       } finally {
         await admin.auth.admin.deleteUser(userData.user.id);
       }

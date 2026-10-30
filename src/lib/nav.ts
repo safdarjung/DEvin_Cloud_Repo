@@ -54,3 +54,12 @@ export const NAV_ITEMS: readonly NavItem[] = [
 export function navItemsFor(permissions: ReadonlySet<Permission>): NavItem[] {
   return NAV_ITEMS.filter((item) => permissions.has(item.permission));
 }
+
+// Landing page for `/[institution]`: staff without `dashboard.view` (teacher)
+// must never be sent to `/portal`, which serves guardians/students only.
+export function homePathFor(permissions: ReadonlySet<Permission>): string {
+  if (permissions.has("dashboard.view")) return "/dashboard";
+  if (permissions.has("exam.recheck.request")) return "/portal";
+  if (permissions.has("attendance.mark")) return "/attendance";
+  return navItemsFor(permissions)[0]?.href ?? "/notifications";
+}

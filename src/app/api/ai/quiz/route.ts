@@ -15,68 +15,14 @@ import type { TenantContext } from "@/lib/auth/types";
 import { QuizContentSchema, QuizGenerationSchema, QuizRequestSchema, type QuizContent } from "@/modules/ai/quiz.schemas";
 import { buildQuizPrompt, QUIZ_GENERATION_INSTRUCTIONS } from "@/modules/ai/prompts/quiz";
 import { canGenerateQuizForUnit } from "@/modules/ai/quiz-scope";
+import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Fix round 1 (security review, LOW — no body-size cap): mirrors
-// `readJsonBody` in `src/app/api/public/enquiry/route.ts` (T-024) — that
-// one isn't exported, so this is a copy, not an import. `content-length`
-// is checked first as a fast path, but it's a client-supplied header too
-// (can be absent or wrong), so the stream itself is also read with a hard
-// byte ceiling, never trusting the header alone.
+// Fix round 1 (security review, LOW — no body-size cap); helper shared with
+// the public enquiry route since DBT-29 (src/lib/http/request.ts).
 const MAX_BODY_BYTES = 8 * 1024;
-
-type BodyReadResult = { ok: true; data: unknown } | { ok: false; tooLarge: boolean };
-
-async function readJsonBody(request: Request, maxBytes: number): Promise<BodyReadResult> {
-  const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    return { ok: false, tooLarge: true };
-  }
-
-  if (!request.body) {
-    try {
-      const text = await request.text();
-      return { ok: true, data: text.length > 0 ? JSON.parse(text) : undefined };
-    } catch {
-      return { ok: false, tooLarge: false };
-    }
-  }
-
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return { ok: false, tooLarge: true };
-      }
-      chunks.push(value);
-    }
-  } catch {
-    return { ok: false, tooLarge: false };
-  }
-
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  try {
-    const text = new TextDecoder().decode(bytes);
-    return { ok: true, data: text.length > 0 ? JSON.parse(text) : undefined };
-  } catch {
-    return { ok: false, tooLarge: false };
-  }
-}
 
 interface QuizResponseData {
   content: QuizContent;
@@ -129,6 +75,11 @@ function mapTenantContextError(err: unknown): ActionResult<never> | null {
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
+  // DBT-29: cookie-authenticated and cost-bearing — refuse cross-site callers.
+  if (isCrossSiteRequest(request)) {
+    return json(fail("forbidden", "Cross-site request refused."));
+  }
+
   const bodyResult = await readJsonBody(request, MAX_BODY_BYTES);
   if (!bodyResult.ok) {
     if (bodyResult.tooLarge) {

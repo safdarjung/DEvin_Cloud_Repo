@@ -5,6 +5,7 @@ import { mapSqlError, type ErrorCode } from "@/lib/actions/result";
 import { clientIp } from "@/modules/website/request-ip";
 import { EnquiryInputSchema } from "@/modules/website/schemas";
 import { createPublicEnquiryAdminClient } from "@/modules/website/with-service-role";
+import { readJsonBody } from "@/lib/http/request";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,64 +35,6 @@ function dailySalt(): string {
   if (!secret) throw new Error("CRON_SECRET is not configured");
   const today = new Date().toISOString().slice(0, 10);
   return sha256Hex(`${secret}:${today}`);
-}
-
-type BodyReadResult = { ok: true; data: unknown } | { ok: false; tooLarge: boolean };
-
-/**
- * Fix round 1 (security review, LOW): caps the body at `MAX_BODY_BYTES`
- * before it ever reaches `JSON.parse`. `content-length` is checked first
- * as a fast path, but it's a client-supplied header too — can be absent or
- * wrong — so the stream itself is also read with a hard byte ceiling,
- * never trusting the header alone.
- */
-async function readJsonBody(request: Request, maxBytes: number): Promise<BodyReadResult> {
-  const declared = Number(request.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    return { ok: false, tooLarge: true };
-  }
-
-  if (!request.body) {
-    try {
-      const text = await request.text();
-      return { ok: true, data: text.length > 0 ? JSON.parse(text) : undefined };
-    } catch {
-      return { ok: false, tooLarge: false };
-    }
-  }
-
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel().catch(() => {});
-        return { ok: false, tooLarge: true };
-      }
-      chunks.push(value);
-    }
-  } catch {
-    return { ok: false, tooLarge: false };
-  }
-
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  try {
-    const text = new TextDecoder().decode(bytes);
-    return { ok: true, data: text.length > 0 ? JSON.parse(text) : undefined };
-  } catch {
-    return { ok: false, tooLarge: false };
-  }
 }
 
 export async function POST(request: Request): Promise<Response> {

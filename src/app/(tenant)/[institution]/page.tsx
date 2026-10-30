@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
+import { homePathFor } from "@/lib/nav";
 
 export default async function TenantHome({
   params,
@@ -9,9 +10,5 @@ export default async function TenantHome({
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
 
-  redirect(
-    ctx.permissions.has("dashboard.view")
-      ? `/${institutionSlug}/dashboard`
-      : `/${institutionSlug}/portal`,
-  );
+  redirect(`/${institutionSlug}${homePathFor(ctx.permissions)}`);
 }
