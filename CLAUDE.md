@@ -2,6 +2,15 @@
 
 CoolSkool is an AI-powered school operating system for budget-conscious Indian private schools. This file plus your task packet (`docs/planning/coolskool/tasks/T-0NN-*.md`) is everything you need. Read only the spec sections your packet links to.
 
+## Default skills and voice (every session, every agent)
+
+- **`ponytail` (full)** — smallest-complete-change discipline on every edit: reuse before you write, no speculative abstractions, no unrequested flexibility. End non-trivial changes with what you skipped and the risk.
+- **`andrej-karpathy-skills:karpathy-guidelines`** — load before writing code (pre-code protocol below).
+- **Context7 (`docs-lookup` agent)** — for any library API you're not certain of, against the versions pinned in `package.json`. If unreachable in your environment, fall back to installed `.d.ts`/`node_modules` source and say so rather than guessing.
+- **`caveman`** — terse replies, no filler, payload (code/commands/paths/errors) stays exact. Full sentences only for security warnings, irreversible actions, step order, and questions back to the user.
+
+If your harness doesn't auto-activate `ponytail`/`caveman` (they're user-level toggles, not portable with the repo), apply their rules anyway from this file.
+
 ## Stack (pinned in package.json; verify APIs against those versions with Context7 / `docs-lookup`)
 
 Next.js App Router + TypeScript (strict) · Tailwind v4 + shadcn/ui + lucide-react + Recharts · Supabase (Auth, Postgres + RLS, Storage) via `@supabase/ssr` and `@supabase/supabase-js` with generated types · Vercel AI SDK (`ai`) with `@ai-sdk/anthropic` (cloud) and an Ollama provider (local) · Zod · Vitest · Playwright · ESLint · pnpm. No ORM, no monorepo, no queue service.
