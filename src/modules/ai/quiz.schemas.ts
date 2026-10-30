@@ -43,7 +43,11 @@ export const GENERATION_MAX_STRING_LENGTH = 500;
 
 const quizOptionText = z.string().trim().min(1).max(GENERATION_MAX_STRING_LENGTH);
 
-const QuizGenerationQuestionSchema = z
+// Exported for reuse by the generative-UI "practice" block (D31,
+// src/modules/ai/blocks/schemas.ts), which the plan specs as "same shape
+// as QuizContentSchema" at generation-safe (DBT-27) caps — this IS that
+// shape, not a second copy of it.
+export const QuizGenerationQuestionSchema = z
   .object({
     stem: z.string().trim().min(1).max(GENERATION_MAX_STRING_LENGTH),
     options: z.array(quizOptionText).length(4),
