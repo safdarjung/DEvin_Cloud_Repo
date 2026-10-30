@@ -1,0 +1,314 @@
+import "server-only";
+// T-0NN — teacher tool-calling agent's tools (D28: a parallel Gemini-only
+// chat path, out of band from the local/cloud policy machinery in
+// src/lib/ai/gateway.ts). Every tool closes over the caller's own
+// authenticated `ctx` and a real RLS-respecting `createClient()` — never
+// the admin client — and re-checks scope with the same functions the
+// existing /api/ai/quiz and /api/ai/report-remark routes use, so a
+// model-supplied id is never trusted on its own. A failed scope check
+// returns an error STRING in the tool result, never a thrown exception,
+// so the model can relay it and the stream keeps going.
+import { tool } from "ai";
+import { z } from "zod";
+import { createClient } from "@/lib/supabase/server";
+import { uuid } from "@/lib/schemas/common";
+import type { TenantContext } from "@/lib/auth/types";
+import { listStudents, getStudentProfile, getCurrentTermId } from "@/modules/people/queries";
+import { getSectionAttendancePatterns } from "@/modules/attendance/queries";
+import { managesWholeSection } from "@/modules/academics/teacher-scope";
+import { canGenerateQuizForUnit } from "@/modules/ai/quiz-scope";
+import { canDraftRemarkForResult } from "@/modules/ai/remark-scope";
+import { QuizContentSchema, QuizGenerationSchema } from "@/modules/ai/quiz.schemas";
+import { buildQuizPrompt, QUIZ_GENERATION_INSTRUCTIONS } from "@/modules/ai/prompts/quiz";
+import { RemarkGenerationSchema } from "@/modules/ai/remark.schemas";
+import { buildRemarkPrompt, REMARK_GENERATION_INSTRUCTIONS } from "@/modules/ai/prompts/remark";
+import { runStructured } from "@/lib/ai/gateway";
+
+// Matches the quiz/remark routes' own cap (T-036: unbounded output pinned
+// the local model's GPU for 7+ minutes during bisection).
+const MAX_OUTPUT_TOKENS = 2048;
+
+/** ILIKE treats `%`/`_` as wildcards — escape them (same as people/queries.ts's private helper). */
+function escapeIlike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+// Fix round 1 (security review, LOW-3): a raw DB/network error must never
+// reach the model as a thrown exception — it kills the stream, and this
+// module's own header comment promises "never a thrown exception". Every
+// tool's `execute` is wrapped with this so a failure degrades to a plain
+// string the model can relay, same shape as the scope-check misses below.
+function toolErrorMessage(toolName: string, err: unknown): string {
+  const correlationId = crypto.randomUUID();
+  console.error(`[${correlationId}] teacher agent tool "${toolName}" failed`, err);
+  return `Something went wrong looking that up. Reference: ${correlationId}`;
+}
+
+type AgentClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Fix round 1 (security review, MED N+1): batches the "which grade+subject
+ * pairs can this teacher generate for" check into one query instead of
+ * calling `canGenerateQuizForUnit` per candidate row (up to 20 extra round
+ * trips). `"all"` mirrors `canGenerateQuizForUnit`'s own
+ * `managesWholeSection(ctx, null)` bypass for owner/principal.
+ */
+async function allowedGradeSubjectPairs(supabase: AgentClient, ctx: TenantContext): Promise<Set<string> | "all"> {
+  if (managesWholeSection(ctx, null)) return "all";
+  const staffId = ctx.membership.staffId;
+  if (!staffId) return new Set();
+
+  const { data, error } = await supabase
+    .from("subject_assignments")
+    .select("subject_id, class_sections(grade_id)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("teacher_id", staffId);
+  if (error) throw error;
+
+  const pairs = new Set<string>();
+  for (const row of data ?? []) {
+    const gradeId = (row.class_sections as { grade_id: string } | null)?.grade_id;
+    if (gradeId) pairs.add(`${gradeId}:${row.subject_id}`);
+  }
+  return pairs;
+}
+
+async function findCurriculumUnitImpl(
+  supabase: AgentClient,
+  ctx: TenantContext,
+  query: string,
+): Promise<Array<{ id: string; title: string; gradeLabel: string; subjectName: string }>> {
+  const term = `%${escapeIlike(query.trim())}%`;
+  const [{ data, error }, scope] = await Promise.all([
+    supabase
+      .from("curriculum_units")
+      .select("id, title, grade_id, subject_id, grades(display_name), subjects(name)")
+      .eq("institution_id", ctx.institution.id)
+      .ilike("title", term)
+      .limit(20),
+    allowedGradeSubjectPairs(supabase, ctx),
+  ]);
+  if (error) throw error;
+
+  const results: Array<{ id: string; title: string; gradeLabel: string; subjectName: string }> = [];
+  for (const row of data ?? []) {
+    if (results.length >= 5) break;
+    const allowed = scope === "all" || scope.has(`${row.grade_id}:${row.subject_id}`);
+    if (!allowed) continue;
+    const grade = row.grades as { display_name: string } | null;
+    const subject = row.subjects as { name: string } | null;
+    results.push({ id: row.id, title: row.title, gradeLabel: grade?.display_name ?? "", subjectName: subject?.name ?? "" });
+  }
+  return results;
+}
+
+/** Builds the full tool set for this authenticated teacher's turn, sharing one RLS-scoped client. */
+export async function teacherTools(ctx: TenantContext) {
+  const supabase = await createClient();
+
+  return {
+    findStudent: tool({
+      description: "Find a student taught by this teacher, by name or admission number. Returns up to 5 matches.",
+      inputSchema: z.object({ query: z.string().trim().min(1).max(200) }),
+      execute: async ({ query }) => {
+        try {
+          const page = await listStudents(ctx, query, 1);
+          if (page.students.length === 0) return "No matching student found in your sections.";
+          return page.students.slice(0, 5).map((s) => ({
+            id: s.id,
+            name: [s.firstName, s.lastName].filter(Boolean).join(" "),
+            grade: s.gradeName,
+            section: s.sectionName,
+          }));
+        } catch (err) {
+          return toolErrorMessage("findStudent", err);
+        }
+      },
+    }),
+
+    findCurriculumUnit: tool({
+      description:
+        "Find a curriculum unit by title, limited to subjects and grades this teacher teaches. Returns up to 5 matches.",
+      inputSchema: z.object({ query: z.string().trim().min(1).max(200) }),
+      execute: async ({ query }) => {
+        try {
+          const results = await findCurriculumUnitImpl(supabase, ctx, query);
+          if (results.length === 0) return "No matching curriculum unit found that you teach.";
+          return results;
+        } catch (err) {
+          return toolErrorMessage("findCurriculumUnit", err);
+        }
+      },
+    }),
+
+    getAttendancePattern: tool({
+      description:
+        "Get a student's attendance pattern (present/absent/late counts and recent absent days) for the current term. Only works for students this teacher teaches.",
+      inputSchema: z.object({ studentId: uuid }),
+      execute: async ({ studentId }) => {
+        try {
+          const student = await getStudentProfile(ctx, studentId);
+          if (!student || !student.enrolment) {
+            return "That student is not in your sections, or has no active enrolment.";
+          }
+          const termId = await getCurrentTermId(ctx, student.enrolment.academicYearId);
+          if (!termId) return "No current term is configured for this student's academic year.";
+
+          const pattern = await getSectionAttendancePatterns(ctx, student.enrolment.classSectionId, termId);
+          if (!pattern) return "That student's section could not be found.";
+
+          const row = pattern.students.find((s) => s.studentId === studentId);
+          if (!row) return "No attendance records yet for this student this term.";
+
+          return {
+            presentCount: row.presentCount,
+            absentCount: row.absentCount,
+            lateCount: row.lateCount,
+            recentAbsentDayOffsets: row.recentAbsentDayOffsets,
+          };
+        } catch (err) {
+          return toolErrorMessage("getAttendancePattern", err);
+        }
+      },
+    }),
+
+    generateQuiz: tool({
+      description:
+        "Generate a DRAFT multiple-choice quiz for a curriculum unit. This is not saved anywhere — the teacher must review and save it from Assignments.",
+      inputSchema: z.object({
+        curriculumUnitId: uuid,
+        difficulty: z.enum(["easy", "medium", "hard"]),
+        questionCount: z.number().int().min(1).max(15),
+      }),
+      execute: async ({ curriculumUnitId, difficulty, questionCount }) => {
+        try {
+          const { data: unit, error: unitError } = await supabase
+            .from("curriculum_units")
+            .select("id, title, description, grade_id, subject_id")
+            .eq("id", curriculumUnitId)
+            .eq("institution_id", ctx.institution.id)
+            .maybeSingle();
+          if (unitError) throw unitError;
+          // Fix round 1 (security review, LOW-4): same message whether the
+          // unit doesn't exist or exists outside this teacher's scope — no
+          // existence oracle on a model-supplied id.
+          if (!unit) return "Curriculum unit not found, or not in your scope.";
+
+          const allowed = await canGenerateQuizForUnit(supabase, ctx, unit.grade_id, unit.subject_id);
+          if (!allowed) return "Curriculum unit not found, or not in your scope.";
+
+          const [{ data: grade }, { data: subject }] = await Promise.all([
+            supabase.from("grades").select("display_name").eq("id", unit.grade_id).maybeSingle(),
+            supabase.from("subjects").select("name").eq("id", unit.subject_id).maybeSingle(),
+          ]);
+
+          const prompt = buildQuizPrompt({
+            unitTitle: unit.title,
+            unitDescription: unit.description,
+            gradeLabel: grade?.display_name ?? "",
+            subjectName: subject?.name ?? "",
+            difficulty,
+            questionCount,
+          });
+
+          const result = await runStructured({
+            ctx,
+            feature: "quiz_generation",
+            schema: QuizGenerationSchema,
+            instructions: QUIZ_GENERATION_INSTRUCTIONS,
+            prompt,
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+          });
+          if (!result.ok) return `Quiz generation failed: ${result.error.message}`;
+
+          const strict = QuizContentSchema.safeParse(result.data.data);
+          if (!strict.success) return "Quiz generation failed: the model's output didn't match the expected format.";
+
+          return {
+            draft: true,
+            note: "This is a draft only, not saved — review and save it from Assignments.",
+            questions: strict.data.questions,
+          };
+        } catch (err) {
+          return toolErrorMessage("generateQuiz", err);
+        }
+      },
+    }),
+
+    draftResultRemark: tool({
+      description:
+        "Draft a report-card remark for a student's most recent (or named) exam result. This is not saved — the teacher must review and save it from the student's exam result.",
+      inputSchema: z.object({ studentId: uuid, examName: z.string().trim().min(1).max(200).optional() }),
+      execute: async ({ studentId, examName }) => {
+        try {
+          const { data: rows, error: resultsError } = await supabase
+            .from("results")
+            .select("id, student_id, snapshot, percentage, grade, exams(name)")
+            .eq("institution_id", ctx.institution.id)
+            .eq("student_id", studentId)
+            .is("superseded_by", null)
+            .order("published_at", { ascending: false })
+            .limit(20);
+          if (resultsError) throw resultsError;
+
+          const candidate = (rows ?? []).find((row) => {
+            if (!examName) return true;
+            const exam = row.exams as { name: string } | null;
+            return exam?.name?.toLowerCase() === examName.toLowerCase();
+          });
+          if (!candidate) {
+            return examName
+              ? `No exam result named "${examName}" found for this student.`
+              : "No exam result found for this student.";
+          }
+
+          const allowed = await canDraftRemarkForResult(supabase, ctx, candidate.student_id);
+          if (!allowed) return "You do not teach this student.";
+
+          const snapshot = candidate.snapshot as {
+            subjects: Array<{ subject_id: string; marks_obtained: number | null; max_marks: number; is_absent: boolean; grade: string | null }>;
+          };
+          const subjectIds = [...new Set(snapshot.subjects.map((s) => s.subject_id))];
+          const { data: subjects, error: subjectsError } =
+            subjectIds.length > 0
+              ? await supabase.from("subjects").select("id, name").eq("institution_id", ctx.institution.id).in("id", subjectIds)
+              : { data: [], error: null };
+          if (subjectsError) throw subjectsError;
+          const subjectNameById = new Map((subjects ?? []).map((s) => [s.id, s.name]));
+
+          const exam = candidate.exams as { name: string } | null;
+          const prompt = buildRemarkPrompt({
+            examName: exam?.name ?? "",
+            overallGrade: candidate.grade,
+            percentage: candidate.percentage,
+            subjects: snapshot.subjects.map((s) => ({
+              subjectName: subjectNameById.get(s.subject_id) ?? "",
+              marksObtained: s.marks_obtained,
+              maxMarks: s.max_marks,
+              isAbsent: s.is_absent,
+              grade: s.grade,
+            })),
+          });
+
+          const generated = await runStructured({
+            ctx,
+            feature: "result_remark_draft",
+            schema: RemarkGenerationSchema,
+            instructions: REMARK_GENERATION_INSTRUCTIONS,
+            prompt,
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+          });
+          if (!generated.ok) return `Remark draft failed: ${generated.error.message}`;
+
+          return {
+            draft: true,
+            note: "This is a draft only, not saved — review and save it from the student's exam result.",
+            remark: generated.data.data.remark,
+          };
+        } catch (err) {
+          return toolErrorMessage("draftResultRemark", err);
+        }
+      },
+    }),
+  };
+}

@@ -26,6 +26,31 @@ export function cloudModelId(tier: CloudTier = "quality"): string {
     : process.env.AI_CLOUD_MODEL_CHEAP ?? "claude-haiku-4-5";
 }
 
+// D28 — the teacher tool-calling agent's model. Deliberately separate from
+// the cloud tier above: this is a parallel, Gemini-only path for that one
+// agent, out of band from `local_only`/`cloud_allowed` institution policy
+// (see 12-decision-log.md ADR D28). `gemini-flash-lite-latest` is the
+// verified-fast tier; `gemini-3.8-flash` measured ~400s/call, unusable.
+export function geminiModelId(): string {
+  return process.env.GEMINI_MODEL ?? "gemini-flash-lite-latest";
+}
+
+/**
+ * Lazily imported, same reason as `getCloudModel` below (C-62) — never
+ * loaded for a request that doesn't reach the teacher agent route. Throws
+ * if `GEMINI_API_KEY` is unset; the caller must map that to a clear
+ * `ai_unavailable` error and never fall back to local/cloud Anthropic.
+ */
+export async function getGeminiModel(): Promise<LanguageModel> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+  const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
+  const google = createGoogleGenerativeAI({ apiKey });
+  return google(geminiModelId());
+}
+
 /**
  * The ONLY place `@ai-sdk/anthropic` is imported — lazily and dynamically,
  * so the module is never loaded into the process when the plan never

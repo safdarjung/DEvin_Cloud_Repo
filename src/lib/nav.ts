@@ -3,6 +3,7 @@ import {
   Banknote,
   BarChart3,
   Bell,
+  Bot,
   Briefcase,
   CalendarCheck,
   ClipboardList,
@@ -36,6 +37,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/exams/rechecks", label: "Rechecks", icon: ClipboardList, permission: "exam.recheck.review" },
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read" },
   { href: "/website", label: "Website", icon: Globe, permission: "website.edit" },
+  // T-0NN: teacher-only tool-calling agent (D28); other `ai.generate` roles
+  // see this link too (the page itself shows "not available yet" for them).
+  { href: "/ai", label: "AI Assistant", icon: Bot, permission: "ai.generate" },
   { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read" },
   { href: "/notifications", label: "Notifications", icon: Bell, permission: "notification.read" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage" },
