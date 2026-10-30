@@ -101,6 +101,13 @@ export const InstitutionSettingsSchema = z
         sms_sender: z.string().min(1),
       })
       .strict(),
+    // D30 — per-institution feature entitlements (what the platform gives
+    // this customer), separate from role permissions (who within the
+    // institution can use it). A key missing from this map is treated as
+    // enabled by `isFeatureEnabled` — only an explicit `false` disables a
+    // feature, so adding a new gated feature here never silently disables
+    // it for institutions whose settings predate the key.
+    features: z.record(z.string(), z.boolean()),
   })
   .strict();
 
@@ -174,4 +181,5 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
     max_concurrent_cloud: 4,
   },
   communication: { languages: ["en", "hi"], sms_sender: "SJCDEM" },
+  features: { teacher_ai_agent: true },
 };

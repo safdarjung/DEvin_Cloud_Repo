@@ -15,6 +15,7 @@ import { z } from "zod";
 import { convertToModelMessages, stepCountIs, streamText, type LanguageModel, type UIMessage } from "ai";
 import { AppError, fail, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
+import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { requirePermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
@@ -200,6 +201,13 @@ export async function POST(request: Request): Promise<Response> {
   // `ai.generate` (owner/principal/admin) don't have a tool set built yet.
   if (ctx.membership.role !== "teacher") {
     return json(fail("forbidden", "The AI assistant is not available for your role yet."));
+  }
+
+  // D30 — entitlement check: separate from the permission/role checks
+  // above, which govern *who* inside the institution can use the feature.
+  // This governs whether the institution's plan includes it at all.
+  if (!isFeatureEnabled(ctx, "teacher_ai_agent")) {
+    return json(fail("ai_unavailable", "The AI assistant is not included in this school's plan."));
   }
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;

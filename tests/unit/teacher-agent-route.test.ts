@@ -248,6 +248,18 @@ describe("POST /api/ai/agent/teacher", () => {
     expect(body.error.message).toMatch(/not available for your role yet/);
   });
 
+  it("returns ai_unavailable when the institution's plan has teacher_ai_agent disabled (D30)", async () => {
+    const ctx = teacherCtx();
+    ctx.institution.settings = { features: { teacher_ai_agent: false } };
+    getTenantContextMock.mockResolvedValueOnce(ctx);
+    const res = await POST(request(validBody()));
+    expect(res.status).toBe(502);
+    const body = await json(res);
+    expect(body.error.code).toBe("ai_unavailable");
+    expect(body.error.message).toMatch(/not included in this school's plan/);
+    expect(checkLimitsMock).not.toHaveBeenCalled();
+  });
+
   it("returns quota_exceeded without ever acquiring a concurrency slot", async () => {
     getTenantContextMock.mockResolvedValueOnce(teacherCtx());
     checkLimitsMock.mockResolvedValueOnce({ ok: false, code: "quota_exceeded" });
