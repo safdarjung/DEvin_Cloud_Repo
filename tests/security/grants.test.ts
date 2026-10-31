@@ -60,6 +60,7 @@ const APP_AUTHENTICATED = [
 
 // public.* security-definer RPCs a signed-in user may call (each role-checks inside).
 const PUBLIC_AUTHENTICATED = [
+  "public.accept_invitation",
   "public.add_enquiry_note",
   "public.apply_recheck_decision",
   "public.close_marks_entry",
@@ -73,6 +74,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.exam_verification",
   "public.generate_invoice",
   "public.get_public_site",
+  "public.invite_member",
   "public.jobs_requeue",
   "public.open_marks_entry",
   "public.publish_exam_results",
@@ -81,6 +83,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.record_payment",
   "public.reopen_marks_entry",
   "public.request_recheck",
+  "public.revoke_invitation",
   "public.start_recheck_review",
   "public.submit_attendance",
 ];

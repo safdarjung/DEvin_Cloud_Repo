@@ -1765,7 +1765,10 @@ isOneToOne: true
             [_ in never]: never
           }
           Functions: {
-            "add_enquiry_note":
+            "accept_invitation":
+{ Args: { "p_token": string }; Returns: string
+                           },
+"add_enquiry_note":
 { Args: { "p_enquiry_id": string,"p_institution_id": string,"p_text": string }; Returns: Json
                            },
 "apply_recheck_decision":
@@ -1818,6 +1821,11 @@ isOneToOne: true
 "get_public_site":
 { Args: { "p_slug": string }; Returns: {
               "institution_id": string,"institution_name": string,"nav": Json,"theme": Json,"website_id": string
+            }[]
+                           },
+"invite_member":
+{ Args: { "p_email": string,"p_guardian_id"?: string,"p_institution_id": string,"p_role": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: {
+              "invitation_id": string,"token": string
             }[]
                            },
 "jobs_claim":
@@ -1903,6 +1911,9 @@ isOneToOne: true
                            },
 "request_recheck":
 { Args: { "p_exam_paper_id": string,"p_institution_id": string,"p_reason": string,"p_result_id": string }; Returns: Json
+                           },
+"revoke_invitation":
+{ Args: { "p_invitation_id": string }; Returns: undefined
                            },
 "start_recheck_review":
 { Args: { "p_institution_id": string,"p_request_id": string }; Returns: Json
