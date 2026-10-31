@@ -106,6 +106,9 @@ export function defineAction<I, O>(opts: DefineActionOptions<I, O>): Action<O> {
     }
   };
 
-  registerAction(opts.name, action as Action<unknown>);
+  registerAction(opts.name, action as Action<unknown>, {
+    schema: opts.schema,
+    permission: typeof opts.permission === "function" ? null : opts.permission,
+  });
   return action;
 }

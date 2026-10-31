@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { defineAction } from "@/lib/actions/define-action";
+import { getActionMeta } from "@/lib/actions/registry";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { permissionsFor, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
@@ -133,6 +134,33 @@ describe("defineAction", () => {
 
     const result = await action("demo", { value: "x" }, fakeCtx("teacher"));
     expect(result).toEqual({ ok: true, data: { value: "x" } });
+  });
+
+  it("defineAction records its schema and static permission", () => {
+    defineAction({
+      name: "test.meta-static",
+      schema: Input,
+      permission: "attendance.mark",
+      handler: async (input) => input,
+      resolveContext: async () => fakeCtx("teacher"),
+    });
+
+    const meta = getActionMeta().get("test.meta-static");
+    expect(meta?.schema).toBe(Input);
+    expect(meta?.permission).toBe("attendance.mark");
+  });
+
+  it("function permission is recorded as null", () => {
+    defineAction({
+      name: "test.meta-fn-permission",
+      schema: Input,
+      permission: () => "attendance.mark",
+      handler: async (input) => input,
+      resolveContext: async () => fakeCtx("teacher"),
+    });
+
+    const meta = getActionMeta().get("test.meta-fn-permission");
+    expect(meta?.permission).toBeNull();
   });
 
   it("maps a known AppError thrown by the handler straight through", async () => {
