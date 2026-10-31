@@ -80,7 +80,7 @@ export function QuizGenerateButton({ institutionSlug, curriculumUnitId, aiPolicy
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-border p-3">
+    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-sm font-medium" htmlFor="questionCount">
@@ -117,7 +117,7 @@ export function QuizGenerateButton({ institutionSlug, curriculumUnitId, aiPolicy
       </Button>
 
       {error && (
-        <p role="alert" className="text-destructive text-sm">
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}

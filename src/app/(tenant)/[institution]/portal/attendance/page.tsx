@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { StudentAttendanceSummary } from "@/modules/attendance/components/StudentAttendanceSummary";
@@ -32,7 +33,7 @@ export default async function PortalAttendancePage({
       {termId ? (
         <StudentAttendanceSummary ctx={ctx} studentId={selection.studentId} termId={termId} studentName={selection.studentName} />
       ) : (
-        <p className="text-muted-foreground text-sm">No active enrolment or term to show attendance for.</p>
+        <EmptyState title="No attendance to show" description="No active enrolment or term to show attendance for." />
       )}
     </>
   );

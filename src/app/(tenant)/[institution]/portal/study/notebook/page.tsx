@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
@@ -30,13 +33,11 @@ export default async function NotebookPage({
 
   if (!isFeatureEnabled(ctx, "student_ai_notebook")) {
     return (
-      <div className="space-y-2">
-        <Link href={basePath} className="text-muted-foreground text-sm underline">
-          ← Back
-        </Link>
-        <h1 className="text-xl font-semibold">My notebook</h1>
-        <p className="text-muted-foreground text-sm">The notebook is not included in this school&apos;s plan.</p>
-      </div>
+      <PageHeader
+        title="My notebook"
+        description="The notebook is not included in this school's plan."
+        back={{ href: basePath, label: "Back" }}
+      />
     );
   }
 
@@ -44,30 +45,28 @@ export default async function NotebookPage({
 
   return (
     <div className="space-y-4">
-      <Link href={basePath} className="text-muted-foreground text-sm underline">
-        ← Back to study helper
-      </Link>
-      <h1 className="text-xl font-semibold">My notebook</h1>
+      <PageHeader title="My notebook" back={{ href: basePath, label: "Back to study helper" }} />
 
       <form action={`${basePath}/notebook`} className="flex gap-2">
         {folder && <input type="hidden" name="folder" value={folder} />}
-        <Input name="search" defaultValue={search} placeholder="Search by title" />
+        <Input name="search" defaultValue={search} placeholder="Search by title" aria-label="Search by title" className="h-10" />
       </form>
 
       {folders.length > 0 && (
-        <div className="flex flex-wrap gap-1 text-sm">
-          <Link href={`${basePath}/notebook`} className={!folder ? "font-semibold underline" : "text-muted-foreground underline"}>
-            All
-          </Link>
-          {folders.map((f) => (
-            <Link
-              key={f}
-              href={`${basePath}/notebook?folder=${encodeURIComponent(f)}`}
-              className={folder === f ? "font-semibold underline" : "text-muted-foreground underline"}
-            >
-              {f}
-            </Link>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {[null, ...folders].map((f) => {
+            const active = f === null ? !folder : folder === f;
+            return (
+              <Link
+                key={f ?? "all"}
+                href={f === null ? `${basePath}/notebook` : `${basePath}/notebook?folder=${encodeURIComponent(f)}`}
+                aria-current={active ? "true" : undefined}
+                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }), "h-10 sm:h-8")}
+              >
+                {f ?? "All"}
+              </Link>
+            );
+          })}
         </div>
       )}
 

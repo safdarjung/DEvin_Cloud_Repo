@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -23,8 +24,7 @@ export default async function AiAssistantPage({
   if (ctx.membership.role !== "teacher") {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold">AI Assistant</h1>
-        <p className="text-muted-foreground text-sm">Not available for your role yet.</p>
+        <PageHeader title="AI Assistant" description="Not available for your role yet." />
         {hasPermission(ctx, "institution.settings.manage") && (
           <div className="space-y-2">
             <FeatureToggle
@@ -53,10 +53,7 @@ export default async function AiAssistantPage({
 
   if (!isFeatureEnabled(ctx, "teacher_ai_agent")) {
     return (
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold">AI Assistant</h1>
-        <p className="text-muted-foreground text-sm">The AI assistant is not included in this school&apos;s plan.</p>
-      </div>
+      <PageHeader title="AI Assistant" description="The AI assistant is not included in this school's plan." />
     );
   }
 

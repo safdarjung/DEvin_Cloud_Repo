@@ -9,12 +9,15 @@
 // `ai_policy: "local_only"` — showing a cloud-sounding badge here would
 // describe a path that cannot run yet.
 import Link from "next/link";
+import { Info } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { z } from "zod";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
+import { ErrorState } from "@/components/states";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
@@ -31,6 +34,8 @@ interface StudyChatProps {
   initialMessages?: UIMessage[];
   /** The saved chat item's own id, when resuming — new notes made in this session reference it as `sourceChatId`. */
   resumedChatId?: string;
+  /** Where the page header's back link goes. */
+  backHref?: string;
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -102,7 +107,7 @@ function SaveAsNote({ institutionSlug, blocks, sourceChatId }: SaveAsNoteProps) 
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       <Input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -113,7 +118,7 @@ function SaveAsNote({ institutionSlug, blocks, sourceChatId }: SaveAsNoteProps) 
       <Button type="button" size="sm" onClick={handleSave} disabled={saving || title.trim().length === 0}>
         {saving ? "Saving…" : "Save"}
       </Button>
-      {error && <p className="text-destructive text-xs">{error}</p>}
+      {error && <p role="alert" className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }
@@ -133,7 +138,7 @@ function MessageParts({ message, institutionSlug, resumedChatId }: { message: UI
           const label = toolLabel(part.type);
           const done = part.state === "output-available" || part.state === "output-error";
           const statusLine = (
-            <div className="text-muted-foreground border-l-2 pl-2 text-xs italic">
+            <div className="border-l-2 pl-2 text-xs italic text-muted-foreground">
               {done ? label.replace("…", " — done.") : label}
               {part.state === "output-error" && part.errorText ? ` (${part.errorText})` : ""}
             </div>
@@ -167,7 +172,7 @@ function MessageParts({ message, institutionSlug, resumedChatId }: { message: UI
   );
 }
 
-export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMessages, resumedChatId }: StudyChatProps) {
+export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMessages, resumedChatId, backHref }: StudyChatProps) {
   const router = useRouter();
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, error } = useChat({
@@ -211,45 +216,54 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
 
   return (
     <div className="space-y-4">
-      <div>
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">Study helper</h1>
-          {notebookEnabled && (
-            <Link href={`/${institutionSlug}/portal/study/notebook`} className="text-muted-foreground text-sm underline">
+      <PageHeader
+        title="Study helper"
+        back={backHref ? { href: backHref, label: "Back" } : undefined}
+        actions={
+          notebookEnabled ? (
+            <Link href={`/${institutionSlug}/portal/study/notebook`} className={buttonVariants({ variant: "outline", className: "h-10 sm:h-8" })}>
               My notebook
             </Link>
-          )}
-        </div>
-        <div className="mt-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          ) : undefined
+        }
+      />
+      <div className="-mt-3 space-y-2">
+        <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+          <p>
           {/* Plan §8's exact wording (security review M3): "never to the
               internet" overstated it — a hosted deployment can run the
               local model through a tunnel (04-architecture.md topology B),
               so only "sent there" is actually guaranteed. */}
           Local AI on your school&apos;s server. What you type is sent there. Don&apos;t share personal details.
           AI can be wrong; check your textbook or teacher.
+          </p>
         </div>
-        <div className="mt-1">
-          <SkillChips skills={skills} />
-        </div>
+        <SkillChips skills={skills} />
       </div>
 
       <Card>
-        <CardContent className="flex h-[480px] flex-col gap-3 overflow-y-auto p-4 text-sm">
+        <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:h-[480px] sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-muted-foreground">Ask about a topic you&apos;re studying — try a mindmap or a practice quiz.</p>
           )}
           {messages.map((message) => (
-            <div key={message.id} className={message.role === "user" ? "self-end text-right" : "self-start"}>
+            <div key={message.id} className={message.role === "user" ? "max-w-[85%] self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground" : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"}>
               <MessageParts message={message} institutionSlug={institutionSlug} resumedChatId={resumedChatId} />
             </div>
           ))}
-          {error && <p className="text-destructive text-sm">{chatErrorMessage(error)}</p>}
+          {busy && messages.at(-1)?.role !== "assistant" && (
+            <div role="status" className="self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <span className="animate-pulse">Thinking…</span>
+            </div>
+          )}
+          {error && <ErrorState title="Message failed" description={chatErrorMessage(error)} />}
         </CardContent>
       </Card>
 
       {notebookEnabled && messages.length > 0 && (
         <div className="space-y-2 print:hidden">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={handleMakeNotes} disabled={busy}>
               Make notes
             </Button>
@@ -270,18 +284,20 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
               </Button>
             </div>
           )}
-          {savingChatError && <p className="text-destructive text-xs">{savingChatError}</p>}
+          {savingChatError && <p role="alert" className="text-destructive text-xs">{savingChatError}</p>}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="sticky bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="e.g. Explain photosynthesis"
           disabled={busy}
+          aria-label="Message"
+          className="h-10"
         />
-        <Button type="submit" disabled={busy || input.trim().length === 0}>
+        <Button type="submit" className="h-10" disabled={busy || input.trim().length === 0}>
           Send
         </Button>
       </form>

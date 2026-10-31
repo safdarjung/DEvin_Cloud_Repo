@@ -7,6 +7,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { EmptyState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { deleteStudyItem, updateStudyItem } from "@/modules/ai/student-study.actions";
 import type { StudyItemSummary } from "@/modules/ai/student-study.queries";
@@ -36,19 +38,19 @@ function NotebookRow({ institutionSlug, item }: { institutionSlug: string; item:
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-border p-3">
-      <Link href={href} className="min-w-0 flex-1">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-3">
+      <Link href={href} className="min-h-10 min-w-0 flex-1 basis-40">
         <p className="truncate font-medium">{item.title}</p>
-        <p className="text-muted-foreground text-xs">
-          {item.kind === "chat" ? "Chat" : "Note"}
-          {item.folder ? ` · ${item.folder}` : ""}
+        <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+          <Badge variant={item.kind === "chat" ? "info" : "outline"}>{item.kind === "chat" ? "Chat" : "Note"}</Badge>
+          {item.folder ? <span>{item.folder}</span> : null}
         </p>
       </Link>
       <div className="flex gap-1">
-        <Button type="button" variant="ghost" size="sm" onClick={togglePin} disabled={busy} aria-pressed={item.pinned}>
+        <Button type="button" variant="ghost" size="sm" className="h-10 sm:h-8" onClick={togglePin} disabled={busy} aria-pressed={item.pinned}>
           {item.pinned ? "Unpin" : "Pin"}
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={handleDelete} disabled={busy}>
+        <Button type="button" variant="ghost" size="sm" className="h-10 text-destructive sm:h-8" onClick={handleDelete} disabled={busy}>
           Delete
         </Button>
       </div>
@@ -58,7 +60,7 @@ function NotebookRow({ institutionSlug, item }: { institutionSlug: string; item:
 
 export function NotebookList({ institutionSlug, items }: NotebookListProps) {
   if (items.length === 0) {
-    return <p className="text-muted-foreground text-sm">Nothing saved yet.</p>;
+    return <EmptyState title="Nothing saved yet" description="Save a chat or make notes from the study helper and they will appear here." />;
   }
   return (
     <div className="space-y-2">
