@@ -2,8 +2,10 @@ import "server-only";
 // Side-effect: registers every defineQuery() before the lookup below.
 import "../all-queries";
 import { getRegisteredQueries } from "@/lib/actions/define-query";
+import type { ActionResult } from "@/lib/actions/result";
 import { fail } from "@/lib/actions/result";
 import { apiResponse } from "@/lib/http/api-envelope";
+import { toCsvResponse } from "@/lib/http/csv";
 import { dispatchCall, readPostBody } from "@/lib/http/dispatch";
 
 export const runtime = "nodejs";
@@ -41,5 +43,12 @@ export async function GET(
     }
   }
 
-  return dispatchCall(request, name, getRegisteredQueries(), { institution, input });
+  const response = await dispatchCall(request, name, getRegisteredQueries(), { institution, input });
+
+  // M04-T7: ?format=csv exports the same result dispatchCall already
+  // computed — read its JSON body back out and re-wrap, nothing else here
+  // changes.
+  if (url.searchParams.get("format") !== "csv") return response;
+  const result = (await response.json()) as ActionResult<unknown>;
+  return toCsvResponse(result, name);
 }

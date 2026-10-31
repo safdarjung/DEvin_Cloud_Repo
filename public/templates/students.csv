@@ -1,0 +1,2 @@
+admission_no,first_name,last_name,dob,gender,grade,section,roll_no,guardian_name,guardian_phone,guardian_email,guardian_relationship
+ADM-2026-001,Aarav,Sharma,2016-04-12,male,VI,A,12,Meera Sharma,9876543210,meera@example.com,mother
