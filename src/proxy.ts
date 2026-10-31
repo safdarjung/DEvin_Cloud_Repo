@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { DEMO_ACCOUNT_EMAILS } from "@/lib/auth/demo-accounts";
+import { sanitizeNextPath } from "@/lib/auth/next-url";
+import { defaultDemoEmail, demoAutoLoginEnabled, signInAsDemo } from "@/lib/auth/demo-session";
 import type { Database } from "@/lib/db/types";
 
 // Session refresh only — never authorization. Server Actions can bypass
@@ -39,17 +40,22 @@ export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const firstSegment = pathname.split("/")[1] ?? "";
 
-  // Demo-only convenience, off unless DEMO_AUTO_LOGIN=true: a visitor with no
-  // session is signed in server-side as one allow-listed demo account (a real
-  // session, so RLS still applies). /login and /logout are skipped so the role
-  // picker still works and logging out sticks until the next visit elsewhere.
-  if (!data?.claims && process.env.DEMO_AUTO_LOGIN === "true" && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment)) {
-    const email = process.env.DEMO_AUTO_LOGIN_AS ?? "principal@demo.coolskool.test";
-    if (DEMO_ACCOUNT_EMAILS.includes(email)) {
-      await supabase.auth.signInWithPassword({ email, password: process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026" });
+  // Demo-only convenience (see demoAutoLoginEnabled): a visitor with no session
+  // is signed in as a demo account, so the demo never stops at a login screen.
+  // /login?switch=1 and /logout are left alone so the role picker still works.
+  const isLogin = firstSegment === "login";
+  const wantsPicker = request.nextUrl.searchParams.has("switch");
+  if (!data?.claims && demoAutoLoginEnabled() && firstSegment !== "logout" && !(isLogin && wantsPicker)) {
+    if (await signInAsDemo(supabase, defaultDemoEmail())) {
       data = (await supabase.auth.getClaims()).data;
+      if (isLogin) {
+        const redirect = NextResponse.redirect(new URL(sanitizeNextPath(request.nextUrl.searchParams.get("next") ?? undefined), request.url));
+        response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+        return redirect;
+      }
     }
   }
+
   const isTenantPath = pathname !== "/" && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment);
 
   if (isTenantPath && !data?.claims) {

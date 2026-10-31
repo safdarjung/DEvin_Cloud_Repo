@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { ActionResult } from "@/lib/actions/result";
 import { DEMO_ACCOUNT_EMAILS } from "@/lib/auth/demo-accounts";
+import { signInAsDemo } from "@/lib/auth/demo-session";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
 import { createClient } from "@/lib/supabase/server";
 
@@ -80,12 +81,8 @@ export async function demoLogin(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
-    password: process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026",
-  });
-
-  if (error) {
+  // Passwordless (see signInAsDemo): a rotated demo password can't break the demo.
+  if (!(await signInAsDemo(supabase, parsed.data.email))) {
     return INVALID_CREDENTIALS;
   }
 
