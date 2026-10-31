@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
 // registerAction tolerates re-registration (Turbopack re-evaluates a shared
 // "use server" module once per route), so name collisions are caught here
@@ -33,5 +35,19 @@ describe("Action names (C-03)", () => {
     expect(names).toHaveLength(calls);
     const duplicates = names.filter((name, i) => names.indexOf(name) !== i);
     expect(duplicates).toEqual([]);
+  });
+
+  it("every defineAction name is registered after importing the dispatcher manifest", async () => {
+    const names = new Set<string>();
+    for (const file of walk(SRC_DIR)) {
+      if (file.endsWith(path.join("lib", "actions", "define-action.ts"))) continue;
+      const content = fs.readFileSync(file, "utf8");
+      for (const match of content.matchAll(DEFINE_ACTION_NAME)) names.add(match[1]);
+    }
+
+    await import("@/app/api/v1/actions/all-actions");
+    const { getRegisteredActions } = await import("@/lib/actions/registry");
+
+    expect(new Set(getRegisteredActions().keys())).toEqual(names);
   });
 });
