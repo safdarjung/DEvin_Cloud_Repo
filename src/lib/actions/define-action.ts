@@ -8,7 +8,22 @@ import type { TenantContext } from "@/lib/auth/types";
 type Action<O> = (
   institutionSlug: string,
   raw: unknown,
-  /** Test-only: bypasses context resolution entirely (tests/helpers/actions.ts callAs). */
+  /**
+   * Test-only: bypasses context resolution entirely (tests/helpers/actions.ts
+   * callAs). Security review (GU-09, 2026-10-31) — CRITICAL, codebase-wide:
+   * every `"use server"` action file compiles each export into a real HTTP
+   * endpoint; Next's action handler decodes whatever argument array the
+   * request carries and calls the function with it (`action.apply(null,
+   * args)`), with no enforcement that a caller supplies only the two
+   * arguments a legitimate client ever sends. A signed-in attacker who
+   * discovers an action's id (derivable from the client bundle) could send
+   * a crafted third argument as a forged `TenantContext`, skipping
+   * `getTenantContext`/`hasPermission` for EVERY action built on this
+   * function — not just this packet's. Gated below on `process.env.VITEST`
+   * (set by Vitest itself, never by a request), not a value any caller can
+   * influence, so this still works for the whole existing test suite with
+   * zero changes to any test file.
+   */
   overrideCtx?: TenantContext,
 ) => Promise<ActionResult<O>>;
 
@@ -52,6 +67,13 @@ export function defineAction<I, O>(opts: DefineActionOptions<I, O>): Action<O> {
   const action: Action<O> = async (institutionSlug, raw, overrideCtx) => {
     let ctx: TenantContext;
     if (overrideCtx) {
+      // CRITICAL fix (see the parameter's own doc comment above): a third
+      // argument is only ever legitimate from in-process test code, which
+      // Vitest marks with its own env var. A real HTTP request can never
+      // set this — it's read, not supplied, by this process.
+      if (process.env.VITEST !== "true") {
+        return fail("forbidden", "You do not have permission to perform this action.");
+      }
       ctx = overrideCtx;
     } else {
       try {

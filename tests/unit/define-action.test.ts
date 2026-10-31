@@ -99,6 +99,42 @@ describe("defineAction", () => {
     consoleSpy.mockRestore();
   });
 
+  it("CRITICAL fix (GU-09 security review): a third argument is rejected as forbidden outside a Vitest process, even when it looks like a valid TenantContext", async () => {
+    const action = defineAction({
+      name: "test.override-ctx-outside-vitest",
+      schema: Input,
+      permission: "attendance.mark",
+      handler: async (input) => input,
+      // No resolveContext override here — this exercises the real
+      // defaultResolveContext path too, but it never gets there: the
+      // overrideCtx gate rejects before resolveContext is ever consulted.
+    });
+
+    const originalVitestFlag = process.env.VITEST;
+    delete process.env.VITEST;
+    try {
+      const result = await action("demo", { value: "x" }, fakeCtx("owner"));
+      expect(result).toEqual({
+        ok: false,
+        error: { code: "forbidden", message: "You do not have permission to perform this action." },
+      });
+    } finally {
+      process.env.VITEST = originalVitestFlag;
+    }
+  });
+
+  it("still honors overrideCtx when process.env.VITEST is set (every existing db test's callAs)", async () => {
+    const action = defineAction({
+      name: "test.override-ctx-inside-vitest",
+      schema: Input,
+      permission: "attendance.mark",
+      handler: async (input) => input,
+    });
+
+    const result = await action("demo", { value: "x" }, fakeCtx("teacher"));
+    expect(result).toEqual({ ok: true, data: { value: "x" } });
+  });
+
   it("maps a known AppError thrown by the handler straight through", async () => {
     const action = defineAction({
       name: "test.app-error",

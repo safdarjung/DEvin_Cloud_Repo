@@ -9,6 +9,7 @@ vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
 import "@/modules/academics/assignments.actions";
 import "@/modules/admissions/actions";
+import "@/modules/ai/student-study.actions";
 import "@/modules/attendance/actions";
 import "@/modules/core/actions";
 import "@/modules/exams/actions";
@@ -30,6 +31,16 @@ const at = "2026-10-01T09:00:00.000Z";
 
 const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown> }> = {
   "core.feature.set": { permission: "institution.settings.manage", input: () => ({ key: "teacher_ai_agent", enabled: true }) },
+  "ai.study.chat.save": {
+    permission: "ai.study",
+    input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }),
+  },
+  "ai.study.note.save": {
+    permission: "ai.study",
+    input: () => ({ title: "Probe", blocks: [{ kind: "callout", tone: "tip", text: "Probe" }] }),
+  },
+  "ai.study.item.update": { permission: "ai.study", input: () => ({ itemId: U(), pinned: true }) },
+  "ai.study.item.delete": { permission: "ai.study", input: () => ({ itemId: U() }) },
   "job.requeue": { permission: "job.manage", input: () => ({ jobId: U() }) },
   "exam.create": { permission: "exam.manage", input: () => ({ termId: U(), name: "Probe", type: "unit_test" }) },
   "exam.papers.create": {
