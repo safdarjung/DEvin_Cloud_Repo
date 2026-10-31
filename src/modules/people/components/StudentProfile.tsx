@@ -21,6 +21,8 @@ interface StudentProfileProps {
   termId: string | null;
 }
 
+const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
+
 function invoiceStatusVariant(status: string) {
   return status === "paid" ? "success" : status === "part_paid" ? "warning" : status === "issued" ? "info" : "outline";
 }
@@ -68,8 +70,8 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
                     <TableCell>
                       <Badge variant={invoiceStatusVariant(invoice.status)}>{invoice.status.replace("_", " ")}</Badge>
                     </TableCell>
-                    <TableCell>{invoice.total.toFixed(2)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{invoice.paidTotal.toFixed(2)}</TableCell>
+                    <TableCell>{inr.format(invoice.total)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{inr.format(invoice.paidTotal)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
                   </TableRow>
                 ))}
