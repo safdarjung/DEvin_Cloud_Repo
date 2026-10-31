@@ -3,6 +3,8 @@
 // already-summed result; the ledger page owns the date-range/account filter
 // form and pagination links.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/states";
+import { inr } from "@/modules/finance/format";
 import type { LedgerPage } from "@/modules/finance/queries";
 
 export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
@@ -13,14 +15,17 @@ export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
 
   return (
     <div className="space-y-3">
+      {ledger.entries.length === 0 ? (
+        <EmptyState title="No ledger entries" description="Nothing was posted in this range." />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Date</TableHead>
             <TableHead>Account</TableHead>
-            <TableHead>Debit</TableHead>
-            <TableHead>Credit</TableHead>
-            <TableHead>Memo</TableHead>
+            <TableHead className="text-right">Debit</TableHead>
+            <TableHead className="text-right">Credit</TableHead>
+            <TableHead className="hidden sm:table-cell">Memo</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -28,29 +33,23 @@ export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
             <TableRow key={entry.id}>
               <TableCell>{entry.entryDate}</TableCell>
               <TableCell>{entry.account}</TableCell>
-              <TableCell>{entry.debit > 0 ? entry.debit.toFixed(2) : "—"}</TableCell>
-              <TableCell>{entry.credit > 0 ? entry.credit.toFixed(2) : "—"}</TableCell>
-              <TableCell className="text-muted-foreground">{entry.memo ?? "—"}</TableCell>
+              <TableCell className="text-right tabular-nums">{entry.debit > 0 ? inr(entry.debit) : "—"}</TableCell>
+              <TableCell className="text-right tabular-nums">{entry.credit > 0 ? inr(entry.credit) : "—"}</TableCell>
+              <TableCell className="hidden text-muted-foreground sm:table-cell">{entry.memo ?? "—"}</TableCell>
             </TableRow>
           ))}
-          {ledger.entries.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} className="text-muted-foreground text-center">
-                No ledger entries for this range.
-              </TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
+      )}
 
-      <dl className="flex gap-6 text-sm">
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
         <div className="flex gap-1">
           <dt className="text-muted-foreground">Total debit</dt>
-          <dd className="font-medium">{ledger.totalDebit.toFixed(2)}</dd>
+          <dd className="font-medium tabular-nums">{inr(ledger.totalDebit)}</dd>
         </div>
         <div className="flex gap-1">
           <dt className="text-muted-foreground">Total credit</dt>
-          <dd className="font-medium">{ledger.totalCredit.toFixed(2)}</dd>
+          <dd className="font-medium tabular-nums">{inr(ledger.totalCredit)}</dd>
         </div>
         <div className="flex gap-1">
           <dt className="text-muted-foreground">Balanced</dt>

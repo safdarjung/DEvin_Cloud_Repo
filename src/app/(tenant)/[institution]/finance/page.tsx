@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 
@@ -15,21 +17,27 @@ export default async function FinancePage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Finance</h1>
-      <ul className="divide-y divide-border rounded-lg border border-border">
+      <PageHeader title="Finance" description="Fee structures, invoices and payments." />
+      <div className="grid gap-4 sm:grid-cols-2">
         {canManageStructures && (
-          <li className="p-3">
-            <Link href={`/${institutionSlug}/finance/structures`} className="text-primary underline-offset-2 hover:underline">
-              Fee structures &amp; assignments
-            </Link>
-          </li>
-        )}
-        <li className="p-3">
-          <Link href={`/${institutionSlug}/finance/invoices`} className="text-primary underline-offset-2 hover:underline">
-            Invoices
+          <Link href={`/${institutionSlug}/finance/structures`} className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Card className="h-full transition-colors hover:bg-muted/50">
+              <CardHeader>
+                <CardTitle>Fee structures &amp; assignments</CardTitle>
+                <CardDescription>Per-grade fee components and student assignments.</CardDescription>
+              </CardHeader>
+            </Card>
           </Link>
-        </li>
-      </ul>
+        )}
+        <Link href={`/${institutionSlug}/finance/invoices`} className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Card className="h-full transition-colors hover:bg-muted/50">
+            <CardHeader>
+              <CardTitle>Invoices</CardTitle>
+              <CardDescription>View invoices and record payments.</CardDescription>
+            </CardHeader>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 }

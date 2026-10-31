@@ -46,13 +46,13 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
   if (terms.length === 0) return null;
 
   return (
-    <form action={formAction} className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-3">
+    <form action={formAction} className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground sm:flex-row sm:flex-wrap sm:items-end">
       <div>
-        <label className="text-sm font-medium" htmlFor="genTermId">
+        <label className="mb-1 block text-sm font-medium" htmlFor="genTermId">
           Term
         </label>
         <Select value={termId} onValueChange={setTermId}>
-          <SelectTrigger id="genTermId" className="w-40">
+          <SelectTrigger id="genTermId" className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -65,11 +65,11 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
         </Select>
       </div>
       <div>
-        <label className="text-sm font-medium" htmlFor="genGradeId">
+        <label className="mb-1 block text-sm font-medium" htmlFor="genGradeId">
           Grade
         </label>
         <Select value={gradeId} onValueChange={setGradeId}>
-          <SelectTrigger id="genGradeId" className="w-40">
+          <SelectTrigger id="genGradeId" className="w-full sm:w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -86,7 +86,7 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
         {pending ? "Generating…" : "Generate Term invoices"}
       </Button>
       {state && (
-        <p className={state.ok ? "text-sm" : "text-destructive text-sm"} role="status">
+        <p className={state.ok ? "text-sm sm:basis-full" : "text-destructive text-sm sm:basis-full"} role={state.ok ? "status" : "alert"}>
           {state.ok
             ? state.data.mode === "enqueued"
               ? "Queued — invoices will be generated in the background."

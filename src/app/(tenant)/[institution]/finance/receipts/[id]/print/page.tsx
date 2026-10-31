@@ -29,13 +29,13 @@ export default async function ReceiptPrintPage({
   if (!receipt) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl print:max-w-none">
       <style>{`
         @media print {
           header, nav[aria-label="Primary"] { display: none !important; }
         }
       `}</style>
-      <div className="print:hidden mb-4">
+      <div className="mb-4 print:hidden">
         <Button variant="outline" asChild>
           <Link href={`/${institutionSlug}/finance/receipts/${id}`}>Back</Link>
         </Button>

@@ -60,10 +60,10 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
   }
 
   return (
-    <form action={formAction} className="space-y-4 rounded-lg border border-border p-4">
+    <form action={formAction} className="space-y-4 rounded-xl border bg-card p-4 text-card-foreground">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label className="text-sm font-medium" htmlFor="academicYearId">
+          <label className="mb-1 block text-sm font-medium" htmlFor="academicYearId">
             Academic year
           </label>
           <Select value={academicYearId} onValueChange={setAcademicYearId}>
@@ -80,7 +80,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
           </Select>
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="gradeId">
+          <label className="mb-1 block text-sm font-medium" htmlFor="gradeId">
             Grade
           </label>
           <Select value={gradeId} onValueChange={setGradeId}>
@@ -97,7 +97,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
           </Select>
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="name">
+          <label className="mb-1 block text-sm font-medium" htmlFor="name">
             Name
           </label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={200} />
@@ -109,7 +109,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
         {components.map((c, i) => (
           <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
             <Select value={c.head} onValueChange={(v) => updateComponent(i, { head: v })}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" aria-label="Fee head">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -121,6 +121,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
               </SelectContent>
             </Select>
             <Input
+              aria-label="Amount (INR)"
               type="number"
               min="0"
               step="0.01"
@@ -128,7 +129,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
               onChange={(e) => updateComponent(i, { amount: e.target.value })}
             />
             <Select value={c.frequency} onValueChange={(v) => updateComponent(i, { frequency: v })}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" aria-label="Frequency">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

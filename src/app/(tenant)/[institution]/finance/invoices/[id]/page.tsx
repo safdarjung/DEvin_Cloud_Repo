@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { InvoiceDetail } from "@/modules/finance/components/InvoiceDetail";
 import { RecordPaymentDialog } from "@/modules/finance/components/RecordPaymentDialog";
+import { humanize, invoiceStatusVariant } from "@/modules/finance/format";
 import { getInvoice, paymentModesFor } from "@/modules/finance/queries";
 
 export default async function InvoiceDetailPage({
@@ -24,16 +27,26 @@ export default async function InvoiceDetailPage({
   const outstanding = invoice.total - invoice.paidTotal;
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-3xl">
+      <PageHeader
+        title={invoice.invoiceNo}
+        description={invoice.studentName}
+        back={{ href: `/${institutionSlug}/finance/invoices`, label: "Invoices" }}
+        actions={
+          <>
+            <Badge variant={invoiceStatusVariant(invoice.status)}>{humanize(invoice.status)}</Badge>
+            {canRecordPayment && outstanding > 0 && (
+              <RecordPaymentDialog
+                institutionSlug={institutionSlug}
+                invoiceId={invoice.id}
+                outstanding={outstanding}
+                paymentModes={paymentModesFor(ctx.institution.settings)}
+              />
+            )}
+          </>
+        }
+      />
       <InvoiceDetail invoice={invoice} />
-      {canRecordPayment && outstanding > 0 && (
-        <RecordPaymentDialog
-          institutionSlug={institutionSlug}
-          invoiceId={invoice.id}
-          outstanding={outstanding}
-          paymentModes={paymentModesFor(ctx.institution.settings)}
-        />
-      )}
     </div>
   );
 }

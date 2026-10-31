@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LimitedBadge } from "@/components/honesty";
 import type { ActionResult } from "@/lib/actions/result";
+import { inr } from "@/modules/finance/format";
 import { recordPayment, type RecordPaymentResult } from "@/modules/finance/actions";
 
 function nowForInput(): string {
@@ -93,19 +94,19 @@ export function RecordPaymentDialog({
       <DialogTrigger asChild>
         <Button>Record payment</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Record payment</DialogTitle>
           <DialogDescription className="flex flex-col gap-1">
             <span className="flex items-center gap-2">
               <LimitedBadge /> Payments are recorded manually (cash/UPI/bank reference).
             </span>
-            <span>Outstanding: {outstanding.toFixed(2)}. Contact admin to reverse a recorded payment.</span>
+            <span>Outstanding: {inr(outstanding)}. Contact admin to reverse a recorded payment.</span>
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-3">
           <div>
-            <label className="text-sm font-medium" htmlFor="paymentAmount">
+            <label className="mb-1 block text-sm font-medium" htmlFor="paymentAmount">
               Amount
             </label>
             <Input
@@ -120,7 +121,7 @@ export function RecordPaymentDialog({
             />
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="paymentMode">
+            <label className="mb-1 block text-sm font-medium" htmlFor="paymentMode">
               Mode
             </label>
             <Select value={mode} onValueChange={setMode}>
@@ -137,13 +138,13 @@ export function RecordPaymentDialog({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="paymentReference">
+            <label className="mb-1 block text-sm font-medium" htmlFor="paymentReference">
               Reference (cheque/UTR number, optional)
             </label>
             <Input id="paymentReference" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="paymentReceivedAt">
+            <label className="mb-1 block text-sm font-medium" htmlFor="paymentReceivedAt">
               Received at
             </label>
             <Input

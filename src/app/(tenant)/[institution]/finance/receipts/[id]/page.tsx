@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -25,12 +26,16 @@ export default async function ReceiptPage({
   if (!receipt) notFound();
 
   return (
-    <div className="max-w-2xl space-y-4">
-      <div className="flex justify-end">
-        <Button variant="outline" asChild>
-          <Link href={`/${institutionSlug}/finance/receipts/${id}/print`}>Print</Link>
-        </Button>
-      </div>
+    <div className="max-w-2xl">
+      <PageHeader
+        title="Receipt"
+        description={receipt.receiptNo}
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/${institutionSlug}/finance/receipts/${id}/print`}>Print</Link>
+          </Button>
+        }
+      />
       <ReceiptView receipt={receipt} />
     </div>
   );

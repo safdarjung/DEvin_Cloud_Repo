@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { FeeAssignmentDialog } from "@/modules/finance/components/FeeAssignmentDialog";
@@ -25,20 +27,22 @@ export default async function FeeStructureDetailPage({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-semibold">{structure.name}</h1>
+      <PageHeader title={structure.name} back={{ href: `/${institutionSlug}/finance/structures`, label: "Fee structures" }} />
       <FeeStructureForm institutionSlug={institutionSlug} academicYears={academicYears} grades={grades} initial={structure} />
 
-      <div>
-        <h2 className="text-sm font-medium">Assign to a student</h2>
-        <p className="text-muted-foreground mb-2 text-sm">
-          Assigns this student&apos;s fee structure for this academic year, with optional concessions.
-        </p>
+      <Card>
+        <CardHeader>
+          <CardTitle>Assign to a student</CardTitle>
+          <CardDescription>Assigns this student&apos;s fee structure for this academic year, with optional concessions.</CardDescription>
+        </CardHeader>
+        <CardContent>
         <FeeAssignmentDialog
           institutionSlug={institutionSlug}
           academicYearId={structure.academicYearId}
           feeStructures={allStructures.map((s) => ({ id: s.id, label: s.name }))}
         />
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
