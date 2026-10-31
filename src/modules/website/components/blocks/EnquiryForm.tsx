@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import type { EnquiryFormBlock } from "@/modules/website/blocks";
 import { GRADE_CODES } from "@/modules/website/schemas";
@@ -76,38 +77,51 @@ export function EnquiryForm({ slug, block }: { slug: string; block: EnquiryFormB
 
   if (state.status === "success") {
     return (
-      <p role="status" className="rounded-lg border p-4 text-sm">
+      <p role="status" className="my-8 rounded-xl border bg-success/15 p-4 text-sm">
         {state.message}
       </p>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-md space-y-3 py-8">
-      <h2 className="text-2xl font-semibold">{block.heading ?? "Admission enquiry"}</h2>
-      <Input name="childName" placeholder="Child's name" required maxLength={120} />
-      <Input name="guardianName" placeholder="Your name" required maxLength={200} />
-      <Input name="phone" placeholder="10-digit mobile number" required pattern="[6-9][0-9]{9}" />
-      <select
+    <form onSubmit={handleSubmit} className="relative my-8 max-w-xl space-y-4 rounded-xl border bg-card p-5 sm:p-6">
+      <h2 className="text-2xl font-semibold tracking-tight">{block.heading ?? "Admission enquiry"}</h2>
+      <div className="space-y-1.5">
+        <label htmlFor="enq-child" className="text-sm font-medium">Child&apos;s name</label>
+        <Input id="enq-child" name="childName" required maxLength={120} autoComplete="off" className="h-11 text-base" />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="enq-guardian" className="text-sm font-medium">Your name</label>
+        <Input id="enq-guardian" name="guardianName" required maxLength={200} autoComplete="name" className="h-11 text-base" />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="enq-phone" className="text-sm font-medium">Mobile number</label>
+        <Input id="enq-phone" name="phone" placeholder="10-digit mobile number" required pattern="[6-9][0-9]{9}" type="tel" inputMode="numeric" autoComplete="tel-national" className="h-11 text-base" />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="enq-grade" className="text-sm font-medium">Grade applying for (optional)</label>
+        <select
+        id="enq-grade"
         name="gradeCode"
         defaultValue=""
-        className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none"
+        className="h-11 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <option value="">Grade applying for (optional)</option>
+        <option value="">Select grade</option>
         {GRADE_CODES.map((code) => (
           <option key={code} value={code}>
             {code}
           </option>
         ))}
       </select>
-      <Input name="email" type="email" placeholder="Email (optional)" />
-      <textarea
-        name="message"
-        placeholder="Message (optional)"
-        maxLength={2000}
-        rows={3}
-        className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none"
-      />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="enq-email" className="text-sm font-medium">Email (optional)</label>
+        <Input id="enq-email" name="email" type="email" autoComplete="email" className="h-11 text-base" />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="enq-message" className="text-sm font-medium">Message (optional)</label>
+        <Textarea id="enq-message" name="message" maxLength={2000} rows={3} className="text-base" />
+      </div>
       {/* Honeypot (C-83): hidden from sighted users and keyboard tab order; left empty by humans, filled by bots that autofill every field. */}
       <input
         type="text"
@@ -118,11 +132,11 @@ export function EnquiryForm({ slug, block }: { slug: string; block: EnquiryFormB
         className="absolute h-0 w-0 overflow-hidden opacity-0"
       />
       {state.status === "error" && (
-        <p role="alert" className="text-destructive text-sm">
+        <p role="alert" className="text-sm text-destructive">
           {state.message}
         </p>
       )}
-      <Button type="submit" disabled={state.status === "submitting"}>
+      <Button type="submit" className="h-11 w-full sm:w-auto" disabled={state.status === "submitting"}>
         {state.status === "submitting" ? "Sending…" : block.ctaLabel ?? "Submit enquiry"}
       </Button>
     </form>

@@ -15,7 +15,7 @@ export function LoginForm({ next }: { next?: string }) {
         <label htmlFor="email" className="text-sm font-medium">
           Email
         </label>
-        <Input id="email" name="email" type="email" required autoComplete="email" />
+        <Input id="email" name="email" type="email" required autoComplete="email" className="h-10" />
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="password" className="text-sm font-medium">
@@ -27,6 +27,7 @@ export function LoginForm({ next }: { next?: string }) {
           type="password"
           required
           autoComplete="current-password"
+          className="h-10"
         />
       </div>
       {state && !state.ok && (
@@ -34,7 +35,7 @@ export function LoginForm({ next }: { next?: string }) {
           {state.error.message}
         </p>
       )}
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" className="h-10" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
     </form>

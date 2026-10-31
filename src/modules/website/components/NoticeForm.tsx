@@ -4,6 +4,7 @@ import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/actions/result";
 import { upsertNotice } from "@/modules/website/actions";
 
@@ -36,24 +37,24 @@ export function NoticeForm({ institutionSlug }: NoticeFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-3 rounded-lg border p-4">
-      <h2 className="text-sm font-medium">New notice</h2>
+    <form action={formAction} className="max-w-xl space-y-3 rounded-xl border bg-card p-4">
+      <h2 className="font-medium">New notice</h2>
       <Input name="title" placeholder="Title" required maxLength={200} />
-      <textarea
+      <Textarea
         name="body"
         placeholder="Body"
         required
         maxLength={5000}
-        className="min-h-24 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="min-h-24"
       />
-      <div className="grid grid-cols-2 gap-2">
-        <div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
           <label className="text-sm font-medium" htmlFor="publishAt">
             Publish at
           </label>
           <Input id="publishAt" name="publishAt" type="datetime-local" />
         </div>
-        <div>
+        <div className="space-y-1">
           <label className="text-sm font-medium" htmlFor="expiresAt">
             Expires at (optional)
           </label>
@@ -61,7 +62,7 @@ export function NoticeForm({ institutionSlug }: NoticeFormProps) {
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isPublic" className="h-4 w-4" />
+        <input type="checkbox" name="isPublic" className="size-4 accent-primary" />
         Show on public site
       </label>
       <Button type="submit" disabled={pending}>

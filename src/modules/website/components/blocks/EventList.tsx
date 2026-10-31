@@ -7,15 +7,15 @@ export async function EventList({ block, institutionId }: { block: EventListBloc
 
   return (
     <section className="py-8">
-      <h2 className="mb-4 text-2xl font-semibold">{block.heading ?? "Upcoming events"}</h2>
-      <ul className="space-y-3">
+      <h2 className="mb-4 text-2xl font-semibold tracking-tight">{block.heading ?? "Upcoming events"}</h2>
+      <ul className="divide-y rounded-xl border bg-card">
         {events.map((event) => (
-          <li key={event.id} className="rounded-lg border p-4">
-            <div className="font-medium">{event.title}</div>
-            <div className="text-muted-foreground text-sm">
+          <li key={event.id} className="space-y-1 p-4">
+            <h3 className="font-medium">{event.title}</h3>
+            <p className="text-sm text-muted-foreground">
               {new Date(event.startsAt).toLocaleString()}
               {event.location ? ` · ${event.location}` : ""}
-            </div>
+            </p>
           </li>
         ))}
       </ul>

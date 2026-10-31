@@ -7,13 +7,17 @@ export async function NoticeList({ block, institutionId }: { block: NoticeListBl
 
   return (
     <section className="py-8">
-      <h2 className="mb-4 text-2xl font-semibold">{block.heading ?? "Notices"}</h2>
-      <ul className="space-y-3">
+      <h2 className="mb-4 text-2xl font-semibold tracking-tight">{block.heading ?? "Notices"}</h2>
+      <ul className="divide-y rounded-xl border bg-card">
         {notices.map((notice) => (
-          <li key={notice.id} className="rounded-lg border p-4">
-            <div className="font-medium">{notice.title}</div>
-            <p className="text-muted-foreground text-sm">{notice.body}</p>
-            <div className="text-muted-foreground mt-1 text-xs">{new Date(notice.publishAt).toLocaleDateString()}</div>
+          <li key={notice.id} className="space-y-1 p-4">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <h3 className="font-medium">{notice.title}</h3>
+              <time className="text-xs text-muted-foreground" dateTime={String(notice.publishAt)}>
+                {new Date(notice.publishAt).toLocaleDateString()}
+              </time>
+            </div>
+            <p className="text-sm text-muted-foreground">{notice.body}</p>
           </li>
         ))}
       </ul>

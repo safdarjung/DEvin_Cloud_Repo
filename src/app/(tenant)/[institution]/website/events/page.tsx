@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
@@ -13,17 +15,17 @@ export default async function EventsPage({ params }: { params: Promise<{ institu
   const events = await listEvents(ctx);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Events</h1>
+    <div className="space-y-4">
+      <PageHeader title="Events" description="Items marked public appear on the school website." back={{ href: `/${institutionSlug}/website`, label: "Website" }} />
       {events.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No events yet.</p>
+        <EmptyState title="No events yet" description="Add one below." />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Starts at</TableHead>
-              <TableHead>Visibility</TableHead>
+              <TableHead className="text-right">Visibility</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -31,9 +33,9 @@ export default async function EventsPage({ params }: { params: Promise<{ institu
               <TableRow key={event.id}>
                 <TableCell>{event.title}</TableCell>
                 <TableCell>{new Date(event.startsAt).toLocaleString()}</TableCell>
-                <TableCell>
-                  <Badge variant={event.isPublic ? "default" : "secondary"}>
-                    {event.isPublic ? "public" : "internal"}
+                <TableCell className="text-right">
+                  <Badge variant={event.isPublic ? "success" : "outline"}>
+                    {event.isPublic ? "Public" : "Internal"}
                   </Badge>
                 </TableCell>
               </TableRow>

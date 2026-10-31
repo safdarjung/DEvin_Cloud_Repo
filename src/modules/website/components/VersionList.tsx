@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/states";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/actions/result";
 import { publishPage } from "@/modules/website/actions";
@@ -54,7 +55,7 @@ function PublishButton({
 
 export function VersionList({ institutionSlug, pageId, versions, publishedVersionId, canPublish }: VersionListProps) {
   if (versions.length === 0) {
-    return <p className="text-muted-foreground text-sm">No versions saved yet.</p>;
+    return <EmptyState title="No versions saved yet" description="Save the editor above to create version 1." />;
   }
 
   return (
@@ -62,7 +63,7 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
       <TableHeader>
         <TableRow>
           <TableHead>Version</TableHead>
-          <TableHead>Saved</TableHead>
+          <TableHead className="hidden sm:table-cell">Saved</TableHead>
           <TableHead>Status</TableHead>
           <TableHead />
         </TableRow>
@@ -80,8 +81,8 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
                   v{version.versionNo}
                 </Link>
               </TableCell>
-              <TableCell>{new Date(version.createdAt).toLocaleString()}</TableCell>
-              <TableCell>{isPublished && <Badge>published</Badge>}</TableCell>
+              <TableCell className="hidden sm:table-cell">{new Date(version.createdAt).toLocaleString()}</TableCell>
+              <TableCell>{isPublished && <Badge variant="success">Published</Badge>}</TableCell>
               <TableCell>
                 {!isPublished && canPublish && (
                   <PublishButton institutionSlug={institutionSlug} pageId={pageId} versionId={version.id} />

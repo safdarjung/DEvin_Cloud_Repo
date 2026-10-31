@@ -35,17 +35,17 @@ export function EventForm({ institutionSlug }: EventFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-3 rounded-lg border p-4">
-      <h2 className="text-sm font-medium">New event</h2>
+    <form action={formAction} className="max-w-xl space-y-3 rounded-xl border bg-card p-4">
+      <h2 className="font-medium">New event</h2>
       <Input name="title" placeholder="Title" required maxLength={200} />
-      <div className="grid grid-cols-2 gap-2">
-        <div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
           <label className="text-sm font-medium" htmlFor="startsAt">
             Starts at
           </label>
           <Input id="startsAt" name="startsAt" type="datetime-local" required />
         </div>
-        <div>
+        <div className="space-y-1">
           <label className="text-sm font-medium" htmlFor="endsAt">
             Ends at (optional)
           </label>
@@ -54,7 +54,7 @@ export function EventForm({ institutionSlug }: EventFormProps) {
       </div>
       <Input name="location" placeholder="Location (optional)" maxLength={300} />
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isPublic" className="h-4 w-4" />
+        <input type="checkbox" name="isPublic" className="size-4 accent-primary" />
         Show on public site
       </label>
       <Button type="submit" disabled={pending}>

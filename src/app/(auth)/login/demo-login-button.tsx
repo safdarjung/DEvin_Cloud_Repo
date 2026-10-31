@@ -40,18 +40,18 @@ export function DemoLoginButton({
         disabled={pending}
         className={cn(
           "group relative flex w-full items-start gap-3 rounded-xl p-3.5 text-left ring-1 ring-foreground/10",
-          "bg-card transition-colors hover:bg-accent hover:ring-foreground/20",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          "bg-card shadow-xs transition-colors hover:bg-accent hover:ring-foreground/20",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "disabled:cursor-wait disabled:opacity-70",
         )}
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-background [&_svg]:size-4">
-          {pending ? <Loader2 className="size-4 animate-spin" /> : icon}
+          {pending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : icon}
         </span>
         <span className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate text-sm font-medium leading-tight">{name}</span>
           <span className="text-xs leading-snug text-muted-foreground">{role}</span>
-          <span className="mt-1 text-xs leading-snug text-muted-foreground/80">{blurb}</span>
+          <span className="mt-1 text-xs leading-snug text-muted-foreground">{blurb}</span>
         </span>
       </button>
       {state && !state.ok && (

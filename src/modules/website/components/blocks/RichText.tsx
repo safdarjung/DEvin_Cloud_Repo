@@ -6,7 +6,7 @@ import type { RichTextBlock } from "@/modules/website/blocks";
 // element; a `href` on a span already passed `isSafeBlockUrl` at parse time.
 export function RichText({ block }: { block: RichTextBlock }) {
   return (
-    <section className="prose mx-auto max-w-2xl space-y-4 py-8">
+    <section className="max-w-2xl space-y-4 py-8 leading-7 [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_h2]:mt-4 [&_h2]:text-2xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h3]:mt-2 [&_h3]:text-xl [&_h3]:font-semibold [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-6 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-6">
       {block.nodes.map((node, index) => {
         if (node.type === "heading") {
           const HeadingTag = node.level === 2 ? "h2" : "h3";
