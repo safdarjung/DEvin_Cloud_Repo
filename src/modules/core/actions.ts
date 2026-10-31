@@ -20,7 +20,7 @@ const FEATURE_KEYS = Object.keys(FEATURE_CATALOG) as [FeatureKey, ...FeatureKey[
 
 export const setFeatureEnabled = defineAction({
   name: "core.feature.set",
-  schema: z.object({ key: z.enum(FEATURE_KEYS), enabled: z.boolean() }),
+  schema: z.object({ key: z.enum(FEATURE_KEYS), enabled: z.boolean() }).strict(),
   permission: "institution.settings.manage",
   handler: async ({ key, enabled }, ctx) => {
     const existingFeatures = ctx.institution.settings.features;

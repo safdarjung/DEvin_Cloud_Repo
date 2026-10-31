@@ -391,4 +391,23 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher/student/guardian own-scope via the result
     write: ["owner", "principal", "exam_controller", "teacher"], // teacher scoped to a student they teach; no admin
   },
+
+  // 0049 (GU-07, D32) — student study notebook. Own-rows-only for every
+  // role (same shape as `notifications`) — RLS itself grants any member
+  // the same own-row access regardless of role (database-reviewer, L6:
+  // this table does NOT enforce "student only" at the RLS layer). Only
+  // `student` is listed here because D32 scopes the feature to students
+  // at the application layer (`ai.study` permission, student only,
+  // GU-08) — no other role is expected to ever call the action that
+  // creates a row, not because RLS would stop them if they somehow did.
+  study_items: {
+    classes: ["O"],
+    read: ["student"],
+    write: ["student"],
+  },
+  study_preferences: {
+    classes: ["O"],
+    read: ["student"],
+    write: ["student"],
+  },
 };

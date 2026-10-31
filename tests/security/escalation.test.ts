@@ -10,6 +10,7 @@ vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 import "@/modules/academics/assignments.actions";
 import "@/modules/admissions/actions";
 import "@/modules/attendance/actions";
+import "@/modules/core/actions";
 import "@/modules/exams/actions";
 import "@/modules/finance/actions";
 import "@/modules/jobs/actions";
@@ -28,6 +29,7 @@ const U = () => crypto.randomUUID();
 const at = "2026-10-01T09:00:00.000Z";
 
 const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown> }> = {
+  "core.feature.set": { permission: "institution.settings.manage", input: () => ({ key: "teacher_ai_agent", enabled: true }) },
   "job.requeue": { permission: "job.manage", input: () => ({ jobId: U() }) },
   "exam.create": { permission: "exam.manage", input: () => ({ termId: U(), name: "Probe", type: "unit_test" }) },
   "exam.papers.create": {

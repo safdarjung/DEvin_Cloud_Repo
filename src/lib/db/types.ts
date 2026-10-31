@@ -1547,6 +1547,64 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"study_items": {
+                  Row: {
+                    "content": NonNullable<Json>,"created_at": string,"folder": string | null,"id": string,"institution_id": string,"kind": string,"pinned": boolean,"source_chat_id": string | null,"title": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "content": NonNullable<Json>,"created_at"?: string,"folder"?: string | null,"id"?: string,"institution_id": string,"kind": string,"pinned"?: boolean,"source_chat_id"?: string | null,"title": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "content"?: NonNullable<Json>,"created_at"?: string,"folder"?: string | null,"id"?: string,"institution_id"?: string,"kind"?: string,"pinned"?: boolean,"source_chat_id"?: string | null,"title"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "study_items_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_items_source_chat_id_fkey"
+      columns: ["source_chat_id"]
+isOneToOne: false
+      referencedRelation: "study_items"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_items_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"study_preferences": {
+                  Row: {
+                    "created_at": string,"institution_id": string,"skills": NonNullable<Json>,"style": NonNullable<Json>,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"institution_id": string,"skills"?: NonNullable<Json>,"style"?: NonNullable<Json>,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"institution_id"?: string,"skills"?: NonNullable<Json>,"style"?: NonNullable<Json>,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "study_preferences_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_preferences_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"subject_assignments": {
                   Row: {
                     "class_section_id": string,"created_at": string,"id": string,"institution_id": string,"subject_id": string,"teacher_id": string,"updated_at": string
