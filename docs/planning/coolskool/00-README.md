@@ -21,3 +21,7 @@ This directory is the living spec. Finished task packets, the planning prompt, a
 Navigating: read `CLAUDE.md` and your packet, then only the linked sections (e.g. `05 §2.6`, `06 §W9`, `07 §2`). New decision = ADR in `12`; new shortcut = debt row. Section numbers are cited from code and tests; never renumber.
 
 Ids: `F-AAA-nn` features · `D-nn` ADRs · `W-n` workflows · `C-nn` security cases · `J-nn` E2E journeys · `L-n` load scenarios · `T-0nn` packets · `DBT-nn` debt · migrations `2026102800NN_<slug>.sql`.
+
+## Fabric
+
+The platform-level plan (vision, PRD, architecture, tracker, UI/backend packets) lives in `docs/planning/fabric/` — start at `docs/planning/fabric/00-README.md`. ADRs D26, D37–D39.

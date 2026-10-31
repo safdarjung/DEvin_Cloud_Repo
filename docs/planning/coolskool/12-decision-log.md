@@ -243,6 +243,24 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 - **Method, for future sessions:** every live-test "bug" in this sweep was checked against either (a) a live reproduction outside the original test tool (a standalone Playwright script against the project's own cached Chromium binary, or a direct `supabase-js` call under the real role's RLS session), or (b) the actual framework/library source installed in `node_modules` — never accepted on the strength of an agent's narrative alone. Two genuinely new bugs survived that bar; four did not.
 - **Revisit:** none — every finding from this sweep is now either fixed-and-tested or refuted-with-evidence above.
 
+### D37 — Fabric Canvas spec + Laya visual router (2026-10-31)
+
+- **Context:** owner asked for a UI-first showcase of the whole Fabric vision (`docs/planning/fabric/source/vision-2026-10-31.md`) with generative/dynamic UI, and for the local Laya model wherever OpenIntelligentUI would use its hosted "Jev" router. D31's revisit clause ("composed layouts needed → re-evaluate") was triggered.
+- **Decision:** extend the D31 closed catalog, not replace it. `src/modules/fabric/spec/schemas.ts` adds `layout`, `widget`, `flow` kinds and an `action` field to the existing 7 blocks (flat node list ≤24, strings ≤500, internal hrefs only, no recursion). `src/lib/genui/canvas-renderer.tsx` is the single dispatch point; `flow` renders through `@xyflow/react` (the only new dependency, 12.12.0, client-only via `next/dynamic`). Specs are pre-authored per screen; **Laya** (local ModernBERT classifier, `noul` yes/no, `~/Desktop/projects/save-token-laya`, bridge on `127.0.0.1:8787`) only picks among variants via `POST /api/ai/genui-route` (permission `ai.generate`, 2 s timeout, any failure → default variant, never a 5xx). No model emits HTML; OpenIntelligentUI's runtime (Python agent, CopilotKit/AG-UI, OpenAI + Jev keys, sandboxed model-written HTML) is not adopted. Sandboxed iframe appears once, for a static fixture preview in Custom Studio.
+- **Still holds:** rule 6 — nothing in the canvas or router writes data; actions are data the page authorizes. A later live mode (Ollama emitting CanvasSpec JSON) must go through `gateway.ts`.
+- **Revisit:** if json-render reaches 1.0 with a React 19 renderer, or A2UI stabilises, write an adapter from `CanvasSpec`; if Laya gains `choice` questions in the bridge, replace the per-candidate yes/no with one choice question.
+
+### D38 — Main-only git and the two-session cost split (2026-10-31)
+
+- **Context:** two Claude Code sessions (owner: Fable 5.1, backend; Chayank: cheaper tier, UI) on one repo. Branch juggling and chatty coordination were burning tokens.
+- **Decision:** all work on `main` (`redesign/ui` merged at `521e05e`; no new branches, no force-push, `pnpm typecheck && pnpm lint` before every push). Fable plans, writes contracts/docs/packets and reviews by test output; Haiku/Sonnet agents do bulk generation here; the UI session executes self-contained packets (`docs/planning/fabric/04-ui-packets/`) with no exploration. Fence and channel protocol in `docs/planning/fabric/00-README.md`. ntfy is signal only; the human on each side confirms any "decision" seen on it.
+- **Revisit:** when a second non-demo tenant exists, reintroduce protected `main` with PR review.
+
+### D39 — Fabric tables: ownership, reserved migrations, fixtures mirror rows (2026-10-31)
+
+- **Decision:** a new owning module `src/modules/fabric` for marketplace installs, scenarios, insights/actions, agent definitions/runs, workflows/runs, studio requests/proposals, personal memories/goals (user-scoped, no `institution_id`), connectors/syncs, twin snapshots, dashboard layouts. Migrations `20261028000052`–`0063` reserved in `10-backlog-index.md` §3 and built in Phase 2 only. Until then `src/modules/fabric/types.ts` mirrors the planned columns and `src/modules/fabric/demo/*.ts` produce deterministic rows, so Phase 2 swaps the data source without touching components. Every Fabric page carries `SimulatedBadge` (rule 7) until its tracker row says otherwise.
+- **Still holds:** rule 1 (every tenant table has `institution_id` except the personal ones, which are own-rows class O), rule 5 (runs, actions, proposals append-only), rule 6.
+
 ## 2. Phase 0 verified facts and installed versions
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.
