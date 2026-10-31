@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/page-header";
-import { SimulatedBadge } from "@/components/honesty";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { FabricPage } from "@/modules/fabric/components/fabric-page";
+import { WorkspaceSkeleton } from "@/modules/fabric/components/workspace-skeleton";
 
 export default async function TrustGovernancePage({
   params,
@@ -13,10 +13,8 @@ export default async function TrustGovernancePage({
   requirePermission(ctx, "dashboard.view");
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Trust & governance" />
-      <SimulatedBadge />
-      <p className="text-sm text-muted-foreground">This workspace arrives in packet F-UI-15.</p>
-    </div>
+    <FabricPage title="Trust & governance" ws="trust">
+      <WorkspaceSkeleton packet="F-UI-15" />
+    </FabricPage>
   );
 }

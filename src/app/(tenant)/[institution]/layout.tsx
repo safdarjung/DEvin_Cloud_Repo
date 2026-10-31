@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { Banknote, CalendarCheck, FilePlus, GraduationCap, UserPlus } from "lucide-react";
 import type { QuickAction } from "@/components/tenant/command-palette";
-import { DemoBanner } from "@/components/tenant/demo-banner";
 import { TenantHeader } from "@/components/tenant/header";
 import { SIDEBAR_COOKIE, TenantSidebar } from "@/components/tenant/sidebar";
 import { getTenantContext } from "@/lib/auth/context";
@@ -94,7 +93,6 @@ export default async function TenantLayout({
       >
         Skip to content
       </a>
-      {ctx.institution.is_demo && <DemoBanner />}
       <TenantHeader
         institutionSlug={ctx.institution.slug}
         institutionName={ctx.institution.name}

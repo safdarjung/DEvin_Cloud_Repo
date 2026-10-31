@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { FadeIn } from "@/components/motion";
-import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { DemoStoreControls } from "./demo-store-controls";
 
@@ -31,7 +30,6 @@ export function FabricPage({
         description={description}
         actions={
           <>
-            <SimulatedBadge />
             {actions}
             <DemoStoreControls />
           </>

@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/page-header";
-import { SimulatedBadge } from "@/components/honesty";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { FabricPage } from "@/modules/fabric/components/fabric-page";
+import { WorkspaceSkeleton } from "@/modules/fabric/components/workspace-skeleton";
 
 export default async function DataIntegrationsPage({
   params,
@@ -13,10 +13,8 @@ export default async function DataIntegrationsPage({
   requirePermission(ctx, "dashboard.view");
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Data & integrations" />
-      <SimulatedBadge />
-      <p className="text-sm text-muted-foreground">This workspace arrives in packet F-UI-14.</p>
-    </div>
+    <FabricPage title="Data & integrations" ws="data">
+      <WorkspaceSkeleton packet="F-UI-14" />
+    </FabricPage>
   );
 }

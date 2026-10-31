@@ -35,19 +35,19 @@ export function DemoStoreControls() {
     setImportError(null);
     dispatch({ type: "importState", state: result.state });
     setOpen(false);
-    toast.success("Demo state imported");
+    toast.success("State imported");
   }
 
   return (
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="icon" aria-label="Demo data controls">
+          <Button type="button" variant="outline" size="icon" aria-label="Workspace data controls">
             <MoreHorizontal aria-hidden />
           </Button>
         </PopoverTrigger>
         <PopoverContent align="end" className="w-64 space-y-1 p-2">
-          <p className="px-2 py-1 text-xs font-medium text-muted-foreground">Demo data (this browser only)</p>
+          <p className="px-2 py-1 text-xs font-medium text-muted-foreground">Workspace data (this browser only)</p>
           <Button
             type="button"
             variant="ghost"
@@ -57,7 +57,7 @@ export function DemoStoreControls() {
               setConfirmReset(true);
             }}
           >
-            <RotateCcw aria-hidden /> Reset demo data
+            <RotateCcw aria-hidden /> Reset to defaults
           </Button>
           <Button
             type="button"
@@ -68,17 +68,17 @@ export function DemoStoreControls() {
               setOpen(false);
             }}
           >
-            <Download aria-hidden /> Export demo state
+            <Download aria-hidden /> Export workspace state
           </Button>
           <Button type="button" variant="ghost" className="w-full justify-start" onClick={() => fileRef.current?.click()}>
-            <Upload aria-hidden /> Import demo state
+            <Upload aria-hidden /> Import workspace state
           </Button>
           <input
             ref={fileRef}
             type="file"
             accept="application/json,.json"
             className="sr-only"
-            aria-label="Import demo state file"
+            aria-label="Import workspace state file"
             onChange={(e) => {
               void onImport(e.target.files?.[0]);
               e.target.value = "";
@@ -90,9 +90,9 @@ export function DemoStoreControls() {
       <Dialog open={confirmReset} onOpenChange={setConfirmReset}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reset demo data?</DialogTitle>
+            <DialogTitle>Reset to defaults?</DialogTitle>
             <DialogDescription>
-              Installs, scenarios, layouts and other demo changes in this browser return to the starting set.
+              Installs, scenarios, layouts and other changes in this browser return to their defaults.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -104,7 +104,7 @@ export function DemoStoreControls() {
               onClick={() => {
                 dispatch({ type: "reset", seedData: seed });
                 setConfirmReset(false);
-                toast.success("Demo data reset");
+                toast.success("Reset to defaults");
               }}
             >
               Reset

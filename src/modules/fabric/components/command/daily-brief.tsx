@@ -24,7 +24,6 @@ export function DailyBriefWidget({ brief, base }: { brief: DailyBrief; base: str
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-xs text-muted-foreground">Generated from demo data</p>
     </Widget>
   );
 }

@@ -93,7 +93,7 @@ export function UserMenu({
             <DropdownMenuSeparator />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger className={item} disabled={switching}>
-                <Users aria-hidden /> {switching ? "Switching…" : "Switch demo role"}
+                <Users aria-hidden /> {switching ? "Switching…" : "Switch role"}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="w-60">
                 <DropdownMenuRadioGroup value={email ?? ""} onValueChange={switchTo}>

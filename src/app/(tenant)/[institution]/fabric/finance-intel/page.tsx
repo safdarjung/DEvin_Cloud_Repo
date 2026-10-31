@@ -1,7 +1,7 @@
-import { PageHeader } from "@/components/page-header";
-import { SimulatedBadge } from "@/components/honesty";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { FabricPage } from "@/modules/fabric/components/fabric-page";
+import { WorkspaceSkeleton } from "@/modules/fabric/components/workspace-skeleton";
 
 export default async function FinanceIntelPage({
   params,
@@ -13,10 +13,8 @@ export default async function FinanceIntelPage({
   requirePermission(ctx, "dashboard.view");
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Finance intel" />
-      <SimulatedBadge />
-      <p className="text-sm text-muted-foreground">This workspace arrives in packet F-UI-06.</p>
-    </div>
+    <FabricPage title="Finance intel" ws="finance-intel">
+      <WorkspaceSkeleton packet="F-UI-06" />
+    </FabricPage>
   );
 }
