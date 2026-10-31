@@ -2,7 +2,7 @@
 // security requirement: "Settings JSON validated by InstitutionSettingsSchema
 // before insert"). Lead-owned, like src/lib/auth/permissions.ts.
 import { z } from "zod";
-import { isoDate } from "@/lib/schemas/common";
+import { isoDate, shortText, uuid } from "@/lib/schemas/common";
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
 // checks live in create_institution (SQL); this only validates shape.
@@ -223,3 +223,93 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
   communication: { languages: ["en", "hi"], sms_sender: "SJCDEM" },
   features: { teacher_ai_agent: true },
 };
+
+// M03-T5 — core.member.invite / revokeInvite. Role covers all 9 membership
+// roles; invite_member (0079) re-validates and does the owner/principal
+// escalation check at the SQL layer, so this is shape-only.
+const MEMBERSHIP_ROLES = [
+  "owner",
+  "principal",
+  "admin",
+  "admissions",
+  "accountant",
+  "exam_controller",
+  "teacher",
+  "student",
+  "guardian",
+] as const;
+
+export const InviteMemberSchema = z
+  .object({
+    email: z.string().trim().email().max(200),
+    role: z.enum(MEMBERSHIP_ROLES),
+    staffId: uuid.optional(),
+    guardianId: uuid.optional(),
+    studentId: uuid.optional(),
+  })
+  .strict();
+export type InviteMemberInput = z.infer<typeof InviteMemberSchema>;
+
+export const RevokeInvitationSchema = z.object({ invitationId: uuid }).strict();
+export type RevokeInvitationInput = z.infer<typeof RevokeInvitationSchema>;
+
+// M03-T7 — core.member.setRole / setStatus. setRole only moves a membership
+// between staff-class roles (app.staff_roles(), 0001) — the link column
+// (staff_id) never changes; moving to/from student or guardian needs a
+// different link type, out of scope (no such case in M03, YAGNI).
+const STAFF_CLASS_ROLES = [
+  "owner",
+  "principal",
+  "admin",
+  "admissions",
+  "accountant",
+  "exam_controller",
+  "teacher",
+] as const;
+
+export const SetMemberRoleSchema = z.object({ membershipId: uuid, role: z.enum(STAFF_CLASS_ROLES) }).strict();
+export type SetMemberRoleInput = z.infer<typeof SetMemberRoleSchema>;
+
+export const SetMemberStatusSchema = z
+  .object({ membershipId: uuid, status: z.enum(["active", "disabled"]) })
+  .strict();
+export type SetMemberStatusInput = z.infer<typeof SetMemberStatusSchema>;
+
+// M03-T8 — academic year / term / institution settings setup actions.
+// `sequence` (terms) and date-ordering are not client input: the handler
+// derives sequence, and `app.validate_term_dates` (0002) enforces a term
+// falling inside its year.
+export const AcademicYearUpsertSchema = z
+  .object({
+    id: uuid.optional(),
+    name: shortText,
+    startsOn: isoDate,
+    endsOn: isoDate,
+    isCurrent: z.boolean().optional(),
+  })
+  .strict();
+export type AcademicYearUpsertInput = z.infer<typeof AcademicYearUpsertSchema>;
+
+export const TermUpsertSchema = z
+  .object({
+    id: uuid.optional(),
+    academicYearId: uuid,
+    name: shortText,
+    startsOn: isoDate,
+    endsOn: isoDate,
+  })
+  .strict();
+export type TermUpsertInput = z.infer<typeof TermUpsertSchema>;
+
+// `settings` is a deep-partial patch validated against the real settings
+// schema (same per-key-strictness idea as setFeatureEnabled's `features`
+// patch): a key that's present must still be the full, valid shape for
+// that key; `.partial()` only makes top-level keys optional.
+export const UpdateInstitutionSettingsSchema = z
+  .object({
+    name: shortText.optional(),
+    timezone: z.string().trim().min(1).max(100).optional(),
+    settings: InstitutionSettingsSchema.partial().optional(),
+  })
+  .strict();
+export type UpdateInstitutionSettingsInput = z.infer<typeof UpdateInstitutionSettingsSchema>;
