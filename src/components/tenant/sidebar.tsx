@@ -8,6 +8,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { MOTION } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 
 // Icons arrive as rendered nodes: LucideIcon components can't cross the
@@ -16,6 +17,8 @@ export interface NavLinkItem {
   href: string;
   label: string;
   icon: ReactNode;
+  /** NavGroup from src/lib/nav.ts; items of one group arrive contiguously. */
+  group: string;
 }
 
 export const SIDEBAR_COOKIE = "cs_sidebar";
@@ -49,35 +52,77 @@ function NavLinks({
     .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
+  const sections: { group: string; items: NavLinkItem[] }[] = [];
+  for (const item of items) {
+    const last = sections[sections.length - 1];
+    if (last?.group === item.group) last.items.push(item);
+    else sections.push({ group: item.group, items: [item] });
+  }
+
   return (
-    <ul className="flex flex-col gap-1">
-      {items.map((item) => {
-        const active = item.href === activeHref;
-        return (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              aria-label={collapsed ? item.label : undefined}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                "flex min-h-10 items-center gap-3 overflow-hidden rounded-md px-3 text-sm font-medium transition-colors duration-(--duration-fast) ease-(--ease-out)",
-                focusRing,
-                active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              )}
+    <div className="flex flex-col">
+      {sections.map((section, index) => (
+        <div key={section.group} role="group" aria-label={section.group}>
+          {/* Fixed height so collapsing swaps label for divider without reflow. */}
+          <div className="relative h-7">
+            <motion.p
+              initial={false}
+              aria-hidden
+              className="absolute inset-x-3 bottom-1 truncate text-xs font-medium tracking-wide text-muted-foreground"
+              {...labelFade(collapsed, reduce)}
             >
-              {item.icon}
-              <motion.span initial={false} className="whitespace-nowrap" {...labelFade(collapsed, reduce)}>
-                {item.label}
-              </motion.span>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+              {section.group}
+            </motion.p>
+            {index > 0 && (
+              <motion.hr
+                initial={false}
+                aria-hidden
+                className="absolute inset-x-2 bottom-2 border-t"
+                animate={{ opacity: collapsed ? 1 : 0 }}
+                transition={labelFade(!collapsed, reduce).transition}
+              />
+            )}
+          </div>
+          <ul className="flex flex-col gap-1">
+            {section.items.map((item) => {
+              const active = item.href === activeHref;
+              const link = (
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  className={cn(
+                    "flex min-h-10 items-center gap-3 overflow-hidden rounded-md px-3 text-sm font-medium transition-colors duration-(--duration-fast) ease-(--ease-out)",
+                    focusRing,
+                    active
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  )}
+                >
+                  {item.icon}
+                  <motion.span initial={false} className="whitespace-nowrap" {...labelFade(collapsed, reduce)}>
+                    {item.label}
+                  </motion.span>
+                </Link>
+              );
+              return (
+                <li key={item.href}>
+                  {collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>{link}</TooltipTrigger>
+                      <TooltipContent side="right">{item.label}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    link
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -132,7 +177,9 @@ export function TenantSidebar({
         <Wordmark collapsed={collapsed} />
       </div>
       <nav aria-label="Primary" className="flex-1">
-        <NavLinks items={items} collapsed={collapsed} />
+        <TooltipProvider>
+          <NavLinks items={items} collapsed={collapsed} />
+        </TooltipProvider>
       </nav>
       <Button
         type="button"
