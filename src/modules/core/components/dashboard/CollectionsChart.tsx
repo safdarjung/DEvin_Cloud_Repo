@@ -1,6 +1,7 @@
 "use client";
 // T-039 — term collected vs due.
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartFrame, chartAxis, chartGrid, chartTooltip, chartValueLabel } from "@/components/chart";
 
 interface CollectionsChartProps {
   collectedPaise: number;
@@ -22,25 +23,28 @@ export function CollectionsChart({ collectedPaise, duePaise }: CollectionsChartP
   ];
 
   return (
-    <figure>
-      <p className="sr-only">
-        This term: {formatINR(collectedPaise)} collected of {formatINR(duePaise)} due.
-      </p>
-      <div className="h-40" aria-hidden="true">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
-            <CartesianGrid horizontal={false} stroke="var(--border)" />
-            <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatINR(Math.round(v * 100))} />
-            <YAxis type="category" dataKey="label" tick={{ fontSize: 12 }} width={64} />
-            <Tooltip formatter={(v) => formatINR(Math.round(Number(v) * 100))} />
-            <Bar dataKey="amount" radius={4}>
-              {data.map((entry) => (
-                <Cell key={entry.label} fill={entry.fill} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </figure>
+    <ChartFrame
+      summary={`This term: ${formatINR(collectedPaise)} collected of ${formatINR(duePaise)} due.`}
+      empty={collectedPaise === 0 && duePaise === 0}
+      emptyTitle="No invoices this term"
+    >
+      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 96 }}>
+        <CartesianGrid horizontal={false} {...chartGrid} />
+        <XAxis type="number" tickFormatter={(v: number) => formatINR(Math.round(v * 100))} {...chartAxis} />
+        <YAxis type="category" dataKey="label" width={72} {...chartAxis} />
+        <Tooltip formatter={(v) => formatINR(Math.round(Number(v) * 100))} {...chartTooltip} />
+        <Bar dataKey="amount" radius={4}>
+          {data.map((entry) => (
+            <Cell key={entry.label} fill={entry.fill} />
+          ))}
+          <LabelList
+            dataKey="amount"
+            position="right"
+            formatter={(v: unknown) => formatINR(Math.round(Number(v) * 100))}
+            {...chartValueLabel}
+          />
+        </Bar>
+      </BarChart>
+    </ChartFrame>
   );
 }

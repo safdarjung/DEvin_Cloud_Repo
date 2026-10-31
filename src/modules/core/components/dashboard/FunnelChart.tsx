@@ -2,7 +2,8 @@
 // T-039 — enquiry stage counts, worst-to-best read top-to-bottom like a
 // funnel. Application-status counts are shown as a plain list beside it
 // (short, fixed set — a second chart would be noise).
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, LabelList, Tooltip, XAxis, YAxis } from "recharts";
+import { ChartFrame, chartAxis, chartGrid, chartTooltip, chartValueLabel } from "@/components/chart";
 import type { AdmissionsFunnelCounts } from "@/modules/admissions/queries";
 
 interface FunnelChartProps {
@@ -15,20 +16,22 @@ export function FunnelChart({ funnel }: FunnelChartProps) {
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <figure>
-        <p className="sr-only">Enquiries by stage: {stageData.map((s) => `${s.label} ${s.count}`).join(", ")}.</p>
-        <div className="h-48" aria-hidden="true">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stageData} layout="vertical" margin={{ left: 8, right: 16 }}>
-              <CartesianGrid horizontal={false} stroke="var(--border)" />
-              <XAxis type="number" tick={{ fontSize: 12 }} allowDecimals={false} />
-              <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={88} />
-              <Tooltip />
-              <Bar dataKey="count" fill="var(--chart-2)" radius={4} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </figure>
+      <ChartFrame
+        summary={`Enquiries by stage: ${stageData.map((s) => `${s.label} ${s.count}`).join(", ")}.`}
+        heightClass="h-48"
+        empty={stageData.every((s) => s.count === 0)}
+        emptyTitle="No enquiries yet"
+      >
+        <BarChart data={stageData} layout="vertical" margin={{ left: 8, right: 32 }}>
+          <CartesianGrid horizontal={false} {...chartGrid} />
+          <XAxis type="number" allowDecimals={false} {...chartAxis} />
+          <YAxis type="category" dataKey="label" width={88} {...chartAxis} />
+          <Tooltip {...chartTooltip} />
+          <Bar dataKey="count" fill="var(--chart-2)" radius={4}>
+            <LabelList dataKey="count" position="right" {...chartValueLabel} />
+          </Bar>
+        </BarChart>
+      </ChartFrame>
 
       <ul className="space-y-1 text-sm">
         {applicationEntries.length === 0 && <li className="text-muted-foreground">No applications yet.</li>}

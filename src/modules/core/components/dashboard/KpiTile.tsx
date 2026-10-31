@@ -15,19 +15,25 @@ interface KpiTileProps {
 
 export function KpiTile({ label, value, sub, href, badge }: KpiTileProps) {
   const card = (
-    <Card>
+    <Card className={href ? "h-full transition-shadow duration-(--duration-fast) ease-out group-hover/kpi:shadow-md" : undefined}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm font-medium">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           {label}
           {badge}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-semibold">{value}</p>
-        {sub && <p className="text-muted-foreground text-sm">{sub}</p>}
+        <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+        {sub && <p className="mt-1 text-sm text-muted-foreground">{sub}</p>}
       </CardContent>
     </Card>
   );
 
-  return href ? <Link href={href}>{card}</Link> : card;
+  return href ? (
+    <Link href={href} className="group/kpi block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {card}
+    </Link>
+  ) : (
+    card
+  );
 }
