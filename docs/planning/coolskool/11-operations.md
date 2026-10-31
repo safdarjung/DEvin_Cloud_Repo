@@ -145,3 +145,5 @@ Every step is an API call (`docs/planning/fabric/07-master-plan-v1-v2.md` D40/D4
 | Day 3 — people + go-live | Owner/principal | `core.member.invite` per staff member (`staffId`) and guardian (`guardianId`) → share the returned link (delivery is simulated until M17 — badge shown) → invitee signs up with the same email and calls `POST /api/v1/invitations/accept` `{token}`. Disable mistakes with `core.member.setStatus`. 30-minute training per role on attendance, marks, payments. |
 
 Limits: one CSV ≤ 1 MB and ≤ 5,000 rows; fee-structure and marks CSV import are not built (DBT-44) — use the batch actions. Invitations expire after 7 days and are single-use.
+
+**Hosted migration log.** 2026-11-01: hosted had `0049`–`0051` applied by hand without history rows; verified every object (tables, policies, triggers, `on delete set null`, size caps) matched the files, ran `supabase migration repair --status applied 20261028000049 20261028000050 20261028000051`, then `supabase db push --linked` applied `0064`, `0065`, `0066`, `0079`. Never apply a migration by hand on hosted — use `db push` so history stays true.
