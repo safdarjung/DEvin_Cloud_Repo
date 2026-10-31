@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "cn";
+import { LayoutPill } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { ChildSwitcher } from "./ChildSwitcher";
 import type { PortalSelection } from "@/modules/people/portal";
@@ -48,11 +49,12 @@ export function PortalNav({
             href={`${basePath}${tab.href}?student=${selection.studentId}`}
             aria-current={tab.href === activeHref ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-10 shrink-0 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              tab.href === activeHref && "bg-muted font-semibold text-foreground",
+              "relative inline-flex min-h-10 shrink-0 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              tab.href === activeHref && "font-semibold text-foreground",
             )}
           >
-            {tab.label}
+            {tab.href === activeHref && <LayoutPill layoutId="portal-tab" className="absolute inset-0 rounded-md bg-muted" />}
+            <span className="relative">{tab.label}</span>
           </Link>
         ))}
       </nav>

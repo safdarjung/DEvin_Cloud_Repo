@@ -3,17 +3,21 @@
 // simulated/limited figure — never render one of those without it.
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { AnimatedNumber, type NumberFormat } from "@/components/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface KpiTileProps {
   label: string;
   value: string;
+  /** When set, counts up to this number (format key is serializable); `value` stays the fallback string. */
+  animateTo?: number;
+  format?: NumberFormat;
   sub?: string;
   href?: string;
   badge?: ReactNode;
 }
 
-export function KpiTile({ label, value, sub, href, badge }: KpiTileProps) {
+export function KpiTile({ label, value, animateTo, format, sub, href, badge }: KpiTileProps) {
   const card = (
     <Card className={href ? "h-full transition-shadow duration-(--duration-fast) ease-(--ease-out) group-hover/kpi:shadow-md" : undefined}>
       <CardHeader>
@@ -23,7 +27,9 @@ export function KpiTile({ label, value, sub, href, badge }: KpiTileProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+        <p className="text-2xl font-semibold tracking-tight tabular-nums">
+          {animateTo === undefined ? value : <AnimatedNumber value={animateTo} format={format} />}
+        </p>
         {sub && <p className="mt-1 text-sm text-muted-foreground">{sub}</p>}
       </CardContent>
     </Card>
