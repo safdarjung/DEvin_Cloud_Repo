@@ -19,6 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
 import { BlockSchema, type Block } from "@/modules/ai/blocks/schemas";
+import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { StudentSkill } from "@/modules/ai/prompts/student-skills";
 import { saveStudyChat, saveStudyNote } from "@/modules/ai/student-study.actions";
 
@@ -242,7 +243,7 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
               <MessageParts message={message} institutionSlug={institutionSlug} resumedChatId={resumedChatId} />
             </div>
           ))}
-          {error && <p className="text-destructive text-sm">{error.message}</p>}
+          {error && <p className="text-destructive text-sm">{chatErrorMessage(error)}</p>}
         </CardContent>
       </Card>
 

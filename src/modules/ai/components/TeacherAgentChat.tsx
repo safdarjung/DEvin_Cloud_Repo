@@ -11,6 +11,7 @@ import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
 import type { QuizContent } from "@/modules/academics/assignments.schemas";
@@ -196,7 +197,7 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
               />
             </div>
           ))}
-          {error && <p className="text-destructive text-sm">{error.message}</p>}
+          {error && <p className="text-destructive text-sm">{chatErrorMessage(error)}</p>}
         </CardContent>
       </Card>
 

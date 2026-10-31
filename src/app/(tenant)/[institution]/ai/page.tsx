@@ -3,7 +3,7 @@ import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listTeachableSections } from "@/modules/academics/assignments.queries";
 import { TeacherAgentChat } from "@/modules/ai/components/TeacherAgentChat";
-import { TeacherAgentFeatureToggle } from "@/modules/core/components/TeacherAgentFeatureToggle";
+import { FeatureToggle } from "@/modules/core/components/FeatureToggle";
 
 // T-0NN — first real page at `/ai` (the nav's `/ai/usage` link already
 // existed). D28 scopes the tool-calling agent to the teacher role only;
@@ -26,10 +26,26 @@ export default async function AiAssistantPage({
         <h1 className="text-xl font-semibold">AI Assistant</h1>
         <p className="text-muted-foreground text-sm">Not available for your role yet.</p>
         {hasPermission(ctx, "institution.settings.manage") && (
-          <TeacherAgentFeatureToggle
-            institutionSlug={institutionSlug}
-            initialEnabled={isFeatureEnabled(ctx, "teacher_ai_agent")}
-          />
+          <div className="space-y-2">
+            <FeatureToggle
+              institutionSlug={institutionSlug}
+              featureKey="teacher_ai_agent"
+              label="Teacher AI assistant"
+              initialEnabled={isFeatureEnabled(ctx, "teacher_ai_agent")}
+            />
+            <FeatureToggle
+              institutionSlug={institutionSlug}
+              featureKey="student_ai_study"
+              label="Student study helper"
+              initialEnabled={isFeatureEnabled(ctx, "student_ai_study")}
+            />
+            <FeatureToggle
+              institutionSlug={institutionSlug}
+              featureKey="student_ai_notebook"
+              label="Student notebook"
+              initialEnabled={isFeatureEnabled(ctx, "student_ai_notebook")}
+            />
+          </div>
         )}
       </div>
     );
