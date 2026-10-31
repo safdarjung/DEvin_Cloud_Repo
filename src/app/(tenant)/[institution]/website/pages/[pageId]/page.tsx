@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -22,32 +24,41 @@ export default async function PageEditorPage({
   const latestBlocks = latest ? (await getVersion(ctx, pageId, latest.id))?.blocks ?? [] : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">{page.title}</h1>
-        <p className="text-muted-foreground text-sm">/{page.slug}</p>
-      </div>
+    <div className="space-y-4">
+      <PageHeader title={page.title} description={`/${page.slug}`} back={{ href: `/${institutionSlug}/website`, label: "Website" }} />
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Edit</h2>
-        <BlockEditor institutionSlug={institutionSlug} pageId={page.id} initialBlocks={latestBlocks} />
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Edit</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BlockEditor institutionSlug={institutionSlug} pageId={page.id} initialBlocks={latestBlocks} />
+        </CardContent>
+      </Card>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Preview (last saved version)</h2>
-        <DraftPreview blocks={latestBlocks} slug={page.slug} institutionId={ctx.institution.id} />
-      </section>
+      <Card>
+        <CardHeader>
+          <CardTitle>Preview (last saved version)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DraftPreview blocks={latestBlocks} slug={page.slug} institutionId={ctx.institution.id} />
+        </CardContent>
+      </Card>
 
-      <section className="space-y-2">
-        <h2 className="text-sm font-medium">Versions</h2>
-        <VersionList
+      <Card>
+        <CardHeader>
+          <CardTitle>Versions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <VersionList
           institutionSlug={institutionSlug}
           pageId={page.id}
           versions={page.versions}
           publishedVersionId={page.publishedVersionId}
           canPublish={hasPermission(ctx, "website.publish")}
-        />
-      </section>
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

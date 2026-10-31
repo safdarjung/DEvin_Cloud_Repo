@@ -1,4 +1,7 @@
+import { inr } from "@/lib/format";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -42,72 +45,45 @@ export default async function PortalOverviewPage({
     listStudentAssignments(ctx, selection.studentId),
   ]);
 
+  // invoices.total / paid_total are numeric(12,2) rupees (finance/queries.ts), not paise.
   const outstanding = invoices.reduce((sum, inv) => sum + (inv.total - inv.paidTotal), 0);
   const latestResult = results[0] ?? null;
   const basePath = `/${institutionSlug}/portal`;
+  const studentName = profile ? [profile.firstName, profile.lastName].filter(Boolean).join(" ") : null;
+  const q = `?student=${selection.studentId}`;
 
   return (
     <>
       <PortalNav institutionSlug={institutionSlug} role={ctx.membership.role as "guardian" | "student"} selection={selection} activeHref="" />
+      <PageHeader title="Overview" description={studentName ?? undefined} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href={`${basePath}/attendance?student=${selection.studentId}`}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Attendance this term</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold">{attendance ? `${attendance.percentage.toFixed(2)}%` : "—"}</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href={`${basePath}/fees?student=${selection.studentId}`}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Outstanding fees</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold">{outstanding.toFixed(2)}</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href={`${basePath}/results?student=${selection.studentId}`}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Latest result</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold">{latestResult ? `${latestResult.grade}` : "—"}</p>
-              <p className="text-muted-foreground text-sm">{latestResult?.examName ?? "No published results yet."}</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href={`${basePath}/assignments?student=${selection.studentId}`}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Open assignments</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold">{assignments.length}</p>
-            </CardContent>
-          </Card>
-        </Link>
+        <KpiTile label="Attendance this term" value={attendance ? `${attendance.percentage.toFixed(2)}%` : "—"} href={`${basePath}/attendance${q}`} />
+        <KpiTile
+          label="Outstanding fees"
+          value={inr(outstanding)}
+          href={`${basePath}/fees${q}`}
+        />
+        <KpiTile
+          label="Latest result"
+          value={latestResult ? `${latestResult.grade}` : "—"}
+          sub={latestResult?.examName ?? "No published results yet."}
+          href={`${basePath}/results${q}`}
+        />
+        <KpiTile label="Open assignments" value={String(assignments.length)} href={`${basePath}/assignments${q}`} />
 
         {/* GU-08 — ai.study is student-only (D32); a guardian viewing a
             child's portal never has it, so this tile simply doesn't
             render for them, rather than linking to a page that would
             always forbid them. */}
         {hasPermission(ctx, "ai.study") && (
-          <Link href={`${basePath}/study`}>
-            <Card>
+          <Link href={`${basePath}/study`} className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Card className="h-full transition-shadow duration-(--duration-fast) ease-(--ease-out) hover:shadow-md">
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Study helper</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">Study helper</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground text-sm">Ask about a topic, get notes, mindmaps, or practice.</p>
+                <p className="text-sm text-muted-foreground">Ask about a topic, get notes, mindmaps, or practice.</p>
               </CardContent>
             </Card>
           </Link>

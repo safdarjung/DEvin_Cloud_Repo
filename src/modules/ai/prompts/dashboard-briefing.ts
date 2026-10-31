@@ -14,11 +14,12 @@ export const DASHBOARD_BRIEFING_INSTRUCTIONS =
 export function buildDashboardBriefingPrompt(input: DashboardBriefingRequestInput): string {
   const { attendancePercent, sectionsAtRiskCount, openEnquiries, enrolledCount, collections } = input;
 
-  const lines = [
-    `Attendance today: ${attendancePercent}%.`,
-    `Sections below the attendance threshold today: ${sectionsAtRiskCount}.`,
+  const lines: string[] = [];
+  if (attendancePercent !== undefined) lines.push(`Attendance today: ${attendancePercent}%.`);
+  if (sectionsAtRiskCount !== undefined) lines.push(`Sections below the attendance threshold today: ${sectionsAtRiskCount}.`);
+  lines.push(
     `Open admissions enquiries: ${openEnquiries}. Enrolled this academic year: ${enrolledCount}.`,
-  ];
+  );
   if (collections) {
     lines.push(`Fee collections this term: ${collections.collectedPaise} of ${collections.duePaise} paise due.`);
   }

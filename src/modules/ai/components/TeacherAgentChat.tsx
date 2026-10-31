@@ -6,8 +6,11 @@
 // local-first framing elsewhere in the app, so it must never look like a
 // generic/accidental badge.
 import { useState } from "react";
+import { Info } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
+import { PageHeader } from "@/components/page-header";
+import { ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -89,7 +92,7 @@ function MessageParts({ message, institutionSlug, aiPolicy, teachableSections }:
           const label = toolLabel(part.type);
           const done = part.state === "output-available" || part.state === "output-error";
           const statusLine = (
-            <div className="text-muted-foreground border-l-2 pl-2 text-xs italic">
+            <div className="border-l-2 pl-2 text-xs italic text-muted-foreground">
               {done ? label.replace("…", " — done.") : label}
               {part.state === "output-error" && part.errorText ? ` (${part.errorText})` : ""}
             </div>
@@ -164,20 +167,23 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
 
   return (
     <div className="space-y-4">
+      <PageHeader title="AI Assistant" compact />
       <div>
-        <h1 className="text-xl font-semibold">AI Assistant</h1>
-        <div className="mt-2 rounded-md border border-amber-400 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+        <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+          <p>
           {/* D29 — each message is routed to one of two cloud providers
               (Google Gemini or Groq); this banner must stay accurate for
               either, so it names both rather than claiming one. */}
           Google Gemini or Groq (cloud) — this assistant sends what you type, plus the data it looks up
           (students, curriculum, attendance, exam results), to one of these providers. It only drafts
           quizzes and remarks; you decide what to save.
+          </p>
         </div>
       </div>
 
       <Card>
-        <CardContent className="flex h-[480px] flex-col gap-3 overflow-y-auto p-4 text-sm">
+        <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:h-[480px] sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-muted-foreground">
               Ask about a student, their attendance pattern, or draft a quiz or report-card remark — you can
@@ -187,7 +193,7 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
           {messages.map((message) => (
             <div
               key={message.id}
-              className={message.role === "user" ? "self-end text-right" : "self-start"}
+              className={message.role === "user" ? "max-w-[85%] self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground" : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"}
             >
               <MessageParts
                 message={message}
@@ -197,16 +203,23 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
               />
             </div>
           ))}
-          {error && <p className="text-destructive text-sm">{chatErrorMessage(error)}</p>}
+          {busy && messages.at(-1)?.role !== "assistant" && (
+            <div role="status" className="self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <span className="animate-pulse">Thinking…</span>
+            </div>
+          )}
+          {error && <ErrorState title="Message failed" description={chatErrorMessage(error)} />}
         </CardContent>
       </Card>
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form onSubmit={handleSubmit} className="sticky bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="e.g. How has Aarav Sharma's attendance been this term?"
           disabled={busy}
+          aria-label="Message"
+         
         />
         <Button type="submit" disabled={busy || input.trim().length === 0}>
           Send

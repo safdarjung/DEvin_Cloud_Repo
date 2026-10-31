@@ -103,7 +103,7 @@ Rendering model: `cacheComponents: false` (D21) — dynamic by default, no `'use
 ### Server action contract (D7)
 
 ```ts
-// src/lib/actions/define-action.ts (shape, not final code)
+// src/lib/actions/define-action.ts (shape)
 export function defineAction<I, O>(opts: {
   schema: z.ZodType<I>;
   permission: Permission | ((input: I) => Permission);
@@ -158,9 +158,9 @@ Rules enforced in code and tested (`08-testing-and-acceptance.md` C-60..66):
 - `local_only`: the cloud provider module is never imported or instantiated; a missing Ollama returns `ai_unavailable` with a clear UI message, never a silent fallback.
 - `cloud_allowed`: cloud preferred when `ANTHROPIC_API_KEY` is set and the global switch `AI_CLOUD_ENABLED=true`; otherwise local.
 - `local_with_cloud_fallback`: local first; cloud only after local failure/timeout/invalid output, only with key + switch, only after redaction.
-- Quotas from `institutions.settings.ai`: `daily_token_quota` (default 200,000), `per_user_per_minute` (default 10), `max_concurrent_local` (default 2), `max_concurrent_cloud` (default 4). Concurrency is a per-process semaphore (documented limitation on serverless; the DB quota is the hard limit).
+- Quotas from `institutions.settings.ai` (defaults: `05 §4.1`). Concurrency is a per-process semaphore (documented limitation on serverless; the DB quota is the hard limit).
 - Structured outputs: `generateText` with `Output.object({ schema })` (AI SDK v7); one repair retry appends the Zod error text; the gateway returns parsed data only.
-- Providers: local `ai-sdk-ollama` (`OLLAMA_BASE_URL`, `OLLAMA_MODEL`, default `qwen3:4b-instruct-2507-q4_K_M`, fallback `qwen2.5:3b`); cloud `@ai-sdk/anthropic` with `AI_CLOUD_MODEL_QUALITY` (default `claude-sonnet-5`) and `AI_CLOUD_MODEL_CHEAP` (default `claude-haiku-4-5`).
+- Providers: local `ai-sdk-ollama`; cloud `@ai-sdk/anthropic`; model names and defaults are env vars (`11 §1`).
 - Cost estimate uses a price table in `src/lib/ai/pricing.ts` (USD per MTok; `12-decision-log.md` Phase 0 facts) and is labeled an estimate.
 - Prompt-injection posture: user-authored text is passed inside a delimited data block with the instruction to treat it as data; output is schema-constrained; a human reviews before anything is saved.
 
@@ -182,7 +182,7 @@ flowchart LR
   H -- fail --> J
 ```
 
-Job types in the demo: `notify.attendance_absence`, `notify.results_published`, `notify.recheck_decided`, `notify.enquiry_received`, `notify.enrolment_welcome`, `finance.generate_term_invoices`. Retry: exponential backoff `2^attempts` minutes, `max_attempts = 5`, then `dead`. Idempotency: unique `idempotency_key`; handlers are idempotent by construction (upsert on natural keys). The runner processes up to 50 jobs per invocation with a 50 s budget.
+Job types: `src/modules/jobs/registry.ts`; run, retry and idempotency rules: `06 §W12`.
 
 Notification adapters implement `Channel = { send(attempt): Promise<DeliveryResult> }`. Simulated adapters render the message and store it with `status = 'simulated'`; the "Message log" page shows them with a `Simulated` badge (honesty label, D-H).
 
@@ -190,7 +190,7 @@ Notification adapters implement `Channel = { send(attempt): Promise<DeliveryResu
 
 | Mode | App | Database/Auth/Storage | AI | Status |
 |---|---|---|---|---|
-| A. Managed cloud (demo) | Vercel | Hosted Supabase `ap-south-1` | Cloud optional; local shown from the laptop | Built Day 18 |
+| A. Managed cloud (demo) | Vercel | Hosted Supabase `ap-south-1` | Cloud optional; local shown from the laptop | Built |
 | B. Hybrid | Vercel or institution server | Hosted Supabase | Local inference on institution hardware via `OLLAMA_BASE_URL` over VPN/tunnel | Documented path |
 | C. Institution-controlled | App container (`next start`) on institution server | Self-hosted Supabase (Docker) | Local inference; cloud as rate-limited fallback under policy | Documented path; sizing from benchmark data (`11-operations.md` §8) |
 
@@ -202,6 +202,6 @@ Same schema, same migrations, same app image in all modes; only environment vari
 - **Time:** `timestamptz` everywhere; institution timezone `Asia/Kolkata` in settings for display and for "today" in attendance.
 - **Money:** `numeric(12,2)` INR; no floats.
 - **Audit (D20):** `audit(ctx, { action, entity_type, entity_id, before, after, metadata })` writes `audit_events`; SQL functions call `app.audit(...)` directly.
-- **Errors:** `AppError(code, message, fieldErrors?)` in `src/lib/actions/result.ts`; SQL functions `raise exception using errcode = 'P0001', message = 'code:…'` and the action layer maps them.
+- **Errors:** `AppError` in `src/lib/actions/result.ts`; SQL functions `raise exception using errcode = 'P0001', message = 'code:…'` and the action layer maps them (codes: `06 §1.1`).
 - **Generated types:** `src/lib/db/types.ts` from `pnpm db:types`; `Tables<'students'>` style helpers.
 - **Settings JSON** (`institutions.settings`) validated by `InstitutionSettingsSchema` in `src/modules/core/schemas.ts`: grading scale, attendance statuses, fee frequencies, number formats, AI limits, academic defaults (`05-data-architecture.md` §4.1).

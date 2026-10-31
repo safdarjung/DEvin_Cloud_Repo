@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -30,7 +31,7 @@ export default async function AssignmentsPage({
 
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold">Assignments</h1>
+        <PageHeader title="Assignments" />
         <StudentAssignments institutionSlug={institutionSlug} assignments={perChild.flat()} />
       </div>
     );
@@ -41,19 +42,17 @@ export default async function AssignmentsPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Assignments</h1>
-          <p className="text-muted-foreground text-sm">
-            {canManage ? "Assignments you created." : "Assignments across the institution."}
-          </p>
-        </div>
-        {canManage && (
-          <Button asChild>
-            <Link href={`/${institutionSlug}/assignments/new`}>New assignment</Link>
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Assignments"
+        description={canManage ? "Assignments you created." : "Assignments across the institution."}
+        actions={
+          canManage && (
+            <Button asChild>
+              <Link href={`/${institutionSlug}/assignments/new`}>New assignment</Link>
+            </Button>
+          )
+        }
+      />
       <AssignmentList institutionSlug={institutionSlug} assignments={assignments} canManage={canManage} />
     </div>
   );

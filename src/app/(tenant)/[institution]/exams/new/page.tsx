@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
@@ -19,9 +21,9 @@ export default async function NewExamPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">New exam</h1>
+      <PageHeader title="New exam" back={{ href: `/${institutionSlug}/exams`, label: "Exams" }} />
       {terms.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No terms found for the current academic year.</p>
+        <EmptyState title="No terms found" description="No terms found for the current academic year." />
       ) : (
         <ExamForm institutionSlug={institutionSlug} terms={terms} gradingScaleKeys={gradingScaleKeys} />
       )}

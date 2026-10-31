@@ -177,4 +177,4 @@ Phase gates: Phase 2 starts only after the demo tenant runs on hosted infrastruc
 
 ## 3. Demo scope summary
 
-P0 rows with Demo ∈ {impl, limited, sim} are the 20-day scope (53 rows, several of them schema-only or counts-only). P1 rows are built only via the fallback ladder in reverse (`09-twenty-day-plan.md` §7). Every P2/P3 row is named here so reserved table names and module boundaries (`05-data-architecture.md` §3) already leave room for it.
+P0 rows with Demo ∈ {impl, limited, sim} are the 20-day scope (53 rows, several of them schema-only or counts-only). P1 rows are built only via the fallback ladder in reverse (`../../archive/09-twenty-day-plan.md` §7). Every P2/P3 row is named here so reserved table names and module boundaries (`05-data-architecture.md` §3) already leave room for it.

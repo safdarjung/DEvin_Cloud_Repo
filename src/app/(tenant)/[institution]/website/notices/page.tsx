@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
@@ -13,17 +15,17 @@ export default async function NoticesPage({ params }: { params: Promise<{ instit
   const notices = await listNotices(ctx);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Notices</h1>
+    <div className="space-y-4">
+      <PageHeader title="Notices" description="Items marked public appear on the school website." back={{ href: `/${institutionSlug}/website`, label: "Website" }} />
       {notices.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No notices yet.</p>
+        <EmptyState title="No notices yet" description="Add one below." />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Publish at</TableHead>
-              <TableHead>Visibility</TableHead>
+              <TableHead className="text-right">Visibility</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -31,9 +33,9 @@ export default async function NoticesPage({ params }: { params: Promise<{ instit
               <TableRow key={notice.id}>
                 <TableCell>{notice.title}</TableCell>
                 <TableCell>{new Date(notice.publishAt).toLocaleString()}</TableCell>
-                <TableCell>
-                  <Badge variant={notice.isPublic ? "default" : "secondary"}>
-                    {notice.isPublic ? "public" : "internal"}
+                <TableCell className="text-right">
+                  <Badge variant={notice.isPublic ? "success" : "outline"}>
+                    {notice.isPublic ? "Public" : "Internal"}
                   </Badge>
                 </TableCell>
               </TableRow>

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cn } from "cn";
+import { PageHeader } from "@/components/page-header";
 import { ChildSwitcher } from "./ChildSwitcher";
 import type { PortalSelection } from "@/modules/people/portal";
 
@@ -34,20 +35,21 @@ export function PortalNav({
   const basePath = `/${institutionSlug}/portal`;
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-3">
-        <h1 className="text-xl font-semibold">{role === "guardian" ? "My children" : "My school"}</h1>
-        {selection.children && <ChildSwitcher students={selection.children} selectedId={selection.studentId} />}
-      </div>
-      <nav aria-label="Portal tabs" className="flex flex-wrap gap-1 border-b border-border pb-1">
+    <div className="mb-6">
+      <PageHeader
+        title={role === "guardian" ? "My children" : "My school"}
+        compact
+        actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
+      />
+      <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
         {TABS.map((tab) => (
           <Link
             key={tab.href}
             href={`${basePath}${tab.href}?student=${selection.studentId}`}
             aria-current={tab.href === activeHref ? "page" : undefined}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium hover:bg-muted",
-              tab.href === activeHref && "bg-muted font-semibold",
+              "inline-flex min-h-10 shrink-0 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              tab.href === activeHref && "bg-muted font-semibold text-foreground",
             )}
           >
             {tab.label}

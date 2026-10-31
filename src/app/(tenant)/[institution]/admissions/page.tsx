@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { PipelineBoard } from "@/modules/admissions/components/PipelineBoard";
@@ -18,12 +20,15 @@ export default async function AdmissionsPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Admissions pipeline</h1>
-        <Link href={`/${institutionSlug}/admissions/applications`} className="text-primary text-sm underline-offset-2 hover:underline">
-          Applications
-        </Link>
-      </div>
+      <PageHeader
+        title="Admissions pipeline"
+        description="Enquiries grouped by stage. Change a card's stage from its dropdown."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/${institutionSlug}/admissions/applications`}>Applications</Link>
+          </Button>
+        }
+      />
       <PipelineBoard institutionSlug={institutionSlug} stages={stages} byStage={byStage} />
     </div>
   );

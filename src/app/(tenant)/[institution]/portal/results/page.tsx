@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { ReportCard } from "@/modules/exams/components/ReportCard";
@@ -30,7 +31,7 @@ export default async function PortalResultsPage({
       />
 
       {results.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No published results yet.</p>
+        <EmptyState title="No published results yet" description="Results appear here once the school publishes them." />
       ) : (
         <div className="space-y-6">
           {results.map((result) => (

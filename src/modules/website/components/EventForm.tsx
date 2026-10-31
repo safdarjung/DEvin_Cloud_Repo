@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -35,26 +36,26 @@ export function EventForm({ institutionSlug }: EventFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-3 rounded-lg border p-4">
-      <h2 className="text-sm font-medium">New event</h2>
+    <form action={formAction} className="max-w-xl space-y-3 rounded-xl border bg-card p-4">
+      <h2 className="font-medium">New event</h2>
       <Input name="title" placeholder="Title" required maxLength={200} />
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="text-sm font-medium" htmlFor="startsAt">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label htmlFor="startsAt">
             Starts at
-          </label>
+          </Label>
           <Input id="startsAt" name="startsAt" type="datetime-local" required />
         </div>
-        <div>
-          <label className="text-sm font-medium" htmlFor="endsAt">
+        <div className="space-y-1">
+          <Label htmlFor="endsAt">
             Ends at (optional)
-          </label>
+          </Label>
           <Input id="endsAt" name="endsAt" type="datetime-local" />
         </div>
       </div>
       <Input name="location" placeholder="Location (optional)" maxLength={300} />
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="isPublic" className="h-4 w-4" />
+        <input type="checkbox" name="isPublic" className="size-4 accent-primary" />
         Show on public site
       </label>
       <Button type="submit" disabled={pending}>

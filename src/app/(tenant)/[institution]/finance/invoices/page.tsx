@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { GenerateInvoicesPanel } from "@/modules/finance/components/GenerateInvoicesPanel";
@@ -25,7 +26,7 @@ export default async function InvoicesPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Invoices</h1>
+      <PageHeader title="Invoices" description="Term invoices and their payment status." back={{ href: `/${institutionSlug}/finance`, label: "Finance" }} />
       {canGenerate && <GenerateInvoicesPanel institutionSlug={institutionSlug} terms={terms} grades={grades} />}
       <InvoiceTable institutionSlug={institutionSlug} invoices={invoices} />
     </div>

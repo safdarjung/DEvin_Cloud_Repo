@@ -8,6 +8,7 @@
 // Zod validation and the teacher-scope check happen there, same as the
 // manual assignment form; this component cannot write an assignment on
 // its own.
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -148,16 +149,16 @@ export function QuizReviewEditor({
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="title">
+        <Label htmlFor="title">
           Title
-        </label>
+        </Label>
         <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="sectionId">
+        <Label htmlFor="sectionId">
           Section
-        </label>
+        </Label>
         <Select value={sectionId} onValueChange={setSectionId}>
           <SelectTrigger id="sectionId" className="w-full">
             <SelectValue placeholder="Choose a section" />

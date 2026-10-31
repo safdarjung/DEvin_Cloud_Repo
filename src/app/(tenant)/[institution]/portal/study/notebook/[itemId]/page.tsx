@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { notFound, redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
@@ -40,15 +40,12 @@ export default async function NotebookItemPage({
 
   return (
     <div className="space-y-4">
-      <Link href={`/${institutionSlug}/portal/study/notebook`} className="text-muted-foreground text-sm underline print:hidden">
-        ← Back to notebook
-      </Link>
-      <div>
-        <h1 className="text-xl font-semibold">{item.title}</h1>
-        {item.folder && <p className="text-muted-foreground text-sm">{item.folder}</p>}
-        {/* Saved-note honesty label (plan §8) — the note outlives the chat it may have come from. */}
-        <p className="text-muted-foreground text-xs italic">AI-assisted note · saved {new Date(item.updatedAt).toLocaleDateString()}</p>
+      <div className="print:hidden">
+        <PageHeader title={item.title} description={item.folder ?? undefined} back={{ href: `/${institutionSlug}/portal/study/notebook`, label: "Back to notebook" }} />
       </div>
+      <h1 className="hidden text-2xl font-semibold print:block">{item.title}</h1>
+      {/* Saved-note honesty label (plan §8) — the note outlives the chat it may have come from. */}
+      <p className="-mt-4 text-xs italic text-muted-foreground">AI-assisted note · saved {new Date(item.updatedAt).toLocaleDateString()}</p>
       <div className="space-y-3">
         {item.blocks.map((block, index) => (
           <BlockRenderer key={index} block={block} />

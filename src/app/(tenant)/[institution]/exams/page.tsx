@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { humanize } from "@/lib/format";
+import { examStatusVariant } from "@/modules/exams/status";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { getMyPapers, listExams } from "@/modules/exams/queries";
@@ -19,9 +24,9 @@ export default async function ExamsPage({
 
   if (!canManage && !canEnter) {
     return (
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold">Exams</h1>
-        <p className="text-muted-foreground text-sm">Results and report cards appear in your portal once published.</p>
+      <div className="space-y-4">
+        <PageHeader title="Exams" />
+        <EmptyState title="Nothing to manage here" description="Results and report cards appear in your portal once published." />
       </div>
     );
   }
@@ -32,49 +37,60 @@ export default async function ExamsPage({
   ]);
 
   return (
-    <div className="space-y-8">
-      {canManage && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">Exams</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="Exams"
+        description="Set up exams, enter marks and publish results."
+        actions={
+          canManage ? (
             <Button asChild>
               <Link href={`/${institutionSlug}/exams/new`}>New exam</Link>
             </Button>
-          </div>
-          {exams.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No exams yet.</p>
+          ) : undefined
+        }
+      />
+
+      {canManage &&
+        (exams.length === 0 ? (
+          <EmptyState title="No exams yet" description="Create the first exam to start entering marks." />
+        ) : (
+          <Card>
+            <CardContent>
+              <ul className="divide-y divide-border">
+                {exams.map((exam) => (
+                  <li key={exam.id} className="flex items-center justify-between gap-3 py-3">
+                    <Link href={`/${institutionSlug}/exams/${exam.id}`} className="min-w-0 font-medium hover:underline">
+                      {exam.name} <span className="text-sm font-normal text-muted-foreground">· {exam.termName}</span>
+                    </Link>
+                    <Badge variant={examStatusVariant(exam.status)}>{humanize(exam.status)}</Badge>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>My papers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {myPapers.length === 0 ? (
+            <EmptyState title="No papers open for marks entry" />
           ) : (
-            <ul className="divide-y divide-border rounded-lg border border-border">
-              {exams.map((exam) => (
-                <li key={exam.id} className="flex items-center justify-between p-3">
-                  <Link href={`/${institutionSlug}/exams/${exam.id}`} className="hover:underline">
-                    {exam.name} <span className="text-muted-foreground text-sm">· {exam.termName}</span>
+            <ul className="divide-y divide-border">
+              {myPapers.map((paper) => (
+                <li key={paper.id} className="flex items-center justify-between gap-3 py-3">
+                  <Link href={`/${institutionSlug}/exams/${paper.examId}/papers/${paper.id}`} className="min-w-0 hover:underline">
+                    {paper.examName} · {paper.sectionLabel} {paper.subjectName}
                   </Link>
-                  <Badge variant={exam.status === "published" ? "default" : "secondary"}>{exam.status}</Badge>
+                  <Badge variant={examStatusVariant(paper.examStatus)}>{humanize(paper.examStatus)}</Badge>
                 </li>
               ))}
             </ul>
           )}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <h2 className="text-sm font-medium">My papers</h2>
-        {myPapers.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No papers open for marks entry.</p>
-        ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {myPapers.map((paper) => (
-              <li key={paper.id} className="flex items-center justify-between p-3">
-                <Link href={`/${institutionSlug}/exams/${paper.examId}/papers/${paper.id}`} className="hover:underline">
-                  {paper.examName} · {paper.sectionLabel} {paper.subjectName}
-                </Link>
-                <Badge variant="secondary">{paper.examStatus}</Badge>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

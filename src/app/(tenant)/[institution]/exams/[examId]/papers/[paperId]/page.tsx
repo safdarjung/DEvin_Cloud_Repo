@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { MarksEntryGrid } from "@/modules/exams/components/MarksEntryGrid";
@@ -9,7 +10,7 @@ export default async function PaperMarksPage({
 }: {
   params: Promise<{ institution: string; examId: string; paperId: string }>;
 }) {
-  const { institution: institutionSlug, paperId } = await params;
+  const { institution: institutionSlug, examId, paperId } = await params;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "exam.marks.enter");
 
@@ -18,12 +19,11 @@ export default async function PaperMarksPage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {paper.sectionLabel} · {paper.subjectName}
-        </h1>
-        <p className="text-muted-foreground text-sm">{paper.students.length} students enrolled.</p>
-      </div>
+      <PageHeader
+        title={`${paper.sectionLabel} · ${paper.subjectName}`}
+        description={`${paper.students.length} students enrolled.`}
+        back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }}
+      />
       <MarksEntryGrid institutionSlug={institutionSlug} paper={paper} />
     </div>
   );

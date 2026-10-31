@@ -14,7 +14,10 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/states";
 import type { TenantContext } from "@/lib/auth/types";
+import { humanize, inr } from "@/lib/format";
+import { invoiceStatusVariant } from "@/modules/finance/format";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 
 interface StudentInvoicesProps {
@@ -27,7 +30,7 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId }: Stude
   const invoices = await listInvoicesForStudent(ctx, studentId);
 
   if (invoices.length === 0) {
-    return <p className="text-muted-foreground text-sm">No invoices yet.</p>;
+    return <EmptyState title="No invoices yet" />;
   }
 
   return (
@@ -36,9 +39,9 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId }: Stude
         <TableRow>
           <TableHead>Invoice</TableHead>
           <TableHead>Status</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Paid</TableHead>
-          <TableHead>Due on</TableHead>
+          <TableHead className="text-right">Total</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Paid</TableHead>
+          <TableHead className="hidden sm:table-cell">Due on</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -53,11 +56,11 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId }: Stude
               </Link>
             </TableCell>
             <TableCell>
-              <Badge variant={invoice.status === "paid" ? "default" : "outline"}>{invoice.status}</Badge>
+              <Badge variant={invoiceStatusVariant(invoice.status)}>{humanize(invoice.status)}</Badge>
             </TableCell>
-            <TableCell>{invoice.total.toFixed(2)}</TableCell>
-            <TableCell>{invoice.paidTotal.toFixed(2)}</TableCell>
-            <TableCell>{invoice.dueOn ?? "—"}</TableCell>
+            <TableCell className="text-right tabular-nums">{inr(invoice.total)}</TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
+            <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
           </TableRow>
         ))}
       </TableBody>

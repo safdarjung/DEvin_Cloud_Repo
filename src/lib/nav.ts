@@ -49,8 +49,16 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/portal", label: "Portal", icon: UserCircle, permission: "exam.recheck.request" },
 ] as const;
 
+// Portal users (the same exam.recheck.request marker as the Portal link) hold
+// read permissions for their own child's data, but the staff module pages
+// aren't built for them — the portal tabs are. UI only; RLS still governs data.
+const PORTAL_NAV_HREFS = new Set(["/portal", "/notifications"]);
+
 export function navItemsFor(permissions: ReadonlySet<Permission>): NavItem[] {
-  return NAV_ITEMS.filter((item) => permissions.has(item.permission));
+  const isPortalUser = permissions.has("exam.recheck.request");
+  return NAV_ITEMS.filter(
+    (item) => permissions.has(item.permission) && (!isPortalUser || PORTAL_NAV_HREFS.has(item.href)),
+  );
 }
 
 // Landing page for `/[institution]`: staff without `dashboard.view` (teacher)

@@ -3,6 +3,7 @@
 // T-015 — 06 §W5 correction dialog. `correctAttendance` is the real boundary
 // (RPC enforces the window/role); this dialog only offers the control —
 // hiding it for a teacher outside the window is UX, not authorization.
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/actions/result";
+import { Textarea } from "@/components/ui/textarea";
 import { correctAttendance } from "@/modules/attendance/actions";
 import type { AttendanceStatusOption } from "@/modules/attendance/queries";
 
@@ -61,13 +63,15 @@ export function CorrectionDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Correct attendance — {studentName}</DialogTitle>
-          <DialogDescription>Current status: {currentStatus}. This change is logged with a reason.</DialogDescription>
+          <DialogDescription>
+            Current status: {statuses.find((s) => s.code === currentStatus)?.label ?? currentStatus}. This change is logged with a reason.
+          </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-3">
           <div>
-            <label className="text-sm font-medium" htmlFor="newStatus">
+            <Label htmlFor="newStatus">
               New status
-            </label>
+            </Label>
             <Select value={newStatus} onValueChange={setNewStatus}>
               <SelectTrigger id="newStatus" className="w-full">
                 <SelectValue />
@@ -82,16 +86,16 @@ export function CorrectionDialog({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="reason">
+            <Label htmlFor="reason">
               Reason
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               maxLength={200}
               required
-              className="min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="min-h-16"
             />
           </div>
           {state && !state.ok && (

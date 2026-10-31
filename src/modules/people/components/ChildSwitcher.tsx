@@ -28,7 +28,7 @@ export function ChildSwitcher({ students, selectedId }: { students: ChildSummary
             href={`${pathname}?student=${child.id}`}
             aria-current={isSelected ? "true" : undefined}
             className={cn(
-              "rounded-full border px-3 py-1 text-sm",
+              "inline-flex min-h-10 items-center rounded-full border px-4 text-sm transition-colors duration-(--duration-fast) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-muted",
             )}
           >

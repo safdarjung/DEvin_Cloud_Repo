@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import type { QuizContent } from "@/modules/academics/assignments.schemas";
 
 interface QuizContentViewProps {
@@ -11,26 +12,23 @@ export function QuizContentView({ content, showAnswers }: QuizContentViewProps) 
   return (
     <ol className="space-y-4">
       {content.questions.map((question, index) => (
-        <li key={index} className="rounded-lg border border-border p-3">
+        <li key={index} className="space-y-2 rounded-xl border border-border p-4">
           <p className="font-medium">
             {index + 1}. {question.stem}
           </p>
-          <ul className="mt-2 space-y-1 pl-4">
+          <ul className="space-y-1.5">
             {question.options.map((option) => {
               const isCorrect = showAnswers && option === question.answer;
               return (
-                <li
-                  key={option}
-                  className={isCorrect ? "font-semibold text-primary" : "text-foreground"}
-                >
-                  {option}
-                  {isCorrect ? " (correct)" : null}
+                <li key={option} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="text-foreground">{option}</span>
+                  {isCorrect ? <Badge variant="success">Correct</Badge> : null}
                 </li>
               );
             })}
           </ul>
           {showAnswers && question.explanation ? (
-            <p className="mt-2 text-sm text-muted-foreground">{question.explanation}</p>
+            <p className="text-muted-foreground text-sm">{question.explanation}</p>
           ) : null}
         </li>
       ))}

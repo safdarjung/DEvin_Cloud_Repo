@@ -26,6 +26,11 @@ describe("DashboardBriefingRequestSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  test("accepts a request without attendance fields (caller lacks attendance.read)", () => {
+    const rest = { ...validRequest, attendancePercent: undefined, sectionsAtRiskCount: undefined };
+    expect(DashboardBriefingRequestSchema.safeParse(rest).success).toBe(true);
+  });
+
   test("rejects an attendance percent outside 0-100", () => {
     const result = DashboardBriefingRequestSchema.safeParse({ ...validRequest, attendancePercent: 150 });
     expect(result.success).toBe(false);

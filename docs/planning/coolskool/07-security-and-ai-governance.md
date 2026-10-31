@@ -115,7 +115,7 @@ Any new service-role or `security definer` usage must be added to this table in 
 - **Redaction before cloud:** regex pass for Indian phone numbers, emails, 12-digit numbers (Aadhaar-like), and names from a per-request deny list (section roster when available); count stored in `ai_usage_events.redactions`.
 - **Logging and retention:** `ai_usage_events` stores metadata only (feature, provider, model, tokens, latency, cost estimate, ok/error, redactions) — never prompt or output text. Retained with the institution. Application logs must not print prompts.
 - **Transparency:** UI shows provider used and a "Simulated/Local/Cloud" badge; `/ai/usage` page for admins.
-- **Benchmarking:** `pnpm ai:bench` (T-040) measures; no capability claims are made before Day 15 results exist.
+- **Benchmarking:** `pnpm ai:bench` (T-040) measures; capability claims come only from its results.
 
 ## 6. Executable security checklist (`pnpm test:security`)
 
@@ -134,7 +134,7 @@ Any new service-role or `security definer` usage must be added to this table in 
 | C-90 | No `admin.ts` import outside allow-listed paths | ESLint rule run in CI |
 | C-91 | No secrets committed | `gitleaks` in CI |
 
-The suite is a Day 4 deliverable (T-009 scaffolds it; T-042 completes it) and runs at every checkpoint and in CI.
+The suite (scaffolded by T-009, completed by T-042) runs at every checkpoint and in CI.
 
 ## 7. Logging and retention rules
 
@@ -145,7 +145,7 @@ The suite is a Day 4 deliverable (T-009 scaffolds it; T-042 completes it) and ru
 | `ai_usage_events` | DB | metadata only (`07 §5`) | Kept; reset with demo |
 | `delivery_attempts` | DB | rendered message bodies (contain names and phones) → confidential; visible only to `notification.log.read` roles | Kept; reset with demo |
 | Supabase auth logs | Supabase | sign-in events | Platform default |
-| Load/bench results | `docs/planning/coolskool/results/`, `bench-results/` (git-ignored) | synthetic data only | Until superseded |
+| Load/bench results | `docs/archive/results/`, `bench-results/` (git-ignored) | synthetic data only | Until superseded |
 
 ## 8. Incident response during the project
 

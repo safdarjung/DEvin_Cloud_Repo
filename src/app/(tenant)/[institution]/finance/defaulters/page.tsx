@@ -1,4 +1,8 @@
+import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { DefaultersTable } from "@/modules/finance/components/DefaultersTable";
@@ -26,21 +30,26 @@ export default async function DefaultersPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Defaulters</h1>
+      <PageHeader title="Defaulters" description="Students with unpaid or part-paid invoices." back={{ href: `/${institutionSlug}/finance`, label: "Finance" }} />
 
       {terms.length > 0 && (
-        <form className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-3">
+        <form className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end">
           <div>
-            <label className="text-sm font-medium" htmlFor="termId">
+            <Label className="mb-1 block" htmlFor="termId">
               Term
-            </label>
-            <select id="termId" name="termId" defaultValue={termId} className="block rounded border border-input px-2 py-1 text-sm">
-              {terms.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            </Label>
+            <Select name="termId" defaultValue={termId}>
+              <SelectTrigger id="termId" className="w-full sm:w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {terms.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <Button type="submit" variant="outline">
             Filter
@@ -51,7 +60,7 @@ export default async function DefaultersPage({
       {termId ? (
         <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} />
       ) : (
-        <p className="text-muted-foreground text-sm">No terms set up yet.</p>
+        <EmptyState title="No terms set up yet" />
       )}
     </div>
   );

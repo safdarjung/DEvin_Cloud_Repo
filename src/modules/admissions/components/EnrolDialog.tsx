@@ -4,6 +4,7 @@
 // student. enrolApplicant (the real boundary) validates every id and does
 // all the writing in one DB transaction; this dialog only offers the
 // section/fee-structure/roll-no picker and shows the result.
+import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -122,10 +123,10 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
           </p>
         ) : (
           <form action={formAction} className="space-y-3">
-            <div>
-              <label className="text-sm font-medium" htmlFor="classSectionId">
+            <div className="space-y-1.5">
+              <Label htmlFor="classSectionId">
                 Section
-              </label>
+              </Label>
               <Select value={classSectionId} onValueChange={setClassSectionId}>
                 <SelectTrigger id="classSectionId" className="w-full">
                   <SelectValue placeholder="Choose a section" />
@@ -143,10 +144,10 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium" htmlFor="feeStructureId">
+            <div className="space-y-1.5">
+              <Label htmlFor="feeStructureId">
                 Fee structure
-              </label>
+              </Label>
               <Select value={feeStructureId} onValueChange={setFeeStructureId}>
                 <SelectTrigger id="feeStructureId" className="w-full">
                   <SelectValue placeholder="Choose a fee structure" />
@@ -162,10 +163,10 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-medium" htmlFor="rollNo">
+            <div className="space-y-1.5">
+              <Label htmlFor="rollNo">
                 Roll no (optional)
-              </label>
+              </Label>
               <Input id="rollNo" type="number" min="1" step="1" value={rollNo} onChange={(e) => setRollNo(e.target.value)} />
             </div>
 

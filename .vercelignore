@@ -8,3 +8,12 @@ node_modules
 .next
 test-results
 playwright-report
+
+# Docs and tests stay in git but are not uploaded to Vercel builds.
+docs
+tests
+e2e
+bench-results
+AGENTS.md
+CLAUDE.md
+README.md

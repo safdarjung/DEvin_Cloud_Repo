@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { requirePermission } from "@/lib/auth/require";
@@ -28,28 +28,21 @@ export default async function PortalStudyPage({
 
   if (!isFeatureEnabled(ctx, "student_ai_study")) {
     return (
-      <div className="space-y-2">
-        <Link href={basePath} className="text-muted-foreground text-sm underline">
-          ← Back
-        </Link>
-        <h1 className="text-xl font-semibold">Study helper</h1>
-        <p className="text-muted-foreground text-sm">The study assistant is not included in this school&apos;s plan.</p>
-      </div>
+      <PageHeader
+        title="Study helper"
+        description="The study assistant is not included in this school's plan."
+        back={{ href: basePath, label: "Back" }}
+      />
     );
   }
 
   if (ctx.institution.ai_policy !== "local_only") {
     return (
-      <div className="space-y-2">
-        <Link href={basePath} className="text-muted-foreground text-sm underline">
-          ← Back
-        </Link>
-        <h1 className="text-xl font-semibold">Study helper</h1>
-        <p className="text-muted-foreground text-sm">
-          Not available yet for this school — the study assistant currently only works for schools running AI
-          locally.
-        </p>
-      </div>
+      <PageHeader
+        title="Study helper"
+        description="Not available yet for this school — the study assistant currently only works for schools running AI locally."
+        back={{ href: basePath, label: "Back" }}
+      />
     );
   }
 
@@ -69,16 +62,14 @@ export default async function PortalStudyPage({
   const resumedChatId = resumedItem?.kind === "chat" ? resumedItem.id : undefined;
 
   return (
-    <div className="space-y-2">
-      <Link href={basePath} className="text-muted-foreground text-sm underline">
-        ← Back
-      </Link>
+    <div>
       <StudyChat
         institutionSlug={institutionSlug}
         skills={preferences.skills}
         notebookEnabled={notebookEnabled}
         initialMessages={initialMessages}
         resumedChatId={resumedChatId}
+        backHref={basePath}
       />
     </div>
   );

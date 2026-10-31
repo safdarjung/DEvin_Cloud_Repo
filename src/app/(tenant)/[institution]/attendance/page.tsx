@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { getTodaySectionsForTeacher } from "@/modules/attendance/queries";
@@ -20,11 +24,11 @@ export default async function AttendancePage({
     // lives on the student profile and portal (StudentAttendanceSummary),
     // not here. 06 §W5's register is for marking, which this role can't do.
     return (
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold">Attendance</h1>
-        <p className="text-muted-foreground text-sm">
-          You have read-only access to attendance. See a student&apos;s profile or the portal for their summary.
-        </p>
+      <div className="space-y-4">
+        <PageHeader
+          title="Attendance"
+          description="You have read-only access to attendance. See a student's profile or the portal for their summary."
+        />
       </div>
     );
   }
@@ -33,26 +37,27 @@ export default async function AttendancePage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Attendance</h1>
-        <p className="text-muted-foreground text-sm">Today — {today}</p>
-      </div>
+      <PageHeader
+        title="Attendance"
+        description={`Today — ${today} · ${sections.length} ${sections.length === 1 ? "section" : "sections"} to mark`}
+      />
       {sections.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No sections to mark.</p>
+        <EmptyState title="No sections to mark today" />
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {sections.map((section) => (
-            <li key={section.id} className="flex items-center justify-between p-3">
-              <span>{section.label}</span>
-              <Link
-                href={`/${institutionSlug}/attendance/${section.id}?date=${today}`}
-                className="text-primary text-sm underline-offset-2 hover:underline"
-              >
-                Open register
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <Card>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {sections.map((section) => (
+                <li key={section.id} className="flex items-center justify-between gap-3 py-3">
+                  <span className="font-medium">{section.label}</span>
+                  <Button asChild variant="outline" className="shrink-0">
+                    <Link href={`/${institutionSlug}/attendance/${section.id}?date=${today}`}>Open register</Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

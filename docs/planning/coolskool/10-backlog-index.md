@@ -1,6 +1,6 @@
 # 10 — Backlog index
 
-45 task packets in `tasks/T-0NN-<slug>.md`. **CP** = on the critical path. **Par** = may run in parallel with other packets of the same day (disjoint files). Day = planned day (`09 §2`). Deps must be merged before start.
+45 task packets (T-001…T-045); done packets are in `../../archive/tasks/`, open ones in `tasks/`. **CP** = on the critical path. Deps must be merged before start. Original lane/day schedule: `../../archive/09-twenty-day-plan.md`.
 
 ## 1. DAG
 
@@ -38,53 +38,53 @@ flowchart TD
 
 ## 2. Index
 
-| ID | Title | Lane | Day | Deps | Par | CP | Migration |
-|---|---|---|---|---|---|---|---|
-| T-001 | Scaffold Next.js app, Tailwind, shadcn, lint, Vitest, Playwright | Lead | 1 | — | — | ✓ | — |
-| T-002 | Supabase local dev + env + type generation + CI workflow | Lead | 1 | T-001 | — | ✓ | — |
-| T-003 | Migration 0001: `app` schema helpers, triggers, sequences, grading, demo reset | Lead | 2 | T-002 | ✓ | ✓ | 0001 |
-| T-004 | Migration 0002: core tables + RLS | Lead | 2 | T-003 | — | ✓ | 0002 |
-| T-005 | Migration 0003: audit, jobs, notifications, AI usage + RLS | Lead | 3 | T-004 | ✓ | — | 0003 |
-| T-006 | Auth: Supabase SSR clients, proxy, login/logout, demo login hints | B | 2 | T-002 | ✓ | ✓ | — |
-| T-007 | Tenant layout, `getTenantContext`, nav shell, institution picker | B | 3 | T-004, T-006, T-008 | ✓ | ✓ | — |
-| T-008 | Permission matrix, `requirePermission`, result envelope, `defineAction` | D | 2 | T-001 | ✓ | ✓ | — |
-| T-009 | Test harness: per-role clients, action caller, generated RLS suite, CI wiring | D | 3 | T-002, T-004 | ✓ | ✓ | — |
-| T-010 | Migration 0004: people + RLS (S+G) | B | 4 | T-004 | ✓ | ✓ | 0004 |
-| T-011 | Migration 0005: academics + RLS | A | 4 | T-010 | — | ✓ | 0005 |
-| T-012 | Seed framework, PRNG, core section, `demo:reset` CLI + guards | Lead | 5 | T-005, T-007, T-010, T-011 | ✓ | ✓ | — |
-| T-013 | Seed people + academics (3,024 students, 72 sections, 106 staff) | Lead | 6 | T-012 | — | ✓ | — |
-| T-014 | Migration 0006: attendance + RLS (T) | A | 5 | T-011 | ✓ | — | 0006 |
-| T-015 | Attendance marking, submit, corrections, absence jobs | A | 6–7 | T-014, T-013 | ✓ | — | — |
-| T-016 | Seed attendance (60 days) | A | 7 | T-015 | ✓ | — | — |
-| T-017 | Migration 0009: exams tables, versioning, publish/recheck functions | A | 8 | T-011 | ✓ | ✓ | 0009 |
-| T-018 | Exam setup, marks entry, verification UI | A | 9 | T-017, T-013 | ✓ | ✓ | — |
-| T-019 | Publish results, report card, results notifications | A | 10 | T-018 | ✓ | ✓ | — |
-| T-020 | Recheck request/review/decision workflow | A | 11–12 | T-019 | ✓ | ✓ | — |
-| T-021 | Seed exams (published half-yearly, rechecks) | A | 12 | T-017, T-013 | ✓ | — | — |
-| T-022 | Assignments module (create, publish, views) | D | 9 | T-011, T-007, T-013 | ✓ | — | — |
-| T-023 | Migration 0010: website + public RLS + `publish_page` | B | 5 | T-011 | ✓ | — | 0010 |
-| T-024 | Public site renderer, blocks, notices/events, enquiry route, `website.ts` seed section | B | 6–7 | T-023, T-026 | ✓ | — | — |
-| T-025 | Website editor (block forms, versions, publish) | B | 8 | T-024 | ✓ | — | — |
-| T-026 | Migration 0007: admissions + RLS + `submit_public_enquiry` | B | 5 | T-011 | ✓ | ✓ | 0007 |
-| T-027 | Admissions CRM: pipeline, convert, decisions | B | 9–10 | T-026, T-013 | ✓ | ✓ | — |
-| T-028 | Enrolment action + UI + student profile page | B | 11–12 | T-027, T-030, T-031 | ✓ | ✓ | — |
-| T-029 | Seed admissions (40 leads, applications) | B | 12 | T-026, T-013 | ✓ | — | — |
-| T-030 | Migration 0008: finance + immutability + `generate_invoice`, `record_payment`, `enrol_applicant` | C | 5–6 | T-026, T-011 | ✓ | ✓ | 0008 |
-| T-031 | Fee structures, assignments, term invoice generation (job) | C | 7–8 | T-030, T-013, T-037* | ✓ | — | — |
-| T-032 | Payments, receipts (print), ledger view, guardian fee components | C | 9–10 | T-031 | ✓ | — | — |
-| T-033 | Seed finance (structures, invoices ≈70% paid) | C | 10 | T-030, T-013 | ✓ | — | — |
-| T-034 | Guardian portal shell composing lane components | C | 11–12 | T-015, T-022, T-032, T-019 | ✓ | ✓ | — |
-| T-035 | AI gateway, policy, quota, redaction, providers, usage log | D | 5–6 | T-007, T-005 | ✓ | — | — |
-| T-036 | AI quiz route, review UI, save as assignment | D | 10–11 | T-035, T-022 | ✓ | — | — |
-| T-037 | Jobs runner (route + CLI), handlers skeleton, requeue page | D | 7 | T-005, T-007 | ✓ | — | — |
-| T-038 | Notifications inbox, adapters, simulated SMS/email, message log (completes J-06's message-log assertion) | D | 8 | T-037 | ✓ | — | — |
-| T-039 | Principal dashboard (KPIs + Recharts) | D | 12–13 | T-015, T-019, T-027, T-032 | ✓ | — | — |
-| T-040 | AI benchmark script (P1) | D | 13 | T-035 | ✓ | — | — |
-| T-041 | E2E demo narrative (J-00…J-13; J-07 spec comes from T-034) | C | 13–14 | T-028, T-034, T-036, T-039 | — | ✓ | — |
-| T-042 | Security suite completion + review fixes | Lead | 17 (scaffold Day 9) | T-009, all migrations | — | ✓ | — |
-| T-043 | Load scripts + Day 15/17 runs | C | 14–15, 17 | T-041 | ✓ | — | — |
-| T-044 | Deploy: hosted Supabase + Vercel, backup/restore once | Lead | 18 | T-041, T-042 | — | ✓ | — |
-| T-045 | Rehearsal, polish, honesty-label audit | Lead | 19 | T-044 | — | ✓ | — |
+| ID | Title | Deps | CP | Migration |
+|---|---|---|---|---|
+| T-001 | Scaffold Next.js app, Tailwind, shadcn, lint, Vitest, Playwright | — | ✓ | — |
+| T-002 | Supabase local dev + env + type generation + CI workflow | T-001 | ✓ | — |
+| T-003 | Migration 0001: `app` schema helpers, triggers, sequences, grading, demo reset | T-002 | ✓ | 0001 |
+| T-004 | Migration 0002: core tables + RLS | T-003 | ✓ | 0002 |
+| T-005 | Migration 0003: audit, jobs, notifications, AI usage + RLS | T-004 | — | 0003 |
+| T-006 | Auth: Supabase SSR clients, proxy, login/logout, demo login hints | T-002 | ✓ | — |
+| T-007 | Tenant layout, `getTenantContext`, nav shell, institution picker | T-004, T-006, T-008 | ✓ | — |
+| T-008 | Permission matrix, `requirePermission`, result envelope, `defineAction` | T-001 | ✓ | — |
+| T-009 | Test harness: per-role clients, action caller, generated RLS suite, CI wiring | T-002, T-004 | ✓ | — |
+| T-010 | Migration 0004: people + RLS (S+G) | T-004 | ✓ | 0004 |
+| T-011 | Migration 0005: academics + RLS | T-010 | ✓ | 0005 |
+| T-012 | Seed framework, PRNG, core section, `demo:reset` CLI + guards | T-005, T-007, T-010, T-011 | ✓ | — |
+| T-013 | Seed people + academics (3,024 students, 72 sections, 106 staff) | T-012 | ✓ | — |
+| T-014 | Migration 0006: attendance + RLS (T) | T-011 | — | 0006 |
+| T-015 | Attendance marking, submit, corrections, absence jobs | T-014, T-013 | — | — |
+| T-016 | Seed attendance (60 days) | T-015 | — | — |
+| T-017 | Migration 0009: exams tables, versioning, publish/recheck functions | T-011 | ✓ | 0009 |
+| T-018 | Exam setup, marks entry, verification UI | T-017, T-013 | ✓ | — |
+| T-019 | Publish results, report card, results notifications | T-018 | ✓ | — |
+| T-020 | Recheck request/review/decision workflow | T-019 | ✓ | — |
+| T-021 | Seed exams (published half-yearly, rechecks) | T-017, T-013 | — | — |
+| T-022 | Assignments module (create, publish, views) | T-011, T-007, T-013 | — | — |
+| T-023 | Migration 0010: website + public RLS + `publish_page` | T-011 | — | 0010 |
+| T-024 | Public site renderer, blocks, notices/events, enquiry route, `website.ts` seed section | T-023, T-026 | — | — |
+| T-025 | Website editor (block forms, versions, publish) | T-024 | — | — |
+| T-026 | Migration 0007: admissions + RLS + `submit_public_enquiry` | T-011 | ✓ | 0007 |
+| T-027 | Admissions CRM: pipeline, convert, decisions | T-026, T-013 | ✓ | — |
+| T-028 | Enrolment action + UI + student profile page | T-027, T-030, T-031 | ✓ | — |
+| T-029 | Seed admissions (40 leads, applications) | T-026, T-013 | — | — |
+| T-030 | Migration 0008: finance + immutability + `generate_invoice`, `record_payment`, `enrol_applicant` | T-026, T-011 | ✓ | 0008 |
+| T-031 | Fee structures, assignments, term invoice generation (job) | T-030, T-013, T-037* | — | — |
+| T-032 | Payments, receipts (print), ledger view, guardian fee components | T-031 | — | — |
+| T-033 | Seed finance (structures, invoices ≈70% paid) | T-030, T-013 | — | — |
+| T-034 | Guardian portal shell composing lane components | T-015, T-022, T-032, T-019 | ✓ | — |
+| T-035 | AI gateway, policy, quota, redaction, providers, usage log | T-007, T-005 | — | — |
+| T-036 | AI quiz route, review UI, save as assignment | T-035, T-022 | — | — |
+| T-037 | Jobs runner (route + CLI), handlers skeleton, requeue page | T-005, T-007 | — | — |
+| T-038 | Notifications inbox, adapters, simulated SMS/email, message log (completes J-06's message-log assertion) | T-037 | — | — |
+| T-039 | Principal dashboard (KPIs + Recharts) | T-015, T-019, T-027, T-032 | — | — |
+| T-040 | AI benchmark script (P1) | T-035 | — | — |
+| T-041 | E2E demo narrative (J-00…J-13; J-07 spec comes from T-034) | T-028, T-034, T-036, T-039 | ✓ | — |
+| T-042 | Security suite completion + review fixes | T-009, all migrations | ✓ | — |
+| T-043 | Load scripts + runs | T-041 | — | — |
+| T-044 | Deploy: hosted Supabase + Vercel, backup/restore once | T-041, T-042 | ✓ | — |
+| T-045 | Rehearsal, polish, honesty-label audit | T-044 | ✓ | — |
 
 \* T-031's bulk job handler needs T-037; the synchronous per-student path does not. Build the action first, wire the job when T-037 merges.
 

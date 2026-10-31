@@ -6,9 +6,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { EmptyState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateEnquiryStatus } from "@/modules/admissions/actions";
 import type { EnquiryRow } from "@/modules/admissions/queries";
+import { humanize } from "@/lib/format";
 
 interface PipelineBoardProps {
   institutionSlug: string;
@@ -35,48 +39,59 @@ export function PipelineBoard({ institutionSlug, stages, byStage }: PipelineBoar
 
   return (
     <div className="space-y-2">
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {/* The board scrolls sideways inside this box, never the page. */}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {stages.map((stage) => (
-          <div key={stage} className="min-w-64 flex-1 rounded-lg border border-border">
-            <div className="border-b border-border bg-muted/50 px-3 py-2 text-sm font-medium">
-              {stage} <span className="text-muted-foreground">({byStage[stage]?.length ?? 0})</span>
-            </div>
-            <ul className="divide-y divide-border">
-              {(byStage[stage] ?? []).map((enquiry) => (
-                <li key={enquiry.id} className="space-y-1.5 p-2.5">
-                  <Link
-                    href={`/${institutionSlug}/admissions/enquiries/${enquiry.id}`}
-                    className="text-sm font-medium underline-offset-2 hover:underline"
-                  >
-                    {enquiry.childName}
-                  </Link>
-                  <p className="text-xs text-muted-foreground">{enquiry.guardianName}</p>
-                  {stage !== "converted" && (
-                    <Select
-                      disabled={pending}
-                      value={stage}
-                      onValueChange={(next) => moveTo(enquiry.id, next)}
-                    >
-                      <SelectTrigger size="sm" className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stages
-                          .filter((s) => s !== "converted")
-                          .map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+        {stages.map((stage) => {
+          const items = byStage[stage] ?? [];
+          return (
+            <Card key={stage} size="sm" className="min-w-64 flex-1">
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
+                <CardTitle>{humanize(stage)}</CardTitle>
+                <Badge variant="secondary">{items.length}</Badge>
+              </CardHeader>
+              <CardContent>
+                {items.length === 0 ? (
+                  <EmptyState title="No enquiries" />
+                ) : (
+                  <ul className="space-y-2">
+                    {items.map((enquiry) => (
+                      <li key={enquiry.id} className="space-y-1.5 rounded-md border border-border bg-background p-2.5">
+                        <Link
+                          href={`/${institutionSlug}/admissions/enquiries/${enquiry.id}`}
+                          className="block truncate text-sm font-medium underline-offset-2 hover:underline"
+                        >
+                          {enquiry.childName}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{enquiry.guardianName}</p>
+                        {stage !== "converted" && (
+                          <Select disabled={pending} value={stage} onValueChange={(next) => moveTo(enquiry.id, next)}>
+                            <SelectTrigger size="sm" className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {stages
+                                .filter((s) => s !== "converted")
+                                .map((s) => (
+                                  <SelectItem key={s} value={s}>
+                                    {humanize(s)}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

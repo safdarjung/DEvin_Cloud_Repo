@@ -1,10 +1,12 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/states";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/actions/result";
@@ -35,13 +37,13 @@ export function PageList({ institutionSlug, pages, canEdit }: PageListProps) {
   return (
     <div className="space-y-4">
       {pages.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No pages yet.</p>
+        <EmptyState title="No pages yet" description="Create the first page below." />
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Title</TableHead>
-              <TableHead>Slug</TableHead>
+              <TableHead className="hidden sm:table-cell">Slug</TableHead>
               <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
@@ -49,14 +51,14 @@ export function PageList({ institutionSlug, pages, canEdit }: PageListProps) {
             {pages.map((page) => (
               <TableRow key={page.id}>
                 <TableCell>
-                  <Link href={`/${institutionSlug}/website/pages/${page.id}`} className="hover:underline">
+                  <Link href={`/${institutionSlug}/website/pages/${page.id}`} className="font-medium hover:underline">
                     {page.title}
                   </Link>
                 </TableCell>
-                <TableCell>{page.slug}</TableCell>
+                <TableCell className="hidden font-mono text-xs sm:table-cell">{page.slug}</TableCell>
                 <TableCell>
-                  <Badge variant={page.publishedVersionId ? "default" : "secondary"}>
-                    {page.publishedVersionId ? "published" : "no published version"}
+                  <Badge variant={page.publishedVersionId ? "success" : "outline"}>
+                    {page.publishedVersionId ? "Published" : "Not published"}
                   </Badge>
                 </TableCell>
               </TableRow>
@@ -66,17 +68,17 @@ export function PageList({ institutionSlug, pages, canEdit }: PageListProps) {
       )}
 
       {canEdit && (
-        <form action={formAction} className="flex items-end gap-2 border-t pt-4">
-          <div>
-            <label className="text-sm font-medium" htmlFor="slug">
+        <form action={formAction} className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end">
+          <div className="space-y-1">
+            <Label htmlFor="slug">
               Slug
-            </label>
+            </Label>
             <Input id="slug" name="slug" placeholder="e.g. gallery" required maxLength={100} />
           </div>
-          <div>
-            <label className="text-sm font-medium" htmlFor="title">
+          <div className="space-y-1">
+            <Label htmlFor="title">
               Title
-            </label>
+            </Label>
             <Input id="title" name="title" placeholder="e.g. Gallery" required maxLength={200} />
           </div>
           <Button type="submit" disabled={pending}>

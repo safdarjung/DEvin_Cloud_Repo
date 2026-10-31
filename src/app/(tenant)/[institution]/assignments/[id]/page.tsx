@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
 import { LimitedBadge } from "@/components/honesty";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { QuizContentView } from "@/modules/academics/components/QuizContentView";
+import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getAssignment } from "@/modules/academics/assignments.queries";
 
 export default async function AssignmentDetailPage({
@@ -23,30 +27,57 @@ export default async function AssignmentDetailPage({
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">{assignment.title}</h1>
-        <p className="text-muted-foreground text-sm">Status: {assignment.status}</p>
-        {assignment.dueAt && (
-          <p className="text-muted-foreground text-sm">Due {new Date(assignment.dueAt).toLocaleDateString()}</p>
-        )}
-      </div>
+      <PageHeader
+        title={assignment.title}
+        description={assignment.dueAt ? `Due ${new Date(assignment.dueAt).toLocaleDateString()}` : undefined}
+        back={{ href: `/${institutionSlug}/assignments`, label: "Assignments" }}
+        actions={
+          <Badge variant={assignmentStatusVariant(assignment.status)} className="capitalize">
+            {assignment.status}
+          </Badge>
+        }
+      />
 
-      {assignment.instructions && <p>{assignment.instructions}</p>}
+      {assignment.instructions && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Instructions</CardTitle>
+          </CardHeader>
+          <CardContent className="whitespace-pre-line text-sm">{assignment.instructions}</CardContent>
+        </Card>
+      )}
 
       {canEdit ? (
-        // No section/subject picker needed — immutable once created (see
-        // assignments.schemas.ts UpdateAssignmentSchema).
-        <AssignmentForm institutionSlug={institutionSlug} sections={[]} assignment={assignment} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Edit draft</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* No section/subject picker needed — immutable once created (see
+                assignments.schemas.ts UpdateAssignmentSchema). */}
+            <AssignmentForm institutionSlug={institutionSlug} sections={[]} assignment={assignment} />
+          </CardContent>
+        </Card>
       ) : assignment.content ? (
-        <QuizContentView content={assignment.content} showAnswers={canManage} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Quiz</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <QuizContentView content={assignment.content} showAnswers={canManage} />
+          </CardContent>
+        </Card>
       ) : null}
 
-      <div>
-        <h2 className="flex items-center gap-2 text-sm font-medium">
-          Submissions <LimitedBadge />
-        </h2>
-        <p className="text-muted-foreground text-sm">Planned (F-ACA-06) — out of scope for this packet.</p>
-      </div>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Submissions</CardTitle>
+          <LimitedBadge />
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">Planned (F-ACA-06) — out of scope for this packet.</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

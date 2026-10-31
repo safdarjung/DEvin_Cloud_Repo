@@ -1,10 +1,13 @@
+import { inr } from "@/lib/format";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { StudentInvoices } from "@/modules/finance/components/StudentInvoices";
 import { listReceiptsForStudent } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
 
 export default async function PortalFeesPage({
   params,
@@ -34,22 +37,26 @@ export default async function PortalFeesPage({
         <StudentInvoices ctx={ctx} institutionSlug={institutionSlug} studentId={selection.studentId} />
 
         {receipts.length > 0 && (
-          <div>
-            <h2 className="text-sm font-medium">Receipts</h2>
-            <ul className="divide-y divide-border">
-              {receipts.map((r) => (
-                <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-                  <Link
-                    href={`/${institutionSlug}/portal/fees/receipts/${r.id}?student=${selection.studentId}`}
-                    className="underline-offset-2 hover:underline"
-                  >
-                    {r.receiptNo}
-                  </Link>
-                  <span className="text-muted-foreground">{r.amount.toFixed(2)}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Receipts</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y divide-border">
+                {receipts.map((r) => (
+                  <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
+                    <Link
+                      href={`/${institutionSlug}/portal/fees/receipts/${r.id}?student=${selection.studentId}`}
+                      className="inline-flex min-h-10 items-center font-medium underline-offset-2 hover:underline"
+                    >
+                      {r.receiptNo}
+                    </Link>
+                    <span className="tabular-nums text-muted-foreground">{inr(r.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
         )}
       </div>
     </>

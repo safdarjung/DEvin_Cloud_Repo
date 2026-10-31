@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { usageSummary } from "@/modules/ai/queries";
@@ -22,23 +24,22 @@ export default async function AiUsagePage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">AI usage</h1>
-        <p className="text-muted-foreground text-sm">
-          Last 30 days · {summary.totalRequests} requests · {summary.totalTokens.toLocaleString()} tokens ·{" "}
-          {formatUsd(summary.totalCostEstimateUsd)} (cost estimate, not a bill)
-        </p>
-      </div>
+      <PageHeader
+        title="AI usage"
+        description={`Last 30 days · ${summary.totalRequests} requests · ${summary.totalTokens.toLocaleString()} tokens · ${formatUsd(summary.totalCostEstimateUsd)} (cost estimate, not a bill)`}
+      />
 
+      <Card>
+        <CardContent>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Provider</TableHead>
-            <TableHead>Requests</TableHead>
-            <TableHead>Successful</TableHead>
-            <TableHead>Input tokens</TableHead>
-            <TableHead>Output tokens</TableHead>
-            <TableHead>Cost estimate (USD)</TableHead>
+            <TableHead className="text-right">Requests</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Successful</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Input tokens</TableHead>
+            <TableHead className="hidden text-right sm:table-cell">Output tokens</TableHead>
+            <TableHead className="text-right">Cost estimate (USD)</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -47,16 +48,18 @@ export default async function AiUsagePage({
             return (
               <TableRow key={provider}>
                 <TableCell className="capitalize">{provider}</TableCell>
-                <TableCell>{row.requests}</TableCell>
-                <TableCell>{row.okRequests}</TableCell>
-                <TableCell>{row.inputTokens.toLocaleString()}</TableCell>
-                <TableCell>{row.outputTokens.toLocaleString()}</TableCell>
-                <TableCell>{formatUsd(row.costEstimateUsd)}</TableCell>
+                <TableCell className="text-right tabular-nums">{row.requests}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.okRequests}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.inputTokens.toLocaleString()}</TableCell>
+                <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.outputTokens.toLocaleString()}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatUsd(row.costEstimateUsd)}</TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
+        </CardContent>
+      </Card>
 
       <p className="text-muted-foreground text-xs">
         Cost figures are estimates from a static price table (never a provider bill). Concurrency limits are

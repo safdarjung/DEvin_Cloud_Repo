@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { verifyExam } from "@/modules/exams/actions";
+import { humanize } from "@/lib/format";
 import { PublishButton } from "@/modules/exams/components/PublishButton";
 import { ResultsTable } from "@/modules/exams/components/ResultsTable";
 import { getExamWithPapers, listResultsForExam } from "@/modules/exams/queries";
@@ -31,10 +34,7 @@ export default async function ExamResultsPage({
     if (!summary) notFound();
     return (
       <div className="space-y-6">
-        <header>
-          <h1 className="text-xl font-semibold">{exam.name} — Results</h1>
-          <p className="text-muted-foreground text-sm">{exam.type}</p>
-        </header>
+        <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
         <ResultsTable institutionSlug={institutionSlug} examId={examId} summary={summary} />
       </div>
     );
@@ -42,10 +42,10 @@ export default async function ExamResultsPage({
 
   if (exam.status !== "verification") {
     return (
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold">{exam.name} — Results</h1>
-        <p className="text-muted-foreground text-sm">
-          Results can be published once the exam is in verification. Current status: {exam.status}.
+      <div className="space-y-4">
+        <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
+        <p className="text-sm text-muted-foreground">
+          Results can be published once the exam is in verification. Current status: {humanize(exam.status)}.
         </p>
       </div>
     );
@@ -56,21 +56,22 @@ export default async function ExamResultsPage({
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold">{exam.name} — Results</h1>
-        <p className="text-muted-foreground text-sm">{exam.type}</p>
-      </header>
+      <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
       {verification.ok && !clean && (
-        <p className="text-destructive text-sm">
+        <p role="alert" className="text-sm text-destructive">
           {verification.data.summary.missingCount} missing, {verification.data.summary.outOfRangeCount} out of range.
           Resolve on the exam page before publishing.
         </p>
       )}
-      {ctx.permissions.has("exam.result.publish") ? (
-        <PublishButton institutionSlug={institutionSlug} examId={examId} verificationClean={clean} />
-      ) : (
-        <p className="text-muted-foreground text-sm">Waiting for an exam controller to publish.</p>
-      )}
+      <Card>
+        <CardContent>
+          {ctx.permissions.has("exam.result.publish") ? (
+            <PublishButton institutionSlug={institutionSlug} examId={examId} verificationClean={clean} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Waiting for an exam controller to publish.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

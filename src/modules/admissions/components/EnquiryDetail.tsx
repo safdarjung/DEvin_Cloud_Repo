@@ -4,7 +4,11 @@
 // instead of inline forms per CLAUDE.md/UI precedent (CorrectionDialog).
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,8 +21,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addEnquiryNote, assignEnquiry, convertEnquiryToApplication } from "@/modules/admissions/actions";
+import { enquiryStatusVariant } from "@/modules/admissions/status";
 import type { EnquiryRow } from "@/modules/admissions/queries";
 import { EnquiryReplyDraft } from "@/modules/ai/components/EnquiryReplyDraft";
+import { humanize } from "@/lib/format";
 
 interface StaffOption {
   id: string;
@@ -127,141 +133,154 @@ export function EnquiryDetail({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">{enquiry.childName}</h1>
-        <p className="text-muted-foreground text-sm">
-          {enquiry.guardianName} · {enquiry.phone} · stage: {enquiry.status}
+      <PageHeader
+        title={enquiry.childName}
+        description={`${enquiry.guardianName} · ${enquiry.phone}`}
+        back={{ href: `/${institutionSlug}/admissions`, label: "Pipeline" }}
+        actions={<Badge variant={enquiryStatusVariant(enquiry.status)}>{humanize(enquiry.status)}</Badge>}
+      />
+
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
         </p>
-      </div>
+      )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-3">
+          <Select disabled={pending || isConverted} value={enquiry.assignedTo ?? undefined} onValueChange={handleAssign}>
+            <SelectTrigger size="sm">
+              <SelectValue placeholder="Assign to..." />
+            </SelectTrigger>
+            <SelectContent>
+              {staffOptions.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Select disabled={pending || isConverted} value={enquiry.assignedTo ?? undefined} onValueChange={handleAssign}>
-          <SelectTrigger size="sm">
-            <SelectValue placeholder="Assign to..." />
-          </SelectTrigger>
-          <SelectContent>
-            {staffOptions.map((s) => (
-              <SelectItem key={s.id} value={s.id}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
-          <DialogTrigger asChild>
-            <Button disabled={isConverted} variant="default" size="sm">
-              {isConverted ? "Converted" : "Convert to application"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Convert to application</DialogTitle>
-              <DialogDescription>Creates an application and marks this enquiry converted.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2">
-              <Input
-                placeholder="First name"
-                value={convertForm.firstName}
-                onChange={(e) => setConvertForm((f) => ({ ...f, firstName: e.target.value }))}
-              />
-              <Input
-                placeholder="Last name (optional)"
-                value={convertForm.lastName}
-                onChange={(e) => setConvertForm((f) => ({ ...f, lastName: e.target.value }))}
-              />
-              <Input
-                type="date"
-                placeholder="Date of birth"
-                value={convertForm.dob}
-                onChange={(e) => setConvertForm((f) => ({ ...f, dob: e.target.value }))}
-              />
-              <Input
-                placeholder="Gender"
-                value={convertForm.gender}
-                onChange={(e) => setConvertForm((f) => ({ ...f, gender: e.target.value }))}
-              />
-              <Input
-                placeholder="Guardian full name"
-                value={convertForm.guardianFullName}
-                onChange={(e) => setConvertForm((f) => ({ ...f, guardianFullName: e.target.value }))}
-              />
-              <Input
-                placeholder="Guardian phone"
-                value={convertForm.guardianPhone}
-                onChange={(e) => setConvertForm((f) => ({ ...f, guardianPhone: e.target.value }))}
-              />
-              <Select
-                value={convertForm.relationship}
-                onValueChange={(v) => setConvertForm((f) => ({ ...f, relationship: v as typeof f.relationship }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Guardian relationship" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["father", "mother", "legal_guardian", "grandparent", "other"].map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={convertForm.gradeId} onValueChange={(v) => setConvertForm((f) => ({ ...f, gradeId: v }))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Grade applied for" />
-                </SelectTrigger>
-                <SelectContent>
-                  {gradeOptions.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>
-                      {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={convertForm.academicYearId} onValueChange={(v) => setConvertForm((f) => ({ ...f, academicYearId: v }))}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Academic year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {academicYearOptions.map((y) => (
-                    <SelectItem key={y.id} value={y.id}>
-                      {y.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button disabled={pending} onClick={handleConvert}>
-                Convert
+          <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
+            <DialogTrigger asChild>
+              <Button disabled={isConverted} variant="default" size="sm">
+                {isConverted ? "Converted" : "Convert to application"}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Convert to application</DialogTitle>
+                <DialogDescription>Creates an application and marks this enquiry converted.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Input
+                  placeholder="First name"
+                  value={convertForm.firstName}
+                  onChange={(e) => setConvertForm((f) => ({ ...f, firstName: e.target.value }))}
+                />
+                <Input
+                  placeholder="Last name (optional)"
+                  value={convertForm.lastName}
+                  onChange={(e) => setConvertForm((f) => ({ ...f, lastName: e.target.value }))}
+                />
+                <Input
+                  type="date"
+                  placeholder="Date of birth"
+                  value={convertForm.dob}
+                  onChange={(e) => setConvertForm((f) => ({ ...f, dob: e.target.value }))}
+                />
+                <Input
+                  placeholder="Gender"
+                  value={convertForm.gender}
+                  onChange={(e) => setConvertForm((f) => ({ ...f, gender: e.target.value }))}
+                />
+                <Input
+                  placeholder="Guardian full name"
+                  value={convertForm.guardianFullName}
+                  onChange={(e) => setConvertForm((f) => ({ ...f, guardianFullName: e.target.value }))}
+                />
+                <Input
+                  placeholder="Guardian phone"
+                  value={convertForm.guardianPhone}
+                  onChange={(e) => setConvertForm((f) => ({ ...f, guardianPhone: e.target.value }))}
+                />
+                <Select
+                  value={convertForm.relationship}
+                  onValueChange={(v) => setConvertForm((f) => ({ ...f, relationship: v as typeof f.relationship }))}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Guardian relationship" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {["father", "mother", "legal_guardian", "grandparent", "other"].map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {humanize(r)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={convertForm.gradeId} onValueChange={(v) => setConvertForm((f) => ({ ...f, gradeId: v }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Grade applied for" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {gradeOptions.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={convertForm.academicYearId} onValueChange={(v) => setConvertForm((f) => ({ ...f, academicYearId: v }))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Academic year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {academicYearOptions.map((y) => (
+                      <SelectItem key={y.id} value={y.id}>
+                        {y.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button disabled={pending} onClick={handleConvert}>
+                  Convert
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
 
       <EnquiryReplyDraft institutionSlug={institutionSlug} enquiryId={enquiry.id} aiPolicy={aiPolicy} />
 
-      <div className="space-y-2">
-        <h2 className="text-sm font-medium">Notes</h2>
-        <ul className="space-y-1.5">
-          {enquiry.notes.map((note, i) => (
-            <li key={i} className="rounded-md border border-border p-2 text-sm">
-              <p>{note.text}</p>
-              <p className="text-muted-foreground text-xs">{note.at ?? "—"}</p>
-            </li>
-          ))}
-          {enquiry.notes.length === 0 && <p className="text-muted-foreground text-sm">No notes yet.</p>}
-        </ul>
-        <div className="flex gap-2">
-          <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
-          <Button disabled={pending || !noteText.trim()} onClick={handleAddNote}>
-            Add
-          </Button>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Notes</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {enquiry.notes.length === 0 ? (
+            <EmptyState title="No notes yet" />
+          ) : (
+            <ul className="space-y-2">
+              {enquiry.notes.map((note, i) => (
+                <li key={i} className="rounded-md border border-border p-2.5 text-sm">
+                  <p>{note.text}</p>
+                  <p className="text-muted-foreground text-xs">{note.at ?? "—"}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="flex gap-2">
+            <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
+            <Button variant="outline" disabled={pending || !noteText.trim()} onClick={handleAddNote}>
+              Add
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

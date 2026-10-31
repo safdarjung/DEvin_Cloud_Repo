@@ -1,5 +1,9 @@
+import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { LedgerTable } from "@/modules/finance/components/LedgerTable";
@@ -34,7 +38,7 @@ export default async function LedgerPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "finance.structure.manage");
 
-  const range = { from: from ?? firstOfMonthIso(), to: to ?? todayIso(), account: account || undefined };
+  const range = { from: from ?? firstOfMonthIso(), to: to ?? todayIso(), account: account && account !== "all" ? account : undefined };
   const pageNum = Number(page) || 1;
   const ledger = await listLedgerEntries(ctx, range, pageNum);
 
@@ -44,33 +48,38 @@ export default async function LedgerPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Ledger</h1>
+      <PageHeader title="Ledger" description="Double-entry postings for the selected range." back={{ href: `/${institutionSlug}/finance`, label: "Finance" }} />
 
-      <form className="flex flex-wrap items-end gap-2 rounded-lg border border-border p-3">
+      <form className="grid gap-3 rounded-xl border bg-card p-4 sm:flex sm:flex-wrap sm:items-end">
         <div>
-          <label className="text-sm font-medium" htmlFor="from">
+          <Label className="mb-1 block" htmlFor="from">
             From
-          </label>
-          <input id="from" name="from" type="date" defaultValue={range.from} className="block rounded border border-input px-2 py-1 text-sm" />
+          </Label>
+          <Input id="from" name="from" type="date" defaultValue={range.from} />
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="to">
+          <Label className="mb-1 block" htmlFor="to">
             To
-          </label>
-          <input id="to" name="to" type="date" defaultValue={range.to} className="block rounded border border-input px-2 py-1 text-sm" />
+          </Label>
+          <Input id="to" name="to" type="date" defaultValue={range.to} />
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="account">
+          <Label className="mb-1 block" htmlFor="account">
             Account
-          </label>
-          <select id="account" name="account" defaultValue={range.account ?? ""} className="block rounded border border-input px-2 py-1 text-sm">
-            <option value="">All</option>
-            {LEDGER_ACCOUNTS.map((a) => (
-              <option key={a} value={a}>
-                {a}
-              </option>
-            ))}
-          </select>
+          </Label>
+          <Select name="account" defaultValue={range.account ?? "all"}>
+            <SelectTrigger id="account" className="w-full sm:w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              {LEDGER_ACCOUNTS.map((a) => (
+                <SelectItem key={a} value={a}>
+                  {a.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <Button type="submit" variant="outline">
           Filter

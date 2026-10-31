@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { PageList } from "@/modules/website/components/PageList";
@@ -14,24 +16,22 @@ export default async function WebsitePage({ params }: { params: Promise<{ instit
   const canPublish = hasPermission(ctx, "website.publish");
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Website</h1>
-          <p className="text-muted-foreground text-sm">
-            Edit pages, preview drafts, and publish — the public site changes only when you publish.
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href={`/${institutionSlug}/website/notices`} className="text-sm underline">
-            Notices
-          </Link>
-          <Link href={`/${institutionSlug}/website/events`} className="text-sm underline">
-            Events
-          </Link>
-          {canPublish && <WebsiteLiveToggle institutionSlug={institutionSlug} isLive={website?.isLive ?? false} />}
-        </div>
-      </div>
+    <div className="space-y-4">
+      <PageHeader
+        title="Website"
+        description="Edit pages, preview drafts, and publish — the public site changes only when you publish."
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/${institutionSlug}/website/notices`}>Notices</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={`/${institutionSlug}/website/events`}>Events</Link>
+            </Button>
+            {canPublish && <WebsiteLiveToggle institutionSlug={institutionSlug} isLive={website?.isLive ?? false} />}
+          </>
+        }
+      />
       <PageList institutionSlug={institutionSlug} pages={pages} canEdit={hasPermission(ctx, "website.edit")} />
     </div>
   );

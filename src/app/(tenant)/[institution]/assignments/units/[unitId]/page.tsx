@@ -1,4 +1,7 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
@@ -47,19 +50,22 @@ export default async function CurriculumUnitQuizPage({
 
   return (
     <div className="max-w-2xl space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">{unit.title}</h1>
-        <p className="text-muted-foreground text-sm">
-          {grade?.display_name ?? "Grade"} · {subject?.name ?? "Subject"}
-        </p>
-        {unit.description && <p className="mt-2 text-sm">{unit.description}</p>}
-      </div>
+      <PageHeader
+        title={unit.title}
+        description={`${grade?.display_name ?? "Grade"} · ${subject?.name ?? "Subject"}`}
+        back={{ href: `/${institutionSlug}/assignments`, label: "Assignments" }}
+      />
+      {unit.description && (
+        <Card>
+          <CardContent className="text-sm">{unit.description}</CardContent>
+        </Card>
+      )}
 
       {sectionsForSubject.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          You don&apos;t teach this subject in any section of this grade, so a generated quiz couldn&apos;t be saved
-          here yet.
-        </p>
+        <EmptyState
+          title="Can't save a quiz here yet"
+          description="You don't teach this subject in any section of this grade, so a generated quiz couldn't be saved here yet."
+        />
       ) : (
         <QuizReviewEditor
           institutionSlug={institutionSlug}

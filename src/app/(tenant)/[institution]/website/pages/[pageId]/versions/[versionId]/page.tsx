@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -24,12 +25,11 @@ export default async function VersionDetailPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-xl font-semibold">
-          {page.title} — v{version.versionNo}
-        </h1>
-        {isPublished && <Badge>published</Badge>}
-      </div>
+      <PageHeader
+        title={`${page.title} — v${version.versionNo}`}
+        back={{ href: `/${institutionSlug}/website/pages/${pageId}`, label: page.title }}
+        actions={isPublished ? <Badge variant="success">Published</Badge> : undefined}
+      />
       {!isPublished && hasPermission(ctx, "website.publish") && (
         <PublishThisVersion institutionSlug={institutionSlug} pageId={pageId} versionId={versionId} />
       )}

@@ -18,16 +18,26 @@ export default async function PublicSiteLayout({
   const nav = parseNavSafely(site.nav);
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-          <a href={`/s/${slug}`} className="font-semibold">
+    <div className="flex min-h-screen flex-col bg-background text-foreground">
+      <a
+        href="#content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-10 focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
+      >
+        Skip to content
+      </a>
+      <header className="border-b bg-card">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <a href={`/s/${slug}`} className="text-lg font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-ring">
             {site.institutionName}
           </a>
           {nav.length > 0 && (
-            <nav className="flex gap-4 text-sm">
+            <nav aria-label="Main" className="-mx-1 flex flex-wrap gap-x-1 text-sm">
               {nav.map((item) => (
-                <a key={item.path} href={item.path.startsWith("/") ? `/s/${slug}${item.path === "/" ? "" : item.path}` : item.path}>
+                <a
+                  key={item.path}
+                  href={item.path.startsWith("/") ? `/s/${slug}${item.path === "/" ? "" : item.path}` : item.path}
+                  className="rounded-md px-2 py-2 text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   {item.label}
                 </a>
               ))}
@@ -35,8 +45,10 @@ export default async function PublicSiteLayout({
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4">{children}</main>
-      <footer className="text-muted-foreground border-t py-6 text-center text-xs">
+      <main id="content" className="mx-auto w-full max-w-5xl flex-1 px-4">
+        {children}
+      </main>
+      <footer className="border-t bg-card py-6 text-center text-xs text-muted-foreground">
         &copy; {new Date().getFullYear()} {site.institutionName}
       </footer>
     </div>

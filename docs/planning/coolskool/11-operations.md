@@ -23,7 +23,7 @@
 
 `.env.example` lists all names with comments; `.env.local` is git-ignored. CI uses repository secrets only for the deploy job.
 
-## 2. Local setup (Day 1 onward)
+## 2. Local setup
 
 ```
 pnpm install
@@ -41,7 +41,7 @@ Institution `st-josephs-demo` ("St. Joseph's Convent School (Demo)", `is_demo = 
 
 Dev/demo separation: the demo institution is the only `is_demo = true` tenant; reset and seed refuse everything else. A second non-demo institution exists only in test fixtures.
 
-## 4. Hosted setup (Day 18)
+## 4. Hosted setup
 
 1. User creates the Supabase project in `ap-south-1`; records URL, publishable key, secret key, DB URL in Vercel env (never in the repo).
 2. `pnpm supabase link --project-ref <ref>` → `pnpm supabase db push` (applies 0001–0010 + fixes).
@@ -58,7 +58,7 @@ Dev/demo separation: the demo institution is the only `is_demo = true` tenant; r
 - `pnpm jobs:run` — processes queued jobs once (use in dev instead of cron); `/api/jobs/run` is called by Vercel Cron in demo.
 - Job health: `/[institution]/jobs` lists failed/dead with errors and requeue.
 
-## 6. Backup and restore (executed once on Day 18)
+## 6. Backup and restore
 
 Backup: `pnpm supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/<date>-schema.sql` and `--data-only -f backups/<date>-data.sql` (backups directory git-ignored). Restore drill: create a Supabase branch or a second local instance, `psql < schema.sql`, `psql < data.sql`, run J-00. Hosted project daily backups (Supabase default on paid tiers) are noted as the production path; the demo relies on `demo:reset` for recovery.
 
@@ -102,7 +102,7 @@ Logging: server logs include correlation ids and error codes, never prompt bodie
 | 12 | 22–24 | examcontroller | Approve with new marks; parent sees "Corrected on …"; controller sees version history | "Original never disappears" |
 | 13 | 24–25 | principal | Dashboard: today's attendance, collections, funnel, grade distribution | "Everything you asked your staff for this morning, live" |
 
-Reset between runs: `pnpm demo:reset` (≈ seed time). If the venue has no connectivity, play the Day 19 recording (`09 §8`).
+Reset between runs: `pnpm demo:reset` (≈ seed time). If the venue has no connectivity, play the screen recording (`09 §8`).
 
 ## 11. Production-readiness gaps (after the demo)
 
@@ -128,7 +128,7 @@ Real SMS/email providers (DLT registration), payment gateway, CSV import, backup
 | Reset needed between two demo runs | `DEMO_RESET_ALLOWED=true SERVICE_ROLE_CALLER=reset pnpm demo:reset` with hosted env; confirm counts page; log in as `principal` to warm the dashboard |
 | Jobs stuck (notifications missing) | Open `/jobs`; if queued jobs are old, hit `/api/jobs/run` with the secret or run `pnpm jobs:run` against hosted env; requeue dead jobs |
 | Ollama down at the venue | Step 8 shows the honest `ai_unavailable` message; say so, then show a pre-generated quiz saved as a draft assignment the day before (labelled "AI draft, generated on <date>") |
-| Wi-Fi loss | Switch to the Day 19 screen recording; resume live at the next step when connectivity returns |
+| Wi-Fi loss | Switch to the screen recording; resume live at the next step when connectivity returns |
 | Wrong data entered during the demo | Continue; corrections are part of the story (attendance correction, recheck); reset after the session |
 | Hosted migration fails on `db push` | Do not edit merged migrations; add a numbered fix migration (`10 §3`), test locally with `db reset`, push again |
 | Suspected leak or security finding | `07 §8` |

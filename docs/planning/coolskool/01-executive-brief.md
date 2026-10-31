@@ -2,7 +2,7 @@
 
 ## 1. Objective
 
-Ship, in 20 days, a sound foundation plus a demo that a non-technical principal of a Tier 2/3 Indian private school understands by watching it: a public school website takes an enquiry, admissions converts it into an enrolled student with a guardian and fees, a teacher marks attendance, the guardian sees it, a teacher generates an AI quiz, exams are marked and published, a recheck corrects a result traceably, and the principal sees it all on one dashboard. Everything runs on a seeded, resettable demo tenant with synthetic people.
+Ship a sound foundation plus a demo that a non-technical principal of a Tier 2/3 Indian private school understands by watching it: a public school website takes an enquiry, admissions converts it into an enrolled student with a guardian and fees, a teacher marks attendance, the guardian sees it, a teacher generates an AI quiz, exams are marked and published, a recheck corrects a result traceably, and the principal sees it all on one dashboard. Everything runs on a seeded, resettable demo tenant with synthetic people.
 
 ## 2. The demo scenario (13 steps)
 
@@ -26,11 +26,11 @@ Payment recording (cash/UPI/bank reference) with sequential receipts is shown in
 
 ## 3. Baseline
 
-See `02-environment-baseline.md`. Greenfield repo, one laptop, no API keys, no hosted Supabase project. Local Supabase and local Ollama are the development paths; Vercel + hosted Supabase (Mumbai) is the demo hosting path.
+Superseded — see §10 (Environment baseline).
 
 ## 4. The 20-day slice
 
-Foundation (scaffold, schema, RLS, auth, tenant layout, permissions, test harness, seed) by Day 6; four parallel lanes Days 5–13 (academics/attendance/exams; website/admissions; finance; AI/notifications/dashboard); integration Day 14–16; security Day 17; deploy Day 18; rehearsal Day 19; buffer Day 20. Details: `09-twenty-day-plan.md`. Backlog DAG: `10-backlog-index.md`.
+Superseded — the foundation and all four lanes are built (see `10-backlog-index.md`); the original schedule is in `../../archive/09-twenty-day-plan.md`.
 
 ## 5. Key decisions (authoritative text in `12-decision-log.md`)
 
@@ -41,13 +41,12 @@ Foundation (scaffold, schema, RLS, auth, tenant layout, permissions, test harnes
 - AI through one gateway enforcing per-institution policy (`local_only | cloud_allowed | local_with_cloud_fallback`), quotas, redaction, and usage logging; local Ollama is the always-available path (D9).
 - Deterministic seed and guarded demo reset (D19).
 
-## 6. Risks (top five; full register in `09-twenty-day-plan.md` §6 and `07-security-and-ai-governance.md`)
+## 6. Risks (top five; full register in `../../archive/09-twenty-day-plan.md` §6 and `07-security-and-ai-governance.md`)
 
-1. **Foundation slips** (schema + RLS + harness) delay every lane. Mitigation: checkpoint Day 4; lanes start on migrations only until seed lands Day 6.
-2. **Local model JSON reliability** on a 6 GB GPU. Mitigation: Zod validation + one repair retry; synchronous `generateObject` fallback; honest "limited" label.
-3. **Seed volume** (≈3,000 students, ≈180k attendance rows) slows `db:reset`. Mitigation: bulk inserts, attendance limited to 60 days, seed sections per lane.
-4. **Cross-tenant or guardian-scope leak.** Mitigation: generated RLS suite over every tenant table on Day 17 and at every checkpoint.
-5. **Shared-file conflicts** (migrations, permission matrix, nav, seed). Mitigation: reserved migration numbers, one owner per file, seed sections per lane.
+1. **Local model JSON reliability** on a 6 GB GPU. Mitigation: Zod validation + one repair retry; synchronous `generateObject` fallback; honest "limited" label.
+2. **Seed volume** (≈3,000 students, ≈180k attendance rows) slows `db:reset`. Mitigation: bulk inserts, attendance limited to 60 days.
+3. **Cross-tenant or guardian-scope leak.** Mitigation: generated RLS suite over every tenant table at every checkpoint.
+4. **Shared-file conflicts** (migrations, permission matrix, nav, seed). Mitigation: reserved migration numbers, one owner per file.
 
 ## 7. Roadmap (five phases; dependency map in `03-feature-matrix.md` §2)
 
@@ -64,3 +63,12 @@ Self-service signup, payroll, library/transport/inventory, timetable solver, mar
 ## 9. What is real versus simulated
 
 Real: all data flows, RLS, audit, immutability, enrolment transaction, finance ledger, exam snapshots and rechecks, in-app notifications, local AI inference. Simulated and labeled: SMS and email delivery (rendered into a visible message log). Limited: AI quality on the laptop GPU, student portal (role exists, no dedicated UI), platform superadmin (seed/reset only).
+
+## 10. Environment baseline
+
+- Repo: `main` with remote `origin = github.com/schoolversee/schoolverse`; conventional commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`, `perf:`, `ci:`). Never ask for, print, or store a token.
+- Toolchain: Node 22, pnpm (D2), Docker (local Supabase, ≈2–3 GB RAM), Vercel CLI, Ollama (local inference), Playwright Chromium. Supabase CLI is a pnpm dev dependency. Exact package versions live in `package.json`.
+- GPU: NVIDIA RTX 4050 Laptop, 6 GB VRAM; constrains local model choice (`12-decision-log.md` Phase 0 facts). Docker, the Next dev server, and Ollama share one laptop; run only one `pnpm db:reset` at a time.
+- Hosted: Supabase `ap-south-1` (Mumbai) + Vercel; setup in `11-operations.md` §4. Local Ollama is shown from the laptop as the "institution-controlled inference" path.
+- Not provisioned (design consequence): Anthropic/OpenAI keys (cloud AI optional; gateway defaults `local_only`), Google OAuth (documented only, `11 §7`), SMS/email providers (simulated adapters, labeled), payment gateway (offline recording only).
+- Venue: projector + laptop, phone for the guardian view; Wi-Fi uncertain, so hosted deployment, laptop hotspot, and a screen recording are fallbacks (`11 §13`).

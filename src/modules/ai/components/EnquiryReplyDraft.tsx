@@ -102,7 +102,7 @@ export function EnquiryReplyDraft({ institutionSlug, enquiryId, aiPolicy }: Enqu
           {generating ? "Drafting…" : "Draft a reply"}
         </Button>
         {error && (
-          <p role="alert" className="text-destructive text-sm">
+          <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
           </p>
         )}
@@ -111,7 +111,7 @@ export function EnquiryReplyDraft({ institutionSlug, enquiryId, aiPolicy }: Enqu
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-border p-3">
+    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">AI draft — edit before saving</span>
         <ProviderBadge provider={draft.provider} />
@@ -124,7 +124,7 @@ export function EnquiryReplyDraft({ institutionSlug, enquiryId, aiPolicy }: Enqu
         className="min-h-16 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
       {error && (
-        <p role="alert" className="text-destructive text-sm">
+        <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}

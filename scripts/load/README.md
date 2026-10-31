@@ -1,7 +1,7 @@
 # Load scripts (T-043)
 
 Measured numbers for the four scenarios in `08-testing-and-acceptance.md
-§6` and `09-twenty-day-plan.md` (Days 15, 17). Nothing here asserts a
+§6` and `docs/archive/09-twenty-day-plan.md` (Days 15, 17). Nothing here asserts a
 threshold in code — every script exits 0 and prints/writes a table. L5 (AI
 concurrency) is not reimplemented here; see `pnpm ai:bench`.
 
@@ -55,7 +55,7 @@ L2 and L4 are read-only.
 
 Each run writes `scripts/load/out/<scenario>-<timestamp>.json` and `.md`
 (git-ignored). Copy the numbers you want to keep into
-`docs/planning/coolskool/results/load-<day>.md` using
+`docs/archive/results/load-<day>.md` using
 `load-template.md`'s table.
 
 ## What NOT to conclude

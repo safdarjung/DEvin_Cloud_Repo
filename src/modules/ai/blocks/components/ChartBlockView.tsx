@@ -48,7 +48,7 @@ export function ChartBlockView({ block, source = "ai" }: ChartBlockViewProps) {
         <div className="h-48" aria-hidden="true">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Pie data={data} dataKey="value" nameKey="name" outerRadius={70}>
+              <Pie isAnimationActive={false} data={data} dataKey="value" nameKey="name" outerRadius={70}>
                 {data.map((_, index) => (
                   <Cell key={index} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
                 ))}
@@ -77,7 +77,7 @@ export function ChartBlockView({ block, source = "ai" }: ChartBlockViewProps) {
               <YAxis tick={{ fontSize: 12 }} width={32} unit={block.unit} />
               <Tooltip />
               {block.series.map((series, index) => (
-                <Line key={series.name} dataKey={series.name} stroke={SERIES_COLORS[index % SERIES_COLORS.length]} />
+                <Line isAnimationActive={false} key={series.name} dataKey={series.name} stroke={SERIES_COLORS[index % SERIES_COLORS.length]} />
               ))}
             </LineChart>
           ) : block.chartType === "area" ? (
@@ -88,6 +88,7 @@ export function ChartBlockView({ block, source = "ai" }: ChartBlockViewProps) {
               <Tooltip />
               {block.series.map((series, index) => (
                 <Area
+                  isAnimationActive={false}
                   key={series.name}
                   dataKey={series.name}
                   stroke={SERIES_COLORS[index % SERIES_COLORS.length]}
@@ -102,7 +103,7 @@ export function ChartBlockView({ block, source = "ai" }: ChartBlockViewProps) {
               <YAxis tick={{ fontSize: 12 }} width={32} unit={block.unit} />
               <Tooltip />
               {block.series.map((series, index) => (
-                <Bar key={series.name} dataKey={series.name} fill={SERIES_COLORS[index % SERIES_COLORS.length]} radius={4} />
+                <Bar isAnimationActive={false} key={series.name} dataKey={series.name} fill={SERIES_COLORS[index % SERIES_COLORS.length]} radius={4} />
               ))}
             </BarChart>
           )}

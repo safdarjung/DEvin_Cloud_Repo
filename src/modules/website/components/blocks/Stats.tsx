@@ -3,15 +3,15 @@ import type { StatsBlock } from "@/modules/website/blocks";
 export function Stats({ block }: { block: StatsBlock }) {
   return (
     <section className="py-8">
-      {block.heading && <h2 className="mb-4 text-center text-2xl font-semibold">{block.heading}</h2>}
-      <div className="mx-auto grid max-w-3xl grid-cols-2 gap-6 sm:grid-cols-4">
+      {block.heading && <h2 className="mb-5 text-2xl font-semibold tracking-tight">{block.heading}</h2>}
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border bg-border sm:grid-cols-4">
         {block.items.map((item, index) => (
-          <div key={index} className="text-center">
-            <div className="text-3xl font-bold">{item.value}</div>
-            <div className="text-muted-foreground text-sm">{item.label}</div>
+          <div key={index} className="bg-card p-5">
+            <dd className="text-3xl font-semibold tracking-tight">{item.value}</dd>
+            <dt className="mt-1 text-sm text-muted-foreground">{item.label}</dt>
           </div>
         ))}
-      </div>
+      </dl>
     </section>
   );
 }

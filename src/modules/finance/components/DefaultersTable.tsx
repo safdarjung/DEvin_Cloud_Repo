@@ -3,6 +3,8 @@
 // pure rendering, same shape as InvoiceTable.
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/states";
+import { inr } from "@/lib/format";
 import type { DefaulterRow } from "@/modules/finance/queries";
 
 export function DefaultersTable({
@@ -12,16 +14,20 @@ export function DefaultersTable({
   institutionSlug: string;
   defaulters: DefaulterRow[];
 }) {
+  if (defaulters.length === 0) {
+    return <EmptyState title="No outstanding invoices" description="Nothing is pending for this term." />;
+  }
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Student</TableHead>
           <TableHead>Invoice</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Paid</TableHead>
-          <TableHead>Outstanding</TableHead>
-          <TableHead>Due</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Total</TableHead>
+          <TableHead className="hidden text-right sm:table-cell">Paid</TableHead>
+          <TableHead className="text-right">Outstanding</TableHead>
+          <TableHead className="hidden sm:table-cell">Due</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -36,19 +42,12 @@ export function DefaultersTable({
                 {row.invoiceNo}
               </Link>
             </TableCell>
-            <TableCell>{row.total.toFixed(2)}</TableCell>
-            <TableCell>{row.paidTotal.toFixed(2)}</TableCell>
-            <TableCell className="font-medium">{row.outstanding.toFixed(2)}</TableCell>
-            <TableCell>{row.dueOn ?? "—"}</TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(row.total)}</TableCell>
+            <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(row.paidTotal)}</TableCell>
+            <TableCell className="text-right font-medium tabular-nums">{inr(row.outstanding)}</TableCell>
+            <TableCell className="hidden sm:table-cell">{row.dueOn ?? "—"}</TableCell>
           </TableRow>
         ))}
-        {defaulters.length === 0 && (
-          <TableRow>
-            <TableCell colSpan={6} className="text-muted-foreground text-center">
-              No outstanding invoices for this term.
-            </TableCell>
-          </TableRow>
-        )}
       </TableBody>
     </Table>
   );

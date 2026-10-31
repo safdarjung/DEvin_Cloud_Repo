@@ -46,15 +46,15 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
   const remark = await getResultRemark(ctx, result.id);
 
   return (
-    <Card className="print:shadow-none" data-testid="report-card">
+    <Card className="print:border print:shadow-none print:ring-0" data-testid="report-card">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between text-base font-medium">
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2">
           <span>
             {result.studentName} — {result.examName}
           </span>
-          <Badge variant={result.grade.startsWith("E") ? "destructive" : "secondary"}>{result.grade}</Badge>
+          <Badge variant={result.grade.startsWith("E") ? "destructive" : "success"}>Grade {result.grade}</Badge>
         </CardTitle>
-        <p className="text-muted-foreground text-sm">Admission No. {result.admissionNo}</p>
+        <p className="text-sm text-muted-foreground">Admission No. {result.admissionNo}</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {result.isCorrected && (
@@ -63,14 +63,15 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
           </p>
         )}
 
+        <div className="overflow-x-auto">
         <table className="w-full text-sm print:text-xs">
           <thead>
-            <tr className="border-b border-border text-left">
-              <th className="py-1 font-medium">Subject</th>
-              <th className="py-1 text-right font-medium">Marks</th>
-              <th className="py-1 text-right font-medium">Max</th>
-              <th className="py-1 text-right font-medium">Grade</th>
-              {canRequestRecheck && <th className="py-1 text-right font-medium print:hidden">Recheck</th>}
+            <tr className="border-b border-border text-left text-muted-foreground">
+              <th className="py-2 font-medium">Subject</th>
+              <th className="py-2 text-right font-medium">Marks</th>
+              <th className="py-2 text-right font-medium">Max</th>
+              <th className="py-2 text-right font-medium">Grade</th>
+              {canRequestRecheck && <th className="py-2 text-right font-medium print:hidden">Recheck</th>}
             </tr>
           </thead>
           <tbody>
@@ -78,12 +79,12 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
               const recheck = rechecksByPaper?.get(subject.examPaperId) ?? null;
               return (
                 <tr key={subject.examPaperId} className="border-b border-border/50">
-                  <td className="py-1">{subject.subjectName}</td>
-                  <td className="py-1 text-right">{subject.isAbsent ? "Absent" : subject.marksObtained}</td>
-                  <td className="py-1 text-right">{subject.maxMarks}</td>
-                  <td className="py-1 text-right">{subject.grade ?? "—"}</td>
+                  <td className="py-2">{subject.subjectName}</td>
+                  <td className="py-2 text-right">{subject.isAbsent ? "Absent" : subject.marksObtained}</td>
+                  <td className="py-2 text-right">{subject.maxMarks}</td>
+                  <td className="py-2 text-right">{subject.grade ?? "—"}</td>
                   {canRequestRecheck && (
-                    <td className="py-1 text-right print:hidden">
+                    <td className="py-2 text-right print:hidden">
                       {recheck ? (
                         <span className="text-muted-foreground text-xs">
                           {RECHECK_STATUS_LABEL[recheck.status] ?? recheck.status}
@@ -103,22 +104,34 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
             })}
           </tbody>
           <tfoot>
-            <tr className="font-medium">
-              <td className="py-1">Total</td>
-              <td className="py-1 text-right">{result.total}</td>
-              <td className="py-1 text-right">{result.maxTotal}</td>
-              <td className="py-1 text-right">{result.grade}</td>
+            <tr className="border-t font-semibold">
+              <td className="py-2">Total</td>
+              <td className="py-2 text-right">{result.total}</td>
+              <td className="py-2 text-right">{result.maxTotal}</td>
+              <td className="py-2 text-right">{result.grade}</td>
               {canRequestRecheck && <td className="print:hidden" />}
             </tr>
           </tfoot>
         </table>
-
-        <div className="flex items-center justify-between text-sm">
-          <span>Percentage: {result.percentage}%</span>
-          <span>Attendance: {result.attendancePercentage}%</span>
         </div>
 
-        {remark && <p className="text-sm italic">{remark}</p>}
+        <dl className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-3 text-sm print:bg-transparent">
+          <div>
+            <dt className="text-muted-foreground">Percentage</dt>
+            <dd className="font-medium">{result.percentage}%</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Attendance</dt>
+            <dd className="font-medium">{result.attendancePercentage}%</dd>
+          </div>
+        </dl>
+
+        {remark && (
+          <div className="border-l-2 pl-3 text-sm">
+            <p className="text-xs font-medium text-muted-foreground">Teacher&apos;s remark</p>
+            <p className="italic">{remark}</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

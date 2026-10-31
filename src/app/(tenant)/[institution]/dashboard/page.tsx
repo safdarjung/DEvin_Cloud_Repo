@@ -1,14 +1,13 @@
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
-import { AttendanceChart } from "@/modules/core/components/dashboard/AttendanceChart";
-import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
-import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
-import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
-import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
+import { AdmissionsSection } from "@/modules/core/components/dashboard/AdmissionsSection";
+import { AttendanceSection } from "@/modules/core/components/dashboard/AttendanceSection";
+import { ExamsSection } from "@/modules/core/components/dashboard/ExamsSection";
+import { FinanceSection } from "@/modules/core/components/dashboard/FinanceSection";
 import { RecentActivity } from "@/modules/core/components/dashboard/RecentActivity";
+import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 
 // T-039 — principal dashboard (07 §2.2 `dashboard.view`; finance tiles need
@@ -33,132 +32,83 @@ export default async function DashboardPage({
   // role that can only get `forbidden` back from the route.
   const canGenerateBriefing = hasPermission(ctx, "ai.generate");
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+  const role = ctx.membership.role;
+  // RLS returns nothing without the module's read permission, so hide the
+  // section instead of showing a misleading "no data" state.
+  const canAttendance = hasPermission(ctx, "attendance.read");
+  const canEnquiries = hasPermission(ctx, "admissions.enquiry.read");
+  const canResults = hasPermission(ctx, "exam.result.read");
 
-      {canGenerateBriefing && (
-        <DailyBriefing
-          institutionSlug={institutionSlug}
-          attendancePercent={data.attendanceToday.percentage}
-          sectionsAtRiskCount={data.sectionsAtRisk.length}
-          openEnquiries={openEnquiries}
-          enrolledCount={enrolledCount}
-          collections={data.collections ? { collectedPaise: data.collections.collectedPaise, duePaise: data.collections.duePaise } : null}
-        />
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  const briefing = canGenerateBriefing && (
+    <DailyBriefing
+      key="briefing"
+      institutionSlug={institutionSlug}
+      attendancePercent={canAttendance ? data.attendanceToday.percentage : undefined}
+      sectionsAtRiskCount={canAttendance ? data.sectionsAtRisk.length : undefined}
+      openEnquiries={openEnquiries}
+      enrolledCount={enrolledCount}
+      collections={data.collections ? { collectedPaise: data.collections.collectedPaise, duePaise: data.collections.duePaise } : null}
+    />
+  );
+  const enquiryKpi = canEnquiries && (
+    <KpiTile key="enq" label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
+  );
+  const kpis = (
+    <div key="kpis" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {canAttendance && (
         <KpiTile
           label="Attendance today"
           value={`${data.attendanceToday.percentage}%`}
           sub={`${data.attendanceToday.totalInDenominator} students marked`}
           href={`${basePath}/attendance`}
         />
+      )}
+      {canAttendance && (
         <KpiTile
           label="Sections below threshold"
           value={String(data.sectionsAtRisk.length)}
           sub={data.sectionsAtRisk[0] ? `Lowest: ${data.sectionsAtRisk[0].label}` : "None today"}
           href={`${basePath}/attendance`}
         />
-        <KpiTile label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
-        {data.collections && (
-          <KpiTile
-            label="Collected this term"
-            value={formatINR(data.collections.collectedPaise)}
-            sub={`of ${formatINR(data.collections.duePaise)} due`}
-            href={`${basePath}/finance`}
-          />
-        )}
-      </div>
+      )}
+      {enquiryKpi}
+      {data.collections && (
+        <KpiTile
+          label="Collected this term"
+          value={formatINR(data.collections.collectedPaise)}
+          sub={`of ${formatINR(data.collections.duePaise)} due`}
+          href={`${basePath}/finance`}
+        />
+      )}
+    </div>
+  );
+  const attendance = (atRisk: boolean) => canAttendance && <AttendanceSection key="att" data={data} basePath={basePath} showAtRisk={atRisk} />;
+  const finance = (links: boolean) =>
+    data.collections ? <FinanceSection key="fin" collections={data.collections} basePath={basePath} showLinks={links} /> : null;
+  const admissions = canEnquiries && <AdmissionsSection key="adm" funnel={data.funnel} />;
+  const exams = (rechecks: boolean) => canResults && <ExamsSection key="exm" gradeDistribution={data.gradeDistribution} basePath={basePath} showRechecks={rechecks} />;
+  const activity = data.recentActivity && <RecentActivity key="act" entries={data.recentActivity} />;
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Attendance today</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
-          </CardContent>
-        </Card>
+  // Ordering only: every section reads the same permission-gated DTO.
+  let sections;
+  switch (role) {
+    case "admissions":
+      sections = [briefing, enquiryKpi, admissions, attendance(false), exams(false)];
+      break;
+    case "accountant":
+      sections = [finance(true), attendance(false)];
+      break;
+    case "exam_controller":
+      sections = [exams(true), attendance(false)];
+      break;
+    default:
+      sections = [briefing, kpis, attendance(true), finance(false), admissions, exams(false), activity];
+  }
 
-        {data.collections ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Fee collection this term</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CollectionsChart collectedPaise={data.collections.collectedPaise} duePaise={data.collections.duePaise} />
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Admissions funnel</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FunnelChart funnel={data.funnel} />
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {data.collections && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Admissions funnel</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FunnelChart funnel={data.funnel} />
-            </CardContent>
-          </Card>
-        )}
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Exam grade distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.gradeDistribution ? (
-              <>
-                <p className="text-muted-foreground mb-2 text-sm">
-                  {data.gradeDistribution.examName} — {data.gradeDistribution.total} results
-                </p>
-                <GradeDistributionChart distribution={data.gradeDistribution.distribution} />
-              </>
-            ) : (
-              <p className="text-muted-foreground text-sm">No published exam yet.</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Sections below threshold today</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {data.sectionsAtRisk.length === 0 ? (
-              <p className="text-muted-foreground text-sm">Every section is above the critical threshold.</p>
-            ) : (
-              <ul className="space-y-1 text-sm">
-                {data.sectionsAtRisk.map((section) => (
-                  <li key={section.classSectionId} className="flex justify-between gap-2 border-border border-b py-1 last:border-0">
-                    <Link href={`${basePath}/attendance/${section.classSectionId}`} className="hover:underline">
-                      {section.label}
-                    </Link>
-                    <span className="font-medium">{section.percentage}%</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        {data.recentActivity && <RecentActivity entries={data.recentActivity} />}
-      </div>
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Dashboard" description={`Today at ${ctx.institution.name}`} />
+      {sections}
     </div>
   );
 }

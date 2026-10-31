@@ -1,10 +1,13 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/actions/result";
 import { createAssignment, updateAssignment } from "@/modules/academics/assignments.actions";
 import type { AssignmentDetail, SectionOption, SubjectOption } from "@/modules/academics/assignments.queries";
@@ -120,11 +123,11 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
   return (
     <form action={formAction} className="max-w-2xl space-y-4">
       {!isEditing && (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-sm font-medium" htmlFor="classSectionId">
+            <Label htmlFor="classSectionId">
               Section
-            </label>
+            </Label>
             <Select
               value={sectionId}
               onValueChange={(value) => {
@@ -146,9 +149,9 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="subjectId">
+            <Label htmlFor="subjectId">
               Subject
-            </label>
+            </Label>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger id="subjectId" className="w-full">
                 <SelectValue placeholder="Choose a subject" />
@@ -166,28 +169,28 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
       )}
 
       <div>
-        <label className="text-sm font-medium" htmlFor="title">
+        <Label htmlFor="title">
           Title
-        </label>
+        </Label>
         <Input id="title" name="title" required defaultValue={assignment?.title} maxLength={200} />
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="instructions">
+        <Label htmlFor="instructions">
           Instructions
-        </label>
-        <textarea
+        </Label>
+        <Textarea
           id="instructions"
           name="instructions"
           defaultValue={assignment?.instructions ?? ""}
-          className="min-h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="min-h-20"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="dueAt">
+        <Label htmlFor="dueAt">
           Due date
-        </label>
+        </Label>
         <Input
           id="dueAt"
           name="dueAt"
@@ -196,13 +199,14 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
         />
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium">Quiz questions (optional)</h2>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Quiz questions (optional)</CardTitle>
           <Button type="button" size="sm" variant="outline" onClick={() => setQuestions((qs) => [...qs, emptyQuestion()])}>
             Add question
           </Button>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
 
         {questions.map((question, index) => (
           <div key={index} className="space-y-2 rounded-lg border border-border p-3">
@@ -226,6 +230,7 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
               <div key={optionIndex} className="flex items-center gap-2">
                 <input
                   type="radio"
+                  className="size-4 accent-primary"
                   name={`correct-${index}`}
                   aria-label={`Option ${optionIndex + 1} is correct`}
                   checked={option !== "" && option === question.answer}
@@ -245,7 +250,8 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
             />
           </div>
         ))}
-      </div>
+        </CardContent>
+      </Card>
 
       {state && !state.ok && (
         <p role="alert" className="text-destructive text-sm">

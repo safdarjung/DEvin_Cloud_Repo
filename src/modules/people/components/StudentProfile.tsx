@@ -3,13 +3,17 @@
 // header/guardians/invoices pieces. Report cards (exams) are omitted —
 // T-019's ReportCard component doesn't exist in this tree yet.
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState } from "@/components/states";
 import { LimitedBadge } from "@/components/honesty";
 import type { TenantContext } from "@/lib/auth/types";
 import { StudentAttendanceSummary } from "@/modules/attendance/components/StudentAttendanceSummary";
 import type { InvoiceSummary } from "@/modules/finance/queries";
 import { GuardiansCard } from "@/modules/people/components/GuardiansCard";
 import { StudentProfileHeader } from "@/modules/people/components/StudentProfileHeader";
+import { inr } from "@/lib/format";
+import { invoiceStatusVariant } from "@/modules/finance/format";
 import type { StudentProfile as StudentProfileData } from "@/modules/people/queries";
 
 interface StudentProfileProps {
@@ -24,7 +28,7 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
 
   return (
     <div className="space-y-4">
-      <StudentProfileHeader student={student} />
+      <StudentProfileHeader student={student} institutionSlug={ctx.institution.slug} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <GuardiansCard guardians={student.guardians} />
@@ -33,7 +37,7 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-medium">Invoices</CardTitle>
+          <CardTitle>Invoices</CardTitle>
           {invoices.length > 0 && (
             <div className="flex items-center gap-2">
               <LimitedBadge />
@@ -43,7 +47,7 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No invoices yet.</p>
+            <EmptyState title="No invoices yet" />
           ) : (
             <Table>
               <TableHeader>
@@ -51,18 +55,20 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
                   <TableHead>Invoice</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead>Due on</TableHead>
+                  <TableHead className="hidden sm:table-cell">Paid</TableHead>
+                  <TableHead className="hidden sm:table-cell">Due on</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invoices.map((invoice) => (
                   <TableRow key={invoice.id}>
                     <TableCell>{invoice.invoiceNo}</TableCell>
-                    <TableCell>{invoice.status}</TableCell>
-                    <TableCell>{invoice.total.toFixed(2)}</TableCell>
-                    <TableCell>{invoice.paidTotal.toFixed(2)}</TableCell>
-                    <TableCell>{invoice.dueOn ?? "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={invoiceStatusVariant(invoice.status)}>{invoice.status.replace("_", " ")}</Badge>
+                    </TableCell>
+                    <TableCell>{inr(invoice.total)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

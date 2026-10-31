@@ -20,11 +20,9 @@ export async function StudentAttendanceSummary({ ctx, studentId, termId, student
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between text-sm font-medium">
-          <span>{studentName ? `${studentName} — Attendance` : "Attendance"}</span>
-          {(isCritical || isWarn) && <Badge variant={isCritical ? "destructive" : "secondary"}>{isCritical ? "Critical" : "Low"}</Badge>}
-        </CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>{studentName ? `${studentName} — Attendance` : "Attendance"}</CardTitle>
+        {(isCritical || isWarn) && <Badge variant={isCritical ? "destructive" : "warning"}>{isCritical ? "Critical" : "Low"}</Badge>}
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-semibold">{summary.percentage.toFixed(2)}%</p>

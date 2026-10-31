@@ -4,9 +4,9 @@ import type { CalloutBlock } from "@/modules/ai/blocks/schemas";
 // Review finding (HIGH): tone must not be color-only — each tone also
 // gets its own icon, not just a different border/background color.
 const TONE_CLASSES: Record<CalloutBlock["tone"], string> = {
-  info: "border-blue-400 bg-blue-50 text-blue-900 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-100",
-  tip: "border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100",
-  warning: "border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100",
+  info: "border-info/40 bg-info/10 text-foreground",
+  tip: "border-success/40 bg-success/10 text-foreground",
+  warning: "border-warning/40 bg-warning/10 text-foreground",
 };
 
 const TONE_ICONS: Record<CalloutBlock["tone"], typeof InfoIcon> = {

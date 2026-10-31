@@ -21,7 +21,7 @@ Every authenticated page runs inside a verified institution context with a role-
 ## Spec sections to read (only these)
 - `04-architecture.md §4` (tenant resolution steps 1–4, `cache()`), `§2` (page thinness rule).
 - `07-security-and-ai-governance.md §1` T1, T4; `§2` (which roles see which nav areas).
-- `09-twenty-day-plan.md §4` (nav conflict zone: `src/lib/nav.ts` data-driven).
+- `../09-twenty-day-plan.md §4` (nav conflict zone: `src/lib/nav.ts` data-driven).
 - `12-decision-log.md` D5, D6.
 
 ## Files to inspect first

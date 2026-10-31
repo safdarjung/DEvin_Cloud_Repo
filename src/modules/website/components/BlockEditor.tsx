@@ -9,7 +9,9 @@
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/actions/result";
 import { BlockSchema, type Block } from "@/modules/website/blocks";
@@ -100,7 +102,7 @@ function HeroFields({ block, onChange }: FieldProps<Extract<Block, { type: "hero
         value={block.imageUrl ?? ""}
         onChange={(e) => onChange({ ...block, imageUrl: e.target.value || undefined })}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Input
           placeholder="Button label (optional)"
           value={block.cta?.label ?? ""}
@@ -125,14 +127,14 @@ function HeroFields({ block, onChange }: FieldProps<Extract<Block, { type: "hero
 function RichTextFields({ block, onChange }: FieldProps<Extract<Block, { type: "rich_text" }>>) {
   const [draft, setDraft] = useState(() => richTextToDraft(block));
   return (
-    <textarea
+    <Textarea
       value={draft}
       onChange={(e) => {
         setDraft(e.target.value);
         onChange(draftToRichText(e.target.value));
       }}
       placeholder="Paragraph text. Leave a blank line between paragraphs."
-      className="min-h-28 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      className="min-h-28"
     />
   );
 }
@@ -160,7 +162,7 @@ function StatsFields({ block, onChange }: FieldProps<Extract<Block, { type: "sta
         onChange={(e) => onChange({ ...block, heading: e.target.value || undefined })}
       />
       {block.items.map((item, i) => (
-        <div key={i} className="flex items-center gap-2">
+        <div key={i} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
           <Input
             placeholder="Label"
             value={item.label}
@@ -250,7 +252,7 @@ function ContactFields({ block, onChange }: FieldProps<Extract<Block, { type: "c
         value={block.address ?? ""}
         onChange={(e) => onChange({ ...block, address: e.target.value || undefined })}
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <Input
           placeholder="Phone (optional)"
           value={block.phone ?? ""}
@@ -342,9 +344,11 @@ export function BlockEditor({ institutionSlug, pageId, initialBlocks }: BlockEdi
   return (
     <div className="space-y-4">
       {blocks.map((block, index) => (
-        <div key={index} className="space-y-2 rounded-lg border p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium capitalize">{block.type.replace("_", " ")}</span>
+        <div key={index} className="space-y-3 rounded-xl border bg-card p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Badge variant="secondary" className="capitalize">
+              {block.type.replace("_", " ")}
+            </Badge>
             <div className="flex gap-1">
               <Button type="button" variant="outline" size="sm" onClick={() => moveBlock(index, -1)} disabled={index === 0}>
                 Up
@@ -365,16 +369,16 @@ export function BlockEditor({ institutionSlug, pageId, initialBlocks }: BlockEdi
           </div>
           <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
           {errors[index] && (
-            <p role="alert" className="text-destructive text-xs">
+            <p role="alert" className="text-sm text-destructive">
               {errors[index]}
             </p>
           )}
         </div>
       ))}
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Select value={newType} onValueChange={(v) => setNewType(v as BlockType)}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -390,7 +394,7 @@ export function BlockEditor({ institutionSlug, pageId, initialBlocks }: BlockEdi
         </Button>
       </div>
 
-      <form action={formAction} className="flex items-center gap-3 border-t pt-4">
+      <form action={formAction} className="flex flex-wrap items-center gap-3 border-t pt-4">
         <Button type="submit" disabled={pending || hasErrors}>
           {pending ? "Saving…" : "Save as new version"}
         </Button>

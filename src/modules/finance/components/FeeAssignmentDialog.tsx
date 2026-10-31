@@ -4,6 +4,7 @@
 // `assignFeeStructure` is the real boundary (validates every id and that a
 // concession's head matches a component on the structure); this dialog
 // only offers the control.
+import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,22 +86,22 @@ export function FeeAssignmentDialog({
       <DialogTrigger asChild>
         <Button variant="outline">Assign fee structure</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Assign fee structure</DialogTitle>
           <DialogDescription>Concessions require a reason and are recorded with your approval.</DialogDescription>
         </DialogHeader>
         <form action={formAction} className="space-y-3">
           <div>
-            <label className="text-sm font-medium" htmlFor="studentId">
+            <Label className="mb-1 block" htmlFor="studentId">
               Student ID
-            </label>
+            </Label>
             <Input id="studentId" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="uuid" required />
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="feeStructureId">
+            <Label className="mb-1 block" htmlFor="feeStructureId">
               Fee structure
-            </label>
+            </Label>
             <Select value={feeStructureId} onValueChange={setFeeStructureId}>
               <SelectTrigger id="feeStructureId" className="w-full">
                 <SelectValue />
@@ -118,9 +119,9 @@ export function FeeAssignmentDialog({
           <div className="space-y-2">
             <p className="text-sm font-medium">Concessions</p>
             {concessions.map((c, i) => (
-              <div key={i} className="grid gap-2 rounded border border-border p-2 sm:grid-cols-2">
+              <div key={i} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-2">
                 <Select value={c.kind} onValueChange={(v) => updateConcession(i, { kind: v })}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Concession kind">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -132,7 +133,7 @@ export function FeeAssignmentDialog({
                   </SelectContent>
                 </Select>
                 <Select value={c.head} onValueChange={(v) => updateConcession(i, { head: v })}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Fee head">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -144,7 +145,7 @@ export function FeeAssignmentDialog({
                   </SelectContent>
                 </Select>
                 <Select value={c.mode} onValueChange={(v) => updateConcession(i, { mode: v as "percent" | "amount" })}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full" aria-label="Concession mode">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -153,6 +154,7 @@ export function FeeAssignmentDialog({
                   </SelectContent>
                 </Select>
                 <Input
+                  aria-label="Concession value"
                   type="number"
                   min="0"
                   step="0.01"
@@ -160,6 +162,7 @@ export function FeeAssignmentDialog({
                   onChange={(e) => updateConcession(i, { value: e.target.value })}
                 />
                 <Input
+                  aria-label="Concession reason"
                   className="sm:col-span-2"
                   placeholder="Reason (required)"
                   value={c.reason}

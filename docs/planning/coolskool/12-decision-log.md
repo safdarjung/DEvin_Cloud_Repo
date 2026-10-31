@@ -16,7 +16,7 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 - **Decision:** pnpm 11, no workspaces.
 - **Options:** npm; yarn; pnpm.
 - **Choice:** pnpm (installed, fast, strict peer resolution exposes AI SDK/Zod mismatches early).
-- **Revisit:** never in this phase. **Evidence:** `02 §2`.
+- **Revisit:** never in this phase. **Evidence:** `01 §10`.
 
 ### D3 — Supabase Postgres, SQL migrations, supabase-js with generated types, no ORM
 - **Context:** RLS is the security backbone; every query must run as the user.
@@ -28,7 +28,7 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 ### D4 — Single database, `institution_id` everywhere, RLS via `security definer` helpers on `memberships`
 - **Options:** (a) custom JWT claims via the access-token hook; (b) schema-per-tenant; (c) helper functions reading `memberships`.
 - **Choice:** (c), helpers in non-exposed `app` schema with `set search_path = ''` and `(select auth.uid())`. Trade-off: one indexed lookup per policy evaluation; claims would be faster but refresh only on token reissue and complicate multi-institution users.
-- **Revisit:** policy evaluation > 5 ms p95 at demo scale (measure Day 15) → consider claims for role only.
+- **Revisit:** policy evaluation > 5 ms p95 at demo scale (measure) → consider claims for role only.
 - **Evidence:** Supabase RLS and custom-claims guidance (§2).
 
 ### D5 — Path-based tenant routing, public site at `/s/[slug]`
@@ -67,7 +67,7 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 ### D11 — In-app notifications real; SMS/email simulated and labeled
 - **Options:** integrate a free SMS trial; simulate.
 - **Choice:** simulate behind one `Channel` interface, visible message log with badge. Trade-off: no real delivery in the demo (stated on screen).
-- **Revisit:** DLT-registered SMS provider key. **Evidence:** `02 §4`.
+- **Revisit:** DLT-registered SMS provider key. **Evidence:** `01 §10`.
 
 ### D12 — Data-driven website with immutable page versions; enquiry via rate-limited SQL function
 - **Options:** static site generator; CMS integration; JSON blocks in Postgres.
@@ -101,7 +101,7 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 ### D18 — Demo on Vercel + hosted Supabase `ap-south-1`; dev on local Supabase; hybrid/on-prem documented only
 - **Options:** demo from the laptop; hosted.
 - **Choice:** hosted for reliability at the venue, laptop Ollama shown as the local-inference path; screen recording as a backup (`09 §8`).
-- **Revisit:** Phase 5. **Evidence:** `02 §3`.
+- **Revisit:** Phase 5. **Evidence:** `01 §10`.
 
 ### D19 — Deterministic seed and guarded dynamic demo reset
 - **Decision:** PRNG `mulberry32(20261028)`, UUID v5 ids, fixed 2026 dates, named demo entities (`05 §8.1`); `app.demo_reset` discovers tenant tables by the `institution_id` column and deletes in FK-topological order, refuses non-demo institutions, requires `DEMO_RESET_ALLOWED`.
@@ -243,6 +243,8 @@ Each ADR: **Decision** · **Context** · **Options** · **Choice and trade-offs*
 - **Method, for future sessions:** every live-test "bug" in this sweep was checked against either (a) a live reproduction outside the original test tool (a standalone Playwright script against the project's own cached Chromium binary, or a direct `supabase-js` call under the real role's RLS session), or (b) the actual framework/library source installed in `node_modules` — never accepted on the strength of an agent's narrative alone. Two genuinely new bugs survived that bar; four did not.
 - **Revisit:** none — every finding from this sweep is now either fixed-and-tested or refuted-with-evidence above.
 
+## 2. Phase 0 verified facts and installed versions
+
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.
 
 | Item | Fact | Source |
@@ -264,7 +266,7 @@ Context7 MCP was not available in this session; versions come from the npm regis
 | Vitest / Playwright | vitest 5.0.5 (Node ^22.12), `@vitejs/plugin-react` 6.1.2, `test.projects` (*unverified*); `@playwright/test` 1.64.1 | npm registry; nextjs.org testing/vitest |
 | Domain (CBSE private school) | Session Apr–Mar, two terms; grades Nursery–XII, Roman numerals; sections A–F, optimum 40; 9-point grading A1–E2, pass 33%; attendance 75% rule; fee heads and FY-prefixed gap-free receipts; admission funnel with no screening at entry level (RTE); guardian phone as identity; designations PGT/TGT/PRT; SMS templates | CBSE academic/affiliation documents, RTE Act, Haryana fee rules (public sources; defaults in `05 §4.1`) |
 
-Unverified at planning time: exact `gen types` flags; `test.projects` syntax; TS 7 + Next 16; VRAM estimates; dated Haiku id; hosted Supabase capacity in `ap-south-1` on Day 18.
+Still unverified: VRAM estimates; hosted Supabase capacity in `ap-south-1`.
 
 ### Installed versions (T-001, 2026-10-29)
 
