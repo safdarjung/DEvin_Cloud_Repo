@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { DEMO_ACCOUNT_EMAILS } from "@/lib/auth/demo-accounts";
 import type { Database } from "@/lib/db/types";
 
 // Session refresh only — never authorization. Server Actions can bypass
@@ -33,10 +34,22 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const { data } = await supabase.auth.getClaims();
+  let { data } = await supabase.auth.getClaims();
 
   const pathname = request.nextUrl.pathname;
   const firstSegment = pathname.split("/")[1] ?? "";
+
+  // Demo-only convenience, off unless DEMO_AUTO_LOGIN=true: a visitor with no
+  // session is signed in server-side as one allow-listed demo account (a real
+  // session, so RLS still applies). /login and /logout are skipped so the role
+  // picker still works and logging out sticks until the next visit elsewhere.
+  if (!data?.claims && process.env.DEMO_AUTO_LOGIN === "true" && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment)) {
+    const email = process.env.DEMO_AUTO_LOGIN_AS ?? "principal@demo.coolskool.test";
+    if (DEMO_ACCOUNT_EMAILS.includes(email)) {
+      await supabase.auth.signInWithPassword({ email, password: process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026" });
+      data = (await supabase.auth.getClaims()).data;
+    }
+  }
   const isTenantPath = pathname !== "/" && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment);
 
   if (isTenantPath && !data?.claims) {
