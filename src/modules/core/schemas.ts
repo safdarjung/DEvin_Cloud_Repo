@@ -2,6 +2,20 @@
 // security requirement: "Settings JSON validated by InstitutionSettingsSchema
 // before insert"). Lead-owned, like src/lib/auth/permissions.ts.
 import { z } from "zod";
+import { isoDate } from "@/lib/schemas/common";
+
+// M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
+// checks live in create_institution (SQL); this only validates shape.
+export const CreateInstitutionSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    slug: z.string().trim().min(3).max(40),
+    timezone: z.string().trim().min(1).optional(),
+    yearStart: isoDate.optional(),
+  })
+  .strict();
+
+export type CreateInstitutionInput = z.infer<typeof CreateInstitutionSchema>;
 
 const GradingBand = z
   .object({
