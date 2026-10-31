@@ -33,6 +33,11 @@ export default async function DashboardPage({
   const canGenerateBriefing = hasPermission(ctx, "ai.generate");
 
   const role = ctx.membership.role;
+  // RLS returns nothing without the module's read permission, so hide the
+  // section instead of showing a misleading "no data" state.
+  const canAttendance = hasPermission(ctx, "attendance.read");
+  const canEnquiries = hasPermission(ctx, "admissions.enquiry.read");
+  const canResults = hasPermission(ctx, "exam.result.read");
 
   const briefing = canGenerateBriefing && (
     <DailyBriefing
@@ -47,19 +52,25 @@ export default async function DashboardPage({
   );
   const kpis = (
     <div key="kpis" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <KpiTile
+      {canAttendance && (
+        <KpiTile
         label="Attendance today"
         value={`${data.attendanceToday.percentage}%`}
         sub={`${data.attendanceToday.totalInDenominator} students marked`}
         href={`${basePath}/attendance`}
-      />
-      <KpiTile
+        />
+      )}
+      {canAttendance && (
+        <KpiTile
         label="Sections below threshold"
         value={String(data.sectionsAtRisk.length)}
         sub={data.sectionsAtRisk[0] ? `Lowest: ${data.sectionsAtRisk[0].label}` : "None today"}
         href={`${basePath}/attendance`}
-      />
-      <KpiTile label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
+        />
+      )}
+      {canEnquiries && (
+        <KpiTile label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
+      )}
       {data.collections && (
         <KpiTile
           label="Collected this term"
@@ -70,14 +81,14 @@ export default async function DashboardPage({
       )}
     </div>
   );
-  const enquiryKpi = (
+  const enquiryKpi = canEnquiries && (
     <KpiTile key="enq" label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
   );
-  const attendance = (atRisk: boolean) => <AttendanceSection key="att" data={data} basePath={basePath} showAtRisk={atRisk} />;
+  const attendance = (atRisk: boolean) => canAttendance && <AttendanceSection key="att" data={data} basePath={basePath} showAtRisk={atRisk} />;
   const finance = (links: boolean) =>
     data.collections ? <FinanceSection key="fin" collections={data.collections} basePath={basePath} showLinks={links} /> : null;
-  const admissions = <AdmissionsSection key="adm" funnel={data.funnel} />;
-  const exams = (rechecks: boolean) => <ExamsSection key="exm" gradeDistribution={data.gradeDistribution} basePath={basePath} showRechecks={rechecks} />;
+  const admissions = canEnquiries && <AdmissionsSection key="adm" funnel={data.funnel} />;
+  const exams = (rechecks: boolean) => canResults && <ExamsSection key="exm" gradeDistribution={data.gradeDistribution} basePath={basePath} showRechecks={rechecks} />;
   const activity = <ActivitySection key="act" entries={data.recentActivity} />;
 
   // Ordering only: every section reads the same permission-gated DTO.

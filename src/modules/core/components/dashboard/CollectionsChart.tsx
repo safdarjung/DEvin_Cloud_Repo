@@ -1,7 +1,7 @@
 "use client";
 // T-039 — term collected vs due.
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from "recharts";
-import { ChartFrame, chartAxis, chartGrid, chartTooltip, chartValueLabel } from "@/components/chart";
+import { ChartFrame, chartAxis, formatINRCompact, chartGrid, chartTooltip, chartValueLabel } from "@/components/chart";
 
 interface CollectionsChartProps {
   collectedPaise: number;
@@ -30,7 +30,7 @@ export function CollectionsChart({ collectedPaise, duePaise }: CollectionsChartP
     >
       <BarChart data={data} layout="vertical" margin={{ left: 8, right: 96 }}>
         <CartesianGrid horizontal={false} {...chartGrid} />
-        <XAxis type="number" tickFormatter={(v: number) => formatINR(Math.round(v * 100))} {...chartAxis} />
+        <XAxis type="number" tickFormatter={formatINRCompact} {...chartAxis} />
         <YAxis type="category" dataKey="label" width={72} {...chartAxis} />
         <Tooltip formatter={(v) => formatINR(Math.round(Number(v) * 100))} {...chartTooltip} />
         <Bar dataKey="amount" radius={4}>

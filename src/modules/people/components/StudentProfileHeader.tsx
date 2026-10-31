@@ -1,21 +1,27 @@
 // T-028 — student profile header (pure rendering, server component).
+import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import type { StudentProfile } from "@/modules/people/queries";
 
-export function StudentProfileHeader({ student }: { student: StudentProfile }) {
+export function studentStatusVariant(status: string) {
+  return status === "active" ? "success" : status === "alumni" ? "info" : status === "withdrawn" ? "warning" : "outline";
+}
+
+export function StudentProfileHeader({ student, institutionSlug }: { student: StudentProfile; institutionSlug: string }) {
   const name = [student.firstName, student.lastName].filter(Boolean).join(" ");
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-2">
-      <div>
-        <h1 className="text-xl font-semibold">{name}</h1>
-        <p className="text-muted-foreground text-sm">
-          {student.admissionNo}
-          {student.enrolment ? ` · ${student.enrolment.gradeName}-${student.enrolment.sectionName}` : ""}
-          {student.enrolment?.rollNo ? ` · Roll ${student.enrolment.rollNo}` : ""}
-        </p>
-      </div>
-      <Badge variant={student.status === "active" ? "default" : "outline"}>{student.status}</Badge>
-    </div>
+    <PageHeader
+      title={name}
+      description={[
+        student.admissionNo,
+        student.enrolment && `${student.enrolment.gradeName}-${student.enrolment.sectionName}`,
+        student.enrolment?.rollNo && `Roll ${student.enrolment.rollNo}`,
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+      back={{ href: `/${institutionSlug}/students`, label: "Students" }}
+      actions={<Badge variant={studentStatusVariant(student.status)}>{student.status}</Badge>}
+    />
   );
 }

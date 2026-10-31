@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState, ErrorState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { studentStatusVariant } from "@/modules/people/components/StudentProfileHeader";
 import { listStudents } from "@/modules/people/queries";
 
 // T-028 — 07 §2.2 student.read is granted to teacher/student/guardian
@@ -43,7 +48,7 @@ export default async function StudentsPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Students</h1>
+      <PageHeader title="Students" description={`${total} enrolled and past students`} />
 
       <form method="get" className="flex gap-2">
         <Input name="q" defaultValue={q ?? ""} placeholder="Search by name or admission no (e.g. ADM/2026/00001)" className="max-w-sm" />
@@ -52,39 +57,42 @@ export default async function StudentsPage({
         </Button>
       </form>
 
-      {loadError && <p className="text-destructive text-sm">{loadError}</p>}
+      {loadError && <ErrorState title="Could not load students" description={loadError} />}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Admission no</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Grade-Section</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {students.map((s) => (
-            <TableRow key={s.id}>
-              <TableCell>
-                <Link className="underline" href={`/${institutionSlug}/students/${s.id}`}>
-                  {s.admissionNo}
-                </Link>
-              </TableCell>
-              <TableCell>{[s.firstName, s.lastName].filter(Boolean).join(" ")}</TableCell>
-              <TableCell>{s.gradeName ? `${s.gradeName}-${s.sectionName}` : "—"}</TableCell>
-              <TableCell>{s.status}</TableCell>
-            </TableRow>
-          ))}
-          {students.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={4} className="text-muted-foreground text-center">
-                No students found.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      {!loadError && students.length === 0 ? (
+        <EmptyState title="No students found" description={q ? "Try a different name or admission number." : "Students appear here once admitted."} />
+      ) : (
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Admission no</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Grade-Section</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell>
+                      <Link className="underline" href={`/${institutionSlug}/students/${s.id}`}>
+                        {s.admissionNo}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{[s.firstName, s.lastName].filter(Boolean).join(" ")}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{s.gradeName ? `${s.gradeName}-${s.sectionName}` : "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={studentStatusVariant(s.status)}>{s.status}</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">

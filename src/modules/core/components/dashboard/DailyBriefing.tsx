@@ -92,6 +92,11 @@ export function DailyBriefing({
 
   return (
     <div className="space-y-2 rounded-lg border border-border p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="font-medium text-sm">AI daily briefing</h2>
+        <LimitedBadge />
+      </div>
+      <p className="text-muted-foreground text-sm">A short plain-language summary of today&apos;s attendance, admissions and fees. A suggestion only; the numbers below are the source of truth.</p>
       <Button type="button" variant="outline" size="sm" onClick={handleSummarize} disabled={pending}>
         {pending ? "Summarizing…" : "Summarize today"}
       </Button>

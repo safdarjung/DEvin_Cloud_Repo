@@ -9,6 +9,17 @@ import { EmptyState } from "@/components/states";
 
 export const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"] as const;
 
+/** Compact INR for axis ticks only: 13500000 -> "₹1.35 Cr", 4500000 -> "₹45 L", 12500 -> "₹12.5K". Input is rupees. */
+export function formatINRCompact(rupees: number): string {
+  const abs = Math.abs(rupees);
+  const sign = rupees < 0 ? "-" : "";
+  const fmt = (n: number) => String(Math.round(n * 100) / 100);
+  if (abs >= 1e7) return `${sign}₹${fmt(abs / 1e7)} Cr`;
+  if (abs >= 1e5) return `${sign}₹${fmt(abs / 1e5)} L`;
+  if (abs >= 1e3) return `${sign}₹${fmt(abs / 1e3)}K`;
+  return `${sign}₹${fmt(abs)}`;
+}
+
 export const chartAxis = {
   stroke: "var(--border)",
   tickLine: false,
