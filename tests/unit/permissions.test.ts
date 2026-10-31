@@ -59,6 +59,7 @@ const MATRIX: Row[] = [
   ["notification.read", true, true, true, true, true, true, true, true, true],
   ["notification.log.read", true, true, true, true, false, false, false, false, false],
   ["job.manage", true, true, true, false, false, false, false, false, false],
+  ["data.import", true, true, true, false, false, false, false, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
@@ -81,5 +82,10 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
 
   it("covers every documented role and no extra roles", () => {
     expect(Object.keys(ROLE_PERMISSIONS).sort()).toEqual([...ROLE_ORDER].sort());
+  });
+
+  it("data.import is held by exactly owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("data.import"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
   });
 });

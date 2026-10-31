@@ -54,7 +54,8 @@ export type Permission =
   | "website.publish"
   | "notification.read"
   | "notification.log.read"
-  | "job.manage";
+  | "job.manage"
+  | "data.import";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -95,6 +96,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "notification.log.read",
     "job.manage",
+    "data.import",
   ],
   principal: [
     "institution.settings.manage",
@@ -134,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "notification.log.read",
     "job.manage",
+    "data.import",
   ],
   admin: [
     "institution.settings.manage",
@@ -164,6 +167,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "notification.log.read",
     "job.manage",
+    "data.import",
   ],
   admissions: [
     "dashboard.view",

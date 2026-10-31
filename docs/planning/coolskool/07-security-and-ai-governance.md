@@ -79,6 +79,7 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | notification.read (own) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | notification.log.read | ✓ | ✓ | ✓ | ✓ | | | | | |
 | job.manage | ✓ | ✓ | ✓ | | | | | | |
+| data.import | ✓ | ✓ | ✓ | | | | | | |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 
