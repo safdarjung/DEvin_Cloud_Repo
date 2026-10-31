@@ -253,6 +253,12 @@ export type InviteMemberInput = z.infer<typeof InviteMemberSchema>;
 export const RevokeInvitationSchema = z.object({ invitationId: uuid }).strict();
 export type RevokeInvitationInput = z.infer<typeof RevokeInvitationSchema>;
 
+// M03-T6 — POST /api/v1/invitations/accept body. accept_invitation (0079)
+// hex-encodes 32 random bytes, so the token is always exactly 64 lowercase
+// hex characters; shape-only check, state checks live in the RPC.
+export const AcceptInvitationSchema = z.object({ token: z.string().regex(/^[0-9a-f]{64}$/) }).strict();
+export type AcceptInvitationInput = z.infer<typeof AcceptInvitationSchema>;
+
 // M03-T7 — core.member.setRole / setStatus. setRole only moves a membership
 // between staff-class roles (app.staff_roles(), 0001) — the link column
 // (staff_id) never changes; moving to/from student or guardian needs a
