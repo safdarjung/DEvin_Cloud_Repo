@@ -112,6 +112,7 @@ flowchart TD
 - `20261028000043`–`20261028000044` · T-042 fix round 2 · `0043` MED: `app.marks_guard` NULL-GUC bypass (`coalesce` on `app.allow_marks_revision`). `0044` LOW (lesson 5): `public.generate_invoice` null-uid skip only for the `service_role` claim, else `code:unauthenticated`.
 - `20261028000049` · GU-07 (`14-generative-ui-plan.md`, D32) · `study_items`/`study_preferences` tables + RLS (own-rows-only, class O) for the student study notebook; includes the table's own hosted Data API grants (DBT-39 — `0047` shipped without them, same gap 0045 fixed for everything through 0044).
 - `20261028000050` · GU-09 security review (M1) · `app.guard_study_item_cap()` BEFORE INSERT trigger on `study_items` — enforces the 200-item-per-student cap at the DB level (the app-level check in `student-study.actions.ts` couldn't stop a direct Data API insert, which RLS alone permits without a count limit).
+- `20261028000051` · Live bug hunt (2026-10-31) · `terms_select_member`: a second permissive SELECT policy granting any institution member (not just staff) read access to `terms` — `getCurrentTermId` needs it for the guardian/student portal's own attendance summary, which was silently showing "no term" for every guardian/student despite a real current term existing.
 
 ## 4. Review requirements
 

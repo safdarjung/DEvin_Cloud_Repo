@@ -7,13 +7,13 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 // per-role RLS client here.
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
-import { listMyChildren, getMyStudent } from "@/modules/people/queries";
+import { listMyChildren, getMyStudent, getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
 import { getStudentAttendanceSummary } from "@/modules/attendance/queries";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
 import { buildContext, closeActionsHelper } from "../helpers/actions";
-import { closeFactoriesHelper, createAcademicYear, createTerm } from "../helpers/factories";
+import { closeFactoriesHelper, createAcademicYear, createClassSection, createEnrolment, createGrade, createTerm } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
 import { setActingClient } from "../helpers/server-client-mock";
 
@@ -145,6 +145,39 @@ describe("portal tab queries stay RLS-scoped to the guardian's own child (C-54)"
     } finally {
       await instA.cleanup();
       await instB.cleanup();
+    }
+  });
+});
+
+describe("getCurrentTermId as guardian/student (bug fix: terms_select_member, 0051)", () => {
+  it("resolves the real current term for a guardian's own child, not null — terms_select (0003) is staff-only and silently hid every row", async () => {
+    const inst = await createTestInstitution("terms-member-read-guardian");
+    try {
+      const [guardian] = await sql`select guardian_id from public.memberships where institution_id = ${inst.institutionId} and role = 'guardian'`;
+      const child = await createStudent(inst.institutionId, "ADM-TERM-READ");
+      await linkGuardian(inst.institutionId, guardian.guardian_id, child, true);
+
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId);
+      await createEnrolment(inst.institutionId, child, sectionId, yearId);
+      // Spans today so getCurrentTermId's date-match branch (not just its
+      // data[0] fallback) is the one actually exercised.
+      const termId = await createTerm(inst.institutionId, yearId, { startsOn: "2026-10-01", endsOn: "2027-03-31" });
+
+      const ctx = await buildContext(inst, "guardian");
+      setActingClient(inst.clientAs("guardian"));
+      try {
+        const profile = await getStudentProfile(ctx, child);
+        expect(profile?.enrolment?.academicYearId).toBe(yearId);
+
+        const resolvedTermId = await getCurrentTermId(ctx, yearId);
+        expect(resolvedTermId).toBe(termId);
+      } finally {
+        setActingClient(null);
+      }
+    } finally {
+      await inst.cleanup();
     }
   });
 });

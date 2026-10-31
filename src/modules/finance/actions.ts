@@ -331,15 +331,24 @@ export async function runGenerateTermInvoices(
 
   const studentIds = Array.from(new Set((enrolments ?? []).map((e) => e.student_id)));
 
-  const { data: existing, error: existingError } = await supabase
-    .from("invoices")
-    .select("student_id")
-    .eq("institution_id", ctx.institution.id)
-    .eq("term_id", input.termId)
-    .neq("status", "cancelled")
-    .in("student_id", studentIds.length > 0 ? studentIds : [""]);
-  if (existingError) throwMapped(existingError);
-  const existingIds = new Set((existing ?? []).map((i) => i.student_id));
+  // Bug fix: a large grade's student_id list sent whole via `.in()` built a
+  // GET request URL long enough to hit the server's URI-length limit ("URI
+  // too long"), failing the whole run. Chunked so each request's query
+  // string stays well under any such limit, regardless of grade size.
+  const STUDENT_ID_CHUNK_SIZE = 150;
+  const existingIds = new Set<string>();
+  for (let i = 0; i < studentIds.length; i += STUDENT_ID_CHUNK_SIZE) {
+    const chunk = studentIds.slice(i, i + STUDENT_ID_CHUNK_SIZE);
+    const { data: existing, error: existingError } = await supabase
+      .from("invoices")
+      .select("student_id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("term_id", input.termId)
+      .neq("status", "cancelled")
+      .in("student_id", chunk);
+    if (existingError) throwMapped(existingError);
+    for (const row of existing ?? []) existingIds.add(row.student_id);
+  }
 
   const toProcess = studentIds.filter((id) => !existingIds.has(id));
   const alreadyExisted = studentIds.length - toProcess.length;

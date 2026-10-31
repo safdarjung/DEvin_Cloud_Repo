@@ -341,6 +341,38 @@ describe("AC3: generateTermInvoices generates exactly one invoice per active stu
     }
   });
 
+  it("Bug fix: a grade with more students than one .in() chunk doesn't fail with 'URI too long', and alreadyExisted counts correctly across the chunk boundary", async () => {
+    const inst = await createTestInstitution("finance-generate-term-large-grade");
+    try {
+      // 170 students: over the 150-per-chunk size in runGenerateTermInvoices,
+      // so the existing-invoice check spans two chunks.
+      const { gradeId, termId, studentIds } = await setupTermWithStudents(inst, 170);
+
+      // Pre-seed an invoice directly for every 3rd student (spanning both
+      // chunks), bypassing generate_invoice/fee structures entirely — this
+      // test is about the existing-invoice lookup, not invoice generation.
+      const alreadyInvoiced = studentIds.filter((_, i) => i % 3 === 0);
+      for (const studentId of alreadyInvoiced) {
+        await sql`
+          insert into public.invoices (institution_id, student_id, academic_year_id, term_id, invoice_no, total)
+          values (${inst.institutionId}::uuid, ${studentId}::uuid, ${
+            (await sql`select academic_year_id from public.terms where id = ${termId}::uuid`)[0].academic_year_id
+          }, ${termId}::uuid, ${`PRESEED/${studentId}`}, 100)
+        `;
+      }
+
+      const result = await callAs(inst, "accountant", generateTermInvoices, { termId, gradeId });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.data).toMatchObject({
+        studentCount: 170,
+        alreadyExisted: alreadyInvoiced.length,
+      });
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
   it("Fix round 1 (HIGH): a tiny budget stops early with remaining > 0, and a second call with the default budget finishes with no duplicates", async () => {
     const inst = await createTestInstitution("finance-generate-term-budget");
     try {
