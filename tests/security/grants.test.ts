@@ -33,6 +33,11 @@ afterAll(async () => {
 // RLS helpers: called from policies as the querying role, so `authenticated`
 // needs EXECUTE (07 §4 "RLS helpers"). Nothing else in `app` is callable by a user.
 const APP_AUTHENTICATED = [
+  // M04-T3 — commit_import_batch is security invoker, so its own app.*
+  // helpers (audit wrapper, batch-lock peek, guardian_students insert
+  // wrapper — see 20261028000066_imports.sql comments) need EXECUTE for
+  // `authenticated` the same as any RLS helper would.
+  "app.audit_import_commit",
   "app.current_user_id",
   "app.exam_roles",
   "app.exam_write_roles",
@@ -40,8 +45,10 @@ const APP_AUTHENTICATED = [
   "app.finance_write_roles",
   "app.guardian_student_ids",
   "app.has_role",
+  "app.import_insert_guardian_student",
   "app.is_member",
   "app.is_platform_admin",
+  "app.lock_import_batch",
   "app.member_institutions",
   "app.my_class_teacher_section_ids",
   "app.my_institution_ids",

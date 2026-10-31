@@ -929,6 +929,64 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"import_batches": {
+                  Row: {
+                    "committed_at": string | null,"committed_by": string | null,"committed_count": number,"created_at": string,"created_by": string | null,"entity_type": string,"error_count": number,"file_name": string,"id": string,"institution_id": string,"row_count": number,"skipped_count": number,"status": string,"updated_at": string,"valid_count": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "committed_at"?: string | null,"committed_by"?: string | null,"committed_count"?: number,"created_at"?: string,"created_by"?: string | null,"entity_type": string,"error_count"?: number,"file_name": string,"id"?: string,"institution_id": string,"row_count"?: number,"skipped_count"?: number,"status"?: string,"updated_at"?: string,"valid_count"?: number
+                  }
+                  Update: {
+                    "committed_at"?: string | null,"committed_by"?: string | null,"committed_count"?: number,"created_at"?: string,"created_by"?: string | null,"entity_type"?: string,"error_count"?: number,"file_name"?: string,"id"?: string,"institution_id"?: string,"row_count"?: number,"skipped_count"?: number,"status"?: string,"updated_at"?: string,"valid_count"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "import_batches_committed_by_fkey"
+      columns: ["committed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "import_batches_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "import_batches_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"import_rows": {
+                  Row: {
+                    "batch_id": string,"created_at": string,"data": NonNullable<Json>,"entity_id": string | null,"errors": Json | null,"id": string,"institution_id": string,"row_no": number,"status": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "batch_id": string,"created_at"?: string,"data": NonNullable<Json>,"entity_id"?: string | null,"errors"?: Json | null,"id"?: string,"institution_id": string,"row_no": number,"status"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "batch_id"?: string,"created_at"?: string,"data"?: NonNullable<Json>,"entity_id"?: string | null,"errors"?: Json | null,"id"?: string,"institution_id"?: string,"row_no"?: number,"status"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "import_rows_batch_id_fkey"
+      columns: ["batch_id"]
+isOneToOne: false
+      referencedRelation: "import_batches"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "import_rows_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"institution_sequences": {
                   Row: {
                     "created_at": string,"institution_id": string,"key": string,"next_value": number,"pattern": string | null,"updated_at": string
@@ -1776,6 +1834,9 @@ isOneToOne: true
                            },
 "close_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
+                           },
+"commit_import_batch":
+{ Args: { "p_batch_id": string }; Returns: Json
                            },
 "convert_enquiry":
 { Args: { "p_academic_year_id": string,"p_applicant": Json,"p_enquiry_id": string,"p_grade_id": string,"p_guardian": Json,"p_institution_id": string }; Returns: Json

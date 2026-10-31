@@ -428,4 +428,20 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     write: [],
     selectColumns: ["id", "institution_id", "email", "role"],
   },
+
+  // M04-T2 (20261028000066) — CSV import. Same narrow read/write set as
+  // invitations: `data.import` (M04-T1) is owner/principal/admin only, no
+  // admissions even though students/guardians/enrolments INSERT lets
+  // admissions write those tables directly — commit_import_batch (M04-T3)
+  // checks this same role set before it writes anything.
+  import_batches: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  import_rows: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
 };
