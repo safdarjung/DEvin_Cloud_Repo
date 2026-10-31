@@ -8,8 +8,9 @@ import { z } from "zod";
 export const DashboardBriefingRequestSchema = z
   .object({
     institutionSlug: z.string().trim().min(1).max(100),
-    attendancePercent: z.number().min(0).max(100),
-    sectionsAtRiskCount: z.number().int().min(0),
+    // Omitted when the caller lacks `attendance.read` (RLS would yield zeros).
+    attendancePercent: z.number().min(0).max(100).optional(),
+    sectionsAtRiskCount: z.number().int().min(0).optional(),
     openEnquiries: z.number().int().min(0),
     enrolledCount: z.number().int().min(0),
     // Institution-wide fee totals in paise; null when the caller lacks

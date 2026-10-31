@@ -20,8 +20,8 @@ interface DailyBriefingCollections {
 
 interface DailyBriefingProps {
   institutionSlug: string;
-  attendancePercent: number;
-  sectionsAtRiskCount: number;
+  attendancePercent?: number;
+  sectionsAtRiskCount?: number;
   openEnquiries: number;
   enrolledCount: number;
   collections: DailyBriefingCollections | null;

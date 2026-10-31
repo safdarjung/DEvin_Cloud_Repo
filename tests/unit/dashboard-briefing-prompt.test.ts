@@ -35,6 +35,14 @@ describe("buildDashboardBriefingPrompt", () => {
     expect(prompt.toLowerCase()).not.toContain("collection");
   });
 
+  test("omits attendance and at-risk lines when absent (never says 0%)", () => {
+    const rest = { ...base, attendancePercent: undefined, sectionsAtRiskCount: undefined };
+    const prompt = buildDashboardBriefingPrompt(rest);
+    expect(prompt.toLowerCase()).not.toContain("attendance");
+    expect(prompt).not.toContain("0%");
+    expect(prompt).toContain("14");
+  });
+
   test("never mentions a student or guardian by name (institution-wide aggregates only)", () => {
     const prompt = buildDashboardBriefingPrompt(base);
     expect(prompt).not.toMatch(/student|guardian/i);

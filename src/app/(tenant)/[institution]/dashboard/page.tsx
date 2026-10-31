@@ -2,11 +2,11 @@ import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
-import { ActivitySection } from "@/modules/core/components/dashboard/ActivitySection";
 import { AdmissionsSection } from "@/modules/core/components/dashboard/AdmissionsSection";
 import { AttendanceSection } from "@/modules/core/components/dashboard/AttendanceSection";
 import { ExamsSection } from "@/modules/core/components/dashboard/ExamsSection";
 import { FinanceSection } from "@/modules/core/components/dashboard/FinanceSection";
+import { RecentActivity } from "@/modules/core/components/dashboard/RecentActivity";
 import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 
@@ -43,34 +43,35 @@ export default async function DashboardPage({
     <DailyBriefing
       key="briefing"
       institutionSlug={institutionSlug}
-      attendancePercent={data.attendanceToday.percentage}
-      sectionsAtRiskCount={data.sectionsAtRisk.length}
+      attendancePercent={canAttendance ? data.attendanceToday.percentage : undefined}
+      sectionsAtRiskCount={canAttendance ? data.sectionsAtRisk.length : undefined}
       openEnquiries={openEnquiries}
       enrolledCount={enrolledCount}
       collections={data.collections ? { collectedPaise: data.collections.collectedPaise, duePaise: data.collections.duePaise } : null}
     />
   );
+  const enquiryKpi = canEnquiries && (
+    <KpiTile key="enq" label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
+  );
   const kpis = (
     <div key="kpis" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {canAttendance && (
         <KpiTile
-        label="Attendance today"
-        value={`${data.attendanceToday.percentage}%`}
-        sub={`${data.attendanceToday.totalInDenominator} students marked`}
-        href={`${basePath}/attendance`}
+          label="Attendance today"
+          value={`${data.attendanceToday.percentage}%`}
+          sub={`${data.attendanceToday.totalInDenominator} students marked`}
+          href={`${basePath}/attendance`}
         />
       )}
       {canAttendance && (
         <KpiTile
-        label="Sections below threshold"
-        value={String(data.sectionsAtRisk.length)}
-        sub={data.sectionsAtRisk[0] ? `Lowest: ${data.sectionsAtRisk[0].label}` : "None today"}
-        href={`${basePath}/attendance`}
+          label="Sections below threshold"
+          value={String(data.sectionsAtRisk.length)}
+          sub={data.sectionsAtRisk[0] ? `Lowest: ${data.sectionsAtRisk[0].label}` : "None today"}
+          href={`${basePath}/attendance`}
         />
       )}
-      {canEnquiries && (
-        <KpiTile label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
-      )}
+      {enquiryKpi}
       {data.collections && (
         <KpiTile
           label="Collected this term"
@@ -81,15 +82,12 @@ export default async function DashboardPage({
       )}
     </div>
   );
-  const enquiryKpi = canEnquiries && (
-    <KpiTile key="enq" label="Open enquiries" value={String(openEnquiries)} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
-  );
   const attendance = (atRisk: boolean) => canAttendance && <AttendanceSection key="att" data={data} basePath={basePath} showAtRisk={atRisk} />;
   const finance = (links: boolean) =>
     data.collections ? <FinanceSection key="fin" collections={data.collections} basePath={basePath} showLinks={links} /> : null;
   const admissions = canEnquiries && <AdmissionsSection key="adm" funnel={data.funnel} />;
   const exams = (rechecks: boolean) => canResults && <ExamsSection key="exm" gradeDistribution={data.gradeDistribution} basePath={basePath} showRechecks={rechecks} />;
-  const activity = <ActivitySection key="act" entries={data.recentActivity} />;
+  const activity = data.recentActivity && <RecentActivity key="act" entries={data.recentActivity} />;
 
   // Ordering only: every section reads the same permission-gated DTO.
   let sections;
