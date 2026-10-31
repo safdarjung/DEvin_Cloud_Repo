@@ -29,7 +29,7 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-CORE-07 | owner, platform admin | P2 | FB-MKT-04 | planned | F-BE-24+ | — | platform-admin write only | 2 |
 | FB-CORE-08 | owner, admin, platform admin | P2 | FB-TRUST-01, FB-TRUST-05 | planned | F-BE-24+ | — | audit_events append-only, never updated | 2 |
 | FB-CORE-09 | owner, platform admin | P2 | FB-COM-01 | planned | F-BE-24+ | — | billing data restricted sensitivity | 2 |
-| FB-CORE-10 | platform admin | P2 | — | planned | M01 (actions API), M02 | tests/db/api-actions-route.test.ts | stable API surface, no cross-module table reads | 2 |
+| FB-CORE-10 | platform admin | P2 | — | planned | M01 (actions API), M02 (query API) | tests/db/api-actions-route.test.ts, tests/db/api-query-route.test.ts | stable API surface, no cross-module table reads | 2 |
 | FB-CORE-11 | platform admin | P3 | FB-CORE-01..10 | planned | future pack | — | new pack inherits Core RLS pattern | 10 |
 | FB-CORE-12 | owner, platform admin | P3 | FB-MKT-01..06 | planned | future pack | — | install-status trigger gated | 10 |
 

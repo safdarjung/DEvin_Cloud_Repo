@@ -53,14 +53,10 @@ export const listCurriculumUnitsQuery = defineQuery({
   handler: (input, ctx) => listCurriculumUnits(ctx, { gradeId: input.gradeId, subjectId: input.subjectId }),
 });
 
-// permission: ai.generate — this fn has 3 call sites with 2 different
-// gates: ai/page.tsx:22 and assignments/units/[unitId]/page.tsx:18 (both
-// ai.generate), assignments/new/page.tsx:15 (assignment.manage). The
-// module default (assignment.read) and assignment.manage both fail here —
-// neither is held by the admissions role, which reaches this fn via
-// ai/page.tsx's ai.generate gate. ai.generate IS held by every role that
-// can reach any of the 3 call sites (owner/principal/admin/admissions/
-// teacher — assignment.manage's holders are a subset of these).
+// permission: academics.read — sections/subjects are academic structure,
+// which 07 §2.2 lets every role read; RLS filters rows and the fn itself
+// narrows a teacher to taught sections. Pages gate it on ai.generate or
+// assignment.manage, but an API read must not hang off an AI key (M02).
 export const listTeachableSectionsQuery = defineQuery({
   name: "academics.listTeachableSections",
   schema: z.object({}).strict(),
@@ -68,9 +64,7 @@ export const listTeachableSectionsQuery = defineQuery({
   handler: (_input, ctx) => listTeachableSections(ctx),
 });
 
-// permission: ai.generate — same 3 call sites and reasoning as
-// listTeachableSections above (assignments/new + assignments/units both
-// call this right after listTeachableSections).
+// permission: academics.read — same reasoning as listTeachableSections.
 export const listSectionSubjectsQuery = defineQuery({
   name: "academics.listSectionSubjects",
   schema: z.object({ classSectionId: uuid }).strict(),
