@@ -1,4 +1,8 @@
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { examStatusLabel, recheckStatusVariant } from "@/modules/exams/components/ResultsTable";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { RecheckDecisionForm } from "@/modules/exams/components/RecheckDecisionForm";
@@ -25,17 +29,21 @@ export default async function RecheckDecisionPage({
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {request.studentName} — {request.subjectName}
-        </h1>
-        <p className="text-muted-foreground text-sm">{request.examName}</p>
-      </div>
+      <PageHeader
+        title={`${request.studentName} — ${request.subjectName}`}
+        description={request.examName}
+        back={{ href: `/${institutionSlug}/exams/rechecks`, label: "Recheck requests" }}
+        actions={<Badge variant={recheckStatusVariant(request.status)}>{examStatusLabel(request.status)}</Badge>}
+      />
 
-      <div>
-        <h2 className="text-sm font-medium">Reason</h2>
-        <p className="text-sm">{request.reason}</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Reason</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm">{request.reason}</p>
+        </CardContent>
+      </Card>
 
       <RecheckDecisionForm institutionSlug={institutionSlug} request={request} />
 

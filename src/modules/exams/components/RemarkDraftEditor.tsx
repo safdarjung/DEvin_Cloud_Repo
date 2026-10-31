@@ -10,7 +10,9 @@
 // view only (CLAUDE.md rule 7): never rendered on the guardian/student
 // report card, which shows the saved remark plainly via ReportCard.tsx.
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 import { saveResultRemark } from "@/modules/exams/actions";
@@ -107,40 +109,59 @@ export function RemarkDraftEditor({ institutionSlug, resultId, studentName, init
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-border p-3 print:hidden">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Report-card remark</h3>
-        {provider && <ProviderBadge provider={provider} />}
-      </div>
-
-      {provider && <p className="text-muted-foreground text-xs">AI draft — review before saving ({model})</p>}
-
-      <Textarea
-        value={remark}
-        onChange={(e) => setRemark(e.target.value.slice(0, MAX_REMARK_LENGTH))}
-        maxLength={MAX_REMARK_LENGTH}
-        rows={3}
-        placeholder="One-sentence remark for the report card…"
-      />
-      <p className="text-muted-foreground text-xs">
-        {remark.length}/{MAX_REMARK_LENGTH}
-      </p>
-
-      {error && (
-        <p role="alert" className="text-destructive text-sm">
-          {error}
+    <Card className="print:hidden">
+      <CardHeader>
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            Report-card remark
+            <Badge variant="outline">Draft until saved</Badge>
+          </span>
+          {provider && <ProviderBadge provider={provider} />}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          AI can suggest a remark; nothing is shown on the report card until you review and save it.
         </p>
-      )}
-      {savedMessage && <p className="text-sm text-muted-foreground">{savedMessage}</p>}
+        {provider && <p className="text-xs text-muted-foreground">AI draft — review before saving ({model})</p>}
 
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" onClick={handleGenerate} disabled={generating}>
-          {generating ? "Drafting…" : "Draft a remark"}
-        </Button>
-        <Button type="button" onClick={handleSave} disabled={saving || remark.trim().length === 0 || remarkTooLong}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </div>
+        <Textarea
+          value={remark}
+          onChange={(e) => setRemark(e.target.value.slice(0, MAX_REMARK_LENGTH))}
+          maxLength={MAX_REMARK_LENGTH}
+          rows={3}
+          aria-label="Report-card remark"
+          placeholder="One-sentence remark for the report card…"
+        />
+        <p className="text-xs text-muted-foreground">
+          {remark.length}/{MAX_REMARK_LENGTH}
+        </p>
+
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {savedMessage && (
+          <p role="status" className="text-sm text-success">
+            {savedMessage}
+          </p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" className="h-10 sm:h-8" onClick={handleGenerate} disabled={generating}>
+            {generating ? "Drafting…" : "Draft a remark"}
+          </Button>
+          <Button
+            type="button"
+            className="h-10 sm:h-8"
+            onClick={handleSave}
+            disabled={saving || remark.trim().length === 0 || remarkTooLong}
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

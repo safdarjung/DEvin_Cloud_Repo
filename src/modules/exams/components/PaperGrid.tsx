@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import type { ActionResult } from "@/lib/actions/result";
 import { createExamPapers } from "@/modules/exams/actions";
@@ -71,9 +72,9 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
 
   return (
     <form action={formAction} className="space-y-4">
-      <div className="flex items-end gap-4">
+      <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label className="text-sm font-medium" htmlFor="maxMarks">
+          <label className="mb-1 block text-sm font-medium" htmlFor="maxMarks">
             Max marks
           </label>
           <Input
@@ -86,7 +87,7 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
           />
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="passPercentage">
+          <label className="mb-1 block text-sm font-medium" htmlFor="passPercentage">
             Pass %
           </label>
           <Input
@@ -99,16 +100,17 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
             className="w-28"
           />
         </div>
-        <p className="text-muted-foreground text-sm">Pass marks: {passMarks}</p>
+        <p className="pb-2 text-sm text-muted-foreground">Pass marks: {passMarks}</p>
       </div>
 
-      <div className="overflow-x-auto">
+      <Card>
+        <CardContent className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th className="p-2 text-left">Section</th>
+              <th className="sticky left-0 bg-card p-2 text-left">Section</th>
               {subjects.map((subject) => (
-                <th key={subject.id} className="p-2 text-left">
+                <th key={subject.id} className="p-2 text-left font-medium text-muted-foreground">
                   {subject.name}
                 </th>
               ))}
@@ -117,8 +119,8 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
           <tbody>
             {sections.map((section) => (
               <tr key={section.id} className="border-t border-border">
-                <td className="p-2">
-                  <button type="button" className="font-medium hover:underline" onClick={() => toggleRow(section.id)}>
+                <td className="sticky left-0 bg-card p-2">
+                  <button type="button" className="min-h-10 font-medium hover:underline sm:min-h-0" onClick={() => toggleRow(section.id)}>
                     {section.label}
                   </button>
                 </td>
@@ -126,6 +128,7 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
                   <td key={subject.id} className="p-2">
                     <input
                       type="checkbox"
+                      className="size-5 accent-primary"
                       aria-label={`${section.label} ${subject.name}`}
                       checked={selected.has(cellKey(section.id, subject.id))}
                       onChange={() => toggle(section.id, subject.id)}
@@ -136,7 +139,8 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
             ))}
           </tbody>
         </table>
-      </div>
+        </CardContent>
+      </Card>
 
       {state && !state.ok && (
         <p role="alert" className="text-destructive text-sm">

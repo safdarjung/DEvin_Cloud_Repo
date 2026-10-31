@@ -7,7 +7,10 @@
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/states";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ActionResult } from "@/lib/actions/result";
 import { decideRecheck, startRecheckReview } from "@/modules/exams/actions";
 import type { RecheckQueueRow } from "@/modules/exams/queries";
@@ -49,12 +52,13 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
   if (request.status === "submitted") {
     return (
       <form action={startAction} className="space-y-2">
+        <p className="text-sm text-muted-foreground">Start the review to record a decision on this request.</p>
         {startState && !startState.ok && (
           <p role="alert" className="text-destructive text-sm">
             {startState.error.message}
           </p>
         )}
-        <Button type="submit" disabled={startPending}>
+        <Button type="submit" className="h-10 sm:h-8" disabled={startPending}>
           {startPending ? "Starting…" : "Start review"}
         </Button>
       </form>
@@ -62,13 +66,19 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
   }
 
   if (request.status !== "under_review") {
-    return <p className="text-muted-foreground text-sm">This request has already been decided.</p>;
+    return <EmptyState title="Already decided" description="This request has already been decided; no further action is needed." />;
   }
 
   return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Decision</CardTitle>
+      </CardHeader>
+      <CardContent>
     <form action={decideAction} className="space-y-3">
       <fieldset className="flex gap-4">
-        <label className="flex items-center gap-1 text-sm">
+        <legend className="sr-only">Decision</legend>
+        <label className="flex min-h-10 items-center gap-2 text-sm sm:min-h-0">
           <input
             type="radio"
             name="decision"
@@ -77,7 +87,7 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
           />
           Approve
         </label>
-        <label className="flex items-center gap-1 text-sm">
+        <label className="flex min-h-10 items-center gap-2 text-sm sm:min-h-0">
           <input type="radio" name="decision" checked={decision === "reject"} onChange={() => setDecision("reject")} />
           Reject
         </label>
@@ -88,24 +98,20 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
           New marks (/{request.maxMarks})
           <Input
             type="number"
+            inputMode="decimal"
             min={0}
             max={request.maxMarks}
             step="0.01"
             value={newMarks}
             onChange={(e) => setNewMarks(e.target.value)}
-            className="mt-1 w-32"
+            className="mt-1 h-10 w-32 sm:h-8"
           />
         </label>
       )}
 
       <label className="block text-sm">
         Note
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          rows={3}
-          className="mt-1 w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        />
+        <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="mt-1" />
       </label>
 
       {decideState && !decideState.ok && (
@@ -114,9 +120,11 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
         </p>
       )}
 
-      <Button type="submit" disabled={decidePending || (decision === "approve" && newMarks.trim() === "")}>
+      <Button type="submit" className="h-10 sm:h-8" disabled={decidePending || (decision === "approve" && newMarks.trim() === "")}>
         {decidePending ? "Submitting…" : `Confirm ${decision}`}
       </Button>
     </form>
+      </CardContent>
+    </Card>
   );
 }

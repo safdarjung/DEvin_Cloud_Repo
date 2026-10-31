@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -45,9 +46,11 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
   }, [state, institutionSlug, router]);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-4">
+    <Card className="max-w-xl">
+      <CardContent>
+    <form action={formAction} className="space-y-4">
       <div>
-        <label className="text-sm font-medium" htmlFor="termId">
+        <label className="mb-1 block text-sm font-medium" htmlFor="termId">
           Term
         </label>
         <Select value={termId} onValueChange={setTermId}>
@@ -65,14 +68,14 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="name">
+        <label className="mb-1 block text-sm font-medium" htmlFor="name">
           Exam name
         </label>
         <Input id="name" name="name" required maxLength={200} placeholder="Unit Test 2" />
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="type">
+        <label className="mb-1 block text-sm font-medium" htmlFor="type">
           Type
         </label>
         <Select value={type} onValueChange={(value) => setType(value as typeof type)}>
@@ -91,7 +94,7 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
 
       {gradingScaleKeys.length > 1 && (
         <div>
-          <label className="text-sm font-medium" htmlFor="gradingScaleKey">
+          <label className="mb-1 block text-sm font-medium" htmlFor="gradingScaleKey">
             Grading scale
           </label>
           <Select value={gradingScaleKey} onValueChange={setGradingScaleKey}>
@@ -119,5 +122,7 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
         {pending ? "Creating…" : "Create exam"}
       </Button>
     </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { RecheckQueue } from "@/modules/exams/components/RecheckQueue";
@@ -20,7 +21,7 @@ export default async function RecheckQueuePage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Recheck requests</h1>
+      <PageHeader title="Recheck requests" description="Review requests from guardians and students." />
       <RecheckQueue institutionSlug={institutionSlug} rows={rows} />
     </div>
   );

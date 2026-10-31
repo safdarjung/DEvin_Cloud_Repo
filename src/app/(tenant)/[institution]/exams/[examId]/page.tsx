@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
@@ -30,19 +33,18 @@ export default async function ExamDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{exam.name}</h1>
-          <p className="text-muted-foreground text-sm">
-            {exam.type} · {exam.papers.length} paper{exam.papers.length === 1 ? "" : "s"}
-          </p>
-        </div>
-        {ctx.permissions.has("exam.result.read") && RESULTS_LINK_ROLES.has(ctx.membership.role) && (
-          <Link href={`/${institutionSlug}/exams/${exam.id}/results`} className="text-sm hover:underline">
-            Publish / View results
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title={exam.name}
+        description={`${exam.type} · ${exam.papers.length} paper${exam.papers.length === 1 ? "" : "s"}`}
+        back={{ href: `/${institutionSlug}/exams`, label: "Exams" }}
+        actions={
+          ctx.permissions.has("exam.result.read") && RESULTS_LINK_ROLES.has(ctx.membership.role) ? (
+            <Button asChild variant="outline">
+              <Link href={`/${institutionSlug}/exams/${exam.id}/results`}>Publish / View results</Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       <VerificationPanel
         institutionSlug={institutionSlug}
@@ -55,19 +57,23 @@ export default async function ExamDetailPage({
       {exam.papers.length === 0 ? (
         <PaperGridSection ctx={ctx} examId={exam.id} institutionSlug={institutionSlug} />
       ) : (
-        <div className="space-y-2">
-          <h2 className="text-sm font-medium">Papers</h2>
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {exam.papers.map((paper) => (
-              <li key={paper.id} className="flex items-center justify-between p-3">
-                <Link href={`/${institutionSlug}/exams/${exam.id}/papers/${paper.id}`} className="hover:underline">
-                  {paper.sectionLabel} · {paper.subjectName}
-                </Link>
-                <span className="text-muted-foreground text-sm">/{paper.maxMarks}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Papers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border">
+              {exam.papers.map((paper) => (
+                <li key={paper.id} className="flex items-center justify-between gap-3 py-3">
+                  <Link href={`/${institutionSlug}/exams/${exam.id}/papers/${paper.id}`} className="hover:underline">
+                    {paper.sectionLabel} · {paper.subjectName}
+                  </Link>
+                  <span className="text-sm text-muted-foreground">/{paper.maxMarks}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -87,8 +93,11 @@ async function PaperGridSection({
   const defaultPassPercentage = examsSettings.success ? examsSettings.data.pass_percentage : 33;
 
   return (
-    <div className="space-y-2">
-      <h2 className="text-sm font-medium">Add papers</h2>
+    <Card>
+      <CardHeader>
+        <CardTitle>Add papers</CardTitle>
+      </CardHeader>
+      <CardContent>
       <PaperGrid
         institutionSlug={institutionSlug}
         examId={examId}
@@ -97,6 +106,7 @@ async function PaperGridSection({
         defaultMaxMarks={80}
         defaultPassPercentage={defaultPassPercentage}
       />
-    </div>
+      </CardContent>
+    </Card>
   );
 }

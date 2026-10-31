@@ -4,6 +4,8 @@ import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { examStatusLabel, examStatusVariant } from "@/modules/exams/components/ResultsTable";
 import type { ActionResult } from "@/lib/actions/result";
 import { closeMarksEntry, openMarksEntry, reopenMarksEntry, verifyExam } from "@/modules/exams/actions";
 
@@ -31,7 +33,7 @@ function TransitionButton({
   disabled?: boolean;
 }) {
   return (
-    <Button type="submit" size="sm" variant="outline" disabled={pending || disabled}>
+    <Button type="submit" size="sm" variant="outline" className="h-10 sm:h-7" disabled={pending || disabled}>
       {pending ? `${label}…` : label}
     </Button>
   );
@@ -78,11 +80,14 @@ export function VerificationPanel({ institutionSlug, examId, examStatus, hasPape
     | undefined;
 
   return (
-    <div className="space-y-4 rounded-lg border border-border p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium">Verification</h2>
-        <Badge variant={examStatus === "published" ? "default" : "secondary"}>{examStatus}</Badge>
-      </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between gap-2">
+          Verification
+          <Badge variant={examStatusVariant(examStatus)}>{examStatusLabel(examStatus)}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
 
       <div className="flex flex-wrap gap-2">
         {examStatus === "draft" && (
@@ -130,6 +135,7 @@ export function VerificationPanel({ institutionSlug, examId, examStatus, hasPape
           )}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -2,8 +2,11 @@
 // server component; `listRecheckQueue` (RLS + exam.recheck.review on the
 // page) is the only gate on what reaches it.
 import Link from "next/link";
+import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
-import { isRecheckRequestOpen, type RecheckStatus } from "@/modules/exams/recheck-state";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { examStatusLabel, recheckStatusVariant } from "@/modules/exams/components/ResultsTable";
 import type { RecheckQueueRow } from "@/modules/exams/queries";
 
 interface RecheckQueueProps {
@@ -13,37 +16,41 @@ interface RecheckQueueProps {
 
 export function RecheckQueue({ institutionSlug, rows }: RecheckQueueProps) {
   if (rows.length === 0) {
-    return <p className="text-muted-foreground text-sm">No recheck requests.</p>;
+    return <EmptyState title="No recheck requests" description="Requests from guardians and students appear here." />;
   }
 
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-border text-left">
-          <th className="py-1 font-medium">Student</th>
-          <th className="py-1 font-medium">Exam</th>
-          <th className="py-1 font-medium">Subject</th>
-          <th className="py-1 font-medium">Status</th>
-          <th className="py-1 font-medium">Requested</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.id} className="border-b border-border/50">
-            <td className="py-1">
-              <Link className="underline" href={`/${institutionSlug}/exams/rechecks/${row.id}`}>
-                {row.studentName}
-              </Link>
-            </td>
-            <td className="py-1">{row.examName}</td>
-            <td className="py-1">{row.subjectName}</td>
-            <td className="py-1">
-              <Badge variant={isRecheckRequestOpen(row.status as RecheckStatus) ? "default" : "secondary"}>{row.status}</Badge>
-            </td>
-            <td className="py-1">{new Date(row.requestedAt).toLocaleDateString()}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <Card>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead className="hidden sm:table-cell">Exam</TableHead>
+              <TableHead className="hidden sm:table-cell">Subject</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden sm:table-cell">Requested</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell>
+                  <Link className="font-medium underline" href={`/${institutionSlug}/exams/rechecks/${row.id}`}>
+                    {row.studentName}
+                  </Link>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">{row.examName}</TableCell>
+                <TableCell className="hidden sm:table-cell">{row.subjectName}</TableCell>
+                <TableCell>
+                  <Badge variant={recheckStatusVariant(row.status)}>{examStatusLabel(row.status)}</Badge>
+                </TableCell>
+                <TableCell className="hidden sm:table-cell">{new Date(row.requestedAt).toLocaleDateString()}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

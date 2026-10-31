@@ -2,9 +2,13 @@
 
 import { useActionState, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/states";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/actions/result";
 import { enterMarks } from "@/modules/exams/actions";
+import { examStatusLabel } from "@/modules/exams/components/ResultsTable";
 import type { PaperMarks } from "@/modules/exams/queries";
 
 interface RowState {
@@ -64,52 +68,67 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
   );
 
   if (!canEdit) {
-    return <p className="text-muted-foreground text-sm">Marks entry is closed for this exam (status: {paper.examStatus}).</p>;
+    return (
+      <EmptyState
+        title="Marks entry is closed"
+        description={`This exam is ${examStatusLabel(paper.examStatus).toLowerCase()}, so marks can no longer be edited here.`}
+      />
+    );
   }
 
   return (
     <form action={formAction} className="space-y-4">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className="p-2 text-left">Roll</th>
-            <th className="p-2 text-left">Student</th>
-            <th className="p-2 text-left">Marks (/{paper.maxMarks})</th>
-            <th className="p-2 text-left">Absent</th>
-          </tr>
-        </thead>
-        <tbody>
-          {paper.students.map((student) => {
-            const row = rows[student.studentId];
-            return (
-              <tr key={student.studentId} className="border-t border-border">
-                <td className="p-2">{student.rollNo ?? "—"}</td>
-                <td className="p-2">{student.name}</td>
-                <td className="p-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={paper.maxMarks}
-                    step="0.01"
-                    value={row.marksObtained}
-                    disabled={row.isAbsent}
-                    onChange={(e) => updateRow(student.studentId, { marksObtained: e.target.value })}
-                    className="w-24"
-                  />
-                </td>
-                <td className="p-2">
-                  <input
-                    type="checkbox"
-                    aria-label={`${student.name} absent`}
-                    checked={row.isAbsent}
-                    onChange={(e) => updateRow(student.studentId, { isAbsent: e.target.checked, marksObtained: "" })}
-                  />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <Card>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="sticky left-0 z-10 bg-card">Student</TableHead>
+                <TableHead className="hidden sm:table-cell">Roll</TableHead>
+                <TableHead>Marks (/{paper.maxMarks})</TableHead>
+                <TableHead>Absent</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paper.students.map((student) => {
+                const row = rows[student.studentId];
+                return (
+                  <TableRow key={student.studentId}>
+                    <TableCell className="sticky left-0 z-10 bg-card font-medium">
+                      {student.name}
+                      <span className="block text-xs font-normal text-muted-foreground sm:hidden">Roll {student.rollNo ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{student.rollNo ?? "—"}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        min={0}
+                        max={paper.maxMarks}
+                        step="0.01"
+                        value={row.marksObtained}
+                        disabled={row.isAbsent}
+                        aria-label={`${student.name} marks`}
+                        onChange={(e) => updateRow(student.studentId, { marksObtained: e.target.value })}
+                        className="h-10 w-24 sm:h-8"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        aria-label={`${student.name} absent`}
+                        checked={row.isAbsent}
+                        onChange={(e) => updateRow(student.studentId, { isAbsent: e.target.checked, marksObtained: "" })}
+                        className="size-5 accent-primary"
+                      />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {state && !state.ok && (
         <p role="alert" className="text-destructive text-sm">
@@ -117,10 +136,10 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
         </p>
       )}
       {state?.ok && dirtyIds.length === 0 && (
-        <p className="text-sm text-muted-foreground">Saved — {state.data.entered} entered, {state.data.unchanged} unchanged.</p>
+        <p role="status" className="text-sm text-success">Saved — {state.data.entered} entered, {state.data.unchanged} unchanged.</p>
       )}
 
-      <Button type="submit" disabled={pending || dirtyIds.length === 0}>
+      <Button type="submit" className="h-10 sm:h-8" disabled={pending || dirtyIds.length === 0}>
         {pending ? "Saving…" : `Save ${dirtyIds.length || ""} change${dirtyIds.length === 1 ? "" : "s"}`}
       </Button>
     </form>

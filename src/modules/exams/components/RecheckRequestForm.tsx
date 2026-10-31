@@ -53,7 +53,7 @@ export function RecheckRequestForm({ institutionSlug, resultId, examPaperId, sub
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
+        <Button type="button" variant="outline" size="sm" className="h-10 sm:h-7">
           Request recheck
         </Button>
       </DialogTrigger>
