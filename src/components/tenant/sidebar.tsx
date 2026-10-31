@@ -68,7 +68,7 @@ function NavLinks({
             <motion.p
               initial={false}
               aria-hidden
-              className="absolute inset-x-3 bottom-1 truncate text-xs font-medium tracking-wide text-muted-foreground"
+              className="absolute inset-x-3 bottom-1 truncate text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
               {...labelFade(collapsed, reduce)}
             >
               {section.group}
@@ -93,10 +93,10 @@ function NavLinks({
                   aria-current={active ? "page" : undefined}
                   aria-label={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex min-h-10 items-center gap-3 overflow-hidden rounded-md px-3 text-sm font-medium transition-colors duration-(--duration-fast) ease-(--ease-out)",
+                    "flex min-h-10 items-center gap-3 overflow-hidden rounded-xl px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-(--ease-out)",
                     focusRing,
                     active
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      ? "bg-primary font-semibold text-primary-foreground shadow-[0_2px_8px_rgb(79_70_229/0.25)]"
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >

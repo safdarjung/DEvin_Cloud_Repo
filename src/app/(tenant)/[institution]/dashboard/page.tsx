@@ -1,16 +1,17 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, Banknote, CalendarCheck, CheckCircle2, GraduationCap, UserPlus } from "lucide-react";
+import { AlertTriangle, Banknote, BarChart3, CalendarCheck, CheckCircle2, ClipboardList, GraduationCap, MessageSquare, Store, UserPlus, Users } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/motion";
+import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
 import { ApprovalsWidget } from "@/components/widgets/approvals-widget";
+import { HomeActivity, HomeHero, HomeKpi, HomePerformance, HomePromo, HomeQuickActions, HomeSchedule, type ActivityItem, type HeroChip, type HomeQuickAction, type ScheduleItem } from "@/components/widgets/home-blocks";
+import { InsightCarousel, type CarouselInsight } from "@/components/widgets/insight-carousel";
 import { KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
 import { StaffAvailabilityWidget } from "@/components/widgets/staff-availability-widget";
-import { TrendWidget } from "@/components/widgets/trend-widget";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -21,16 +22,15 @@ import { CollectionsChart } from "@/modules/core/components/dashboard/Collection
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
-import { RecentActivity } from "@/modules/core/components/dashboard/RecentActivity";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { demoApprovals, demoAttendanceTrend, demoFixturesEnabled, demoInsights, demoStaffAvailability, type InsightRole } from "@/modules/core/demo/fixtures";
 import { listExams, listRecheckQueue } from "@/modules/exams/queries";
 import { CommandGrid, type GridCard } from "@/modules/fabric/components/command/command-grid";
 import { DailyBriefWidget } from "@/modules/fabric/components/command/daily-brief";
 import { ForecastCards } from "@/modules/fabric/components/command/forecast-cards";
-import { InsightPeek } from "@/modules/fabric/components/command/insight-peek";
 import { PriorityActionsWidget } from "@/modules/fabric/components/command/priority-actions";
 import { RiskIndicators } from "@/modules/fabric/components/command/risk-indicators";
+import { SEVERITY } from "@/modules/fabric/components/command/severity";
 import { startOfToday } from "@/modules/fabric/components/fabric-page";
 import { dailyBrief, forecastCards, priorityActions, riskIndicators } from "@/modules/fabric/demo/command";
 import { insights as fabricInsights } from "@/modules/fabric/demo/insights";
@@ -43,6 +43,7 @@ const TZ = "Asia/Kolkata";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" });
 const longDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const shortDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, day: "numeric", month: "short" });
+const dayLabel = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "short" });
 const eventDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 // 12-col desktop grid, 2-col tablet, 1-col phone. Pairs are 7/5 or 6/6.
@@ -50,6 +51,15 @@ const WIDE = "lg:col-span-7";
 const NARROW = "lg:col-span-5";
 const HALF = "lg:col-span-6";
 const FULL = "md:col-span-2 lg:col-span-12";
+
+/** "just now" / "5m ago" / "3h ago", else the short date. */
+function ago(iso: string, now: Date): string {
+  const mins = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 60_000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 24 * 60) return `${Math.round(mins / 60)}h ago`;
+  return shortDate.format(new Date(iso));
+}
 
 const value = <T,>(r: PromiseSettledResult<T | null>): T | null => (r.status === "fulfilled" ? r.value : null);
 const failed = (r: PromiseSettledResult<unknown>): boolean => r.status === "rejected";
@@ -68,47 +78,6 @@ interface Attention {
   label: string;
   href: string;
   tone: "warning" | "destructive" | "muted";
-}
-
-/** The page's signature: what a school leader should act on first, as links. */
-function NeedsAttention({ items }: { items: Attention[] }) {
-  return (
-    <section aria-labelledby="needs-attention" className={cn(FULL, "rounded-xl border bg-card px-4 py-2")}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <h2 id="needs-attention" className="shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          Needs attention
-        </h2>
-        {items.length === 0 ? (
-          <p className="inline-flex min-h-10 items-center gap-2 text-sm text-success">
-            <CheckCircle2 className="size-4" aria-hidden />
-            All clear. Nothing is waiting on you right now.
-          </p>
-        ) : (
-          <Stagger className="flex flex-wrap gap-2">
-            {items.map((i) => (
-              <StaggerItem key={i.key}>
-                <Link
-                  href={i.href}
-                  className={cn(
-                    "group/att inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-sm outline-none transition-[transform,background-color] duration-(--duration-fast) ease-(--ease-out) focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.97]",
-                    i.tone === "warning" && "border-warning/30 bg-warning/10 hover:bg-warning/15",
-                    i.tone === "destructive" && "border-destructive/30 bg-destructive/10 hover:bg-destructive/15",
-                    i.tone === "muted" && "bg-muted/50 text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {i.tone !== "muted" && (
-                    <span className={cn("font-semibold tabular-nums", i.tone === "warning" ? "text-warning" : "text-destructive")}>{i.count}</span>
-                  )}
-                  {i.label}
-                  <ArrowRight className="size-3.5 text-muted-foreground transition-transform duration-(--duration-fast) ease-(--ease-out) group-hover/att:translate-x-0.5" aria-hidden />
-                </Link>
-              </StaggerItem>
-            ))}
-          </Stagger>
-        )}
-      </div>
-    </section>
-  );
 }
 
 function Insights({ items, className }: { items: ReturnType<typeof demoInsights>; className?: string }) {
@@ -248,16 +217,6 @@ export default async function DashboardPage({
   );
   const actions = (className?: string) => <QuickActions actions={quickActions} className={className} />;
 
-  const attendanceKpi = canAttendance && (
-    <KpiTile
-      label="Attendance today"
-      value={`${data.attendanceToday.percentage}%`}
-      animateTo={data.attendanceToday.percentage}
-      format="percent"
-      sub={`${data.attendanceToday.totalInDenominator} students marked`}
-      href={`${basePath}/attendance`}
-    />
-  );
   const enquiryKpi = canEnquiries && (
     <KpiTile label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
   );
@@ -272,22 +231,6 @@ export default async function DashboardPage({
     />
   );
 
-  const attendanceTrend =
-    canAttendance &&
-    (demo ? (
-      <TrendWidget
-        title="Attendance, last 4 weeks"
-        description="School-wide daily attendance"
-        data={demoAttendanceTrend({ key: demoKey, days: 28, endDate: now })}
-        unit="percent"
-        target={90}
-        className={WIDE}
-      />
-    ) : (
-      <Widget title="Present vs absent today" action={{ href: `${basePath}/attendance`, label: "Attendance" }} className={WIDE}>
-        <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
-      </Widget>
-    ));
   const atRisk = canAttendance && (
     <ListWidget
       title="Sections below threshold today"
@@ -379,6 +322,7 @@ export default async function DashboardPage({
   // ---- per-role layouts ----------------------------------------------------
 
   let body: ReactNode;
+  let showHeader = true;
   if (role === "admissions") {
     const enquiryRows: ListRow[] = Object.values(value(enquiriesR) ?? {})
       .flat()
@@ -519,28 +463,79 @@ export default async function DashboardPage({
 
     // Fabric widgets run on deterministic demo fixtures, so they only exist for the demo tenant.
     const fOpts = { now: startOfToday(), institutionId: ctx.institution.id };
+    showHeader = false;
+
+    const trend = (key: string, base: number) => (demo ? demoAttendanceTrend({ key: `${demoKey}:${key}`, days: 24, endDate: now, base }).map((p) => p.value) : undefined);
+    const deltaOf = (s?: number[]) => (s && s.length > 1 ? ((s[s.length - 1] - s[0]) / s[0]) * 100 : undefined);
+    const sparkAtt = trend("att", 93);
+    const sparkEnq = trend("enq", 91);
+    const sparkFee = trend("fee", 92);
+    const sparkRes = trend("res", 94);
+
+    const chips: HeroChip[] = [];
+    if (canAttendance) chips.push({ key: "att", icon: <Users />, tone: "info", label: `Today's attendance: ${data.attendanceToday.percentage}%` });
+    for (const a of attention) {
+      chips.push({ key: a.key, href: a.href, icon: a.tone === "destructive" ? <AlertTriangle /> : <ClipboardList />, tone: a.tone === "destructive" ? "destructive" : "warning", label: a.count ? `${a.count} ${a.label}` : a.label });
+    }
+    if (attention.length === 0) chips.push({ key: "clear", icon: <CheckCircle2 />, tone: "success", label: "All clear — nothing is waiting on you" });
+
+    const sentence = [
+      canAttendance && `attendance is at ${data.attendanceToday.percentage}% today`,
+      canEnquiries && `${openEnquiries} ${openEnquiries === 1 ? "enquiry is" : "enquiries are"} open`,
+      collections && `${formatINR(outstandingPaise)} in fees is outstanding`,
+    ].filter(Boolean) as string[];
+    const description = sentence.length ? `Here is where ${ctx.institution.name} stands: ${sentence.join(", ")}.` : `Here is what is happening at ${ctx.institution.name} today.`;
+
+    const homeKpis = [
+      canAttendance && (
+        <HomeKpi key="att" icon={<CalendarCheck />} tone="info" label="Attendance today" value={`${data.attendanceToday.percentage}%`} animateTo={data.attendanceToday.percentage} format="percent" delta={deltaOf(sparkAtt)} spark={sparkAtt} footLeft={`${data.attendanceToday.totalInDenominator} students marked`} footRight={data.sectionsAtRisk.length ? `${data.sectionsAtRisk.length} sections at risk` : "All sections on track"} href={`${basePath}/attendance`} />
+      ),
+      canEnquiries && (
+        <HomeKpi key="enq" icon={<UserPlus />} tone="primary" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} delta={deltaOf(sparkEnq)} spark={sparkEnq} footLeft={`${enrolledCount} enrolled this year`} footRight="Pipeline" href={`${basePath}/admissions`} />
+      ),
+      collections && (
+        <HomeKpi key="fee" icon={<Banknote />} tone="success" label="Collected this term" value={formatINR(collections.collectedPaise)} animateTo={collections.collectedPaise / 100} format="inr" delta={deltaOf(sparkFee)} spark={sparkFee} footLeft={`of ${formatINR(collections.duePaise)} due`} footRight={collectionPct === null ? undefined : `${collectionPct}% collected`} href={`${basePath}/finance`} />
+      ),
+      canResults && (
+        <HomeKpi key="res" icon={<GraduationCap />} tone="warning" label="Published results" value={String(gd?.total ?? 0)} animateTo={gd?.total ?? 0} delta={deltaOf(sparkRes)} spark={sparkRes} footLeft={gd ? gd.examName : "No published exam yet"} footRight="Exams" href={`${basePath}/exams`} />
+      ),
+    ].filter(Boolean);
+
+    // Six weekly averages of the school-wide attendance trend; the last bar is "now".
+    let bars: { label: string; value: number }[] | undefined;
+    if (demo && canAttendance) {
+      const pts = demoAttendanceTrend({ key: demoKey, days: 42, endDate: now });
+      const size = Math.ceil(pts.length / 6);
+      bars = Array.from({ length: 6 }, (_, i) => pts.slice(i * size, (i + 1) * size)).filter((c) => c.length).map((c) => ({ label: c[c.length - 1].label, value: Math.round((c.reduce((t, p) => t + p.value, 0) / c.length) * 10) / 10 }));
+    }
+
+    const activityItems: ActivityItem[] = (data.recentActivity ?? []).slice(0, 8).map((e) => ({
+      id: e.id,
+      icon: <MessageSquare />,
+      tone: "primary",
+      title: e.renderedBody,
+      meta: humanize(e.channel),
+      time: ago(e.attemptedAt, now),
+    }));
+
+    const tones = ["primary", "info", "success", "warning"] as const;
+    const homeActions: HomeQuickAction[] = quickActions.map((a, i) => ({ href: a.href, label: a.label, icon: a.icon, tone: tones[i % tones.length] }));
+    const scheduleItems: ScheduleItem[] = (events ?? []).map((e) => ({ id: e.id, time: shortDate.format(new Date(e.startsAt)), title: e.title, meta: [eventDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · ") }));
+
+    const carousel: CarouselInsight[] = demo
+      ? fabricInsights(fOpts).slice(0, 4).map((i) => ({ id: i.id, title: i.title, body: i.pattern, severityLabel: SEVERITY[i.severity].label, confidence: i.confidence, href: `${basePath}/fabric/insights?id=${i.id}` }))
+      : [];
+
+    // Everything below the hero/KPIs/split stays available as a customisable grid.
     const cards: GridCard[] = [];
     const add = (id: string, title: string, span: string, node: ReactNode) => node && cards.push({ id, title, span, node });
     if (demo) {
       add("brief", "Today's brief", WIDE, <DailyBriefWidget brief={dailyBrief(fOpts, "principal")} base={basePath} />);
       add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts).slice(0, 5)} base={basePath} />);
       add("forecasts", "Forecasts", FULL, <ForecastCards cards={forecastCards(fOpts)} base={basePath} />);
-    }
-    add("kpis", "Key numbers", FULL, <Kpis items={[attendanceKpi, enquiryKpi, collectedKpi, canResults && (
-      <KpiTile
-        label="Published results"
-        value={String(gd?.total ?? 0)}
-        animateTo={gd?.total ?? 0}
-        sub={gd ? gd.examName : "No published exam yet"}
-        href={`${basePath}/exams`}
-      />
-    )]} />);
-    add("attendanceTrend", "Attendance", WIDE, attendanceTrend);
-    add("atRisk", "Sections at risk", NARROW, atRisk);
-    if (demo) {
       add("risks", "Risks", NARROW, <RiskIndicators risks={riskIndicators(fOpts)} base={basePath} />);
-      add("insights", "Insights", WIDE, <InsightPeek items={fabricInsights(fOpts).slice(0, 4)} base={basePath} />);
     }
+    add("atRisk", "Sections at risk", NARROW, atRisk);
     add("funnel", "Admissions funnel", WIDE, funnel(""));
     add("collections", "Fee collection", NARROW, collectionsChart(""));
     if (demo) {
@@ -548,24 +543,73 @@ export default async function DashboardPage({
       add("staff", "Staff today", NARROW, <StaffAvailabilityWidget title="Staff today" {...demoStaffAvailability(demoKey)} />);
     }
     add("grades", "Grades", NARROW, grades(""));
-    add("activity", "Recent activity", WIDE, data.recentActivity && <RecentActivity entries={data.recentActivity} />);
-    add("assistant", "Assistant", NARROW, (briefing || quickActions.length > 0) && <div className="space-y-3">{briefing}{actions()}</div>);
-    add("website", "Events and notices", WIDE, website && <div className="grid gap-3 md:grid-cols-2">{website}</div>);
+    add("assistant", "AI briefing", NARROW, briefing);
+    add(
+      "notices",
+      "Latest notices",
+      WIDE,
+      showWebsite &&
+        (failed(noticesR) ? (
+          <FailedWidget title="Latest notices" />
+        ) : (
+          <ListWidget
+            title="Latest notices"
+            action={canEditWebsite ? { href: `${basePath}/website/notices`, label: "Notices" } : undefined}
+            emptyTitle="No public notices"
+            rows={(notices ?? []).map((n) => ({ id: n.id, title: n.title, meta: shortDate.format(new Date(n.publishAt)) }))}
+          />
+        )),
+    );
 
     body = (
-      <div className={FULL}>
-        <CommandGrid layoutKey="command-principal" defaultOrder={cards.map((c) => c.id)} cards={cards} lead={<NeedsAttention items={attention} />} />
+      <div className={cn(FULL, "space-y-4")}>
+        <HomeHero eyebrow={dayLabel.format(now)} updated="Updated just now" title={firstName ? `${greeting}, ${firstName}` : greeting} description={description} chips={chips} />
+        {homeKpis.length > 0 && (
+          <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {homeKpis.map((k, i) => (
+              <StaggerItem key={i} className="min-w-0">
+                {k}
+              </StaggerItem>
+            ))}
+          </Stagger>
+        )}
+        <div className="grid gap-4 lg:grid-cols-12">
+          <div className="min-w-0 space-y-4 lg:col-span-8">
+            {canAttendance && (
+              <HomePerformance title="Attendance performance" description="School-wide attendance, week by week" icon={<BarChart3 />} bars={bars} footer={bars ? "Weekly average of daily attendance" : undefined}>
+                <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
+              </HomePerformance>
+            )}
+            <HomePromo icon={<Store />} tag="Add-ons" title="Explore the CoolSkool marketplace" body="Install modules for fee billing, timetable scheduling and parent messaging, and turn on only what your school needs." cta="Browse marketplace" href={`${basePath}/fabric/marketplace`} />
+            <HomeActivity title="Recent activity" items={activityItems} badge={<SimulatedBadge />} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
+          </div>
+          <div className="min-w-0 space-y-4 lg:col-span-4">
+            {carousel.length > 0 && <InsightCarousel items={carousel} allHref={`${basePath}/fabric/insights`} />}
+            <HomeQuickActions actions={homeActions} />
+            <HomeSchedule title="Upcoming events" count={`${scheduleItems.length} upcoming`} items={scheduleItems} action={canEditWebsite ? { href: `${basePath}/website/events`, label: "Manage" } : undefined} empty="No upcoming public events." />
+          </div>
+        </div>
+        {cards.length > 0 && (
+          <section aria-labelledby="more-h" className="space-y-3 pt-2">
+            <h2 id="more-h" className="text-[17px] font-semibold tracking-[-0.01em]">
+              More from your school
+            </h2>
+            <CommandGrid layoutKey="command-more" defaultOrder={cards.map((c) => c.id)} cards={cards} />
+          </section>
+        )}
       </div>
     );
   }
 
   return (
     <div>
-      <PageHeader
-        compact
-        title={firstName ? `${greeting}, ${firstName}` : greeting}
-        description={`${longDate.format(now)} · ${ctx.institution.name}`}
-      />
+      {showHeader && (
+        <PageHeader
+          compact
+          title={firstName ? `${greeting}, ${firstName}` : greeting}
+          description={`${longDate.format(now)} · ${ctx.institution.name}`}
+        />
+      )}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12">{body}</div>
     </div>
   );
