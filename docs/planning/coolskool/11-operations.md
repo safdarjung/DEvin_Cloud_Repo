@@ -132,3 +132,16 @@ Real SMS/email providers (DLT registration), payment gateway, CSV import, backup
 | Wrong data entered during the demo | Continue; corrections are part of the story (attendance correction, recheck); reset after the session |
 | Hosted migration fails on `db push` | Do not edit merged migrations; add a numbered fix migration (`10 §3`), test locally with `db reset`, push again |
 | Suspected leak or security finding | `07 §8` |
+
+## 14. Onboarding a real school in 3 days (M03–M04 APIs)
+
+Every step is an API call (`docs/planning/fabric/07-master-plan-v1-v2.md` D40/D41); the UI pass wraps the same calls. Auth is the session cookie or `Authorization: Bearer <Supabase access token>`; tenant calls carry `{"institution": "<slug>", "input": {…}}`. `GET /api/v1/actions` and `GET /api/v1/query` list every name with its input schema.
+
+| Day | Who | Steps |
+|---|---|---|
+| Before day 1 | School | Send the filled templates `public/templates/students.csv` and `public/templates/staff.csv` (header row is the contract; dates `YYYY-MM-DD`; phones 10 digits starting 6–9, `+91`/spaces/dashes are stripped). |
+| Day 1 — tenant + data | Owner (signs up via Supabase auth) | `POST /api/v1/institutions` `{name, slug, timezone?, yearStart?}` → creates the school, the owner's staff row and membership, the current academic year (1 April) and two terms. Then structure first: `people.department.upsert`, `academics.grade.upsert`, `academics.subject.upsert`, `academics.section.upsert` (sections must exist before students import — rows resolve `grade` + `section` in the current year). Then `data.import.stage` `{entityType: "staff", fileName, csv}` → fix reported rows (CSV line numbers) → `data.import.commit` `{batchId}`; same for `students`. Re-committing a batch is a no-op; re-staging the fixed file skips rows already imported (admission_no / employee_no / guardian phone). |
+| Day 2 — teaching + money | Principal/admin, accountant | `academics.subjectAssignment.set` per section × subject × teacher; timetable (M7, when shipped); fee structures (`finance.structure.upsert`, `finance.structure.assign`) and term invoices (`finance.invoice.generateTerm`). Check counts with `GET /api/v1/query/people.listStudents?format=csv`. |
+| Day 3 — people + go-live | Owner/principal | `core.member.invite` per staff member (`staffId`) and guardian (`guardianId`) → share the returned link (delivery is simulated until M17 — badge shown) → invitee signs up with the same email and calls `POST /api/v1/invitations/accept` `{token}`. Disable mistakes with `core.member.setStatus`. 30-minute training per role on attendance, marks, payments. |
+
+Limits: one CSV ≤ 1 MB and ≤ 5,000 rows; fee-structure and marks CSV import are not built (DBT-44) — use the batch actions. Invitations expire after 7 days and are single-use.

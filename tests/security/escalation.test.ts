@@ -147,6 +147,15 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     permission: "staff.write",
     input: () => ({ employeeNo: "E1", fullName: "Probe", designation: "Teacher" }),
   },
+  "data.import.stage": {
+    permission: "data.import",
+    input: () => ({
+      entityType: "students",
+      fileName: "students.csv",
+      csv: "admission_no,first_name,last_name,dob,gender,grade,section,roll_no,guardian_name,guardian_phone,guardian_email,guardian_relationship\n",
+    }),
+  },
+  "data.import.commit": { permission: "data.import", input: () => ({ batchId: U() }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

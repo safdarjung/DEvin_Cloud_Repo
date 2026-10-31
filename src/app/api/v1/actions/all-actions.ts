@@ -10,6 +10,7 @@ import "@/modules/attendance/actions";
 import "@/modules/core/actions";
 import "@/modules/exams/actions";
 import "@/modules/finance/actions";
+import "@/modules/imports/actions";
 import "@/modules/jobs/actions";
 import "@/modules/notifications/actions";
 import "@/modules/people/actions";

@@ -11,6 +11,7 @@ import "@/modules/attendance/query-defs";
 import "@/modules/core/query-defs";
 import "@/modules/exams/query-defs";
 import "@/modules/finance/query-defs";
+import "@/modules/imports/query-defs";
 import "@/modules/jobs/query-defs";
 import "@/modules/notifications/query-defs";
 import "@/modules/people/query-defs";
