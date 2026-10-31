@@ -1,3 +1,4 @@
+import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import type { NotificationSummary } from "@/modules/notifications/queries";
 import { MarkReadButton } from "./MarkReadButton";
@@ -12,20 +13,20 @@ export function Inbox({
   notifications: NotificationSummary[];
 }) {
   if (notifications.length === 0) {
-    return <p className="text-muted-foreground text-sm">No notifications.</p>;
+    return <EmptyState title="No notifications" description="Messages addressed to you will appear here." />;
   }
 
   return (
-    <ul className="divide-y">
+    <ul className="divide-y divide-border">
       {notifications.map((n) => (
         <li key={n.id} className="flex items-start justify-between gap-4 py-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{n.title}</span>
               {!n.readAt && <Badge variant="default">New</Badge>}
             </div>
-            <p className="text-muted-foreground text-sm">{n.body}</p>
-            <p className="text-muted-foreground text-xs">{new Date(n.createdAt).toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">{n.body}</p>
+            <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</p>
           </div>
           {!n.readAt && <MarkReadButton institutionSlug={institutionSlug} notificationId={n.id} />}
         </li>

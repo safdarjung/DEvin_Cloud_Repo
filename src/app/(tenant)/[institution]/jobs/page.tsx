@@ -1,9 +1,33 @@
+import type { ComponentProps } from "react";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { humanize } from "@/modules/finance/format";
 import { listAttentionJobs } from "@/modules/jobs/queries";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RequeueButton } from "./requeue-button";
+
+type Variant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
+
+// jobs.status check: 20261028000003_platform.sql
+function jobStatusVariant(status: string): Variant {
+  switch (status) {
+    case "succeeded":
+      return "success";
+    case "running":
+      return "info";
+    case "queued":
+      return "warning";
+    case "failed":
+    case "dead":
+      return "destructive";
+    default:
+      return "outline";
+  }
+}
 
 export default async function JobsPage({
   params,
@@ -18,50 +42,53 @@ export default async function JobsPage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Jobs</h1>
-        <p className="text-muted-foreground text-sm">
-          Background jobs that failed at least once (06 §W12). Dead-lettered jobs can be requeued.
-        </p>
-      </div>
+      <PageHeader
+        title="Jobs"
+        description="Background jobs that failed at least once (06 §W12). Dead-lettered jobs can be requeued."
+      />
 
       {jobs.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No failed or dead-lettered jobs.</p>
+        <EmptyState title="No failed or dead-lettered jobs" />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Attempts</TableHead>
-              <TableHead>Last error</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {jobs.map((job) => (
-              <TableRow key={job.id}>
-                <TableCell>{job.type}</TableCell>
-                <TableCell>
-                  <Badge variant={job.status === "dead" ? "destructive" : "secondary"}>{job.status}</Badge>
-                </TableCell>
-                <TableCell>
-                  {job.attempts}/{job.maxAttempts}
-                </TableCell>
-                <TableCell className="max-w-xs truncate text-sm text-muted-foreground" title={job.lastError ?? ""}>
-                  {job.lastError}
-                </TableCell>
-                <TableCell>{new Date(job.updatedAt).toLocaleString()}</TableCell>
-                <TableCell>
-                  {job.status === "dead" ? (
-                    <RequeueButton institutionSlug={institutionSlug} jobId={job.id} />
-                  ) : null}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden sm:table-cell">Attempts</TableHead>
+                  <TableHead className="hidden sm:table-cell">Last error</TableHead>
+                  <TableHead className="hidden sm:table-cell">Updated</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((job) => (
+                  <TableRow key={job.id}>
+                    <TableCell>{job.type}</TableCell>
+                    <TableCell>
+                      <Badge variant={jobStatusVariant(job.status)}>{humanize(job.status)}</Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {job.attempts}/{job.maxAttempts}
+                    </TableCell>
+                    <TableCell
+                      className="hidden max-w-xs truncate text-sm text-muted-foreground sm:table-cell"
+                      title={job.lastError ?? ""}
+                    >
+                      {job.lastError}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{new Date(job.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell>
+                      {job.status === "dead" ? <RequeueButton institutionSlug={institutionSlug} jobId={job.id} /> : null}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

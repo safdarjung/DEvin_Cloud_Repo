@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { MessageLog } from "@/modules/notifications/components/MessageLog";
@@ -16,15 +18,16 @@ export default async function NotificationLogPage({
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold">Message log</h1>
-        <p className="text-muted-foreground text-sm">
-          Every delivery attempt for this institution. SMS and email are simulated — no real provider is ever
-          called.
-        </p>
-      </div>
+      <PageHeader
+        title="Message log"
+        description="Every delivery attempt for this institution. SMS and email are simulated — no real provider is ever called."
+      />
 
-      <MessageLog rows={rows} />
+      <Card>
+        <CardContent>
+          <MessageLog rows={rows} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

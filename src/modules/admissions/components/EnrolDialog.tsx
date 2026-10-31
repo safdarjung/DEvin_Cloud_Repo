@@ -122,7 +122,7 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
           </p>
         ) : (
           <form action={formAction} className="space-y-3">
-            <div>
+            <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="classSectionId">
                 Section
               </label>
@@ -143,7 +143,7 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
               </Select>
             </div>
 
-            <div>
+            <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="feeStructureId">
                 Fee structure
               </label>
@@ -162,7 +162,7 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
               </Select>
             </div>
 
-            <div>
+            <div className="space-y-1.5">
               <label className="text-sm font-medium" htmlFor="rollNo">
                 Roll no (optional)
               </label>

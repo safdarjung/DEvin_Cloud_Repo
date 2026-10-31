@@ -1,8 +1,15 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { applicationStatusVariant } from "@/modules/admissions/components/DecisionTimeline";
 import { listApplications, type ApplicationRow } from "@/modules/admissions/queries";
 import type { ApplicationStatus } from "@/modules/admissions/state";
+import { humanize } from "@/modules/finance/format";
 
 export default async function ApplicationsPage({
   params,
@@ -20,15 +27,28 @@ export default async function ApplicationsPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Applications</h1>
+      <PageHeader title="Applications" />
       {applications.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No applications{status ? ` in status "${status}"` : ""}.</p>
+        <EmptyState title={status ? `No applications in ${humanize(status)}` : "No applications yet"} />
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border">
-          {applications.map((application) => (
-            <ApplicationRowItem key={application.id} institutionSlug={institutionSlug} application={application} />
-          ))}
-        </ul>
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Applicant</TableHead>
+                  <TableHead className="hidden sm:table-cell">Application no</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {applications.map((application) => (
+                  <ApplicationRowItem key={application.id} institutionSlug={institutionSlug} application={application} />
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -38,17 +58,19 @@ function ApplicationRowItem({ institutionSlug, application }: { institutionSlug:
   const applicant = application.applicant as { firstName?: string; lastName?: string };
   const name = [applicant.firstName, applicant.lastName].filter(Boolean).join(" ") || "Applicant";
   return (
-    <li className="flex items-center justify-between p-3">
-      <div>
+    <TableRow>
+      <TableCell>
         <Link
           href={`/${institutionSlug}/admissions/applications/${application.id}`}
-          className="text-sm font-medium underline-offset-2 hover:underline"
+          className="font-medium underline-offset-2 hover:underline"
         >
           {name}
         </Link>
-        <p className="text-muted-foreground text-xs">{application.applicationNo}</p>
-      </div>
-      <span className="text-muted-foreground text-xs">{application.status}</span>
-    </li>
+      </TableCell>
+      <TableCell className="hidden sm:table-cell">{application.applicationNo}</TableCell>
+      <TableCell>
+        <Badge variant={applicationStatusVariant(application.status)}>{humanize(application.status)}</Badge>
+      </TableCell>
+    </TableRow>
   );
 }

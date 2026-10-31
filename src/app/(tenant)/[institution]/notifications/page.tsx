@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { Inbox } from "@/modules/notifications/components/Inbox";
@@ -18,19 +21,23 @@ export default async function NotificationsPage({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">Notifications</h1>
-          <p className="text-muted-foreground text-sm">In-app notifications addressed to you.</p>
-        </div>
-        {canReadLog && (
-          <Link href={`/${institutionSlug}/notifications/log`} className="text-sm underline">
-            Message log
-          </Link>
-        )}
-      </div>
+      <PageHeader
+        title="Notifications"
+        description="In-app notifications addressed to you."
+        actions={
+          canReadLog && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${institutionSlug}/notifications/log`}>Message log</Link>
+            </Button>
+          )
+        }
+      />
 
-      <Inbox institutionSlug={institutionSlug} notifications={notifications} />
+      <Card>
+        <CardContent>
+          <Inbox institutionSlug={institutionSlug} notifications={notifications} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
