@@ -5,7 +5,7 @@ import { hasPermission } from "@/lib/auth/require";
 import type { Permission } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
 
-type Action<O> = (
+export type Action<O> = (
   institutionSlug: string,
   raw: unknown,
   /**
@@ -27,9 +27,7 @@ type Action<O> = (
   overrideCtx?: TenantContext,
 ) => Promise<ActionResult<O>>;
 
-interface DefineActionOptions<I, O> {
-  /** Audit action string; also the registry key (06 §1.2). */
-  name: string;
+export interface GuardedCallOptions<I, O> {
   schema: z.ZodType<I>;
   permission: Permission | ((input: I) => Permission);
   handler: (input: I, ctx: TenantContext) => Promise<O>;
@@ -39,6 +37,11 @@ interface DefineActionOptions<I, O> {
    * file doesn't hard-depend on that module existing at build time.
    */
   resolveContext?: (institutionSlug: string) => Promise<TenantContext>;
+}
+
+interface DefineActionOptions<I, O> extends GuardedCallOptions<I, O> {
+  /** Audit action string; also the registry key (06 §1.2). */
+  name: string;
 }
 
 async function defaultResolveContext(institutionSlug: string): Promise<TenantContext> {
@@ -63,7 +66,7 @@ function isNextControlFlowSignal(err: unknown): boolean {
   );
 }
 
-export function defineAction<I, O>(opts: DefineActionOptions<I, O>): Action<O> {
+export function guardedCall<I, O>(opts: GuardedCallOptions<I, O>): Action<O> {
   const action: Action<O> = async (institutionSlug, raw, overrideCtx) => {
     let ctx: TenantContext;
     if (overrideCtx) {
@@ -106,6 +109,11 @@ export function defineAction<I, O>(opts: DefineActionOptions<I, O>): Action<O> {
     }
   };
 
+  return action;
+}
+
+export function defineAction<I, O>(opts: DefineActionOptions<I, O>): Action<O> {
+  const action = guardedCall(opts);
   registerAction(opts.name, action as Action<unknown>, {
     schema: opts.schema,
     permission: typeof opts.permission === "function" ? null : opts.permission,
