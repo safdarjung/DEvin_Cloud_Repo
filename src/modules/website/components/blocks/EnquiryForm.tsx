@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -87,19 +88,19 @@ export function EnquiryForm({ slug, block }: { slug: string; block: EnquiryFormB
     <form onSubmit={handleSubmit} className="relative my-8 max-w-xl space-y-4 rounded-xl border bg-card p-5 sm:p-6">
       <h2 className="text-2xl font-semibold tracking-tight">{block.heading ?? "Admission enquiry"}</h2>
       <div className="space-y-1.5">
-        <label htmlFor="enq-child" className="text-sm font-medium">Child&apos;s name</label>
+        <Label htmlFor="enq-child">Child&apos;s name</Label>
         <Input id="enq-child" name="childName" required maxLength={120} autoComplete="off" className="h-11 text-base" />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="enq-guardian" className="text-sm font-medium">Your name</label>
+        <Label htmlFor="enq-guardian">Your name</Label>
         <Input id="enq-guardian" name="guardianName" required maxLength={200} autoComplete="name" className="h-11 text-base" />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="enq-phone" className="text-sm font-medium">Mobile number</label>
+        <Label htmlFor="enq-phone">Mobile number</Label>
         <Input id="enq-phone" name="phone" placeholder="10-digit mobile number" required pattern="[6-9][0-9]{9}" type="tel" inputMode="numeric" autoComplete="tel-national" className="h-11 text-base" />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="enq-grade" className="text-sm font-medium">Grade applying for (optional)</label>
+        <Label htmlFor="enq-grade">Grade applying for (optional)</Label>
         <select
         id="enq-grade"
         name="gradeCode"
@@ -115,11 +116,11 @@ export function EnquiryForm({ slug, block }: { slug: string; block: EnquiryFormB
       </select>
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="enq-email" className="text-sm font-medium">Email (optional)</label>
+        <Label htmlFor="enq-email">Email (optional)</Label>
         <Input id="enq-email" name="email" type="email" autoComplete="email" className="h-11 text-base" />
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="enq-message" className="text-sm font-medium">Message (optional)</label>
+        <Label htmlFor="enq-message">Message (optional)</Label>
         <Textarea id="enq-message" name="message" maxLength={2000} rows={3} className="text-base" />
       </div>
       {/* Honeypot (C-83): hidden from sighted users and keyboard tab order; left empty by humans, filled by bots that autofill every field. */}

@@ -1,6 +1,8 @@
 import type { NoticeListBlock } from "@/modules/website/blocks";
 import { listPublicNotices } from "@/modules/website/queries";
 
+const dateFormat = new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" });
+
 export async function NoticeList({ block, institutionId }: { block: NoticeListBlock; institutionId: string }) {
   const notices = await listPublicNotices(institutionId, block.limit ?? 5);
   if (notices.length === 0) return null;
@@ -14,7 +16,7 @@ export async function NoticeList({ block, institutionId }: { block: NoticeListBl
             <div className="flex flex-wrap items-baseline justify-between gap-x-4">
               <h3 className="font-medium">{notice.title}</h3>
               <time className="text-xs text-muted-foreground" dateTime={String(notice.publishAt)}>
-                {new Date(notice.publishAt).toLocaleDateString()}
+                {dateFormat.format(new Date(notice.publishAt))}
               </time>
             </div>
             <p className="text-sm text-muted-foreground">{notice.body}</p>

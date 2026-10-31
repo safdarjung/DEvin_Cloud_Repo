@@ -6,6 +6,7 @@
 // call to finalize. shortcut: status buttons are click/Tab/Enter only, no
 // custom hotkey grid — upgrade if teachers need faster entry for 45-row
 // sections.
+import { SimulatedBadge } from "@/components/honesty";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -49,7 +50,7 @@ export function AttendanceRegister({
   );
   const [sessionId, setSessionId] = useState(initialSessionId);
   const [sessionStatus, setSessionStatus] = useState(initialSessionStatus);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string; simulated?: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
   const [correctingStudentId, setCorrectingStudentId] = useState<string | null>(null);
 
@@ -102,7 +103,8 @@ export function AttendanceRegister({
       }).length;
       setMessage({
         kind: "ok",
-        text: `Attendance submitted — ${absences} absence${absences === 1 ? "" : "s"}, guardians notified (SMS simulated).`,
+        text: `Attendance submitted — ${absences} absence${absences === 1 ? "" : "s"}, guardians notified`,
+        simulated: true,
       });
       router.refresh();
     });
@@ -117,10 +119,10 @@ export function AttendanceRegister({
         actions={
           !isSubmitted && (
             <>
-              <Button variant="outline" className="h-10" onClick={handleSave} disabled={pending}>
+              <Button variant="outline" onClick={handleSave} disabled={pending}>
                 {pending ? "Saving…" : "Save"}
               </Button>
-              <Button className="h-10" onClick={handleSubmit} disabled={pending || !sessionId || !allMarked}>
+              <Button onClick={handleSubmit} disabled={pending || !sessionId || !allMarked}>
                 Submit
               </Button>
             </>
@@ -131,6 +133,11 @@ export function AttendanceRegister({
       {message && (
         <p role={message.kind === "error" ? "alert" : "status"} className={cn("text-sm", message.kind === "error" ? "text-destructive" : "text-muted-foreground")}>
           {message.text}
+          {message.simulated && (
+            <>
+              <span className="sr-only"> (SMS simulated).</span> <SimulatedBadge />
+            </>
+          )}
         </p>
       )}
 
@@ -151,16 +158,16 @@ export function AttendanceRegister({
                 return (
                   <TableRow key={student.studentId}>
                     <TableCell className="hidden sm:table-cell">{student.rollNo ?? "—"}</TableCell>
-                    <TableCell className="whitespace-normal">{student.name}</TableCell>
+                    <TableCell className="min-w-0 break-words whitespace-normal">{student.name}</TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Attendance status for ${student.name}`}>
+                      <div className="flex flex-nowrap gap-1" role="radiogroup" aria-label={`Attendance status for ${student.name}`}>
                         {statuses.map((status) => (
                           <Button
                             key={status.code}
                             type="button"
                             size="sm"
                             title={status.label}
-                            className="h-10 min-w-10 sm:h-7 sm:min-w-0"
+                            className="h-10 min-w-9 px-2 sm:h-7 sm:min-w-0 sm:px-2.5"
                             variant={current === status.code ? "default" : "outline"}
                             role="radio"
                             aria-checked={current === status.code}
