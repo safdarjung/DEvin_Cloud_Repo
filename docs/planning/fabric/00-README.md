@@ -11,6 +11,7 @@ Fabric is the platform; CoolSkool is its first domain pack (ADR D26). This folde
 | `04-ui-packets/F-UI-nn.md` | Self-contained UI packets for the UI session | Lead writes; UI session executes |
 | `05-data-contracts.md` | Every fixture function + row type the UI may import | Generated from `src/modules/fabric/types.ts` + `demo/*.ts` |
 | `06-backend-packets/` | Backend packets + completion reports | Lead + agents |
+| `07-master-plan-v1-v2.md` | **Master plan V1→V2** (backend/API first): milestones M1–M27, migration reservations 0064–0089, Opus/Sonnet protocol | Lead writes; Opus executes |
 
 ## The five layers (vision §20)
 
