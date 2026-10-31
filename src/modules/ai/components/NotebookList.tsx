@@ -47,10 +47,10 @@ function NotebookRow({ institutionSlug, item }: { institutionSlug: string; item:
         </p>
       </Link>
       <div className="flex gap-1">
-        <Button type="button" variant="ghost" size="sm" className="h-10 sm:h-8" onClick={togglePin} disabled={busy} aria-pressed={item.pinned}>
+        <Button type="button" variant="ghost" size="sm" onClick={togglePin} disabled={busy} aria-pressed={item.pinned}>
           {item.pinned ? "Unpin" : "Pin"}
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="h-10 text-destructive sm:h-8" onClick={handleDelete} disabled={busy}>
+        <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={handleDelete} disabled={busy}>
           Delete
         </Button>
       </div>

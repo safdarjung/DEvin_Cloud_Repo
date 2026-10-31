@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
-import { applicationStatusVariant } from "@/modules/admissions/components/DecisionTimeline";
+import { applicationStatusVariant } from "@/modules/admissions/status";
 import { listApplications, type ApplicationRow } from "@/modules/admissions/queries";
 import type { ApplicationStatus } from "@/modules/admissions/state";
-import { humanize } from "@/modules/finance/format";
+import { humanize } from "@/lib/format";
 
 export default async function ApplicationsPage({
   params,

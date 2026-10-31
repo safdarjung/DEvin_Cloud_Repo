@@ -6,6 +6,7 @@
 // user who double-clicks "Record" while the first submit is still pending
 // sends the same key both times and the SQL function's idempotent fast path
 // absorbs the duplicate instead of creating a second payment.
+import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LimitedBadge } from "@/components/honesty";
 import type { ActionResult } from "@/lib/actions/result";
-import { inr } from "@/modules/finance/format";
+import { inr } from "@/lib/format";
 import { recordPayment, type RecordPaymentResult } from "@/modules/finance/actions";
 
 function nowForInput(): string {
@@ -106,9 +107,9 @@ export function RecordPaymentDialog({
         </DialogHeader>
         <form action={formAction} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="paymentAmount">
+            <Label className="mb-1 block" htmlFor="paymentAmount">
               Amount
-            </label>
+            </Label>
             <Input
               id="paymentAmount"
               type="number"
@@ -121,9 +122,9 @@ export function RecordPaymentDialog({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="paymentMode">
+            <Label className="mb-1 block" htmlFor="paymentMode">
               Mode
-            </label>
+            </Label>
             <Select value={mode} onValueChange={setMode}>
               <SelectTrigger id="paymentMode" className="w-full">
                 <SelectValue />
@@ -138,15 +139,15 @@ export function RecordPaymentDialog({
             </Select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="paymentReference">
+            <Label className="mb-1 block" htmlFor="paymentReference">
               Reference (cheque/UTR number, optional)
-            </label>
+            </Label>
             <Input id="paymentReference" value={reference} onChange={(e) => setReference(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="paymentReceivedAt">
+            <Label className="mb-1 block" htmlFor="paymentReceivedAt">
               Received at
-            </label>
+            </Label>
             <Input
               id="paymentReceivedAt"
               type="datetime-local"

@@ -218,16 +218,17 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
     <div className="space-y-4">
       <PageHeader
         title="Study helper"
+        compact
         back={backHref ? { href: backHref, label: "Back" } : undefined}
         actions={
           notebookEnabled ? (
-            <Link href={`/${institutionSlug}/portal/study/notebook`} className={buttonVariants({ variant: "outline", className: "h-10 sm:h-8" })}>
+            <Link href={`/${institutionSlug}/portal/study/notebook`} className={buttonVariants({ variant: "outline" })}>
               My notebook
             </Link>
           ) : undefined
         }
       />
-      <div className="-mt-3 space-y-2">
+      <div className="space-y-2">
         <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
           <p>
@@ -295,9 +296,9 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
           placeholder="e.g. Explain photosynthesis"
           disabled={busy}
           aria-label="Message"
-          className="h-10"
+         
         />
-        <Button type="submit" className="h-10" disabled={busy || input.trim().length === 0}>
+        <Button type="submit" disabled={busy || input.trim().length === 0}>
           Send
         </Button>
       </form>

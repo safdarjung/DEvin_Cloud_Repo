@@ -12,6 +12,8 @@ import { StudentAttendanceSummary } from "@/modules/attendance/components/Studen
 import type { InvoiceSummary } from "@/modules/finance/queries";
 import { GuardiansCard } from "@/modules/people/components/GuardiansCard";
 import { StudentProfileHeader } from "@/modules/people/components/StudentProfileHeader";
+import { inr } from "@/lib/format";
+import { invoiceStatusVariant } from "@/modules/finance/format";
 import type { StudentProfile as StudentProfileData } from "@/modules/people/queries";
 
 interface StudentProfileProps {
@@ -19,12 +21,6 @@ interface StudentProfileProps {
   student: StudentProfileData;
   invoices: InvoiceSummary[];
   termId: string | null;
-}
-
-const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
-
-function invoiceStatusVariant(status: string) {
-  return status === "paid" ? "success" : status === "part_paid" ? "warning" : status === "issued" ? "info" : "outline";
 }
 
 export function StudentProfile({ ctx, student, invoices, termId }: StudentProfileProps) {
@@ -70,8 +66,8 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
                     <TableCell>
                       <Badge variant={invoiceStatusVariant(invoice.status)}>{invoice.status.replace("_", " ")}</Badge>
                     </TableCell>
-                    <TableCell>{inr.format(invoice.total)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{inr.format(invoice.paidTotal)}</TableCell>
+                    <TableCell>{inr(invoice.total)}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
                   </TableRow>
                 ))}

@@ -1,5 +1,6 @@
 "use client";
 // T-039 — term collected vs due.
+import { inr } from "@/lib/format";
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartFrame, chartAxis, formatINRCompact, chartGrid, chartTooltip, chartValueLabel } from "@/components/chart";
 
@@ -13,7 +14,7 @@ interface CollectionsChartProps {
 // boundary anyway). Duplicated here as a one-liner rather than extracting a
 // shared module — this component owns its own display formatting.
 function formatINR(paise: number): string {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paise / 100);
+  return inr(paise / 100);
 }
 
 export function CollectionsChart({ collectedPaise, duePaise }: CollectionsChartProps) {
@@ -33,7 +34,7 @@ export function CollectionsChart({ collectedPaise, duePaise }: CollectionsChartP
         <XAxis type="number" tickFormatter={formatINRCompact} {...chartAxis} />
         <YAxis type="category" dataKey="label" width={72} {...chartAxis} />
         <Tooltip formatter={(v) => formatINR(Math.round(Number(v) * 100))} {...chartTooltip} />
-        <Bar dataKey="amount" radius={4}>
+        <Bar isAnimationActive={false} dataKey="amount" radius={4}>
           {data.map((entry) => (
             <Cell key={entry.label} fill={entry.fill} />
           ))}

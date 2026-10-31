@@ -149,12 +149,12 @@ export function RemarkDraftEditor({ institutionSlug, resultId, studentName, init
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" className="h-10 sm:h-8" onClick={handleGenerate} disabled={generating}>
+          <Button type="button" variant="outline" onClick={handleGenerate} disabled={generating}>
             {generating ? "Drafting…" : "Draft a remark"}
           </Button>
           <Button
             type="button"
-            className="h-10 sm:h-8"
+           
             onClick={handleSave}
             disabled={saving || remark.trim().length === 0 || remarkTooLong}
           >

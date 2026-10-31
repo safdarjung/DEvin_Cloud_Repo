@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/states";
 import type { TenantContext } from "@/lib/auth/types";
-import { humanize, inr, invoiceStatusVariant } from "@/modules/finance/format";
+import { humanize, inr } from "@/lib/format";
+import { invoiceStatusVariant } from "@/modules/finance/format";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 
 interface StudentInvoicesProps {

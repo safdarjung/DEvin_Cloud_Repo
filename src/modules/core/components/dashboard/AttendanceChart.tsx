@@ -28,7 +28,7 @@ export function AttendanceChart({ presentWeighted, totalInDenominator }: Attenda
         <XAxis type="number" allowDecimals={false} {...chartAxis} />
         <YAxis type="category" dataKey="label" width={64} {...chartAxis} />
         <Tooltip {...chartTooltip} />
-        <Bar dataKey="count" radius={4}>
+        <Bar isAnimationActive={false} dataKey="count" radius={4}>
           {data.map((entry) => (
             <Cell key={entry.label} fill={entry.fill} />
           ))}

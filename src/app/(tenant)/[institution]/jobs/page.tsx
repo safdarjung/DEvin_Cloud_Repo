@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
-import { humanize } from "@/modules/finance/format";
+import { humanize } from "@/lib/format";
 import { listAttentionJobs } from "@/modules/jobs/queries";
 import { RequeueButton } from "./requeue-button";
 
@@ -66,7 +66,10 @@ export default async function JobsPage({
               <TableBody>
                 {jobs.map((job) => (
                   <TableRow key={job.id}>
-                    <TableCell>{job.type}</TableCell>
+                    <TableCell>
+                      {job.type}
+                      {job.lastError && <p className="mt-0.5 line-clamp-2 text-xs whitespace-normal text-muted-foreground sm:hidden">{job.lastError}</p>}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={jobStatusVariant(job.status)}>{humanize(job.status)}</Badge>
                     </TableCell>

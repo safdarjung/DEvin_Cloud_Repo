@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -69,15 +70,15 @@ export function PageList({ institutionSlug, pages, canEdit }: PageListProps) {
       {canEdit && (
         <form action={formAction} className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-end">
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="slug">
+            <Label htmlFor="slug">
               Slug
-            </label>
+            </Label>
             <Input id="slug" name="slug" placeholder="e.g. gallery" required maxLength={100} />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="title">
+            <Label htmlFor="title">
               Title
-            </label>
+            </Label>
             <Input id="title" name="title" placeholder="e.g. Gallery" required maxLength={200} />
           </div>
           <Button type="submit" disabled={pending}>

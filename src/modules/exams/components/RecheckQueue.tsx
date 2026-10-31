@@ -6,7 +6,8 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { examStatusLabel, recheckStatusVariant } from "@/modules/exams/components/ResultsTable";
+import { humanize } from "@/lib/format";
+import { recheckStatusVariant } from "@/modules/exams/status";
 import type { RecheckQueueRow } from "@/modules/exams/queries";
 
 interface RecheckQueueProps {
@@ -43,7 +44,7 @@ export function RecheckQueue({ institutionSlug, rows }: RecheckQueueProps) {
                 <TableCell className="hidden sm:table-cell">{row.examName}</TableCell>
                 <TableCell className="hidden sm:table-cell">{row.subjectName}</TableCell>
                 <TableCell>
-                  <Badge variant={recheckStatusVariant(row.status)}>{examStatusLabel(row.status)}</Badge>
+                  <Badge variant={recheckStatusVariant(row.status)}>{humanize(row.status)}</Badge>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">{new Date(row.requestedAt).toLocaleDateString()}</TableCell>
               </TableRow>

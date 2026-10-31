@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -50,9 +51,9 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
       <CardContent>
     <form action={formAction} className="space-y-4">
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="termId">
+        <Label className="mb-1 block" htmlFor="termId">
           Term
-        </label>
+        </Label>
         <Select value={termId} onValueChange={setTermId}>
           <SelectTrigger id="termId" className="w-full">
             <SelectValue placeholder="Choose a term" />
@@ -68,16 +69,16 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="name">
+        <Label className="mb-1 block" htmlFor="name">
           Exam name
-        </label>
+        </Label>
         <Input id="name" name="name" required maxLength={200} placeholder="Unit Test 2" />
       </div>
 
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="type">
+        <Label className="mb-1 block" htmlFor="type">
           Type
-        </label>
+        </Label>
         <Select value={type} onValueChange={(value) => setType(value as typeof type)}>
           <SelectTrigger id="type" className="w-full">
             <SelectValue />
@@ -94,9 +95,9 @@ export function ExamForm({ institutionSlug, terms, gradingScaleKeys }: ExamFormP
 
       {gradingScaleKeys.length > 1 && (
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="gradingScaleKey">
+          <Label className="mb-1 block" htmlFor="gradingScaleKey">
             Grading scale
-          </label>
+          </Label>
           <Select value={gradingScaleKey} onValueChange={setGradingScaleKey}>
             <SelectTrigger id="gradingScaleKey" className="w-full">
               <SelectValue />

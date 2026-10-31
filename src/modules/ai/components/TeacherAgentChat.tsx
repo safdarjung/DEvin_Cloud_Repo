@@ -167,8 +167,8 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
 
   return (
     <div className="space-y-4">
-      <PageHeader title="AI Assistant" />
-      <div className="-mt-3">
+      <PageHeader title="AI Assistant" compact />
+      <div>
         <div role="note" className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
           <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
           <p>
@@ -219,9 +219,9 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
           placeholder="e.g. How has Aarav Sharma's attendance been this term?"
           disabled={busy}
           aria-label="Message"
-          className="h-10"
+         
         />
-        <Button type="submit" className="h-10" disabled={busy || input.trim().length === 0}>
+        <Button type="submit" disabled={busy || input.trim().length === 0}>
           Send
         </Button>
       </form>

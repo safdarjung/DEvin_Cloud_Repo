@@ -15,7 +15,7 @@ interface KpiTileProps {
 
 export function KpiTile({ label, value, sub, href, badge }: KpiTileProps) {
   const card = (
-    <Card className={href ? "h-full transition-shadow duration-(--duration-fast) ease-out group-hover/kpi:shadow-md" : undefined}>
+    <Card className={href ? "h-full transition-shadow duration-(--duration-fast) ease-(--ease-out) group-hover/kpi:shadow-md" : undefined}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           {label}

@@ -5,7 +5,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { InvoiceDetail } from "@/modules/finance/components/InvoiceDetail";
 import { RecordPaymentDialog } from "@/modules/finance/components/RecordPaymentDialog";
-import { humanize, invoiceStatusVariant } from "@/modules/finance/format";
+import { humanize } from "@/lib/format";
+import { invoiceStatusVariant } from "@/modules/finance/format";
 import { getInvoice, paymentModesFor } from "@/modules/finance/queries";
 
 export default async function InvoiceDetailPage({

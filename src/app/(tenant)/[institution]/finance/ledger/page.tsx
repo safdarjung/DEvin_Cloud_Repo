@@ -1,3 +1,4 @@
+import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -51,21 +52,21 @@ export default async function LedgerPage({
 
       <form className="grid gap-3 rounded-xl border bg-card p-4 sm:flex sm:flex-wrap sm:items-end">
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="from">
+          <Label className="mb-1 block" htmlFor="from">
             From
-          </label>
+          </Label>
           <Input id="from" name="from" type="date" defaultValue={range.from} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="to">
+          <Label className="mb-1 block" htmlFor="to">
             To
-          </label>
+          </Label>
           <Input id="to" name="to" type="date" defaultValue={range.to} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="account">
+          <Label className="mb-1 block" htmlFor="account">
             Account
-          </label>
+          </Label>
           <Select name="account" defaultValue={range.account ?? "all"}>
             <SelectTrigger id="account" className="w-full sm:w-48">
               <SelectValue />

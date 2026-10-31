@@ -2,7 +2,7 @@
 // calls here (recordPayment is out of scope for this packet).
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { inr } from "@/modules/finance/format";
+import { inr } from "@/lib/format";
 import type { InvoiceDetail as InvoiceDetailData } from "@/modules/finance/queries";
 
 export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {

@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { DeliveryLogRow } from "@/modules/notifications/queries";
-import { humanize } from "@/modules/finance/format";
+import { humanize } from "@/lib/format";
 
 type Variant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
 
@@ -47,7 +47,10 @@ export function MessageLog({ rows }: { rows: DeliveryLogRow[] }) {
       <TableBody>
         {rows.map((row) => (
           <TableRow key={row.id}>
-            <TableCell>{humanize(row.notificationType)}</TableCell>
+            <TableCell>
+              {humanize(row.notificationType)}
+              <p className="mt-0.5 line-clamp-2 text-xs whitespace-normal text-muted-foreground sm:hidden">{row.renderedBody}</p>
+            </TableCell>
             <TableCell className="hidden uppercase sm:table-cell">{humanize(row.channel)}</TableCell>
             <TableCell>
               {row.channel === "in_app" ? (

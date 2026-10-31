@@ -3,6 +3,7 @@
 // T-031 — 06 §W9 fee structure form. One `upsertFeeStructure` call on
 // submit for the structure + all its components (packet: components upsert
 // by head, so re-saving the same set updates rather than duplicating).
+import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,9 +64,9 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
     <form action={formAction} className="space-y-4 rounded-xl border bg-card p-4 text-card-foreground">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="academicYearId">
+          <Label className="mb-1 block" htmlFor="academicYearId">
             Academic year
-          </label>
+          </Label>
           <Select value={academicYearId} onValueChange={setAcademicYearId}>
             <SelectTrigger id="academicYearId" className="w-full">
               <SelectValue />
@@ -80,9 +81,9 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
           </Select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="gradeId">
+          <Label className="mb-1 block" htmlFor="gradeId">
             Grade
-          </label>
+          </Label>
           <Select value={gradeId} onValueChange={setGradeId}>
             <SelectTrigger id="gradeId" className="w-full">
               <SelectValue />
@@ -97,9 +98,9 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
           </Select>
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="name">
+          <Label className="mb-1 block" htmlFor="name">
             Name
-          </label>
+          </Label>
           <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={200} />
         </div>
       </div>

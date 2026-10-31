@@ -42,7 +42,7 @@ export function FunnelChart({ funnel }: FunnelChartProps) {
           <XAxis type="number" allowDecimals={false} {...chartAxis} />
           <YAxis type="category" dataKey="label" width={112} {...chartAxis} />
           <Tooltip {...chartTooltip} />
-          <Bar dataKey="count" fill="var(--chart-2)" radius={4}>
+          <Bar isAnimationActive={false} dataKey="count" fill="var(--chart-2)" radius={4}>
             <LabelList dataKey="count" position="right" {...chartValueLabel} />
           </Bar>
         </BarChart>

@@ -4,6 +4,7 @@
 // directly from the client; that route persists nothing, so there is no
 // server action to wrap this in. Saving is a separate step owned by
 // `QuizReviewEditor`.
+import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,9 +84,9 @@ export function QuizGenerateButton({ institutionSlug, curriculumUnitId, aiPolicy
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium" htmlFor="questionCount">
+          <Label htmlFor="questionCount">
             Questions
-          </label>
+          </Label>
           <Input
             id="questionCount"
             type="number"
@@ -96,9 +97,9 @@ export function QuizGenerateButton({ institutionSlug, curriculumUnitId, aiPolicy
           />
         </div>
         <div>
-          <label className="text-sm font-medium" htmlFor="difficulty">
+          <Label htmlFor="difficulty">
             Difficulty
-          </label>
+          </Label>
           <Select value={difficulty} onValueChange={(value) => setDifficulty(value as Difficulty)}>
             <SelectTrigger id="difficulty" className="w-full">
               <SelectValue />

@@ -3,6 +3,7 @@
 // T-015 — 06 §W5 correction dialog. `correctAttendance` is the real boundary
 // (RPC enforces the window/role); this dialog only offers the control —
 // hiding it for a teacher outside the window is UX, not authorization.
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,9 +69,9 @@ export function CorrectionDialog({
         </DialogHeader>
         <form action={formAction} className="space-y-3">
           <div>
-            <label className="text-sm font-medium" htmlFor="newStatus">
+            <Label htmlFor="newStatus">
               New status
-            </label>
+            </Label>
             <Select value={newStatus} onValueChange={setNewStatus}>
               <SelectTrigger id="newStatus" className="w-full">
                 <SelectValue />
@@ -85,9 +86,9 @@ export function CorrectionDialog({
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="reason">
+            <Label htmlFor="reason">
               Reason
-            </label>
+            </Label>
             <Textarea
               id="reason"
               value={reason}

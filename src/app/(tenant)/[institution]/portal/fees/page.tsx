@@ -1,3 +1,4 @@
+import { inr } from "@/lib/format";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -7,7 +8,6 @@ import { listReceiptsForStudent } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 
-const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
 
 export default async function PortalFeesPage({
   params,
@@ -51,7 +51,7 @@ export default async function PortalFeesPage({
                     >
                       {r.receiptNo}
                     </Link>
-                    <span className="tabular-nums text-muted-foreground">{inr.format(r.amount)}</span>
+                    <span className="tabular-nums text-muted-foreground">{inr(r.amount)}</span>
                   </li>
                 ))}
               </ul>

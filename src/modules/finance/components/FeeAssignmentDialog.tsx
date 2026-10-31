@@ -4,6 +4,7 @@
 // `assignFeeStructure` is the real boundary (validates every id and that a
 // concession's head matches a component on the structure); this dialog
 // only offers the control.
+import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -92,15 +93,15 @@ export function FeeAssignmentDialog({
         </DialogHeader>
         <form action={formAction} className="space-y-3">
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="studentId">
+            <Label className="mb-1 block" htmlFor="studentId">
               Student ID
-            </label>
+            </Label>
             <Input id="studentId" value={studentId} onChange={(e) => setStudentId(e.target.value)} placeholder="uuid" required />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="feeStructureId">
+            <Label className="mb-1 block" htmlFor="feeStructureId">
               Fee structure
-            </label>
+            </Label>
             <Select value={feeStructureId} onValueChange={setFeeStructureId}>
               <SelectTrigger id="feeStructureId" className="w-full">
                 <SelectValue />

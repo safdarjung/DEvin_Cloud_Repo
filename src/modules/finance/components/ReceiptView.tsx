@@ -10,7 +10,7 @@
 // Reused unchanged by both the normal view page and the print page.
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { humanize, inr } from "@/modules/finance/format";
+import { humanize, inr } from "@/lib/format";
 import type { ReceiptDetail } from "@/modules/finance/queries";
 
 export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {

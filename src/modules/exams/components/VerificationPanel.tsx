@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { examStatusLabel, examStatusVariant } from "@/modules/exams/components/ResultsTable";
+import { humanize } from "@/lib/format";
+import { examStatusVariant } from "@/modules/exams/status";
 import type { ActionResult } from "@/lib/actions/result";
 import { closeMarksEntry, openMarksEntry, reopenMarksEntry, verifyExam } from "@/modules/exams/actions";
 
@@ -33,7 +34,7 @@ function TransitionButton({
   disabled?: boolean;
 }) {
   return (
-    <Button type="submit" size="sm" variant="outline" className="h-10 sm:h-7" disabled={pending || disabled}>
+    <Button type="submit" size="sm" variant="outline" disabled={pending || disabled}>
       {pending ? `${label}…` : label}
     </Button>
   );
@@ -84,7 +85,7 @@ export function VerificationPanel({ institutionSlug, examId, examStatus, hasPape
       <CardHeader>
         <CardTitle className="flex items-center justify-between gap-2">
           Verification
-          <Badge variant={examStatusVariant(examStatus)}>{examStatusLabel(examStatus)}</Badge>
+          <Badge variant={examStatusVariant(examStatus)}>{humanize(examStatus)}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

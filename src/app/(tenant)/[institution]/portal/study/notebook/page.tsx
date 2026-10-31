@@ -49,7 +49,7 @@ export default async function NotebookPage({
 
       <form action={`${basePath}/notebook`} className="flex gap-2">
         {folder && <input type="hidden" name="folder" value={folder} />}
-        <Input name="search" defaultValue={search} placeholder="Search by title" aria-label="Search by title" className="h-10" />
+        <Input name="search" defaultValue={search} placeholder="Search by title" aria-label="Search by title" />
       </form>
 
       {folders.length > 0 && (
@@ -61,7 +61,7 @@ export default async function NotebookPage({
                 key={f ?? "all"}
                 href={f === null ? `${basePath}/notebook` : `${basePath}/notebook?folder=${encodeURIComponent(f)}`}
                 aria-current={active ? "true" : undefined}
-                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }), "h-10 sm:h-8")}
+                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }))}
               >
                 {f ?? "All"}
               </Link>

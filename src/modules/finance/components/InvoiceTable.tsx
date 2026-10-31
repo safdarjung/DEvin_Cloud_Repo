@@ -3,13 +3,15 @@
 // T-031 — invoice list (AC4: status filter). Client-side filter over the
 // already-fetched rows — the page passes every invoice for the selected
 // term/grade, and this is just a view over it.
+import { Label } from "@/components/ui/label";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { humanize, inr, invoiceStatusVariant } from "@/modules/finance/format";
+import { humanize, inr } from "@/lib/format";
+import { invoiceStatusVariant } from "@/modules/finance/format";
 import type { InvoiceSummary } from "@/modules/finance/queries";
 
 const STATUS_OPTIONS = ["all", "issued", "part_paid", "paid", "cancelled"] as const;
@@ -30,9 +32,9 @@ export function InvoiceTable({ institutionSlug, invoices }: InvoiceTableProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium" htmlFor="statusFilter">
+        <Label htmlFor="statusFilter">
           Status
-        </label>
+        </Label>
         <Select value={status} onValueChange={(v) => setStatus(v as (typeof STATUS_OPTIONS)[number])}>
           <SelectTrigger id="statusFilter" className="w-40">
             <SelectValue />

@@ -24,7 +24,7 @@ export function GradeDistributionChart({ distribution }: GradeDistributionChartP
         <XAxis dataKey="grade" {...chartAxis} />
         <YAxis allowDecimals={false} width={32} {...chartAxis} />
         <Tooltip {...chartTooltip} />
-        <Bar dataKey="count" fill="var(--chart-1)" radius={4}>
+        <Bar isAnimationActive={false} dataKey="count" fill="var(--chart-1)" radius={4}>
           <LabelList dataKey="count" position="top" {...chartValueLabel} />
         </Bar>
       </BarChart>

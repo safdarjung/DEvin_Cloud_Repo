@@ -38,9 +38,10 @@ export function PortalNav({
     <div className="mb-6">
       <PageHeader
         title={role === "guardian" ? "My children" : "My school"}
+        compact
         actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
       />
-      <nav aria-label="Portal tabs" className="-mt-3 flex gap-1 overflow-x-auto border-b border-border pb-1">
+      <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
         {TABS.map((tab) => (
           <Link
             key={tab.href}

@@ -4,7 +4,8 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { examStatusLabel, examStatusVariant } from "@/modules/exams/components/ResultsTable";
+import { humanize } from "@/lib/format";
+import { examStatusVariant } from "@/modules/exams/status";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { getMyPapers, listExams } from "@/modules/exams/queries";
@@ -61,7 +62,7 @@ export default async function ExamsPage({
                     <Link href={`/${institutionSlug}/exams/${exam.id}`} className="min-w-0 font-medium hover:underline">
                       {exam.name} <span className="text-sm font-normal text-muted-foreground">· {exam.termName}</span>
                     </Link>
-                    <Badge variant={examStatusVariant(exam.status)}>{examStatusLabel(exam.status)}</Badge>
+                    <Badge variant={examStatusVariant(exam.status)}>{humanize(exam.status)}</Badge>
                   </li>
                 ))}
               </ul>
@@ -83,7 +84,7 @@ export default async function ExamsPage({
                   <Link href={`/${institutionSlug}/exams/${paper.examId}/papers/${paper.id}`} className="min-w-0 hover:underline">
                     {paper.examName} · {paper.sectionLabel} {paper.subjectName}
                   </Link>
-                  <Badge variant={examStatusVariant(paper.examStatus)}>{examStatusLabel(paper.examStatus)}</Badge>
+                  <Badge variant={examStatusVariant(paper.examStatus)}>{humanize(paper.examStatus)}</Badge>
                 </li>
               ))}
             </ul>

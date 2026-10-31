@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -74,9 +75,9 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
     <form action={formAction} className="space-y-4">
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="maxMarks">
+          <Label className="mb-1 block" htmlFor="maxMarks">
             Max marks
-          </label>
+          </Label>
           <Input
             id="maxMarks"
             type="number"
@@ -87,9 +88,9 @@ export function PaperGrid({ institutionSlug, examId, sections, subjects, default
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium" htmlFor="passPercentage">
+          <Label className="mb-1 block" htmlFor="passPercentage">
             Pass %
-          </label>
+          </Label>
           <Input
             id="passPercentage"
             type="number"

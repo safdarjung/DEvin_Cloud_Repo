@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { examStatusLabel, recheckStatusVariant } from "@/modules/exams/components/ResultsTable";
+import { humanize } from "@/lib/format";
+import { recheckStatusVariant } from "@/modules/exams/status";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { RecheckDecisionForm } from "@/modules/exams/components/RecheckDecisionForm";
@@ -33,7 +34,7 @@ export default async function RecheckDecisionPage({
         title={`${request.studentName} — ${request.subjectName}`}
         description={request.examName}
         back={{ href: `/${institutionSlug}/exams/rechecks`, label: "Recheck requests" }}
-        actions={<Badge variant={recheckStatusVariant(request.status)}>{examStatusLabel(request.status)}</Badge>}
+        actions={<Badge variant={recheckStatusVariant(request.status)}>{humanize(request.status)}</Badge>}
       />
 
       <Card>

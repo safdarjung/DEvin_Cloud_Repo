@@ -21,10 +21,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { addEnquiryNote, assignEnquiry, convertEnquiryToApplication } from "@/modules/admissions/actions";
-import { enquiryStatusVariant } from "@/modules/admissions/components/PipelineBoard";
+import { enquiryStatusVariant } from "@/modules/admissions/status";
 import type { EnquiryRow } from "@/modules/admissions/queries";
 import { EnquiryReplyDraft } from "@/modules/ai/components/EnquiryReplyDraft";
-import { humanize } from "@/modules/finance/format";
+import { humanize } from "@/lib/format";
 
 interface StaffOption {
   id: string;

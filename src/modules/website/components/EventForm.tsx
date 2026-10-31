@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -40,15 +41,15 @@ export function EventForm({ institutionSlug }: EventFormProps) {
       <Input name="title" placeholder="Title" required maxLength={200} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-sm font-medium" htmlFor="startsAt">
+          <Label htmlFor="startsAt">
             Starts at
-          </label>
+          </Label>
           <Input id="startsAt" name="startsAt" type="datetime-local" required />
         </div>
         <div className="space-y-1">
-          <label className="text-sm font-medium" htmlFor="endsAt">
+          <Label htmlFor="endsAt">
             Ends at (optional)
-          </label>
+          </Label>
           <Input id="endsAt" name="endsAt" type="datetime-local" />
         </div>
       </div>

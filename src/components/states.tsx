@@ -35,7 +35,7 @@ export function ErrorState({
     <div role="alert">
       <StateBox icon={<AlertTriangle className="size-6 text-destructive" aria-hidden />} title={title} description={description}>
         {onRetry && (
-          <Button type="button" variant="outline" className="mt-2 h-10" onClick={onRetry}>
+          <Button type="button" variant="outline" className="mt-2" onClick={onRetry}>
             Try again
           </Button>
         )}

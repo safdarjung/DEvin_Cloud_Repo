@@ -1,3 +1,4 @@
+import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -34,9 +35,9 @@ export default async function DefaultersPage({
       {terms.length > 0 && (
         <form className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end">
           <div>
-            <label className="mb-1 block text-sm font-medium" htmlFor="termId">
+            <Label className="mb-1 block" htmlFor="termId">
               Term
-            </label>
+            </Label>
             <Select name="termId" defaultValue={termId}>
               <SelectTrigger id="termId" className="w-full sm:w-56">
                 <SelectValue />

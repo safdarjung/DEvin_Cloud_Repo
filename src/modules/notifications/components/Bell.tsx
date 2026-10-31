@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 // (Inbox.tsx's mark-read buttons); this component itself never fetches.
 export function Bell({ href, unreadCount }: { href: string; unreadCount: number }) {
   return (
-    <Link href={href} className="relative flex min-h-10 min-w-10 items-center justify-center rounded-md transition-colors duration-(--duration-fast) ease-out outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" aria-label="Notifications">
+    <Link href={href} className="relative flex min-h-10 min-w-10 items-center justify-center rounded-md transition-colors duration-(--duration-fast) ease-(--ease-out) outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring" aria-label="Notifications">
       <BellIcon className="size-5" />
       {unreadCount > 0 && (
         <Badge variant="destructive" className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 text-xs">

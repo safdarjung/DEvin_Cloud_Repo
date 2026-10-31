@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/actions/result";
 import { publishAssignment } from "@/modules/academics/assignments.actions";
+import { assignmentStatusVariant } from "@/modules/academics/status";
 import type { AssignmentSummary } from "@/modules/academics/assignments.queries";
 
 interface AssignmentListProps {
@@ -16,10 +17,6 @@ interface AssignmentListProps {
   assignments: AssignmentSummary[];
   /** Whether the signed-in member can create/publish (assignment.manage) — read-only roles get no action column. */
   canManage: boolean;
-}
-
-function assignmentStatusVariant(status: string) {
-  return status === "published" ? "success" : status === "draft" ? "warning" : "outline";
 }
 
 function PublishButton({ institutionSlug, assignmentId }: { institutionSlug: string; assignmentId: string }) {

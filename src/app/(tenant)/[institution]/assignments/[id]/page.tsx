@@ -7,12 +7,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { QuizContentView } from "@/modules/academics/components/QuizContentView";
+import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getAssignment } from "@/modules/academics/assignments.queries";
-
-// Same mapping as AssignmentList's (client file, so not importable from this server page).
-function assignmentStatusVariant(status: string) {
-  return status === "published" ? "success" : status === "draft" ? "warning" : "outline";
-}
 
 export default async function AssignmentDetailPage({
   params,

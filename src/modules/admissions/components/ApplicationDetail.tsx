@@ -20,10 +20,11 @@ import {
 import { decideApplication } from "@/modules/admissions/actions";
 import { canDecide, type ApplicationDecision, type ApplicationStatus } from "@/modules/admissions/state";
 import type { ApplicationDecisionRow, ApplicationRow, SectionCapacityOption } from "@/modules/admissions/queries";
-import { applicationStatusVariant, DecisionTimeline } from "@/modules/admissions/components/DecisionTimeline";
+import { DecisionTimeline } from "@/modules/admissions/components/DecisionTimeline";
+import { applicationStatusVariant } from "@/modules/admissions/status";
 import { EnrolDialog } from "@/modules/admissions/components/EnrolDialog";
 import type { FeeStructureSummary } from "@/modules/finance/queries";
-import { humanize } from "@/modules/finance/format";
+import { humanize } from "@/lib/format";
 
 interface ApplicationDetailProps {
   institutionSlug: string;

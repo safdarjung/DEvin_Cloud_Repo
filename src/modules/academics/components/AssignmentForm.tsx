@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -124,9 +125,9 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
       {!isEditing && (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="text-sm font-medium" htmlFor="classSectionId">
+            <Label htmlFor="classSectionId">
               Section
-            </label>
+            </Label>
             <Select
               value={sectionId}
               onValueChange={(value) => {
@@ -148,9 +149,9 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
             </Select>
           </div>
           <div>
-            <label className="text-sm font-medium" htmlFor="subjectId">
+            <Label htmlFor="subjectId">
               Subject
-            </label>
+            </Label>
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger id="subjectId" className="w-full">
                 <SelectValue placeholder="Choose a subject" />
@@ -168,16 +169,16 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
       )}
 
       <div>
-        <label className="text-sm font-medium" htmlFor="title">
+        <Label htmlFor="title">
           Title
-        </label>
+        </Label>
         <Input id="title" name="title" required defaultValue={assignment?.title} maxLength={200} />
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="instructions">
+        <Label htmlFor="instructions">
           Instructions
-        </label>
+        </Label>
         <Textarea
           id="instructions"
           name="instructions"
@@ -187,9 +188,9 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="dueAt">
+        <Label htmlFor="dueAt">
           Due date
-        </label>
+        </Label>
         <Input
           id="dueAt"
           name="dueAt"

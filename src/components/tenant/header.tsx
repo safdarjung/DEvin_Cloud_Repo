@@ -29,7 +29,7 @@ export function TenantHeader({
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {notificationsHref && <Bell href={notificationsHref} unreadCount={unreadCount ?? 0} />}
         <form action="/logout" method="post">
-          <Button type="submit" variant="ghost" className="h-10 px-2.5 sm:px-3" aria-label="Log out">
+          <Button type="submit" variant="ghost" className="px-2.5 sm:px-3" aria-label="Log out">
             <LogOut className="size-4" aria-hidden />
             <span className="hidden sm:inline">Log out</span>
           </Button>

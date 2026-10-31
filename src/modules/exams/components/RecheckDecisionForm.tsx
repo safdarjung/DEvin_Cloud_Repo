@@ -58,7 +58,7 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
             {startState.error.message}
           </p>
         )}
-        <Button type="submit" className="h-10 sm:h-8" disabled={startPending}>
+        <Button type="submit" disabled={startPending}>
           {startPending ? "Starting…" : "Start review"}
         </Button>
       </form>
@@ -104,7 +104,7 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
             step="0.01"
             value={newMarks}
             onChange={(e) => setNewMarks(e.target.value)}
-            className="mt-1 h-10 w-32 sm:h-8"
+            className="mt-1 w-32"
           />
         </label>
       )}
@@ -120,7 +120,7 @@ export function RecheckDecisionForm({ institutionSlug, request }: RecheckDecisio
         </p>
       )}
 
-      <Button type="submit" className="h-10 sm:h-8" disabled={decidePending || (decision === "approve" && newMarks.trim() === "")}>
+      <Button type="submit" disabled={decidePending || (decision === "approve" && newMarks.trim() === "")}>
         {decidePending ? "Submitting…" : `Confirm ${decision}`}
       </Button>
     </form>

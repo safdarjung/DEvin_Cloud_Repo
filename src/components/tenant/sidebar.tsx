@@ -49,7 +49,7 @@ function NavLinks({
               aria-label={collapsed ? item.label : undefined}
               title={collapsed ? item.label : undefined}
               className={cn(
-                "flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-(--duration-fast) ease-out",
+                "flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-(--duration-fast) ease-(--ease-out)",
                 focusRing,
                 collapsed && "justify-center px-0",
                 active
@@ -104,7 +104,7 @@ export function TenantSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col gap-4 overflow-y-auto border-r bg-sidebar p-3 text-sidebar-foreground transition-[width] duration-(--duration-normal) ease-out lg:flex",
+        "sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col gap-4 overflow-y-auto border-r bg-sidebar p-3 text-sidebar-foreground transition-[width] duration-(--duration-normal) ease-(--ease-out) lg:flex",
         collapsed ? "w-16" : "w-60",
       )}
     >

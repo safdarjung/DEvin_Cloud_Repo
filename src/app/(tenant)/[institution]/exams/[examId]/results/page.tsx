@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { verifyExam } from "@/modules/exams/actions";
-import { examStatusLabel } from "@/modules/exams/components/ResultsTable";
+import { humanize } from "@/lib/format";
 import { PublishButton } from "@/modules/exams/components/PublishButton";
 import { ResultsTable } from "@/modules/exams/components/ResultsTable";
 import { getExamWithPapers, listResultsForExam } from "@/modules/exams/queries";
@@ -45,7 +45,7 @@ export default async function ExamResultsPage({
       <div className="space-y-4">
         <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
         <p className="text-sm text-muted-foreground">
-          Results can be published once the exam is in verification. Current status: {examStatusLabel(exam.status)}.
+          Results can be published once the exam is in verification. Current status: {humanize(exam.status)}.
         </p>
       </div>
     );

@@ -4,7 +4,7 @@
 // form and pagination links.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/states";
-import { inr } from "@/modules/finance/format";
+import { inr } from "@/lib/format";
 import type { LedgerPage } from "@/modules/finance/queries";
 
 export function LedgerTable({ ledger }: { ledger: LedgerPage }) {

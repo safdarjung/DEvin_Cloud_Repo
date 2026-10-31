@@ -1,14 +1,8 @@
-// Display helpers for finance UI. All query amounts are rupees (numeric), never paise.
-import type { ComponentProps } from "react";
-import type { Badge } from "@/components/ui/badge";
-
-const inrFormat = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" });
-export const inr = (rupees: number): string => inrFormat.format(rupees);
-
-type Variant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
+// Finance-specific display helpers. Generic ones (inr, humanize) live in @/lib/format.
+import type { BadgeVariant } from "@/lib/format";
 
 // invoices.status check: issued | part_paid | paid | cancelled
-export function invoiceStatusVariant(status: string): Variant {
+export function invoiceStatusVariant(status: string): BadgeVariant {
   switch (status) {
     case "paid":
       return "success";
@@ -19,9 +13,4 @@ export function invoiceStatusVariant(status: string): Variant {
     default:
       return "outline";
   }
-}
-
-export function humanize(value: string): string {
-  const s = value.replace(/_/g, " ");
-  return s.charAt(0).toUpperCase() + s.slice(1);
 }

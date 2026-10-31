@@ -1,5 +1,6 @@
 "use client";
 
+import { Label } from "@/components/ui/label";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -49,15 +50,15 @@ export function NoticeForm({ institutionSlug }: NoticeFormProps) {
       />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-sm font-medium" htmlFor="publishAt">
+          <Label htmlFor="publishAt">
             Publish at
-          </label>
+          </Label>
           <Input id="publishAt" name="publishAt" type="datetime-local" />
         </div>
         <div className="space-y-1">
-          <label className="text-sm font-medium" htmlFor="expiresAt">
+          <Label htmlFor="expiresAt">
             Expires at (optional)
-          </label>
+          </Label>
           <Input id="expiresAt" name="expiresAt" type="datetime-local" />
         </div>
       </div>

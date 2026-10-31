@@ -1,3 +1,4 @@
+import { inr } from "@/lib/format";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
@@ -60,7 +61,7 @@ export default async function PortalOverviewPage({
         <KpiTile label="Attendance this term" value={attendance ? `${attendance.percentage.toFixed(2)}%` : "—"} href={`${basePath}/attendance${q}`} />
         <KpiTile
           label="Outstanding fees"
-          value={new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(outstanding)}
+          value={inr(outstanding)}
           href={`${basePath}/fees${q}`}
         />
         <KpiTile
@@ -77,7 +78,7 @@ export default async function PortalOverviewPage({
             always forbid them. */}
         {hasPermission(ctx, "ai.study") && (
           <Link href={`${basePath}/study`} className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Card className="h-full transition-shadow duration-(--duration-fast) ease-out hover:shadow-md">
+            <Card className="h-full transition-shadow duration-(--duration-fast) ease-(--ease-out) hover:shadow-md">
               <CardHeader>
                 <CardTitle className="text-sm font-medium text-muted-foreground">Study helper</CardTitle>
               </CardHeader>

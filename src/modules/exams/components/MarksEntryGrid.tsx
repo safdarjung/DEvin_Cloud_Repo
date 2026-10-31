@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { ActionResult } from "@/lib/actions/result";
 import { enterMarks } from "@/modules/exams/actions";
-import { examStatusLabel } from "@/modules/exams/components/ResultsTable";
+import { humanize } from "@/lib/format";
 import type { PaperMarks } from "@/modules/exams/queries";
 
 interface RowState {
@@ -71,7 +71,7 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
     return (
       <EmptyState
         title="Marks entry is closed"
-        description={`This exam is ${examStatusLabel(paper.examStatus).toLowerCase()}, so marks can no longer be edited here.`}
+        description={`This exam is ${humanize(paper.examStatus).toLowerCase()}, so marks can no longer be edited here.`}
       />
     );
   }
@@ -110,7 +110,7 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
                         disabled={row.isAbsent}
                         aria-label={`${student.name} marks`}
                         onChange={(e) => updateRow(student.studentId, { marksObtained: e.target.value })}
-                        className="h-10 w-24 sm:h-8"
+                        className="w-24"
                       />
                     </TableCell>
                     <TableCell>
@@ -139,7 +139,7 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
         <p role="status" className="text-sm text-success">Saved — {state.data.entered} entered, {state.data.unchanged} unchanged.</p>
       )}
 
-      <Button type="submit" className="h-10 sm:h-8" disabled={pending || dirtyIds.length === 0}>
+      <Button type="submit" disabled={pending || dirtyIds.length === 0}>
         {pending ? "Saving…" : `Save ${dirtyIds.length || ""} change${dirtyIds.length === 1 ? "" : "s"}`}
       </Button>
     </form>

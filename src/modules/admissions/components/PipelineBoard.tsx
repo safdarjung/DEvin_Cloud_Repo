@@ -3,7 +3,7 @@
 // T-027 — 06 §W4 pipeline board. Columns per configured stage; moving a
 // card is a <select> (packet: "move via select — no drag dependency"), not
 // drag-and-drop.
-import { useState, useTransition, type ComponentProps } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { EmptyState } from "@/components/states";
@@ -12,25 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateEnquiryStatus } from "@/modules/admissions/actions";
 import type { EnquiryRow } from "@/modules/admissions/queries";
-import { humanize } from "@/modules/finance/format";
-
-type Variant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
-
-// enquiries.status check (default stages, 20261028000007_admissions.sql);
-// settings.admissions.stages may add custom stages, which fall to outline.
-export function enquiryStatusVariant(stage: string): Variant {
-  switch (stage) {
-    case "converted":
-      return "success";
-    case "new":
-    case "contacted":
-    case "visit_scheduled":
-    case "application_sent":
-      return "info";
-    default:
-      return "outline";
-  }
-}
+import { humanize } from "@/lib/format";
 
 interface PipelineBoardProps {
   institutionSlug: string;

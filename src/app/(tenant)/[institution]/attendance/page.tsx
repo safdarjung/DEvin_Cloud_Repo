@@ -50,7 +50,7 @@ export default async function AttendancePage({
               {sections.map((section) => (
                 <li key={section.id} className="flex items-center justify-between gap-3 py-3">
                   <span className="font-medium">{section.label}</span>
-                  <Button asChild variant="outline" className="min-h-10 shrink-0">
+                  <Button asChild variant="outline" className="shrink-0">
                     <Link href={`/${institutionSlug}/attendance/${section.id}?date=${today}`}>Open register</Link>
                   </Button>
                 </li>

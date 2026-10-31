@@ -10,6 +10,7 @@
 // T-031 phase 2: "All grades" is back, now routed through
 // `public.enqueue_term_invoices` (job queue) instead of the synchronous
 // per-student loop; picking a specific grade still uses the sync path.
+import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -48,9 +49,9 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
   return (
     <form action={formAction} className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground sm:flex-row sm:flex-wrap sm:items-end">
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="genTermId">
+        <Label className="mb-1 block" htmlFor="genTermId">
           Term
-        </label>
+        </Label>
         <Select value={termId} onValueChange={setTermId}>
           <SelectTrigger id="genTermId" className="w-full sm:w-44">
             <SelectValue />
@@ -65,9 +66,9 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
         </Select>
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium" htmlFor="genGradeId">
+        <Label className="mb-1 block" htmlFor="genGradeId">
           Grade
-        </label>
+        </Label>
         <Select value={gradeId} onValueChange={setGradeId}>
           <SelectTrigger id="genGradeId" className="w-full sm:w-44">
             <SelectValue />
