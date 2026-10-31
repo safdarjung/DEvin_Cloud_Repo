@@ -65,6 +65,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.close_marks_entry",
   "public.convert_enquiry",
   "public.correct_attendance",
+  "public.create_institution",
   "public.decide_application",
   "public.enqueue_term_invoices",
   "public.enrol_applicant",

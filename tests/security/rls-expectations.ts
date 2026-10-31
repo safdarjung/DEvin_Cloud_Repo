@@ -10,6 +10,12 @@ export interface TableExpectation {
   write: FixtureRole[];
   /** Class P only (T-023): true if `anon` has a SELECT policy (published/live rows only). */
   anonRead?: boolean;
+  /**
+   * Columns the generated suite should SELECT instead of "*", for a table
+   * with column-level grants (a column excluded from the table-wide grant
+   * makes `select("*")` 42501 at the grant layer, before RLS runs).
+   */
+  selectColumns?: string[];
 }
 
 // 05 §5 — the seven tables migration 0002 (T-004) creates. Later migrations'
@@ -409,5 +415,17 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["O"],
     read: ["student"],
     write: ["student"],
+  },
+
+  // M03-T1 (20261028000064) — invitations. Narrower than campuses/academic_years
+  // (class S's usual staff_roles() read): only owner/principal/admin, matching
+  // member.manage (07 §2.2). No write entry — every row comes from the
+  // invite_member/accept_invitation/revoke_invitation RPCs (M03-T2), not a
+  // table policy (function-only, same shape as institution_sequences).
+  invitations: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+    selectColumns: ["id", "institution_id", "email", "role"],
   },
 };

@@ -963,6 +963,56 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"invitations": {
+                  Row: {
+                    "accepted_at": string | null,"accepted_by": string | null,"created_at": string,"email": string,"expires_at": string,"guardian_id": string | null,"id": string,"institution_id": string,"invited_by": string | null,"revoked_at": string | null,"role": string,"staff_id": string | null,"student_id": string | null,"token_hash": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"created_at"?: string,"email": string,"expires_at": string,"guardian_id"?: string | null,"id"?: string,"institution_id": string,"invited_by"?: string | null,"revoked_at"?: string | null,"role": string,"staff_id"?: string | null,"student_id"?: string | null,"token_hash": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"created_at"?: string,"email"?: string,"expires_at"?: string,"guardian_id"?: string | null,"id"?: string,"institution_id"?: string,"invited_by"?: string | null,"revoked_at"?: string | null,"role"?: string,"staff_id"?: string | null,"student_id"?: string | null,"token_hash"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "invitations_accepted_by_fkey"
+      columns: ["accepted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_guardian_id_fkey"
+      columns: ["guardian_id"]
+isOneToOne: false
+      referencedRelation: "guardians"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"invoice_lines": {
                   Row: {
                     "amount": number,"concession_amount": number,"created_at": string,"description": string,"head": string,"id": string,"institution_id": string,"invoice_id": string
@@ -1744,6 +1794,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"create_institution":
+{ Args: { "p_name": string,"p_slug": string,"p_timezone"?: string,"p_year_start"?: string }; Returns: string
+                           },
 "decide_application":
 { Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
                            },

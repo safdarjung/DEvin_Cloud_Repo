@@ -56,7 +56,12 @@ describe("C-01: generated RLS suite", () => {
     for (const role of ROLES) {
       it(`${role}: cross-institution SELECT returns 0 rows`, async () => {
         const client = a.clientAs(role);
-        const { data, error } = await client.from(table).select("*").eq("institution_id", b.institutionId);
+        // M03-T1: invitations has column-level grants (token_hash excluded,
+        // 20261028000064) — `select("*")` 42501s at the grant layer before
+        // RLS ever runs. selectColumns lets a table like that assert the
+        // same cross-institution claim over its actually-grantable columns.
+        const columns = RLS_EXPECTATIONS[table].selectColumns?.join(",") ?? "*";
+        const { data, error } = await client.from(table).select(columns).eq("institution_id", b.institutionId);
 
         expect(error).toBeNull();
         expect(data).toHaveLength(0);
