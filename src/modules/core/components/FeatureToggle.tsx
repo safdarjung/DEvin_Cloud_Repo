@@ -1,19 +1,22 @@
 "use client";
 
-// D30/D33 — the only UI for toggling `institutions.settings.features
-// .teacher_ai_agent`. Shown to owner/principal/admin (who hold
-// `institution.settings.manage`) on the page teachers otherwise use the
-// agent from, so the effect of the toggle is visible in context.
+// D30/D33 — the only UI for toggling `institutions.settings.features.*`.
+// Shown to owner/principal/admin (who hold `institution.settings.manage`).
+// Generalized from a `teacher_ai_agent`-only toggle (Bug A fix) so each new
+// feature key doesn't need its own copy of this component.
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import type { FeatureKey } from "@/lib/auth/entitlements";
 import { setFeatureEnabled } from "@/modules/core/actions";
 
-interface TeacherAgentFeatureToggleProps {
+interface FeatureToggleProps {
   institutionSlug: string;
+  featureKey: FeatureKey;
+  label: string;
   initialEnabled: boolean;
 }
 
-export function TeacherAgentFeatureToggle({ institutionSlug, initialEnabled }: TeacherAgentFeatureToggleProps) {
+export function FeatureToggle({ institutionSlug, featureKey, label, initialEnabled }: FeatureToggleProps) {
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,7 @@ export function TeacherAgentFeatureToggle({ institutionSlug, initialEnabled }: T
     setSaving(true);
     setError(null);
     const next = !enabled;
-    const result = await setFeatureEnabled(institutionSlug, { key: "teacher_ai_agent", enabled: next });
+    const result = await setFeatureEnabled(institutionSlug, { key: featureKey, enabled: next });
     if (!result.ok) {
       setError(result.error.message);
     } else {
@@ -35,7 +38,7 @@ export function TeacherAgentFeatureToggle({ institutionSlug, initialEnabled }: T
     <div className="space-y-2 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-sm font-semibold">Teacher AI assistant</h2>
+          <h2 className="text-sm font-semibold">{label}</h2>
           <p className="text-muted-foreground text-xs">
             {enabled ? "Included in this school's plan." : "Not included in this school's plan."}
           </p>
