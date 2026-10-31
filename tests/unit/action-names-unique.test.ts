@@ -10,6 +10,10 @@ vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 const SRC_DIR = path.join(process.cwd(), "src");
 const DEFINE_ACTION_CALL = /defineAction\s*(?:<[^>]*>)?\s*\(\s*\{/g;
 const DEFINE_ACTION_NAME = /defineAction\s*(?:<[^>]*>)?\s*\(\s*\{\s*name:\s*["'`]([A-Za-z0-9_.]+)["'`]/g;
+// M02 — same static-check shape as actions, mirrored for the separate query
+// registry/namespace (src/lib/actions/define-query.ts).
+const DEFINE_QUERY_CALL = /defineQuery\s*(?:<[^>]*>)?\s*\(\s*\{/g;
+const DEFINE_QUERY_NAME = /defineQuery\s*(?:<[^>]*>)?\s*\(\s*\{\s*name:\s*["'`]([A-Za-z0-9_.]+)["'`]/g;
 
 function walk(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -49,5 +53,38 @@ describe("Action names (C-03)", () => {
     const { getRegisteredActions } = await import("@/lib/actions/registry");
 
     expect(new Set(getRegisteredActions().keys())).toEqual(names);
+  });
+});
+
+describe("Query names (M02)", () => {
+  it("every defineQuery call has a literal name and no two queries share one", () => {
+    const names: string[] = [];
+    let calls = 0;
+
+    for (const file of walk(SRC_DIR)) {
+      if (file.endsWith(path.join("lib", "actions", "define-query.ts"))) continue;
+      const content = fs.readFileSync(file, "utf8");
+      calls += [...content.matchAll(DEFINE_QUERY_CALL)].length;
+      for (const match of content.matchAll(DEFINE_QUERY_NAME)) names.push(match[1]);
+    }
+
+    expect(calls).toBeGreaterThan(0);
+    expect(names).toHaveLength(calls);
+    const duplicates = names.filter((name, i) => names.indexOf(name) !== i);
+    expect(duplicates).toEqual([]);
+  });
+
+  it("every defineQuery name is registered after importing the query manifest", async () => {
+    const names = new Set<string>();
+    for (const file of walk(SRC_DIR)) {
+      if (file.endsWith(path.join("lib", "actions", "define-query.ts"))) continue;
+      const content = fs.readFileSync(file, "utf8");
+      for (const match of content.matchAll(DEFINE_QUERY_NAME)) names.add(match[1]);
+    }
+
+    await import("@/app/api/v1/query/all-queries");
+    const { getRegisteredQueries } = await import("@/lib/actions/define-query");
+
+    expect(new Set(getRegisteredQueries().keys())).toEqual(names);
   });
 });
