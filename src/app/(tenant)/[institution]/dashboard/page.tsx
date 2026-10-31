@@ -25,6 +25,15 @@ import { RecentActivity } from "@/modules/core/components/dashboard/RecentActivi
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { demoApprovals, demoAttendanceTrend, demoFixturesEnabled, demoInsights, demoStaffAvailability, type InsightRole } from "@/modules/core/demo/fixtures";
 import { listExams, listRecheckQueue } from "@/modules/exams/queries";
+import { CommandGrid, type GridCard } from "@/modules/fabric/components/command/command-grid";
+import { DailyBriefWidget } from "@/modules/fabric/components/command/daily-brief";
+import { ForecastCards } from "@/modules/fabric/components/command/forecast-cards";
+import { InsightPeek } from "@/modules/fabric/components/command/insight-peek";
+import { PriorityActionsWidget } from "@/modules/fabric/components/command/priority-actions";
+import { RiskIndicators } from "@/modules/fabric/components/command/risk-indicators";
+import { startOfToday } from "@/modules/fabric/components/fabric-page";
+import { dailyBrief, forecastCards, priorityActions, riskIndicators } from "@/modules/fabric/demo/command";
+import { insights as fabricInsights } from "@/modules/fabric/demo/insights";
 import { examStatusVariant, recheckStatusVariant } from "@/modules/exams/status";
 import { listDefaulters } from "@/modules/finance/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
@@ -121,7 +130,7 @@ function Insights({ items, className }: { items: ReturnType<typeof demoInsights>
 
 function Kpis({ items }: { items: ReactNode[] }) {
   return (
-    <Stagger className={cn(FULL, "grid gap-4 sm:grid-cols-2 lg:grid-cols-4")}>
+    <Stagger className={cn(FULL, "grid gap-3 sm:grid-cols-2 lg:grid-cols-4")}>
       {items.filter(Boolean).map((c, i) => (
         <StaggerItem key={i} className="min-w-0">
           {c}
@@ -508,47 +517,47 @@ export default async function DashboardPage({
     if (failed(rechecksR)) attention.push({ key: "rc", count: 0, label: "Recheck requests unavailable", href: `${basePath}/exams/rechecks`, tone: "muted" });
     else if (rechecks && rechecks.length > 0) attention.push({ key: "rc", count: rechecks.length, label: `recheck ${rechecks.length === 1 ? "request" : "requests"} waiting`, href: `${basePath}/exams/rechecks`, tone: "warning" });
 
+    // Fabric widgets run on deterministic demo fixtures, so they only exist for the demo tenant.
+    const fOpts = { now: startOfToday(), institutionId: ctx.institution.id };
+    const cards: GridCard[] = [];
+    const add = (id: string, title: string, span: string, node: ReactNode) => node && cards.push({ id, title, span, node });
+    if (demo) {
+      add("brief", "Today's brief", WIDE, <DailyBriefWidget brief={dailyBrief(fOpts, "principal")} base={basePath} />);
+      add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts)} base={basePath} />);
+      add("forecasts", "Forecasts", FULL, <ForecastCards cards={forecastCards(fOpts)} base={basePath} />);
+    }
+    add("kpis", "Key numbers", FULL, <Kpis items={[attendanceKpi, enquiryKpi, collectedKpi, canResults && (
+      <KpiTile
+        label="Published results"
+        value={String(gd?.total ?? 0)}
+        animateTo={gd?.total ?? 0}
+        sub={gd ? gd.examName : "No published exam yet"}
+        href={`${basePath}/exams`}
+      />
+    )]} />);
+    add("attendanceTrend", "Attendance", WIDE, attendanceTrend);
+    add("atRisk", "Sections at risk", NARROW, atRisk);
+    if (demo) {
+      add("risks", "Risks", NARROW, <RiskIndicators risks={riskIndicators(fOpts)} base={basePath} />);
+      add("insights", "Insights", WIDE, <InsightPeek items={fabricInsights(fOpts).slice(0, 4)} base={basePath} />);
+    }
+    add("funnel", "Admissions funnel", WIDE, funnel(""));
+    add("collections", "Fee collection", NARROW, collectionsChart(""));
+    if (demo) {
+      add("approvals", "Approvals", WIDE, <ApprovalsWidget title="Pending approvals" rows={demoApprovals(demoKey, now)} />);
+      add("staff", "Staff today", NARROW, <StaffAvailabilityWidget title="Staff today" {...demoStaffAvailability(demoKey)} />);
+    }
+    add("grades", "Grades", NARROW, grades(""));
+    add("activity", "Recent activity", WIDE, data.recentActivity && <RecentActivity entries={data.recentActivity} />);
+    add("assistant", "Assistant", NARROW, (briefing || quickActions.length > 0) && <div className="space-y-3">{briefing}{actions()}</div>);
+    add("website", "Events and notices", WIDE, website && <div className="grid gap-3 md:grid-cols-2">{website}</div>);
+
     body = (
       <>
         <NeedsAttention items={attention} />
-        <Kpis
-          items={[
-            attendanceKpi,
-            enquiryKpi,
-            collectedKpi,
-            canResults && (
-              <KpiTile
-                label="Published results"
-                value={String(gd?.total ?? 0)}
-                animateTo={gd?.total ?? 0}
-                sub={gd ? gd.examName : "No published exam yet"}
-                href={`${basePath}/exams`}
-              />
-            ),
-          ]}
-        />
-        {attendanceTrend}
-        {atRisk}
-        {funnel(WIDE)}
-        {collectionsChart(NARROW)}
-        {insights && <Insights items={insights} className={WIDE} />}
-        <div className={cn("min-w-0 space-y-4", insights ? NARROW : FULL)}>
-          {briefing}
-          {actions()}
+        <div className={FULL}>
+          <CommandGrid layoutKey="command-principal" defaultOrder={cards.map((c) => c.id)} cards={cards} />
         </div>
-        {grades(NARROW)}
-        {data.recentActivity && (
-          <div className={cn("min-w-0", WIDE)}>
-            <RecentActivity entries={data.recentActivity} />
-          </div>
-        )}
-        {demo && (
-          <>
-            <StaffAvailabilityWidget title="Staff today" {...demoStaffAvailability(demoKey)} className={NARROW} />
-            <ApprovalsWidget title="Pending approvals" rows={demoApprovals(demoKey, now)} className={WIDE} />
-          </>
-        )}
-        {website}
       </>
     );
   }
@@ -556,10 +565,11 @@ export default async function DashboardPage({
   return (
     <div>
       <PageHeader
+        compact
         title={firstName ? `${greeting}, ${firstName}` : greeting}
         description={`${longDate.format(now)} · ${ctx.institution.name}`}
       />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12">{body}</div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12">{body}</div>
     </div>
   );
 }
