@@ -44,9 +44,6 @@ export default async function AttendanceRegisterPage({
 
   return (
     <div className="space-y-4">
-      {termId && hasPermission(ctx, "attendance.read") && (
-        <AttendanceInsights ctx={ctx} institutionSlug={institutionSlug} sectionId={sectionId} termId={termId} />
-      )}
       <AttendanceRegister
         institutionSlug={institutionSlug}
         sectionId={sectionId}
@@ -58,6 +55,9 @@ export default async function AttendanceRegisterPage({
         initialSessionStatus={register.session?.status ?? null}
         canCorrect={hasPermission(ctx, "attendance.correct")}
       />
+      {termId && hasPermission(ctx, "attendance.read") && (
+        <AttendanceInsights ctx={ctx} institutionSlug={institutionSlug} sectionId={sectionId} termId={termId} />
+      )}
     </div>
   );
 }

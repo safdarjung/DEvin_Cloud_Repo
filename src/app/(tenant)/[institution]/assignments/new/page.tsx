@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/page-header";
+import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
@@ -19,9 +21,9 @@ export default async function NewAssignmentPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">New assignment</h1>
+      <PageHeader title="New assignment" back={{ href: `/${institutionSlug}/assignments`, label: "Assignments" }} />
       {sectionsWithSubjects.length === 0 ? (
-        <p className="text-muted-foreground text-sm">You don&apos;t teach any sections yet.</p>
+        <EmptyState title="No sections to assign to" description="You don't teach any sections yet." />
       ) : (
         <AssignmentForm institutionSlug={institutionSlug} sections={sectionsWithSubjects} />
       )}

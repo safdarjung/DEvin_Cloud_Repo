@@ -8,7 +8,9 @@
 // sections.
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "cn";
 import { markAttendance, submitAttendance } from "@/modules/attendance/actions";
@@ -108,26 +110,23 @@ export function AttendanceRegister({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">
-            {sectionLabel} — {date}
-          </h2>
-          {isSubmitted && <p className="text-muted-foreground text-sm">Submitted. Use &quot;Correct&quot; to change a record.</p>}
-        </div>
-        <div className="flex gap-2">
-          {!isSubmitted && (
+      <PageHeader
+        title={sectionLabel}
+        description={isSubmitted ? `${date} · Submitted. Use "Correct" to change a record.` : date}
+        back={{ href: `/${institutionSlug}/attendance`, label: "Attendance" }}
+        actions={
+          !isSubmitted && (
             <>
-              <Button variant="outline" onClick={handleSave} disabled={pending}>
+              <Button variant="outline" className="h-10" onClick={handleSave} disabled={pending}>
                 {pending ? "Saving…" : "Save"}
               </Button>
-              <Button onClick={handleSubmit} disabled={pending || !sessionId || !allMarked}>
+              <Button className="h-10" onClick={handleSubmit} disabled={pending || !sessionId || !allMarked}>
                 Submit
               </Button>
             </>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
       {message && (
         <p role={message.kind === "error" ? "alert" : "status"} className={cn("text-sm", message.kind === "error" ? "text-destructive" : "text-muted-foreground")}>
@@ -135,76 +134,82 @@ export function AttendanceRegister({
         </p>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Roll no.</TableHead>
-            <TableHead>Student</TableHead>
-            <TableHead>Status</TableHead>
-            {canCorrect && <TableHead>Correct</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {students.map((student) => {
-            const current = draft[student.studentId]?.status ?? "";
-            return (
-              <TableRow key={student.studentId}>
-                <TableCell>{student.rollNo ?? "—"}</TableCell>
-                <TableCell>{student.name}</TableCell>
-                <TableCell>
-                  <div className="flex gap-1" role="radiogroup" aria-label={`Attendance status for ${student.name}`}>
-                    {statuses.map((status) => (
-                      <Button
-                        key={status.code}
-                        type="button"
-                        size="sm"
-                        variant={current === status.code ? "default" : "outline"}
-                        role="radio"
-                        aria-checked={current === status.code}
-                        disabled={isSubmitted}
-                        onClick={() => setStatus(student.studentId, status.code)}
-                      >
-                        {status.code}
-                      </Button>
-                    ))}
-                  </div>
-                </TableCell>
-                {canCorrect && (
-                  <TableCell>
-                    {isSubmitted && current && student.recordId && (
-                      <>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setCorrectingStudentId(student.studentId)}
-                        >
-                          Correct
-                        </Button>
-                        {correctingStudentId === student.studentId && (
-                          <CorrectionDialog
-                            institutionSlug={institutionSlug}
-                            recordId={student.recordId}
-                            studentName={student.name}
-                            currentStatus={current}
-                            statuses={statuses}
-                            open={correctingStudentId === student.studentId}
-                            onOpenChange={(open) => !open && setCorrectingStudentId(null)}
-                            onCorrected={(newStatus) => {
-                              setStatus(student.studentId, newStatus);
-                              router.refresh();
-                            }}
-                          />
-                        )}
-                      </>
-                    )}
-                  </TableCell>
-                )}
+      <Card>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="hidden sm:table-cell">Roll no.</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Status</TableHead>
+                {canCorrect && <TableHead>Correct</TableHead>}
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+              {students.map((student) => {
+                const current = draft[student.studentId]?.status ?? "";
+                return (
+                  <TableRow key={student.studentId}>
+                    <TableCell className="hidden sm:table-cell">{student.rollNo ?? "—"}</TableCell>
+                    <TableCell className="whitespace-normal">{student.name}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={`Attendance status for ${student.name}`}>
+                        {statuses.map((status) => (
+                          <Button
+                            key={status.code}
+                            type="button"
+                            size="sm"
+                            title={status.label}
+                            className="h-10 min-w-10 sm:h-7 sm:min-w-0"
+                            variant={current === status.code ? "default" : "outline"}
+                            role="radio"
+                            aria-checked={current === status.code}
+                            disabled={isSubmitted}
+                            onClick={() => setStatus(student.studentId, status.code)}
+                          >
+                            {status.code}
+                          </Button>
+                        ))}
+                      </div>
+                    </TableCell>
+                    {canCorrect && (
+                      <TableCell>
+                        {isSubmitted && current && student.recordId && (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setCorrectingStudentId(student.studentId)}
+                            >
+                              Correct
+                            </Button>
+                            {correctingStudentId === student.studentId && (
+                              <CorrectionDialog
+                                institutionSlug={institutionSlug}
+                                recordId={student.recordId}
+                                studentName={student.name}
+                                currentStatus={current}
+                                statuses={statuses}
+                                open={correctingStudentId === student.studentId}
+                                onOpenChange={(open) => !open && setCorrectingStudentId(null)}
+                                onCorrected={(newStatus) => {
+                                  setStatus(student.studentId, newStatus);
+                                  router.refresh();
+                                }}
+                              />
+                            )}
+                          </>
+                        )}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

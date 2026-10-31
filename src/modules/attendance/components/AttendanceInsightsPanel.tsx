@@ -63,19 +63,17 @@ export function AttendanceInsightsPanel({ institutionSlug, sectionId, patterns, 
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between text-sm font-medium">
-          <span>Attendance patterns</span>
-          {/* Fix round 1 (LOW-2): every other AI surface shows ProviderBadge
-              (07 §5 transparency) — this one was missing it. The "not a
-              grade" framing stays as a second, feature-specific badge. */}
-          {state.kind === "done" && (
-            <div className="flex gap-1">
-              <ProviderBadge provider={state.provider} />
-              <Badge variant="secondary">Not a grade</Badge>
-            </div>
-          )}
-        </CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between gap-2">
+        <CardTitle>Attendance patterns</CardTitle>
+        {/* Fix round 1 (LOW-2): every other AI surface shows ProviderBadge
+            (07 §5 transparency) — this one was missing it. The "not a
+            grade" framing stays as a second, feature-specific badge. */}
+        {state.kind === "done" && (
+          <div className="flex gap-1">
+            <ProviderBadge provider={state.provider} />
+            <Badge variant="outline">Not a grade</Badge>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-2">
         {state.kind === "idle" && (
