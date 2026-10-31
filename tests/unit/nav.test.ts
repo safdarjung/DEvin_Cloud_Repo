@@ -53,8 +53,10 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   accountant: ["/dashboard", "/students", "/finance", "/notifications"],
   exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications"],
   teacher: ["/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications"],
-  student: ["/students", "/attendance", "/assignments", "/exams", "/finance", "/notifications", "/portal"],
-  guardian: ["/students", "/attendance", "/assignments", "/exams", "/finance", "/notifications", "/portal"],
+  // Portal roles hold read permissions for their own child's data, but the
+  // staff module pages aren't built for them — the portal tabs are.
+  student: ["/notifications", "/portal"],
+  guardian: ["/notifications", "/portal"],
 };
 
 describe("navItemsFor", () => {
