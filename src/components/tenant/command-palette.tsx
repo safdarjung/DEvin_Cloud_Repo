@@ -27,6 +27,16 @@ export interface QuickAction {
 // actions, and everything listed is computed server-side from the member's
 // permissions (layout.tsx). The student search just lands on the permission-
 // guarded students page; the typed text never leaves the browser until then.
+// Extra search terms for nav items whose label isn't how people say it.
+const NAV_SYNONYMS: Record<string, string[]> = {
+  "Digital twin": ["twin", "model", "replica"],
+  "Custom Studio": ["studio", "custom module", "build"],
+  "AI workforce": ["agents", "automation"],
+  Simulator: ["scenario", "what if"],
+  Marketplace: ["modules", "install", "store"],
+  "Personal AI": ["assistant", "memory"],
+};
+
 export function CommandPalette({
   institutionSlug,
   navItems,
@@ -110,7 +120,7 @@ export function CommandPalette({
             )}
             <CommandGroup heading="Navigate">
               {navItems.map((item) => (
-                <CommandItem key={item.href} value={item.label} onSelect={() => run(() => router.push(item.href))}>
+                <CommandItem key={item.href} value={item.label} keywords={NAV_SYNONYMS[item.label]} onSelect={() => run(() => router.push(item.href))}>
                   {item.icon}
                   {item.label}
                 </CommandItem>

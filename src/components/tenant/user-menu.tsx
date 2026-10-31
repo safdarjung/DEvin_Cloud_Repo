@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Bell, LogOut, Monitor, Moon, Sun } from "lucide-react";
+import { Bell, LogOut, Monitor, Moon, Sun, Users } from "lucide-react";
+import { demoLogin } from "@/app/(auth)/login/actions";
+import { DEMO_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -13,6 +16,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Role } from "@/lib/auth/permissions";
@@ -30,14 +36,28 @@ export function UserMenu({
   email,
   role,
   notificationsHref,
+  isDemo,
 }: {
   name: string;
   email?: string;
   role: Role;
   /** Omitted when the caller lacks `notification.read`. */
   notificationsHref?: string;
+  /** Demo tenants only: shows the role switcher. */
+  isDemo?: boolean;
 }) {
   const { theme, setTheme } = useTheme();
+  const [switching, startSwitch] = useTransition();
+
+  // Same server action as the login page's one-tap buttons; it redirects to the new role's home.
+  function switchTo(nextEmail: string) {
+    if (nextEmail === email) return;
+    const fd = new FormData();
+    fd.set("email", nextEmail);
+    startSwitch(() => {
+      void demoLogin(null, fd);
+    });
+  }
 
   return (
     <DropdownMenu>
@@ -68,6 +88,25 @@ export function UserMenu({
             <Monitor aria-hidden /> System
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
+        {isDemo && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className={item} disabled={switching}>
+                <Users aria-hidden /> {switching ? "Switching…" : "Switch demo role"}
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-60">
+                <DropdownMenuRadioGroup value={email ?? ""} onValueChange={switchTo}>
+                  {DEMO_ACCOUNTS.map((a) => (
+                    <DropdownMenuRadioItem key={a.email} value={a.email} className={item}>
+                      {a.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
+        )}
         <DropdownMenuSeparator />
         {notificationsHref && (
           <DropdownMenuItem asChild className={item}>

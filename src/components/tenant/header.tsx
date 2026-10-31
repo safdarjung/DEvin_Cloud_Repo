@@ -12,6 +12,7 @@ export function TenantHeader({
   role,
   userName,
   userEmail,
+  isDemo,
   navItems,
   quickActions,
   canSearchStudents,
@@ -24,6 +25,7 @@ export function TenantHeader({
   role: Role;
   userName: string;
   userEmail?: string;
+  isDemo?: boolean;
   navItems: NavLinkItem[];
   quickActions: QuickAction[];
   canSearchStudents: boolean;
@@ -54,7 +56,7 @@ export function TenantHeader({
             notifications={notifications}
           />
         )}
-        <UserMenu name={userName} email={userEmail} role={role} notificationsHref={notificationsHref} />
+        <UserMenu name={userName} email={userEmail} role={role} notificationsHref={notificationsHref} isDemo={isDemo} />
       </div>
     </header>
   );

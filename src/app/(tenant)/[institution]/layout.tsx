@@ -8,6 +8,9 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
 import { getClaims } from "@/lib/supabase/server";
+import { startOfToday } from "@/modules/fabric/components/fabric-page";
+import { FabricProvider } from "@/modules/fabric/components/fabric-provider";
+import { fabricSeed } from "@/modules/fabric/components/fabric-seed";
 import {
   listMyNotifications,
   unreadCount as unreadNotificationCount,
@@ -98,6 +101,7 @@ export default async function TenantLayout({
         role={ctx.membership.role}
         userName={ctx.user.profile.fullName ?? userEmail ?? "Account"}
         userEmail={userEmail}
+        isDemo={ctx.institution.is_demo}
         navItems={navItems}
         quickActions={quickActions}
         canSearchStudents={!isPortalUser && hasPermission(ctx, "student.read")}
@@ -108,7 +112,11 @@ export default async function TenantLayout({
       <div className="flex flex-1">
         <TenantSidebar items={navItems} defaultCollapsed={sidebarCollapsed} />
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+          <div className="mx-auto w-full max-w-7xl">
+            <FabricProvider seed={fabricSeed({ now: startOfToday(), institutionId: ctx.institution.id }, ctx.user.id)}>
+              {children}
+            </FabricProvider>
+          </div>
         </main>
       </div>
     </div>
