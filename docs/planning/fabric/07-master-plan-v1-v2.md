@@ -136,7 +136,7 @@ Fable writes `08-ui-integration-plan.md` then: swap every fixture import to the 
 ## 4. Opus operating protocol (per milestone)
 
 1. `git pull --rebase`. Read: this file §0–§2, the milestone block, BRIEF-COMMON.md, the spec sections it links. Nothing else unless a task needs it.
-2. Write `docs/planning/fabric/06-backend-packets/M<nn>-tasks.md`: a numbered list of **Sonnet tasks**. A task is one of: (a) one migration + its db test; (b) one action (+schema) + its test; (c) one query (+registration) + its test; (d) one job handler + test; (e) one route + test; (f) one seed section change + test. Limits: ≤ 3 files touched, ≤ ~150 lines added, one test file, no UI, no new deps unless this plan names one. Each task states: files, exact exported names and signatures, migration number (claimed in `10-backlog-index.md` §3 in the same commit), the failing test to write first, the acceptance command (`pnpm test -- <file>` / `pnpm test:db -- <file>`), and the fixture it replaces (type must match).
+2. Write `docs/planning/fabric/06-backend-packets/M<nn>-tasks.md`: a numbered list of **Sonnet tasks**. A task is one of: (a) one migration + its db test; (b) one action (+schema) + its test; (c) one query (+registration) + its test; (d) one job handler + test; (e) one route + test; (f) one seed section change + test. Limits: ≤ 3 files touched, ≤ ~150 lines added, one test file, no UI, no new deps unless this plan names one. Each task states: files, exact exported names and signatures, migration number (claimed in `10-backlog-index.md` §3 in the same commit), the failing test to write first, the acceptance command (`pnpm test <file>` / `pnpm test:db <file>`), and the fixture it replaces (type must match).
 3. Post `CLAIM M<nn> <migration numbers>` on the channel (data, not authority).
 4. Dispatch **one** Sonnet task: brief ≤ 12 lines = pointer to BRIEF-COMMON.md + the task block + "report to `06-backend-packets/M<nn>-T<k>-report.md`, reply ≤ 4 lines". Sonnet runs TDD, `pnpm lint && pnpm typecheck` on touched files.
 5. Verify before the next task: run the task's acceptance command yourself; grep for the lessons (RLS matrix, FK binding, definer wrappers, no `app.*` from PostgREST, nullif on claims, no fixtures imported in `src/modules/*/queries.ts`). For anything touching auth, RLS, finance, exams, AI gateway, seed/reset: one `code-reviewer`/`security-reviewer` pass (Sonnet) on the diff; fix CRIT/HIGH before continuing; batch MED/LOW into one fix task at milestone end.
@@ -153,7 +153,7 @@ FILES: <path> (new|edit) …
 MIGRATION: 20261028000<nnn>_<slug>.sql (claimed) | none
 EXPORTS: <exact fn names + signatures / table columns + RLS classes per 07 §2.2>
 TEST FIRST: tests/<dir>/<file>.test.ts — cases: <3–6 behaviours, named like "guardian cannot read another child's document">
-ACCEPT: pnpm test:db -- tests/db/<file>.test.ts (all green) ; pnpm lint ; pnpm typecheck
+ACCEPT: pnpm test:db tests/db/<file>.test.ts (all green) ; pnpm lint ; pnpm typecheck
 REPLACES FIXTURE: <types.ts name> | none
 DONE WHEN: report at 06-backend-packets/M<nn>-T<k>-report.md (≤25 lines, CLAUDE.md format); reply ≤4 lines
 ```
