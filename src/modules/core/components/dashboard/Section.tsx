@@ -1,14 +1,7 @@
+// Moved into the shared widget frame; kept so existing dashboard imports work.
 import type { ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Widget } from "@/components/widgets/widget";
 
-/** Shared card frame for dashboard sections. */
 export function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
-  );
+  return <Widget title={title}>{children}</Widget>;
 }
