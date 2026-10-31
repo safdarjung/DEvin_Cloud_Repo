@@ -1,10 +1,9 @@
+import type { ReactNode } from "react";
 import { CommandPalette, type QuickAction } from "@/components/tenant/command-palette";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { MobileNav, type NavLinkItem } from "@/components/tenant/sidebar";
 import { UserMenu } from "@/components/tenant/user-menu";
 import type { Role } from "@/lib/auth/permissions";
-import { Bell } from "@/modules/notifications/components/Bell";
-import type { NotificationSummary } from "@/modules/notifications/queries";
 
 export function TenantHeader({
   institutionSlug,
@@ -17,8 +16,7 @@ export function TenantHeader({
   quickActions,
   canSearchStudents,
   notificationsHref,
-  unreadCount,
-  notifications,
+  bell,
 }: {
   institutionSlug: string;
   institutionName: string;
@@ -31,8 +29,8 @@ export function TenantHeader({
   canSearchStudents: boolean;
   /** Omitted entirely when the caller lacks `notification.read` (rare — granted to every role). */
   notificationsHref?: string;
-  unreadCount?: number;
-  notifications: NotificationSummary[];
+  /** The notification bell (streamed by the layout); omitted without `notification.read`. */
+  bell?: ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b bg-background px-3 sm:px-4">
@@ -48,14 +46,7 @@ export function TenantHeader({
           quickActions={quickActions}
           canSearchStudents={canSearchStudents}
         />
-        {notificationsHref && (
-          <Bell
-            href={notificationsHref}
-            unreadCount={unreadCount ?? 0}
-            institutionSlug={institutionSlug}
-            notifications={notifications}
-          />
-        )}
+        {bell}
         <UserMenu name={userName} email={userEmail} role={role} notificationsHref={notificationsHref} isDemo={isDemo} />
       </div>
     </header>

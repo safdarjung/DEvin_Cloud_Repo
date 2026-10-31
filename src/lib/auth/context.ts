@@ -17,7 +17,10 @@ export const getTenantContext = cache(async (institutionSlug: string): Promise<T
 
   const supabase = await createClient();
 
-  const [{ data: institution }, { data: profile }] = await Promise.all([
+  // One round-trip: the membership is looked up by slug (inner-joined to its
+  // institution) in the same batch as the institution + profile reads, then
+  // cross-checked against the institution row below.
+  const [{ data: institution }, { data: profile }, { data: membership }] = await Promise.all([
     supabase
       .from("institutions")
       .select("id, slug, name, settings, ai_policy, is_demo")
@@ -28,23 +31,18 @@ export const getTenantContext = cache(async (institutionSlug: string): Promise<T
       .select("full_name, phone, avatar_path, is_platform_admin")
       .eq("id", claims.sub)
       .maybeSingle(),
+    supabase
+      .from("memberships")
+      .select("role, staff_id, guardian_id, student_id, institution_id, institutions!inner(slug)")
+      .eq("user_id", claims.sub)
+      .eq("status", "active")
+      .eq("institutions.slug", institutionSlug)
+      .maybeSingle(),
   ]);
 
   // Institution not found, or RLS hid it because the caller isn't a member —
   // 404 either way (04 §4 step 3: never reveal that the institution exists).
-  if (!institution || !profile) {
-    notFound();
-  }
-
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select("role, staff_id, guardian_id, student_id")
-    .eq("user_id", claims.sub)
-    .eq("institution_id", institution.id)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (!membership) {
+  if (!institution || !profile || !membership || membership.institution_id !== institution.id) {
     notFound();
   }
 

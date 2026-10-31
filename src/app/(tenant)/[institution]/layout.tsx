@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
+import { Suspense } from "react";
 import { Banknote, CalendarCheck, FilePlus, GraduationCap, UserPlus } from "lucide-react";
 import type { QuickAction } from "@/components/tenant/command-palette";
+import { BellLoader } from "@/components/tenant/bell-loader";
+import { Bell } from "@/modules/notifications/components/Bell";
 import { TenantHeader } from "@/components/tenant/header";
 import { SIDEBAR_COOKIE, TenantSidebar } from "@/components/tenant/sidebar";
 import { getTenantContext } from "@/lib/auth/context";
@@ -10,11 +13,6 @@ import { getClaims } from "@/lib/supabase/server";
 import { startOfToday } from "@/modules/fabric/components/fabric-page";
 import { FabricProvider } from "@/modules/fabric/components/fabric-provider";
 import { fabricSeed } from "@/modules/fabric/components/fabric-seed";
-import {
-  listMyNotifications,
-  unreadCount as unreadNotificationCount,
-  type NotificationSummary,
-} from "@/modules/notifications/queries";
 
 export default async function TenantLayout({
   children,
@@ -26,19 +24,6 @@ export default async function TenantLayout({
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
   const hasNotifications = ctx.permissions.has("notification.read");
-  // Fix round 1 (HIGH): a thrown unread-count query must never crash every
-  // tenant page — the bell is a convenience, not a page dependency.
-  let unread = 0;
-  let notifications: NotificationSummary[] = [];
-  if (hasNotifications) {
-    try {
-      [unread, notifications] = await Promise.all([unreadNotificationCount(ctx), listMyNotifications(ctx, 5)]);
-    } catch (err) {
-      const correlationId = crypto.randomUUID();
-      console.error(`[${correlationId}] header notifications failed`, err);
-    }
-  }
-
   const navItems = navItemsFor(ctx.permissions).map(({ href, label, icon: Icon, group }) => ({
     href: `/${ctx.institution.slug}${href}`,
     label,
@@ -104,8 +89,15 @@ export default async function TenantLayout({
         quickActions={quickActions}
         canSearchStudents={!isPortalUser && hasPermission(ctx, "student.read")}
         notificationsHref={hasNotifications ? `/${ctx.institution.slug}/notifications` : undefined}
-        unreadCount={unread}
-        notifications={notifications}
+        bell={
+          hasNotifications && (
+            <Suspense
+              fallback={<Bell href={`/${ctx.institution.slug}/notifications`} unreadCount={0} institutionSlug={ctx.institution.slug} notifications={[]} />}
+            >
+              <BellLoader ctx={ctx} href={`/${ctx.institution.slug}/notifications`} />
+            </Suspense>
+          )
+        }
       />
       <div className="flex flex-1">
         <TenantSidebar items={navItems} defaultCollapsed={sidebarCollapsed} />

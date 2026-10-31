@@ -73,7 +73,7 @@ interface Attention {
 /** The page's signature: what a school leader should act on first, as links. */
 function NeedsAttention({ items }: { items: Attention[] }) {
   return (
-    <section aria-labelledby="needs-attention" className={cn(FULL, "rounded-xl border bg-card px-4 py-3")}>
+    <section aria-labelledby="needs-attention" className={cn(FULL, "rounded-xl border bg-card px-4 py-2")}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <h2 id="needs-attention" className="shrink-0 text-xs font-medium tracking-wide text-muted-foreground uppercase">
           Needs attention
@@ -523,7 +523,7 @@ export default async function DashboardPage({
     const add = (id: string, title: string, span: string, node: ReactNode) => node && cards.push({ id, title, span, node });
     if (demo) {
       add("brief", "Today's brief", WIDE, <DailyBriefWidget brief={dailyBrief(fOpts, "principal")} base={basePath} />);
-      add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts)} base={basePath} />);
+      add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts).slice(0, 5)} base={basePath} />);
       add("forecasts", "Forecasts", FULL, <ForecastCards cards={forecastCards(fOpts)} base={basePath} />);
     }
     add("kpis", "Key numbers", FULL, <Kpis items={[attendanceKpi, enquiryKpi, collectedKpi, canResults && (
@@ -553,12 +553,9 @@ export default async function DashboardPage({
     add("website", "Events and notices", WIDE, website && <div className="grid gap-3 md:grid-cols-2">{website}</div>);
 
     body = (
-      <>
-        <NeedsAttention items={attention} />
-        <div className={FULL}>
-          <CommandGrid layoutKey="command-principal" defaultOrder={cards.map((c) => c.id)} cards={cards} />
-        </div>
-      </>
+      <div className={FULL}>
+        <CommandGrid layoutKey="command-principal" defaultOrder={cards.map((c) => c.id)} cards={cards} lead={<NeedsAttention items={attention} />} />
+      </div>
     );
   }
 

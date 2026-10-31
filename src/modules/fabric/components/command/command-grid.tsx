@@ -19,7 +19,7 @@ export interface GridCard {
  * Role-adaptive widget grid. The layout is the list of *visible* card ids in
  * order; an id missing from it is hidden. Persisted via the demo store.
  */
-export function CommandGrid({ layoutKey, defaultOrder, cards }: { layoutKey: string; defaultOrder: string[]; cards: GridCard[] }) {
+export function CommandGrid({ layoutKey, defaultOrder, cards, lead }: { layoutKey: string; defaultOrder: string[]; cards: GridCard[]; lead?: ReactNode }) {
   const stored = useDemoStore((s) => s.layouts[layoutKey]);
   const [customising, setCustomising] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -46,7 +46,8 @@ export function CommandGrid({ layoutKey, defaultOrder, cards }: { layoutKey: str
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-[min(100%,16rem)] flex-1">{lead}</div>
         {customising && (
           <Button type="button" variant="ghost" size="sm" onClick={() => save(defaultOrder)}>
             <RotateCcw aria-hidden /> Reset layout

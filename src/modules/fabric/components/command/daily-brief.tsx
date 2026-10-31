@@ -9,7 +9,7 @@ export function DailyBriefWidget({ brief, base }: { brief: DailyBrief; base: str
     <Widget title="Today's brief" description={brief.headline} icon={<Sparkles />}>
       <ul className="-my-1 divide-y">
         {brief.items.map((item) => (
-          <li key={item.text} className="py-2 text-sm leading-snug first:pt-0 last:pb-0">
+          <li key={item.text} className="py-3 text-sm leading-snug first:pt-0 last:pb-0">
             {item.href ? (
               <Link
                 href={resolveHref(base, item.href)}
