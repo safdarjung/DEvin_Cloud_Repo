@@ -206,6 +206,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
       const sampleInputs: Record<string, unknown> = {
         "people.listStudents": { page: 1 },
         "people.getStudentProfile": { studentId: UUID },
+        "imports.getBatch": { batchId: UUID },
         "people.getCurrentTermId": { academicYearId: UUID },
         "people.listMyChildren": {},
         "people.getMyStudent": {},

@@ -262,6 +262,12 @@ begin
     );
   end if;
 
+  -- Staging writes the batch (with row_count) before its row chunks; a
+  -- failed chunk leaves fewer rows than row_count — never commit that.
+  if v_batch.row_count <> (select count(*) from public.import_rows r where r.batch_id = v_batch.id) then
+    raise exception 'code:invalid_state' using detail = 'import batch is incomplete; stage the file again';
+  end if;
+
   for v_row in
     select * from public.import_rows
     where batch_id = p_batch_id and status = 'valid'

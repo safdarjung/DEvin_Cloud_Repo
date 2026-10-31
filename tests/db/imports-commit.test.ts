@@ -73,9 +73,23 @@ async function insertValidRow(
     insert into public.import_rows (batch_id, institution_id, row_no, data, status)
     values (${batchId}, ${institutionId}, ${rowNo}, ${sql.json(data)}, 'valid')
   `;
+  // Mirror staging: row_count always equals the rows written for the batch.
+  await sql`update public.import_batches set row_count = row_count + 1 where id = ${batchId}`;
 }
 
 describe("commit_import_batch (M04-T3)", () => {
+  it("a batch with fewer rows than its row_count (partial stage) → invalid_state", async () => {
+    const inst = await createTestInstitution("imports-commit-partial");
+    try {
+      const batchId = await insertBatch(inst.institutionId, "staff");
+      await sql`update public.import_batches set row_count = 2 where id = ${batchId}`;
+      const { error } = await inst.clientAs("admin").rpc("commit_import_batch", { p_batch_id: batchId });
+      expect(error?.message).toBe("code:invalid_state");
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
   it("3 valid rows + 1 duplicate admission_no → 3 committed, 1 skipped", async () => {
     const inst = await createTestInstitution("imports-commit-dup");
     try {
