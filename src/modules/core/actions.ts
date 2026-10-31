@@ -34,6 +34,10 @@ import {
 const FEATURE_KEYS = Object.keys(FEATURE_CATALOG) as [FeatureKey, ...FeatureKey[]];
 
 function throwMapped(error: unknown): never {
+  // Duplicate year/term names (unique constraints) are a caller error, not `internal`.
+  if ((error as { code?: string } | null)?.code === "23505") {
+    throw new AppError("conflict", "A record with these details already exists.");
+  }
   const mapped = mapSqlError(error);
   if (mapped.ok) throw new AppError("internal", "Unexpected error.");
   throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
