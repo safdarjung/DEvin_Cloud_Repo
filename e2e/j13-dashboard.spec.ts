@@ -78,15 +78,14 @@ test.describe("J-13: principal dashboard tiles", () => {
 
     await loginAs(page, "principal");
     await page.goto(`/${SLUG}/dashboard`);
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
 
-    const attendanceValue = await kpiValue(page, "Attendance today").innerText();
-    expect(attendanceValue).toMatch(/^\d+(\.\d+)?%$/);
-    expect(attendanceValue).not.toBe("0%");
+    // KPI values count up from 0 after hydration — retrying assertions wait for the final value.
+    await expect(kpiValue(page, "Attendance today")).toHaveText(/^\d+(\.\d+)?%$/);
+    await expect(kpiValue(page, "Attendance today")).not.toHaveText("0%");
 
-    const collectedValue = await kpiValue(page, "Collected this term").innerText();
-    expect(collectedValue).toMatch(/^₹/);
-    expect(collectedValue).not.toMatch(/^₹0\.00$/);
+    await expect(kpiValue(page, "Collected this term")).toHaveText(/^₹/);
+    await expect(kpiValue(page, "Collected this term")).not.toHaveText(/^₹0\.00$/);
 
     const openEnquiriesValue = await kpiValue(page, "Open enquiries").innerText();
     expect(openEnquiriesValue).toMatch(/^\d+$/);

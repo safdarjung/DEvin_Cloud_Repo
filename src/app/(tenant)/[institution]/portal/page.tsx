@@ -1,20 +1,63 @@
 import { inr } from "@/lib/format";
 import Link from "next/link";
-import { PageHeader } from "@/components/page-header";
-import { KpiTile } from "@/modules/core/components/dashboard/KpiTile";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ReactNode } from "react";
+import { Bell, CalendarDays, ClipboardList, GraduationCap, Megaphone, Sparkles, Wallet } from "lucide-react";
+import { AnimatedNumber, Stagger, StaggerItem } from "@/components/motion";
+import { ErrorState } from "@/components/states";
+import { buttonVariants } from "@/components/ui/button";
+import { ActivityTimeline } from "@/components/widgets/activity-timeline";
+import { AIInsightCard } from "@/components/widgets/ai-insight-card";
+import { KpiTile } from "@/components/widgets/kpi-widget";
+import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
+import { TimetableWidget } from "@/components/widgets/timetable-widget";
+import { TrendWidget } from "@/components/widgets/trend-widget";
+import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
 import { getStudentAttendanceSummary } from "@/modules/attendance/queries";
+import { demoAttendanceTrend, demoFixturesEnabled, demoInsights, demoTimetable } from "@/modules/core/demo/fixtures";
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
+import { listMyNotifications } from "@/modules/notifications/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
 import { resolvePortalSelection } from "@/modules/people/portal";
+import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 
-// T-034 — overview tiles (F-STU-02/11): attendance % this term, outstanding
-// fees, latest result, open assignments. Each tile links into its own tab.
+const TZ = "Asia/Kolkata";
+const DAY_MS = 86_400_000;
+const longDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+const shortDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, day: "numeric", month: "short" });
+const istHour = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" });
+// shortcut: the profile carries no subject list, so the demo timetable cycles generic subjects; upgrade when a student timetable query exists.
+const GENERIC_SUBJECTS = ["Mathematics", "English", "Science", "Hindi", "Social Studies", "Computer Science"].map((title) => ({ title }));
+
+function greeting(now: Date): string {
+  const h = Number(istHour.format(now));
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
+// No submission data on AssignmentSummary, so the badge reflects the due date only.
+function dueBadge(dueAt: string | null, now: Date): ListRow["badge"] {
+  if (!dueAt) return { label: "No due date", variant: "secondary" };
+  const ms = new Date(dueAt).getTime() - now.getTime();
+  if (ms < 0) return { label: "Past due", variant: "destructive" };
+  if (ms < 2 * DAY_MS) return { label: "Due soon", variant: "warning" };
+  return { label: "Upcoming", variant: "info" };
+}
+
+function Failed({ title, icon }: { title: string; icon: ReactNode }) {
+  return (
+    <Widget title={title} icon={icon}>
+      <ErrorState description="This section couldn't load. Refresh the page to try again." />
+    </Widget>
+  );
+}
+
+// T-034 — portal overview (F-STU-02/11), now a per-role dashboard. Every
+// figure is for `selection.studentId` only; notices/events are the school's
+// public rows and notifications are the caller's own.
 export default async function PortalOverviewPage({
   params,
   searchParams,
@@ -38,57 +81,207 @@ export default async function PortalOverviewPage({
   const profile = await getStudentProfile(ctx, selection.studentId);
   const termId = profile?.enrolment ? await getCurrentTermId(ctx, profile.enrolment.academicYearId) : null;
 
+  // Extras never fail the page: each rejected one renders ErrorState in its own widget.
+  const canNotifications = hasPermission(ctx, "notification.read");
+  const extras = Promise.allSettled([
+    listPublicNotices(ctx.institution.id, 4),
+    listPublicEvents(ctx.institution.id, 4),
+    canNotifications ? listMyNotifications(ctx, 5) : Promise.resolve([]),
+  ]);
+
   const [attendance, invoices, results, assignments] = await Promise.all([
     termId ? getStudentAttendanceSummary(ctx, selection.studentId, termId) : Promise.resolve(null),
     listInvoicesForStudent(ctx, selection.studentId),
     listResultsForStudent(ctx, selection.studentId),
     listStudentAssignments(ctx, selection.studentId),
   ]);
+  const [notices, events, notifications] = await extras;
 
   // invoices.total / paid_total are numeric(12,2) rupees (finance/queries.ts), not paise.
   const outstanding = invoices.reduce((sum, inv) => sum + (inv.total - inv.paidTotal), 0);
   const latestResult = results[0] ?? null;
   const basePath = `/${institutionSlug}/portal`;
-  const studentName = profile ? [profile.firstName, profile.lastName].filter(Boolean).join(" ") : null;
   const q = `?student=${selection.studentId}`;
+  const isGuardian = ctx.membership.role === "guardian";
+  const now = new Date();
+  const firstName = profile?.firstName ?? selection.studentName.split(" ")[0];
+  const classLabel = profile?.enrolment ? `Class ${profile.enrolment.gradeName}-${profile.enrolment.sectionName}` : null;
+  const attendancePct = attendance ? Math.round(attendance.percentage * 10) / 10 : undefined;
+
+  const upcoming = assignments.filter((a) => a.dueAt && new Date(a.dueAt).getTime() >= now.getTime());
+  const assignmentRows: ListRow[] = [...upcoming, ...assignments.filter((a) => !upcoming.includes(a))].slice(0, 5).map((a) => ({
+    id: a.id,
+    title: a.title,
+    meta: a.dueAt ? `Due ${shortDate.format(new Date(a.dueAt))}` : undefined,
+    href: `${basePath}/assignments${q}`,
+    badge: dueBadge(a.dueAt, now),
+  }));
+  const resultRows: ListRow[] = results.slice(0, 4).map((r) => ({
+    id: r.examId,
+    title: r.examName,
+    meta: `${+r.percentage.toFixed(1)}% · ${r.total}/${r.maxTotal}`,
+    href: `${basePath}/results${q}`,
+    badge: { label: r.grade, variant: "outline" },
+  }));
+  const unpaid = invoices.filter((inv) => inv.total - inv.paidTotal > 0);
+  const nextDue = unpaid.map((inv) => inv.dueOn).filter((d): d is string => d !== null).sort()[0];
+
+  // CLAUDE.md rule 7 demo exception: fixtures render unbadged, demo tenant only.
+  const demo = demoFixturesEnabled(ctx);
+  const periods = demo ? demoTimetable({ day: now, entries: GENERIC_SUBJECTS }) : null;
+  const trend = demo ? demoAttendanceTrend({ key: selection.studentId, days: 30, endDate: now, base: attendancePct }) : null;
+  const insights = demo
+    ? demoInsights(isGuardian ? "guardian" : "student", { attendancePct, outstandingFees: outstanding, basePath: `/${institutionSlug}` }).map((i) => ({
+        ...i,
+        suggestedAction: { ...i.suggestedAction, href: i.suggestedAction.href && `${i.suggestedAction.href}${q}` },
+      }))
+    : null;
+
+  const feesHref = `${basePath}/fees${q}`;
+  const kpis = [
+    <KpiTile
+      key="att"
+      label="Attendance this term"
+      value={attendance ? `${attendance.percentage.toFixed(2)}%` : "—"}
+      animateTo={attendancePct}
+      format="percent"
+      sub={attendance ? `Warning below ${attendance.thresholds.warn}%` : "No term data yet"}
+      href={`${basePath}/attendance${q}`}
+    />,
+    <KpiTile
+      key="fees"
+      label="Outstanding fees"
+      value={inr(outstanding)}
+      animateTo={outstanding}
+      format="inr"
+      sub={unpaid.length ? `${unpaid.length} unpaid invoice${unpaid.length === 1 ? "" : "s"}` : "All paid"}
+      href={feesHref}
+    />,
+    <KpiTile
+      key="res"
+      label="Latest result"
+      value={latestResult ? `${latestResult.grade}` : "—"}
+      sub={latestResult?.examName ?? "No published results yet."}
+      href={`${basePath}/results${q}`}
+    />,
+    <KpiTile
+      key="asg"
+      label="Assignments due"
+      value={String(upcoming.length)}
+      animateTo={upcoming.length}
+      sub={`${assignments.length} published in total`}
+      href={`${basePath}/assignments${q}`}
+    />,
+  ];
+
+  const timetable = periods && (
+    <TimetableWidget key="tt" title={isGuardian ? `${firstName}'s timetable today` : "Today's timetable"} description={classLabel ?? undefined} icon={<CalendarDays />} periods={periods} />
+  );
+  const homework = (
+    <ListWidget
+      key="asg"
+      title={isGuardian ? "Homework" : "Upcoming assignments"}
+      icon={<ClipboardList />}
+      action={{ href: `${basePath}/assignments${q}`, label: "All assignments" }}
+      rows={assignmentRows}
+      emptyTitle="No assignments right now"
+    />
+  );
+  const attendanceTrend = trend && (
+    <TrendWidget key="trend" title="Attendance, last 30 days" description="Daily attendance on school days" data={trend} unit="percent" action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }} />
+  );
+  const latestResults = (
+    <ListWidget key="res" title="Recent results" icon={<GraduationCap />} action={{ href: `${basePath}/results${q}`, label: "All results" }} rows={resultRows} emptyTitle="No published results yet" />
+  );
+  const insightCards = insights && (
+    <Widget key="ins" title={isGuardian ? `Insights about ${firstName}` : "Study insights"} icon={<Sparkles />}>
+      <div className="grid gap-3">
+        {insights.map((i) => (
+          <AIInsightCard key={i.title} {...i} />
+        ))}
+      </div>
+    </Widget>
+  );
+  // GU-08 — ai.study is student-only (D32); a guardian never has it, so the
+  // card simply doesn't render for them.
+  const studyHelper = hasPermission(ctx, "ai.study") && (
+    <Widget key="study" title="Study helper" icon={<Sparkles />} action={{ href: `${basePath}/study${q}`, label: "Open study helper" }}>
+      <p className="text-sm text-muted-foreground">Ask about a topic, get notes, mindmaps, or practice.</p>
+    </Widget>
+  );
+  const announcements =
+    notices.status === "fulfilled" ? (
+      <ListWidget
+        key="ann"
+        title={isGuardian ? "School announcements" : "Announcements"}
+        icon={<Megaphone />}
+        rows={notices.value.map((n) => ({ id: n.id, title: n.title, meta: shortDate.format(new Date(n.publishAt)) }))}
+        emptyTitle="No announcements"
+      />
+    ) : (
+      <Failed key="ann" title="Announcements" icon={<Megaphone />} />
+    );
+  const schoolEvents =
+    events.status === "fulfilled" ? (
+      <ListWidget
+        key="evt"
+        title="Events"
+        icon={<CalendarDays />}
+        rows={events.value.map((e) => ({ id: e.id, title: e.title, meta: [shortDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · ") }))}
+        emptyTitle="No events scheduled"
+      />
+    ) : (
+      <Failed key="evt" title="Events" icon={<CalendarDays />} />
+    );
+  const notificationFeed =
+    canNotifications &&
+    (notifications.status === "fulfilled" ? (
+      <ActivityTimeline
+        key="ntf"
+        title="Notifications"
+        icon={<Bell />}
+        action={{ href: `${basePath}/notifications${q}`, label: "All notifications" }}
+        now={now}
+        events={notifications.value.map((n) => ({ id: n.id, title: n.title, time: n.createdAt, meta: n.readAt ? undefined : "Unread" }))}
+      />
+    ) : (
+      <Failed key="ntf" title="Notifications" icon={<Bell />} />
+    ));
+  const feesDue = (
+    <Widget key="feesdue" title="Fees due" icon={<Wallet />}>
+      <p className="text-3xl font-semibold tracking-tight tabular-nums">
+        <AnimatedNumber value={outstanding} format="inr" />
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {unpaid.length
+          ? `${unpaid.length} unpaid invoice${unpaid.length === 1 ? "" : "s"}${nextDue ? ` · next due ${shortDate.format(new Date(nextDue))}` : ""}`
+          : "Nothing outstanding."}
+      </p>
+      <Link href={feesHref} className={buttonVariants({ className: "mt-4" })}>
+        View fees
+      </Link>
+    </Widget>
+  );
+
+  const sections = isGuardian
+    ? [feesDue, attendanceTrend, latestResults, homework, timetable, announcements, insightCards, schoolEvents, notificationFeed]
+    : [timetable, homework, attendanceTrend, latestResults, insightCards, studyHelper, announcements, schoolEvents, notificationFeed];
 
   return (
     <>
       <PortalNav institutionSlug={institutionSlug} role={ctx.membership.role as "guardian" | "student"} selection={selection} activeHref="" />
-      <PageHeader title="Overview" description={studentName ?? undefined} />
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiTile label="Attendance this term" value={attendance ? `${attendance.percentage.toFixed(2)}%` : "—"} href={`${basePath}/attendance${q}`} />
-        <KpiTile
-          label="Outstanding fees"
-          value={inr(outstanding)}
-          href={`${basePath}/fees${q}`}
-        />
-        <KpiTile
-          label="Latest result"
-          value={latestResult ? `${latestResult.grade}` : "—"}
-          sub={latestResult?.examName ?? "No published results yet."}
-          href={`${basePath}/results${q}`}
-        />
-        <KpiTile label="Open assignments" value={String(assignments.length)} href={`${basePath}/assignments${q}`} />
-
-        {/* GU-08 — ai.study is student-only (D32); a guardian viewing a
-            child's portal never has it, so this tile simply doesn't
-            render for them, rather than linking to a page that would
-            always forbid them. */}
-        {hasPermission(ctx, "ai.study") && (
-          <Link href={`${basePath}/study`} className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
-            <Card className="h-full transition-shadow duration-(--duration-fast) ease-(--ease-out) hover:shadow-md">
-              <CardHeader>
-                <CardTitle className="text-sm font-medium text-muted-foreground">Study helper</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Ask about a topic, get notes, mindmaps, or practice.</p>
-              </CardContent>
-            </Card>
-          </Link>
-        )}
+      <div className="mb-5">
+        <h2 className="text-xl font-semibold tracking-tight">{isGuardian ? `${firstName}'s day` : `${greeting(now)}, ${firstName}`}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{[longDate.format(now), classLabel].filter(Boolean).join(" · ")}</p>
       </div>
+
+      <Stagger className="grid gap-3 min-[375px]:grid-cols-2 lg:grid-cols-4">
+        {kpis.map((k) => (
+          <StaggerItem key={k.key}>{k}</StaggerItem>
+        ))}
+      </Stagger>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">{sections}</div>
     </>
   );
 }

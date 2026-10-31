@@ -71,7 +71,7 @@ export function DailyBriefing({
       }
       setResult(body.data);
     } catch {
-      setError("Could not reach the server; the numbers below are unaffected.");
+      setError("Could not reach the server; the dashboard figures are unaffected.");
     } finally {
       setPending(false);
     }
@@ -79,24 +79,24 @@ export function DailyBriefing({
 
   if (result) {
     return (
-      <div className="space-y-1 rounded-lg border border-border p-3">
+      <div className="space-y-1 rounded-xl border bg-card p-4">
         <p className="text-sm">{result.summary}</p>
         <div className="flex flex-wrap items-center gap-2">
           <LimitedBadge />
           <ProviderBadge provider={result.provider} />
-          <span className="text-muted-foreground text-xs">AI-written summary — the numbers below are the source of truth.</span>
+          <span className="text-muted-foreground text-xs">AI-written summary — the dashboard figures are the source of truth.</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-border p-3">
+    <div className="space-y-2 rounded-xl border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="font-medium text-sm">AI daily briefing</h2>
         <LimitedBadge />
       </div>
-      <p className="text-muted-foreground text-sm">A short plain-language summary of today&apos;s attendance, admissions and fees. A suggestion only; the numbers below are the source of truth.</p>
+      <p className="text-muted-foreground text-sm">A short plain-language summary of today&apos;s attendance, admissions and fees. A suggestion only; the dashboard figures are the source of truth.</p>
       <Button type="button" variant="outline" size="sm" onClick={handleSummarize} disabled={pending}>
         {pending ? "Summarizing…" : "Summarize today"}
       </Button>

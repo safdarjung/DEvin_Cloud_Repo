@@ -322,23 +322,11 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
   test("J-13: principal dashboard shows attendance, collections, funnel, grade distribution — all non-zero", async ({ page }) => {
     await loginAs(page, "principal");
     await page.goto(`/${SLUG}/dashboard`);
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
 
-    const attendanceValue = await page
-      .locator('[data-slot="card"]')
-      .filter({ hasText: "Attendance today" })
-      .locator("p.text-2xl")
-      .first()
-      .innerText();
-    expect(attendanceValue).not.toBe("0%");
-
-    const collectedValue = await page
-      .locator('[data-slot="card"]')
-      .filter({ hasText: "Collected this term" })
-      .locator("p.text-2xl")
-      .first()
-      .innerText();
-    expect(collectedValue).not.toMatch(/^₹0\.00$/);
+    // KPI values count up from 0 after hydration — retrying assertions wait for the final value.
+    await expect(page.locator('[data-slot="card"]').filter({ hasText: "Attendance today" }).locator("p.text-2xl").first()).not.toHaveText("0%");
+    await expect(page.locator('[data-slot="card"]').filter({ hasText: "Collected this term" }).locator("p.text-2xl").first()).not.toHaveText(/^₹0\.00$/);
 
     await expect(page.locator('[data-slot="card"]').filter({ hasText: "Admissions funnel" })).not.toBeEmpty();
     await expect(page.locator('[data-slot="card"]').filter({ hasText: "Exam grade distribution" }).getByText(/\d+ results/)).toBeVisible();

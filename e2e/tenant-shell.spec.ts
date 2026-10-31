@@ -103,7 +103,7 @@ test.describe("tenant shell (J-00 subset)", () => {
     await loginAs(page, principalEmail);
     await page.goto(`/${slug}/dashboard`);
 
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "Finance" })).toBeVisible();
     await expect(page.getByText("Principal")).toBeVisible();
     expect(errors).toEqual([]);

@@ -1,39 +1,60 @@
-import { LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CommandPalette, type QuickAction } from "@/components/tenant/command-palette";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { MobileNav, type NavLinkItem } from "@/components/tenant/sidebar";
+import { UserMenu } from "@/components/tenant/user-menu";
 import type { Role } from "@/lib/auth/permissions";
 import { Bell } from "@/modules/notifications/components/Bell";
+import type { NotificationSummary } from "@/modules/notifications/queries";
 
 export function TenantHeader({
+  institutionSlug,
   institutionName,
   role,
+  userName,
+  userEmail,
   navItems,
+  quickActions,
+  canSearchStudents,
   notificationsHref,
   unreadCount,
+  notifications,
 }: {
+  institutionSlug: string;
   institutionName: string;
   role: Role;
+  userName: string;
+  userEmail?: string;
   navItems: NavLinkItem[];
+  quickActions: QuickAction[];
+  canSearchStudents: boolean;
   /** Omitted entirely when the caller lacks `notification.read` (rare — granted to every role). */
   notificationsHref?: string;
   unreadCount?: number;
+  notifications: NotificationSummary[];
 }) {
   return (
     <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b bg-background px-3 sm:px-4">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav items={navItems} />
-        <span className="truncate font-semibold">{institutionName}</span>
+        <span className="hidden truncate font-semibold min-[400px]:inline">{institutionName}</span>
         <RoleBadge role={role} />
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-        {notificationsHref && <Bell href={notificationsHref} unreadCount={unreadCount ?? 0} />}
-        <form action="/logout" method="post">
-          <Button type="submit" variant="ghost" className="px-2.5 sm:px-3" aria-label="Log out">
-            <LogOut className="size-4" aria-hidden />
-            <span className="hidden sm:inline">Log out</span>
-          </Button>
-        </form>
+        <CommandPalette
+          institutionSlug={institutionSlug}
+          navItems={navItems}
+          quickActions={quickActions}
+          canSearchStudents={canSearchStudents}
+        />
+        {notificationsHref && (
+          <Bell
+            href={notificationsHref}
+            unreadCount={unreadCount ?? 0}
+            institutionSlug={institutionSlug}
+            notifications={notifications}
+          />
+        )}
+        <UserMenu name={userName} email={userEmail} role={role} notificationsHref={notificationsHref} />
       </div>
     </header>
   );

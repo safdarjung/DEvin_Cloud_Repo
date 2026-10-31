@@ -52,7 +52,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications"],
   accountant: ["/dashboard", "/students", "/finance", "/notifications"],
   exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications"],
-  teacher: ["/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications"],
+  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   student: ["/notifications", "/portal"],
@@ -70,6 +70,24 @@ describe("navItemsFor", () => {
   it("teacher has no Finance link (07 §1 T3)", () => {
     const hrefs = navItemsFor(new Set(permissionsFor("teacher"))).map((item) => item.href);
     expect(hrefs).not.toContain("/finance");
+  });
+
+  it("Today is for teachers only: staff with dashboard.view and portal users never see it", () => {
+    for (const role of ["owner", "principal", "admin", "student", "guardian"] as Role[]) {
+      const hrefs = navItemsFor(new Set(permissionsFor(role))).map((item) => item.href);
+      expect(hrefs).not.toContain("/today");
+    }
+  });
+
+  it("teacher's first link is Today", () => {
+    expect(navItemsFor(new Set(permissionsFor("teacher")))[0]?.href).toBe("/today");
+  });
+
+  it("every item belongs to a group and groups keep their order", () => {
+    const order = ["Overview", "Academics", "Operations", "Communication", "Admin"];
+    const groups = navItemsFor(new Set(permissionsFor("owner"))).map((item) => order.indexOf(item.group));
+    expect(groups).not.toContain(-1);
+    expect(groups).toEqual([...groups].sort((a, b) => a - b));
   });
 
   it("guardian sees only the Portal-facing links", () => {
@@ -90,7 +108,7 @@ describe("homePathFor", () => {
     admissions: "/dashboard",
     accountant: "/dashboard",
     exam_controller: "/dashboard",
-    teacher: "/attendance",
+    teacher: "/today",
     student: "/portal",
     guardian: "/portal",
   };
