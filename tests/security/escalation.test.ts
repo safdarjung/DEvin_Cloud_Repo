@@ -7,16 +7,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 // effects — the walk never touches a database.
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
-import "@/modules/academics/assignments.actions";
-import "@/modules/admissions/actions";
-import "@/modules/ai/student-study.actions";
-import "@/modules/attendance/actions";
-import "@/modules/core/actions";
-import "@/modules/exams/actions";
-import "@/modules/finance/actions";
-import "@/modules/jobs/actions";
-import "@/modules/notifications/actions";
-import "@/modules/website/actions";
+import "@/app/api/v1/actions/all-actions";
 import { getRegisteredActions } from "@/lib/actions/registry";
 import type { ActionResult } from "@/lib/actions/result";
 import { permissionsFor, type Permission, type Role } from "@/lib/auth/permissions";
@@ -121,6 +112,40 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "admissions.enrol": {
     permission: "admissions.enrol",
     input: () => ({ applicationId: U(), classSectionId: U(), feeStructureId: U() }),
+  },
+  "core.member.invite": { permission: "member.manage", input: () => ({ email: "probe@example.com", role: "teacher" }) },
+  "core.member.revokeInvite": { permission: "member.manage", input: () => ({ invitationId: U() }) },
+  "core.member.setRole": { permission: "member.manage", input: () => ({ membershipId: U(), role: "teacher" }) },
+  "core.member.setStatus": { permission: "member.manage", input: () => ({ membershipId: U(), status: "active" }) },
+  "core.academicYear.upsert": {
+    permission: "academics.manage",
+    input: () => ({ name: "Probe", startsOn: "2026-04-01", endsOn: "2027-03-31" }),
+  },
+  "core.term.upsert": {
+    permission: "academics.manage",
+    input: () => ({ academicYearId: U(), name: "Probe", startsOn: "2026-04-01", endsOn: "2026-06-30" }),
+  },
+  "core.institution.updateSettings": { permission: "institution.settings.manage", input: () => ({ name: "Probe" }) },
+  "academics.grade.upsert": {
+    permission: "academics.manage",
+    input: () => ({ code: "G1", displayName: "Grade 1", sortKey: 1, gradeGroup: "primary" }),
+  },
+  "academics.section.upsert": {
+    permission: "academics.manage",
+    input: () => ({ gradeId: U(), academicYearId: U(), name: "Probe" }),
+  },
+  "academics.subject.upsert": {
+    permission: "academics.manage",
+    input: () => ({ code: "SUB", name: "Probe", kind: "scholastic" }),
+  },
+  "academics.subjectAssignment.set": {
+    permission: "academics.manage",
+    input: () => ({ classSectionId: U(), subjectId: U(), teacherId: U() }),
+  },
+  "people.department.upsert": { permission: "staff.write", input: () => ({ name: "Probe" }) },
+  "people.staff.upsert": {
+    permission: "staff.write",
+    input: () => ({ employeeNo: "E1", fullName: "Probe", designation: "Teacher" }),
   },
 };
 

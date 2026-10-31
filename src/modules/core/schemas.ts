@@ -2,7 +2,8 @@
 // security requirement: "Settings JSON validated by InstitutionSettingsSchema
 // before insert"). Lead-owned, like src/lib/auth/permissions.ts.
 import { z } from "zod";
-import { isoDate, shortText, uuid } from "@/lib/schemas/common";
+// Relative + .ts: the seed scripts (plain node, no path alias) import this file.
+import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
 // checks live in create_institution (SQL); this only validates shape.

@@ -34,11 +34,8 @@ function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === POSTGRES_UNIQUE_VIOLATION);
 }
 
-// subject_assignments' own RLS (0005) was not extended by 0065 (only terms/
-// class_sections/staff/curriculum_units were) — plain FKs here are not yet
-// bound to the caller's institution at the RLS layer (lesson 2). Mirrors
-// assignments.actions.ts's loadSection/assertSubjectInInstitution pattern to
-// close the same hole at the app layer for this new action.
+// RLS already binds these FKs to the institution (0036); this lookup only
+// turns a cross-institution or unknown id into a field-level not_found.
 async function assertInInstitution(
   supabase: AcademicsClient,
   table: "class_sections" | "subjects" | "staff",

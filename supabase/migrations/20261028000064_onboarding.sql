@@ -160,6 +160,8 @@ begin
 
   -- shortcut: per-user cap of 3 owned institutions; replace with a billing
   -- plan check once M17 ships (no plan/billing model exists yet).
+  -- Serialise this caller's concurrent creates so the cap can't be raced.
+  perform pg_advisory_xact_lock(hashtext('create_institution:' || v_uid::text));
   select count(*) into v_owned_count
   from public.memberships
   where user_id = v_uid and role = 'owner' and status = 'active';

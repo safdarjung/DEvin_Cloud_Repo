@@ -263,7 +263,7 @@ declare
 begin
   v_uid := app.current_user_id();
 
-  select * into v_invitation from public.invitations where id = p_invitation_id;
+  select * into v_invitation from public.invitations where id = p_invitation_id for update;
   if v_invitation.id is null then
     raise exception 'code:not_found' using detail = 'invitation not found';
   end if;
