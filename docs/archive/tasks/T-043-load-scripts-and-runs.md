@@ -19,7 +19,7 @@ Measured, reproducible numbers for the four load scenarios (teacher attendance b
 - `pnpm dlx autocannon --help` works offline after first download.
 
 ## Spec sections to read (only these)
-`08-testing-and-acceptance.md §6` · `09-twenty-day-plan.md §2` (Days 15, 17) · `11-operations.md §8` (sizing primitives) · `04 §3` (which path each scenario hits).
+`08-testing-and-acceptance.md §6` · `../09-twenty-day-plan.md §2` (Days 15, 17) · `11-operations.md §8` (sizing primitives) · `04 §3` (which path each scenario hits).
 
 ## Files to inspect first
 `src/modules/attendance/actions.ts` (`markAttendance`/`submitAttendance` call shape) · `src/app/(tenant)/[institution]/portal/page.tsx` · `src/modules/jobs/handlers/finance.generate_term_invoices.ts`.
@@ -31,8 +31,8 @@ Measured, reproducible numbers for the four load scenarios (teacher attendance b
 - `scripts/load/l2-portal-results.ts` — 1.7 rps baseline for 10 min then 10 rps for 5 min on `/[institution]/portal/results`; reports p95 TTFB, error rate.
 - `scripts/load/l3-bulk-invoices.sql` + `l3-bulk-invoices.ts` — times `finance.generate_term_invoices` for a fresh term over 3,024 students (`EXPLAIN ANALYZE` of `app.generate_invoice` once; lock waits from `pg_stat_activity` sample).
 - `scripts/load/l4-public-site.ts` — 50 rps for 2 min on `/s/st-josephs-demo`.
-- `docs/planning/coolskool/results/load-template.md` — table per scenario: environment (laptop | Vercel+hosted), date, git sha, params, p50, p95, errors, observations.
-- `docs/planning/coolskool/results/load-15.md`, `load-17.md` — filled on those days.
+- `docs/archive/results/load-template.md` — table per scenario: environment (laptop | Vercel+hosted), date, git sha, params, p50, p95, errors, observations.
+- `docs/archive/results/load-15.md`, `load-17.md` — filled on those days.
 - `package.json` — `load:l1`…`load:l4`.
 
 ## Must not modify

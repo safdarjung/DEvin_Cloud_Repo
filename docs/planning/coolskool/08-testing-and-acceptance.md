@@ -92,15 +92,15 @@ Each journey is one spec file; the full narrative spec `e2e/demo-narrative.spec.
 | Check | How | When |
 |---|---|---|
 | Lint, type, build | CI | Every push |
-| Accessibility smoke | `@axe-core/playwright` on login, dashboard, attendance, guardian portal, public home: no serious/critical violations | Day 14, 17 |
-| Responsive smoke | Playwright at 390×844 and 1280×800 for the same five pages | Day 14, 17 |
-| Demo reset | `pnpm demo:reset` then J-00 | Day 16, 19 |
-| Backup/restore | `11-operations.md` §6 procedure executed once against hosted project | Day 18 |
-| Load scenarios | §6 | Day 15, 17 |
+| Accessibility smoke | `@axe-core/playwright` on login, dashboard, attendance, guardian portal, public home: no serious/critical violations |
+| Responsive smoke | Playwright at 390×844 and 1280×800 for the same five pages |
+| Demo reset | `pnpm demo:reset` then J-00 |
+| Backup/restore | `11-operations.md` §6 procedure executed once against hosted project |
+| Load scenarios | §6 |
 
 ## 6. Load-test scenarios (measured, never asserted in advance)
 
-Tool: `autocannon` via `pnpm dlx` for HTTP, SQL timing for bulk jobs. Environment stated in every result (local laptop vs Vercel + hosted Supabase). Results saved to `docs/planning/coolskool/results/load-<day>.md`.
+Tool: `autocannon` via `pnpm dlx` for HTTP, SQL timing for bulk jobs. Environment stated in every result (local laptop vs Vercel + hosted Supabase). Results saved to `docs/archive/results/load-<day>.md`.
 
 | Scenario | Assumptions | Measure |
 |---|---|---|
@@ -114,9 +114,9 @@ Tool: `autocannon` via `pnpm dlx` for HTTP, SQL timing for bulk jobs. Environmen
 
 **Task done (every packet):** acceptance criteria met · packet tests green with actual output in the completion report · lint/typecheck clean on touched files · integrated on seeded data · review done where required (`CLAUDE.md`) · honesty label correct.
 
-**Checkpoint (Days 4, 9, 13, 16, 18):** full `pnpm test && pnpm test:db && pnpm test:security` green · `pnpm build` green · `pnpm demo:reset` succeeds · E2E journeys available so far green · no open CRITICAL/HIGH review findings.
+**Checkpoint:** full `pnpm test && pnpm test:db && pnpm test:security` green · `pnpm build` green · `pnpm demo:reset` succeeds · E2E journeys available so far green · no open CRITICAL/HIGH review findings.
 
-**Demo ready (G-2, Day 19):** all 13 journeys green on the hosted deployment · security suite green on hosted · load results L1–L4 recorded (no regressions vs Day 15 beyond 20%) · backup/restore executed once · rehearsal script run twice end-to-end from a reset state in under 25 minutes · every "simulated"/"limited" label present in the UI · known limitations list in `11-operations.md` §9 up to date.
+**Demo ready (G-2):** all 13 journeys green on the hosted deployment · security suite green on hosted · load results L1–L4 recorded (no regressions vs the first beyond 20%) · backup/restore executed once · rehearsal script run twice end-to-end from a reset state in under 25 minutes · every "simulated"/"limited" label present in the UI · known limitations list in `11-operations.md` §9 up to date.
 
 ## 8. Known limitations accepted for the demo
 

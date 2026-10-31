@@ -108,7 +108,7 @@ Agents: one lead (reviews, checkpoints, foundation Days 1–6) + four lane agent
 4. `pnpm test && pnpm test:db && pnpm test:security`.
 5. `pnpm test:e2e` for the journeys available at that checkpoint (Day 4: J-00; Day 9: J-00, J-01, J-02, J-06; Day 13: all attempted; Day 16: all; Day 18: all on hosted).
 6. Walk the clickable part of the narrative by hand with the named entities (`05 §8.1`).
-7. Write `docs/planning/coolskool/results/checkpoint-<day>.md`: suite counts, failures, decisions, debt added, packets re-planned.
+7. Write `docs/archive/results/checkpoint-<day>.md`: suite counts, failures, decisions, debt added, packets re-planned.
 8. Exit criteria per `08 §7`; a red checkpoint blocks new lane packets until green.
 
 ## 10. Lead operating rhythm (Days 2–14)

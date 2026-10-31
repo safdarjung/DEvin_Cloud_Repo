@@ -14,12 +14,12 @@
 A principal watches the 13-step story in under 25 minutes with no technical explanation needed, every simulated or limited feature is honestly labelled, and the team has a backup recording.
 
 ## Current repo state (verify before starting)
-- Hosted deployment green: `results/deploy-18.md` exists and J-00…J-13 passed.
+- Hosted deployment green: `../../../archive/results/deploy-18.md` exists and J-00…J-13 passed.
 - `demo:reset` works against hosted (operator shell with hosted env).
 - `<SimulatedBadge />` component exists: `ls src/components/simulated-badge.tsx`.
 
 ## Spec sections to read (only these)
-- `09-twenty-day-plan.md §8` (rehearsal steps), `§7` (fallback ladder, if needed).
+- `../../../archive/09-twenty-day-plan.md §8` (rehearsal steps), `§7` (fallback ladder, if needed).
 - `11-operations.md §10` (demo script), `§3` (accounts).
 - `01-executive-brief.md §2` (status label per step) and `§9` (real vs simulated).
 - `08-testing-and-acceptance.md §7` (G-2 gate), `§5` (a11y/responsive smoke).
@@ -32,7 +32,7 @@ A principal watches the 13-step story in under 25 minutes with no technical expl
 - Copy polish: page titles, empty states, toasts, error messages in plain English; demo banner text; login hint panel wording.
 - Rehearsal runs: two full passes from `pnpm demo:reset` on hosted with a stopwatch; narration notes per step; fix small UI issues found (no new features; anything larger → `09 §7` decision with the lead).
 - Backup recording: screen capture of a clean pass stored outside the repo (path recorded in results).
-- `docs/planning/coolskool/results/rehearsal-19.md` — timings per step, issues found/fixed, moments needing explanation, final G-2 checklist with evidence lines.
+- `docs/archive/results/rehearsal-19.md` — timings per step, issues found/fixed, moments needing explanation, final G-2 checklist with evidence lines.
 - `11-operations.md §11` and `12 §3` — update gaps/debt if the rehearsal surfaced new ones (the only doc edits permitted).
 
 ## Must not modify
@@ -49,7 +49,7 @@ A principal watches the 13-step story in under 25 minutes with no technical expl
 1. Two consecutive passes of the 13-step script complete in < 25 minutes each from a reset state; the second pass needs zero fixes.
 2. Every `limited`/`sim` feature shows its badge (audit table complete, no gaps).
 3. A11y smoke (`@axe-core/playwright`) shows no serious/critical violations on the five pages in `08 §5`; responsive smoke at 390×844 passes.
-4. `results/rehearsal-19.md` filled, including the G-2 gate with each line marked met/not met and evidence.
+4. `../../../archive/results/rehearsal-19.md` filled, including the G-2 gate with each line marked met/not met and evidence.
 5. Backup recording exists and its location is recorded.
 
 ## Script and runbooks

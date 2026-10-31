@@ -19,7 +19,7 @@ The demo tenant shows a realistic attendance history (≈181k records over 60 sc
 - Attendance tables exist: `grep -n "attendance_sessions" src/lib/db/types.ts | head -1`.
 
 ## Spec sections to read (only these)
-`05-data-architecture.md §8` · `05 §2.4` · `06-workflows-and-contracts.md §W1` · `09-twenty-day-plan.md §5` (seed too slow row) · `12-decision-log.md D19`.
+`05-data-architecture.md §8` · `05 §2.4` · `06-workflows-and-contracts.md §W1` · `../09-twenty-day-plan.md §5` (seed too slow row) · `12-decision-log.md D19`.
 
 ## Files to inspect first
 `scripts/seed/index.ts` (section order, PRNG, `uuidV5` helper) · `scripts/seed/sections/academics.ts` (how enrolments are produced and exposed) · `scripts/seed/lib/bulk.ts` (batched insert helper, if present).

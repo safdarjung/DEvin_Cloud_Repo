@@ -295,3 +295,7 @@ stateDiagram-v2
 | Recheck decision | exam controller / principal | `decideRecheck` recorded with user |
 | Concession | finance roles | `approved_by` on the row |
 | Demo reset | platform admin | env flag + confirmation phrase |
+
+## 7. Job types
+
+Job execution, handler signature, retry and idempotency: see §W12. The dispatch table of job types is `src/modules/jobs/registry.ts`; payload types are in `src/modules/jobs/types.ts`.

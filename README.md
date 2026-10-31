@@ -19,7 +19,7 @@ See `docs/planning/coolskool/11-operations.md §1-2` for environment variable na
 
 - `docs/planning/coolskool/00-README.md` — index of the planning package (brief, architecture, data model, workflows, security, testing, 20-day plan, backlog, operations, decision log).
 - `docs/planning/coolskool/tasks/` — one packet per implementation task (T-001 … T-045).
-- `docs/planning/coolskool/00-planning-prompt.md` — the architect prompt that produced the package.
+- `docs/archive/00-planning-prompt.md` — the architect prompt that produced the package.
 - `CLAUDE.md` — operating instructions for implementation agents.
 
 ## Intended stack

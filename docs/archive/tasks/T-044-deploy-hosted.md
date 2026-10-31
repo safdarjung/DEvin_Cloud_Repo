@@ -31,7 +31,7 @@ The demo runs from Vercel and a Mumbai-region Supabase project, with cron-driven
 - Supabase: `pnpm supabase link --project-ref <ref>`; `pnpm supabase db push`; dashboard auth settings (email/password on, confirmations off, site URL); verify `app` schema not exposed (`Settings → API → Exposed schemas`).
 - Seed against hosted from the laptop with hosted env in a shell session only (`SERVICE_ROLE_CALLER=seed DEMO_RESET_ALLOWED=true pnpm seed`).
 - Vercel project: import repo, env vars per `11 §1` (production + preview), `NEXT_PUBLIC_DEMO_LOGIN_HINTS=true`, `AI_CLOUD_ENABLED=false`, `OLLAMA_BASE_URL` unset on Vercel (local AI is shown from the laptop; the hosted app shows `ai_unavailable` honestly unless a tunnel is configured — record decision).
-- Backup drill per `11 §6`: dump schema + data to `backups/` (git-ignored), restore into a fresh local Supabase, run J-00; record timings in `docs/planning/coolskool/results/deploy-18.md`.
+- Backup drill per `11 §6`: dump schema + data to `backups/` (git-ignored), restore into a fresh local Supabase, run J-00; record timings in `docs/archive/results/deploy-18.md`.
 - Hosted checkpoint: `pnpm test:e2e` with `PLAYWRIGHT_BASE_URL=<vercel url>` for J-00…J-13; `pnpm test:security` against hosted fixture institutions is **not** run (fixtures would be created in production) — run the read-only subset (C-80, C-62/63 unit) and note it.
 - `README.md` — "Demo deployment" section linking `11 §4`.
 
@@ -51,7 +51,7 @@ The demo runs from Vercel and a Mumbai-region Supabase project, with cron-driven
 2. Migrations 0001–00NN applied on hosted (`supabase migration list` shows all remote); `app` schema not exposed.
 3. Cron invocation visible in Vercel logs; a queued job is processed within 5 minutes.
 4. J-00…J-13 pass against hosted (AI step passes with a documented local-tunnel setup or is marked `ai_unavailable` with the honesty message shown — state which).
-5. Backup/restore drill completed once; durations recorded in `results/deploy-18.md`.
+5. Backup/restore drill completed once; durations recorded in `../results/deploy-18.md`.
 6. `pnpm demo:reset` against hosted completes and the narrative is green afterwards.
 
 ## Tests (write failing tests first) and exact commands
