@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
 import { getStudentAttendanceSummary } from "@/modules/attendance/queries";
 import { listResultsForStudent } from "@/modules/exams/queries";
@@ -95,6 +95,23 @@ export default async function PortalOverviewPage({
             </CardContent>
           </Card>
         </Link>
+
+        {/* GU-08 — ai.study is student-only (D32); a guardian viewing a
+            child's portal never has it, so this tile simply doesn't
+            render for them, rather than linking to a page that would
+            always forbid them. */}
+        {hasPermission(ctx, "ai.study") && (
+          <Link href={`${basePath}/study`}>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Study helper</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground text-sm">Ask about a topic, get notes, mindmaps, or practice.</p>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
       </div>
     </>
   );

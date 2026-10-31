@@ -93,6 +93,11 @@ export const InstitutionSettingsSchema = z
         per_user_per_minute: z.number().int().positive(),
         max_concurrent_local: z.number().int().positive(),
         max_concurrent_cloud: z.number().int().positive(),
+        // GU-08 security review (H1) — without this, one student chatting
+        // can exhaust the whole institution's `daily_token_quota` and
+        // lock teachers out of local AI for the rest of the day (the
+        // concurrency slot is shared too; see usage.ts's student-only key).
+        student_daily_token_quota: z.number().int().positive(),
       })
       .strict(),
     communication: z
@@ -194,6 +199,12 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
     per_user_per_minute: 10,
     max_concurrent_local: 2,
     max_concurrent_cloud: 4,
+    // GU-08 (D32 Revisit) — a placeholder sized against the plan's own
+    // estimate (daily_token_quota ≈ 50 student turns/school/day): ~5
+    // turns/student/day leaves room for several students concurrently
+    // without one student alone exhausting the institution's quota.
+    // Revisit from measured usage once a real school pilots this.
+    student_daily_token_quota: 20000,
   },
   communication: { languages: ["en", "hi"], sms_sender: "SJCDEM" },
   features: { teacher_ai_agent: true },

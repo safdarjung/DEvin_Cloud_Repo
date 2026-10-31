@@ -10,7 +10,7 @@ afterAll(async () => {
   await sql.end();
 });
 
-function fakeCtx(fixture: TestInstitution, role: "owner" | "teacher", settings: Record<string, unknown> = {}): TenantContext {
+function fakeCtx(fixture: TestInstitution, role: "owner" | "teacher" | "student", settings: Record<string, unknown> = {}): TenantContext {
   return {
     institution: {
       id: fixture.institutionId,
@@ -98,7 +98,7 @@ describe("ai_usage_events (T-035)", () => {
     const fixture = await createTestInstitution("ai-usage-quota");
     try {
       const ctx = fakeCtx(fixture, "teacher", {
-        ai: { daily_token_quota: 100, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4 },
+        ai: { daily_token_quota: 100, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 100 },
       });
 
       await logUsage({
@@ -126,7 +126,7 @@ describe("ai_usage_events (T-035)", () => {
     const fixture = await createTestInstitution("ai-usage-rate");
     try {
       const ctx = fakeCtx(fixture, "teacher", {
-        ai: { daily_token_quota: 200000, per_user_per_minute: 3, max_concurrent_local: 2, max_concurrent_cloud: 4 },
+        ai: { daily_token_quota: 200000, per_user_per_minute: 3, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 20000 },
       });
 
       for (let i = 0; i < 3; i++) {
@@ -156,10 +156,103 @@ describe("ai_usage_events (T-035)", () => {
     const fixture = await createTestInstitution("ai-usage-ok");
     try {
       const ctx = fakeCtx(fixture, "teacher", {
-        ai: { daily_token_quota: 200000, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4 },
+        ai: { daily_token_quota: 200000, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 20000 },
       });
 
       const result = await checkLimits(ctx, "quiz");
+      expect(result).toEqual({ ok: true });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  // GU-08 security review (H1) — one student must not be able to exhaust
+  // the institution-wide quota; the per-student cap is checked in
+  // addition to it, only for `feature: "student_study"`.
+  it("checkLimits returns quota_exceeded for student_study once a single student's own usage reaches student_daily_token_quota, even though the institution-wide quota is nowhere close", async () => {
+    const fixture = await createTestInstitution("ai-usage-student-quota");
+    try {
+      const ctx = fakeCtx(fixture, "student", {
+        ai: { daily_token_quota: 200000, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 50 },
+      });
+
+      await logUsage({
+        ctx,
+        feature: "student_study",
+        provider: "local",
+        model: "qwen3:4b-instruct-2507-q4_K_M",
+        inputTokens: 30,
+        outputTokens: 30,
+        latencyMs: 100,
+        costEstimateUsd: 0,
+        ok: true,
+        errorCode: null,
+        redactions: 0,
+      });
+
+      const result = await checkLimits(ctx, "student_study");
+      expect(result).toEqual({ ok: false, code: "quota_exceeded" });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("the per-student cap does not apply to a non-student_study feature", async () => {
+    const fixture = await createTestInstitution("ai-usage-student-quota-other-feature");
+    try {
+      const ctx = fakeCtx(fixture, "student", {
+        ai: { daily_token_quota: 200000, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 50 },
+      });
+
+      await logUsage({
+        ctx,
+        feature: "student_study",
+        provider: "local",
+        model: "qwen3:4b-instruct-2507-q4_K_M",
+        inputTokens: 60,
+        outputTokens: 0,
+        latencyMs: 100,
+        costEstimateUsd: 0,
+        ok: true,
+        errorCode: null,
+        redactions: 0,
+      });
+
+      // The student is over their student_study cap, but a different
+      // feature (hypothetically available to them) isn't gated by it.
+      const result = await checkLimits(ctx, "quiz");
+      expect(result).toEqual({ ok: true });
+    } finally {
+      await fixture.cleanup();
+    }
+  });
+
+  it("one student's usage does not count against a different student's cap", async () => {
+    const fixture = await createTestInstitution("ai-usage-student-quota-isolated");
+    try {
+      const studentCtx = fakeCtx(fixture, "student", {
+        ai: { daily_token_quota: 200000, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 50 },
+      });
+      await logUsage({
+        ctx: studentCtx,
+        feature: "student_study",
+        provider: "local",
+        model: "qwen3:4b-instruct-2507-q4_K_M",
+        inputTokens: 60,
+        outputTokens: 0,
+        latencyMs: 100,
+        costEstimateUsd: 0,
+        ok: true,
+        errorCode: null,
+        redactions: 0,
+      });
+
+      // Same institution, different user (teacher fixture user) — their
+      // own student_study usage (hypothetical) starts from zero.
+      const teacherAsStudentFeatureCtx = fakeCtx(fixture, "teacher", {
+        ai: { daily_token_quota: 200000, per_user_per_minute: 10, max_concurrent_local: 2, max_concurrent_cloud: 4, student_daily_token_quota: 50 },
+      });
+      const result = await checkLimits(teacherAsStudentFeatureCtx, "student_study");
       expect(result).toEqual({ ok: true });
     } finally {
       await fixture.cleanup();

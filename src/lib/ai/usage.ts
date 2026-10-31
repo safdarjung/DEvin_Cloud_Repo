@@ -78,8 +78,13 @@ export type LimitsResult = { ok: true } | { ok: false; code: "quota_exceeded" | 
  * is accepted (and logged by the caller) for a future per-feature quota;
  * today's limits are institution/user-wide, matching `settings.ai` (05 §4.1).
  */
+// GU-08 security review (H1): without this, one student chatting can
+// exhaust `daily_token_quota` (institution-wide) and lock teachers out of
+// local AI for the rest of the day. Checked in addition to, never instead
+// of, the institution-wide quota above.
+const STUDENT_QUOTA_FEATURES = new Set(["student_study"]);
+
 export async function checkLimits(ctx: TenantContext, feature: string): Promise<LimitsResult> {
-  void feature;
   const settings = aiSettingsFor(ctx);
   const admin = withAiServiceRole(() => createAdminClient());
 
@@ -94,6 +99,22 @@ export async function checkLimits(ctx: TenantContext, feature: string): Promise<
   const tokensToday = (dayRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
   if (tokensToday >= settings.daily_token_quota) {
     return { ok: false, code: "quota_exceeded" };
+  }
+
+  if (STUDENT_QUOTA_FEATURES.has(feature)) {
+    const { data: studentRows, error: studentError } = await admin
+      .from("ai_usage_events")
+      .select("input_tokens, output_tokens")
+      .eq("institution_id", ctx.institution.id)
+      .eq("user_id", ctx.user.id)
+      .eq("feature", feature)
+      .gte("created_at", dayStart.toISOString());
+    if (studentError) throw studentError;
+
+    const studentTokensToday = (studentRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
+    if (studentTokensToday >= settings.student_daily_token_quota) {
+      return { ok: false, code: "quota_exceeded" };
+    }
   }
 
   const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();

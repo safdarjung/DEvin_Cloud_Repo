@@ -24,6 +24,7 @@ import { geminiModelId, getGeminiModel, getGroqModel, groqModelId } from "@/lib/
 import { pickAgentProvider, type AgentProvider } from "@/modules/ai/agent/provider-routing";
 import { teacherTools } from "@/modules/ai/agent/teacher-tools";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
+import { UIMessageRequestSchema } from "@/lib/ai/ui-message-schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,34 +52,9 @@ const MAX_BODY_BYTES = 64 * 1024;
 // TextUIPart's own `state`/`providerMetadata` fields under `.strict()`,
 // then a whole missing type, `reasoning`, which Gemini emits and ai
 // 7.0.155's UIMessagePart union always allowed: text, step-start, reasoning,
-// custom, dynamic-tool, tool-*). An allowlist can't anticipate every
-// legitimate type; the actual HIGH boundary is narrower than "every type
-// we didn't think of" — only the types below carry a `url`/fetchable
-// content field the AI SDK downloads server-side (FileUIPart,
-// SourceUrlUIPart, SourceDocumentUIPart, ReasoningFileUIPart) or are
-// free-form payloads this server never itself emits (`data-*`, per
-// DataUIPart). Denying exactly those, and allowing everything else through
-// `.passthrough()`, closes the same hole without this bug recurring a
-// fourth time.
-const DENIED_PART_TYPES = new Set(["file", "source-url", "source-document", "reasoning-file"]);
-
-const UIMessagePartSchema = z
-  .object({ type: z.string().max(100) })
-  .passthrough()
-  .refine(
-    (part) => !DENIED_PART_TYPES.has(part.type) && !part.type.startsWith("data-"),
-    { message: "This message part type is not allowed." },
-  )
-  .refine((part) => part.type !== "text" || (typeof part.text === "string" && part.text.length <= 4000), {
-    message: "A text part must be a string of at most 4000 characters.",
-  });
-const UIMessageRequestSchema = z
-  .object({
-    id: z.string(),
-    role: z.enum(["user", "assistant", "system"]),
-    parts: z.array(UIMessagePartSchema).min(1).max(50),
-  })
-  .passthrough();
+// custom, dynamic-tool, tool-*). Extracted to `@/lib/ai/ui-message-schema`
+// (GU-08) so the student route reuses the same fixed boundary instead of
+// risking this exact bug a fourth time, independently, in a second file.
 
 const TeacherAgentRequestSchema = z
   .object({

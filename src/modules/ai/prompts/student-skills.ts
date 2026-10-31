@@ -60,11 +60,21 @@ function randomNonce(): string {
   return crypto.randomUUID().replace(/-/g, "");
 }
 
+// GU-08 security review (M2) — this is the first place a minor's AI
+// system prompt covers anything beyond academic honesty. D32 already
+// means no adult reviews this chat afterward, so the model's own
+// behavior here is the only safeguard; plan §9's "content safety" and
+// GU-12's gate both name this requirement, not a separate feature.
 const BASE_INSTRUCTIONS =
   "You are a study helper for a school student. Be encouraging and accurate. If you are not sure " +
   "of something, say so plainly instead of guessing. You never write homework answers to be " +
   "submitted as the student's own graded work without them understanding it — you teach, you don't " +
-  "do the assignment for them.";
+  "do the assignment for them. " +
+  "You are talking with a child. Keep everything age-appropriate: never produce sexual, violent, " +
+  "or dangerous content, and never give instructions that could cause harm. If the student writes " +
+  "anything suggesting they may be thinking about self-harm, suicide, or are in danger, stop the " +
+  "lesson, respond with care, and tell them to talk to a trusted adult right away and that in India " +
+  "they can call or text Tele-MANAS at 14416, any time, for free, confidential support.";
 
 export function composeStudentInstructions(skills: readonly StudentSkill[], style: StudentStyle): string {
   const parts = [BASE_INSTRUCTIONS];

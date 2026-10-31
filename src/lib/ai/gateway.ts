@@ -236,6 +236,16 @@ export interface StreamAgentInput<TOOLS extends ToolSet> {
   toolCallConcurrency?: number;
   /** Required (MEDIUM-1 fix): without the request's own abort signal, a disconnected client's generation keeps running and holding a shared concurrency slot. */
   abortSignal: AbortSignal;
+  /**
+   * GU-08 security review (H1) — defaults to `ctx.institution.id`, same as
+   * `runStructured`. A caller whose feature must not share the
+   * institution's own concurrency pool (e.g. the student study chat,
+   * which would otherwise compete with every teacher's local AI call for
+   * the same two slots) passes its own composite key here — same trick
+   * the teacher route already uses for its own bucket, just lifted into
+   * this shared function instead of being re-invented per caller.
+   */
+  concurrencyKey?: string;
 }
 
 export type StreamAgentResult<TOOLS extends ToolSet> =
@@ -256,6 +266,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
 ): Promise<StreamAgentResult<TOOLS>> {
   const { ctx, feature, permission, dataClass, system, messages, tools, stopWhen, toolCallConcurrency, abortSignal } = input;
   const maxOutputTokens = input.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
+  const concurrencyKey = input.concurrencyKey ?? ctx.institution.id;
 
   if (!hasPermission(ctx, permission)) {
     return { ok: false, error: { code: "forbidden", message: "You do not have permission to use AI features." } };
@@ -317,7 +328,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
     if (step === "cloud") continue;
 
     const concurrencyLimit = settings.max_concurrent_local;
-    if (!acquireConcurrencySlot(ctx.institution.id, step, concurrencyLimit)) {
+    if (!acquireConcurrencySlot(concurrencyKey, step, concurrencyLimit)) {
       continue; // try the next step in the plan, same as runStructured
     }
 
@@ -390,14 +401,14 @@ export async function streamAgent<TOOLS extends ToolSet>(
             redactions: redacted.count,
           }),
         )
-        .finally(() => releaseConcurrencySlot(ctx.institution.id, step));
+        .finally(() => releaseConcurrencySlot(concurrencyKey, step));
 
       return { ok: true, provider: step, modelId, stream };
     } catch {
       // Setup failed before any token streamed (e.g. provider not
       // configured) — safe to try the next step, per this function's own
       // "fallback only before the first token" rule.
-      releaseConcurrencySlot(ctx.institution.id, step);
+      releaseConcurrencySlot(concurrencyKey, step);
       continue;
     }
   }

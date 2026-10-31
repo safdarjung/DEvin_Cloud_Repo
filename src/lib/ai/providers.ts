@@ -14,6 +14,19 @@ export function localModelId(): string {
 }
 
 export function getLocalModel(): LanguageModel {
+  // DBT-36 partial fix (GU-08 security review, M3): an Ollama `*-cloud`
+  // model tag runs on ollama.com through a local daemon — D32's "local
+  // AI never leaves the school's server" guarantee would be silently
+  // false for exactly the feature that most needs it (student data). The
+  // remaining half of DBT-36 (asserting `OLLAMA_BASE_URL` itself is
+  // loopback/private) is deliberately NOT done here — a hosted deployment
+  // can legitimately point it at a tunnel to the school's own box
+  // (04-architecture.md topology B), so a blanket host check would break
+  // that; it needs an explicit allow-list or an operator attestation
+  // instead, not a quick assertion.
+  if (OLLAMA_MODEL.endsWith("-cloud")) {
+    throw new Error("OLLAMA_MODEL may not be a *-cloud tag — that runs on ollama.com, not locally.");
+  }
   const ollama = createOllama({ baseURL: OLLAMA_BASE_URL });
   return ollama(OLLAMA_MODEL);
 }

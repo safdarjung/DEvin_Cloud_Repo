@@ -49,6 +49,7 @@ export type Permission =
   | "assignment.read"
   | "ai.generate"
   | "ai.usage.read"
+  | "ai.study"
   | "website.edit"
   | "website.publish"
   | "notification.read"
@@ -230,6 +231,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.recheck.request",
     "assignment.read",
     "notification.read",
+    // D32/GU-08 — student-only (07 §2.2 column: stu). No other role holds this.
+    "ai.study",
   ],
   guardian: [
     "student.read",

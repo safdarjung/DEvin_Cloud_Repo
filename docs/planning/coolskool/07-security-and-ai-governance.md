@@ -73,6 +73,7 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | assignment.read | ✓ | ✓ | ✓ | | | | s | s | s |
 | ai.generate | ✓ | ✓ | ✓ | ✓ | | | ✓ | | |
 | ai.usage.read | ✓ | ✓ | ✓ | | | | | | |
+| ai.study | | | | | | | | ✓ | |
 | website.edit | ✓ | ✓ | ✓ | ✓ | | | | | |
 | website.publish | ✓ | ✓ | ✓ | | | | | | |
 | notification.read (own) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
