@@ -6,7 +6,7 @@ import { inr } from "@/lib/format";
 
 // CSS entrance (tw-animate-css, globals.css): runs on paint, so SSR HTML is
 // visible without JS. `motion/react` is reserved for LayoutPill + AnimatedNumber.
-const ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-300";
+const ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 duration-200";
 
 /** JS mirror of the --duration-* / --ease-* tokens in globals.css (seconds). */
 export const MOTION = {
@@ -15,7 +15,7 @@ export const MOTION = {
     out: [0.16, 1, 0.3, 1],
     inOut: [0.45, 0, 0.55, 1],
   },
-  stagger: 0.04,
+  stagger: 0.025,
   // Critically damped (no overshoot): for layout/shared-element moves.
   spring: { type: "spring", bounce: 0, duration: 0.3 },
 } as const;

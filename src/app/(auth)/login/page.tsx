@@ -1,8 +1,14 @@
-import { GraduationCap } from "lucide-react";
-import { DEMO_ACCOUNT_GROUPS, DEMO_ACCOUNTS } from "@/lib/auth/demo-accounts";
+import { BarChart3, GraduationCap, ShieldCheck, Sparkles } from "lucide-react";
+import { DEMO_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
 import { LoginForm } from "./login-form";
 import { DemoLoginButton } from "./demo-login-button";
+
+const HIGHLIGHTS = [
+  { icon: BarChart3, text: "Attendance, fees and results in one live view" },
+  { icon: Sparkles, text: "AI that drafts, flags and forecasts — you decide" },
+  { icon: ShieldCheck, text: "Every school's data kept strictly its own" },
+];
 
 export default async function LoginPage({
   searchParams,
@@ -12,62 +18,81 @@ export default async function LoginPage({
   const params = await searchParams;
   const next = sanitizeNextPath(params.next);
   const nextProp = next === "/" ? undefined : next;
-  const showDemoHints = process.env.NEXT_PUBLIC_DEMO_LOGIN_HINTS === "true";
+  const showQuickAccess = process.env.NEXT_PUBLIC_DEMO_LOGIN_HINTS === "true";
 
   return (
-    <main className="flex min-h-screen flex-1 flex-col items-center gap-8 bg-muted/30 px-4 py-10 sm:py-16">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <span className="flex size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-          <GraduationCap className="size-6" aria-hidden />
-        </span>
-        <h1 className="text-2xl font-semibold tracking-tight">CoolSkool</h1>
-        <p className="text-sm text-muted-foreground">
-          {showDemoHints ? "St. Joseph's Convent School (Demo)" : "Sign in to continue."}
-        </p>
-      </div>
-      <div className={showDemoHints ? "grid w-full max-w-4xl gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start" : "w-full max-w-sm rounded-xl border bg-card p-6 shadow-sm"}>
-        {showDemoHints && (
-          <section aria-labelledby="demo-accounts-h" className="flex min-w-0 flex-col gap-6 lg:order-1">
-            <div className="flex flex-col gap-1">
-              <h2 id="demo-accounts-h" className="text-base font-medium">
-                Pick who you&apos;re signing in as
-              </h2>
-              <p className="text-sm text-muted-foreground">One tap — each account opens on the screen it actually uses.</p>
-            </div>
-            {DEMO_ACCOUNT_GROUPS.map((group) => (
-              <div key={group} className="flex flex-col gap-2.5">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{group}</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {DEMO_ACCOUNTS.filter((a) => a.group === group).map((account) => (
-                    <DemoLoginButton
-                      key={account.email}
-                      email={account.email}
-                      name={account.name}
-                      role={account.role}
-                      blurb={account.blurb}
-                      icon={<account.icon />}
-                      next={nextProp}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
-        )}
-        <section
-          aria-labelledby="manual-signin-h"
-          className={
-            showDemoHints
-              ? "flex flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm lg:order-2 lg:sticky lg:top-16"
-              : "flex flex-col gap-4"
-          }
-        >
-          <h2 id="manual-signin-h" className="text-sm font-medium">
-            {showDemoHints ? "Or sign in manually" : "Email and password"}
+    <main className="grid min-h-screen lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <aside className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-32 -right-32 size-[28rem] rounded-full bg-white/10 blur-3xl motion-safe:animate-pulse [animation-duration:6s]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-40 -left-24 size-[26rem] rounded-full bg-black/20 blur-3xl"
+        />
+        <div className="relative flex items-center gap-2.5 text-lg font-semibold tracking-tight">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
+            <GraduationCap className="size-5" aria-hidden />
+          </span>
+          CoolSkool
+        </div>
+        <div className="relative max-w-md space-y-8">
+          <h2 className="text-4xl leading-[1.1] font-semibold tracking-[-0.02em] text-balance">
+            Run your whole school from one calm place.
           </h2>
+          <ul className="space-y-4">
+            {HIGHLIGHTS.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex items-start gap-3 text-sm text-primary-foreground/85">
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/12 ring-1 ring-white/20">
+                  <Icon className="size-4" aria-hidden />
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <p className="relative text-xs text-primary-foreground/60">Built for Indian private schools.</p>
+      </aside>
+
+      <section className="flex flex-col items-center justify-center gap-8 bg-background px-5 py-10 sm:px-8">
+        <div className="w-full max-w-sm space-y-7 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-300">
+          <div className="space-y-2">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:hidden">
+              <GraduationCap className="size-5" aria-hidden />
+            </span>
+            <h1 className="text-2xl font-semibold tracking-[-0.02em]">Welcome back</h1>
+            <p className="text-sm text-muted-foreground">Sign in to your school workspace.</p>
+          </div>
+
           <LoginForm next={nextProp} />
-        </section>
-      </div>
+
+          {showQuickAccess && (
+            <section aria-labelledby="quick-access-h" className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span className="h-px flex-1 bg-border" aria-hidden />
+                <h2 id="quick-access-h" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                  Quick access
+                </h2>
+                <span className="h-px flex-1 bg-border" aria-hidden />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {DEMO_ACCOUNTS.map((account) => (
+                  <DemoLoginButton
+                    key={account.email}
+                    email={account.email}
+                    name={account.name}
+                    role={account.role}
+                    blurb={account.blurb}
+                    icon={<account.icon />}
+                    next={nextProp}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </section>
     </main>
   );
 }

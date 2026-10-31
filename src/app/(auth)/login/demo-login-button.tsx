@@ -38,20 +38,20 @@ export function DemoLoginButton({
       <button
         type="submit"
         disabled={pending}
+        title={blurb}
         className={cn(
-          "group relative flex w-full items-start gap-3 rounded-xl p-3.5 text-left ring-1 ring-foreground/10",
-          "bg-card shadow-xs transition-colors hover:bg-accent hover:ring-foreground/20",
+          "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left ring-1 ring-foreground/10",
+          "bg-card transition-[background-color,box-shadow,transform] duration-(--duration-fast) ease-(--ease-out) hover:bg-accent hover:ring-foreground/20 active:scale-[0.98]",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "disabled:cursor-wait disabled:opacity-70",
         )}
       >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-background [&_svg]:size-4">
-          {pending ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : icon}
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors group-hover:bg-background [&_svg]:size-3.5">
+          {pending ? <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden /> : icon}
         </span>
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className="truncate text-sm font-medium leading-tight">{name}</span>
-          <span className="text-xs leading-snug text-muted-foreground">{role}</span>
-          <span className="mt-1 text-xs leading-snug text-muted-foreground">{blurb}</span>
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate text-[13px] leading-tight font-medium">{name}</span>
+          <span className="truncate text-[11px] leading-tight text-muted-foreground">{role}</span>
         </span>
       </button>
       {state && !state.ok && (
