@@ -9,7 +9,7 @@ import { type DemoRole, DEMO_ROLES, loginAs, SLUG } from "./fixtures";
 //
 // The tenant root (`/[institution]`) redirects via `homePathFor`
 // (src/lib/nav.ts): dashboard.view -> /dashboard, guardian/student ->
-// /portal, teacher -> /attendance (T-042; it used to send teachers to
+// /portal, teacher -> /today (T-042; it used to send teachers to
 // /portal, which threw for them).
 const DASHBOARD_ROLES: DemoRole[] = ["principal", "admin", "admissions", "accountant", "examcontroller"];
 const TEACHER_ROLES: DemoRole[] = ["teacher.vi-a", "teacher.viii-b", "teacher.x-a"];
@@ -36,7 +36,7 @@ test.describe("J-00: login smoke, every demo role", () => {
   }
 
   for (const role of TEACHER_ROLES) {
-    test(`${role} lands on /attendance from the tenant root with no console errors`, async ({ page }) => {
+    test(`${role} lands on /today from the tenant root with no console errors`, async ({ page }) => {
       const errors: string[] = [];
       page.on("console", (msg) => {
         if (msg.type() === "error") errors.push(msg.text());
@@ -44,8 +44,9 @@ test.describe("J-00: login smoke, every demo role", () => {
 
       await loginAs(page, role);
       await page.goto(`/${SLUG}`);
-      await expect(page).toHaveURL(new RegExp(`/${SLUG}/attendance$`));
-      await expect(page.getByRole("heading", { name: "Attendance" })).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`/${SLUG}/today$`));
+      // PageHeader title is a time-of-day greeting (`today/page.tsx` `greeting()`), not a fixed string.
+      await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
       expect(errors).toEqual([]);
     });
   }

@@ -3,21 +3,34 @@ import {
   Banknote,
   BarChart3,
   Bell,
+  Book,
   Bot,
   Briefcase,
   CalendarCheck,
   ClipboardList,
+  Cog,
+  Cpu,
+  Database,
   FileText,
   Globe,
   GraduationCap,
   LayoutDashboard,
+  Lightbulb,
+  Palette,
+  Shield,
+  Sparkles,
+  Store,
   Sun,
+  Target,
+  TrendingUp,
+  User,
   UserCircle,
   Users,
+  Zap,
 } from "lucide-react";
 import type { Permission } from "@/lib/auth/permissions";
 
-export type NavGroup = "Overview" | "Academics" | "Operations" | "Communication" | "Admin";
+export type NavGroup = "Overview" | "Academics" | "Operations" | "Communication" | "Admin" | "Fabric" | "Personal";
 
 export interface NavItem {
   href: string;
@@ -54,6 +67,19 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/notifications", label: "Notifications", icon: Bell, permission: "notification.read", group: "Communication" },
   { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read", group: "Admin" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage", group: "Admin" },
+  { href: "/fabric/learning", label: "Learning", icon: Book, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/students", label: "Student success", icon: Target, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/operations", label: "Operations", icon: Cog, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/finance-intel", label: "Finance intel", icon: TrendingUp, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/insights", label: "Insights", icon: Lightbulb, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/simulator", label: "Simulator", icon: Zap, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/twin", label: "Digital twin", icon: Cpu, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/agents", label: "AI workforce", icon: Sparkles, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/marketplace", label: "Marketplace", icon: Store, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/studio", label: "Custom Studio", icon: Palette, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/data", label: "Data & integrations", icon: Database, permission: "dashboard.view", group: "Fabric" },
+  { href: "/fabric/trust", label: "Trust & governance", icon: Shield, permission: "dashboard.view", group: "Fabric" },
+  { href: "/me", label: "Personal AI", icon: User, permission: "ai.generate", group: "Personal" },
 ] as const;
 
 // Portal users (the same exam.recheck.request marker as the Portal link) hold

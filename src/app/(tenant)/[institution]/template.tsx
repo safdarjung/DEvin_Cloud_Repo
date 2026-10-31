@@ -1,12 +1,9 @@
-"use client";
-
-import { motion } from "motion/react";
-
-// Re-mounts on every navigation: enter-only fade/rise, no exit (keeps nav instant).
+// Re-mounts on every navigation: CSS entrance (tw-animate-css) runs on paint,
+// so the SSR HTML is visible without JS — no "use client" / motion needed.
 export default function Template({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+    <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-300">
       {children}
-    </motion.div>
+    </div>
   );
 }

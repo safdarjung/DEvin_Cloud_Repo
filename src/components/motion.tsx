@@ -1,8 +1,12 @@
 "use client";
 
-import { animate, MotionConfig, motion, useInView, useReducedMotion, type Variants } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
+import { animate, MotionConfig, motion, useInView, useReducedMotion } from "motion/react";
+import { Children, cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { inr } from "@/lib/format";
+
+// CSS entrance (tw-animate-css, globals.css): runs on paint, so SSR HTML is
+// visible without JS. `motion/react` is reserved for LayoutPill + AnimatedNumber.
+const ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-300";
 
 /** JS mirror of the --duration-* / --ease-* tokens in globals.css (seconds). */
 export const MOTION = {
@@ -28,7 +32,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
   );
 }
 
-const TAGS = { div: motion.div, section: motion.section, li: motion.li } as const;
+const TAGS = { div: "div", section: "section", li: "li" } as const;
 
 export function FadeIn({
   as = "div",
@@ -43,28 +47,37 @@ export function FadeIn({
 }) {
   const Tag = TAGS[as];
   return (
-    <Tag className={className} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}>
+    <Tag className={[ENTER, className].filter(Boolean).join(" ")} style={delay ? { animationDelay: `${delay}s` } : undefined}>
       {children}
     </Tag>
   );
 }
 
-const staggerParent: Variants = { hidden: {}, show: { transition: { staggerChildren: MOTION.stagger } } };
-const staggerChild: Variants = { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } };
-
 export function Stagger({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <motion.div className={className} variants={staggerParent} initial="hidden" animate="show">
-      {children}
-    </motion.div>
+    <div className={className}>
+      {Children.map(children, (child, i) =>
+        isValidElement<{ style?: CSSProperties }>(child)
+          ? cloneElement(child, { style: { animationDelay: `${i * MOTION.stagger}s`, ...child.props.style } })
+          : child,
+      )}
+    </div>
   );
 }
 
-export function StaggerItem({ className, children }: { className?: string; children: ReactNode }) {
+export function StaggerItem({
+  className,
+  style,
+  children,
+}: {
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
   return (
-    <motion.div className={className} variants={staggerChild}>
+    <div className={[ENTER, className].filter(Boolean).join(" ")} style={style}>
       {children}
-    </motion.div>
+    </div>
   );
 }
 

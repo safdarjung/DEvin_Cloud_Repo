@@ -4,8 +4,14 @@ import { homePathFor, navItemsFor } from "@/lib/nav";
 
 // Independently re-derived from 07 §2.2 (not just re-running navItemsFor's own
 // logic back at itself) so a wrong permission on a NAV_ITEMS entry is caught.
+const FABRIC_HREFS = [
+  "/fabric/learning", "/fabric/students", "/fabric/operations", "/fabric/finance-intel", "/fabric/insights",
+  "/fabric/simulator", "/fabric/twin", "/fabric/agents", "/fabric/marketplace", "/fabric/studio",
+  "/fabric/data", "/fabric/trust",
+];
 const EXPECTED_HREFS: Record<Role, string[]> = {
   owner: [
+    ...FABRIC_HREFS, "/me",
     "/dashboard",
     "/students",
     "/admissions",
@@ -21,6 +27,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/jobs",
   ],
   principal: [
+    ...FABRIC_HREFS, "/me",
     "/dashboard",
     "/students",
     "/admissions",
@@ -36,6 +43,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/jobs",
   ],
   admin: [
+    ...FABRIC_HREFS, "/me",
     "/dashboard",
     "/students",
     "/admissions",
@@ -49,10 +57,10 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
   ],
-  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications"],
-  accountant: ["/dashboard", "/students", "/finance", "/notifications"],
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications"],
-  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications"],
+  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...FABRIC_HREFS, "/me"],
+  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...FABRIC_HREFS],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...FABRIC_HREFS],
+  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/me"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   student: ["/notifications", "/portal"],
@@ -84,7 +92,7 @@ describe("navItemsFor", () => {
   });
 
   it("every item belongs to a group and groups keep their order", () => {
-    const order = ["Overview", "Academics", "Operations", "Communication", "Admin"];
+    const order = ["Overview", "Academics", "Operations", "Communication", "Admin", "Fabric", "Personal"];
     const groups = navItemsFor(new Set(permissionsFor("owner"))).map((item) => order.indexOf(item.group));
     expect(groups).not.toContain(-1);
     expect(groups).toEqual([...groups].sort((a, b) => a - b));

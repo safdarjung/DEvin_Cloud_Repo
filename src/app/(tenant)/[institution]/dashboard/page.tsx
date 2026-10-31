@@ -417,8 +417,9 @@ export default async function DashboardPage({
         <Kpis
           items={[
             collectedKpi,
-            <KpiTile label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} />,
+            <KpiTile key="outstanding" label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} />,
             <KpiTile
+              key="collection-rate"
               label="Collection rate"
               value={collectionPct === null ? "—" : `${collectionPct}%`}
               animateTo={collectionPct ?? undefined}

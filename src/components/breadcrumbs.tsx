@@ -9,21 +9,111 @@ import { humanize } from "@/lib/format";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NAV_LABELS = new Map(NAV_ITEMS.map((item) => [item.href, item.label]));
 
-/** Crumbs from the path after `/<institution>`; hidden on top-level pages (a single crumb adds nothing). */
-export function Breadcrumbs({ current, className }: { current?: string; className?: string }) {
-  const segments = (usePathname() ?? "").split("/").filter(Boolean);
-  const [slug, ...rest] = segments;
-  if (!slug || rest.length < 2) return null;
+// Static-segment paths (after `/<institution>`) that have a page.tsx; `*`
+// stands in for a dynamic `[id]` segment. Regenerate by hand when adding a
+// route: `find "src/app/(tenant)/[institution]" -name page.tsx`.
+const PAGE_PATHS = new Set([
+  "admissions",
+  "admissions/applications",
+  "admissions/applications/*",
+  "admissions/enquiries/*",
+  "ai",
+  "ai/usage",
+  "assignments",
+  "assignments/*",
+  "assignments/new",
+  "assignments/units/*",
+  "attendance",
+  "attendance/*",
+  "dashboard",
+  "exams",
+  "exams/*",
+  "exams/new",
+  "exams/*/papers/*",
+  "exams/rechecks",
+  "exams/rechecks/*",
+  "exams/*/results",
+  "exams/*/results/*",
+  "fabric/agents",
+  "fabric/data",
+  "fabric/finance-intel",
+  "fabric/insights",
+  "fabric/learning",
+  "fabric/marketplace",
+  "fabric/operations",
+  "fabric/simulator",
+  "fabric/students",
+  "fabric/studio",
+  "fabric/trust",
+  "fabric/twin",
+  "finance",
+  "finance/defaulters",
+  "finance/invoices",
+  "finance/invoices/*",
+  "finance/ledger",
+  "finance/receipts/*",
+  "finance/receipts/*/print",
+  "finance/structures",
+  "finance/structures/*",
+  "jobs",
+  "me",
+  "notifications",
+  "notifications/log",
+  "portal",
+  "portal/assignments",
+  "portal/attendance",
+  "portal/fees",
+  "portal/fees/receipts/*",
+  "portal/notifications",
+  "portal/results",
+  "portal/study",
+  "portal/study/notebook",
+  "portal/study/notebook/*",
+  "students",
+  "students/*",
+  "today",
+  "website",
+  "website/events",
+  "website/notices",
+  "website/pages/*",
+  "website/pages/*/versions/*",
+]);
 
-  const crumbs = rest.map((segment, i) => {
-    const sub = `/${rest.slice(0, i + 1).join("/")}`;
+/** True when some route under `[institution]` has a page.tsx at this exact depth/shape. */
+function hasPage(segments: readonly string[]): boolean {
+  return PAGE_PATHS.has(segments.map((s) => (UUID.test(s) ? "*" : s)).join("/"));
+}
+
+export interface Crumb {
+  href: string;
+  label: string;
+  isLast: boolean;
+  /** False for an intermediate segment with no page.tsx: rendered as plain text, not a Link. */
+  isLink: boolean;
+}
+
+/** Pure: crumbs for the path after `/<institution>`; empty when a single crumb would add nothing. */
+export function crumbsFor(pathname: string, current?: string): Crumb[] {
+  const segments = (pathname ?? "").split("/").filter(Boolean);
+  const [slug, ...rest] = segments;
+  if (!slug || rest.length < 2) return [];
+
+  return rest.map((segment, i) => {
+    const subSegments = rest.slice(0, i + 1);
+    const sub = `/${subSegments.join("/")}`;
     const isLast = i === rest.length - 1;
     const label =
       (isLast && current) ||
       NAV_LABELS.get(sub) ||
       (UUID.test(segment) ? "Details" : humanize(decodeURIComponent(segment).replace(/-/g, " ")));
-    return { href: `/${slug}${sub}`, label, isLast };
+    return { href: `/${slug}${sub}`, label, isLast, isLink: !isLast && hasPage(subSegments) };
   });
+}
+
+/** Crumbs from the path after `/<institution>`; hidden on top-level pages (a single crumb adds nothing). */
+export function Breadcrumbs({ current, className }: { current?: string; className?: string }) {
+  const crumbs = crumbsFor(usePathname() ?? "", current);
+  if (crumbs.length === 0) return null;
 
   return (
     <nav aria-label="Breadcrumb" className={className}>
@@ -34,7 +124,7 @@ export function Breadcrumbs({ current, className }: { current?: string; classNam
               <span aria-current="page" className="truncate font-medium text-foreground">
                 {crumb.label}
               </span>
-            ) : (
+            ) : crumb.isLink ? (
               <>
                 <Link
                   href={crumb.href}
@@ -42,6 +132,11 @@ export function Breadcrumbs({ current, className }: { current?: string; classNam
                 >
                   {crumb.label}
                 </Link>
+                <ChevronRight className="size-3.5 shrink-0" aria-hidden />
+              </>
+            ) : (
+              <>
+                <span className="truncate">{crumb.label}</span>
                 <ChevronRight className="size-3.5 shrink-0" aria-hidden />
               </>
             )}
