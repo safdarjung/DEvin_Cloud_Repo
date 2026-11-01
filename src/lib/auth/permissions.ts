@@ -58,7 +58,9 @@ export type Permission =
   | "data.import"
   | "document.read"
   | "document.write"
-  | "announcement.manage";
+  | "announcement.manage"
+  | "timetable.manage"
+  | "timetable.read";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -103,6 +105,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.read",
     "document.write",
     "announcement.manage",
+    "timetable.read",
+    "timetable.manage",
   ],
   principal: [
     "institution.settings.manage",
@@ -146,6 +150,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.read",
     "document.write",
     "announcement.manage",
+    "timetable.read",
+    "timetable.manage",
   ],
   admin: [
     "institution.settings.manage",
@@ -180,6 +186,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.read",
     "document.write",
     "announcement.manage",
+    "timetable.read",
+    "timetable.manage",
   ],
   admissions: [
     "dashboard.view",
@@ -199,6 +207,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.log.read",
     "document.read",
     "document.write",
+    "timetable.read",
   ],
   accountant: [
     "dashboard.view",
@@ -212,6 +221,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.read",
     "notification.read",
     "document.read",
+    "timetable.read",
   ],
   exam_controller: [
     "dashboard.view",
@@ -227,6 +237,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.recheck.decide",
     "notification.read",
     "document.read",
+    "timetable.read",
   ],
   teacher: [
     "student.read",
@@ -242,6 +253,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "ai.generate",
     "notification.read",
     "document.read",
+    "timetable.read",
   ],
   student: [
     "student.read",
@@ -255,6 +267,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     // D32/GU-08 — student-only (07 §2.2 column: stu). No other role holds this.
     "ai.study",
     "document.read",
+    "timetable.read",
   ],
   guardian: [
     "student.read",
@@ -267,6 +280,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "assignment.read",
     "notification.read",
     "document.read",
+    "timetable.read",
   ],
 };
 

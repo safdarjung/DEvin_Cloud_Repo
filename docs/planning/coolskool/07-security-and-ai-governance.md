@@ -83,6 +83,8 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | document.read (RLS scopes: guardian/student own child's student docs; staff own staff docs; admissions student/application) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | document.write (admissions: student/application only) | ✓ | ✓ | ✓ | ✓ | | | | | |
 | announcement.manage (recipients read via their notifications, never the table) | ✓ | ✓ | ✓ | | | | | | |
+| timetable.manage | ✓ | ✓ | ✓ | | | | | | |
+| timetable.read (RLS: staff published; guardian/student own section published) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 
