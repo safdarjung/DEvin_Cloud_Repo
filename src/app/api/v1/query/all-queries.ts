@@ -9,6 +9,7 @@ import "@/modules/ai/query-defs";
 import "@/modules/ai/student-study-query-defs";
 import "@/modules/attendance/query-defs";
 import "@/modules/core/query-defs";
+import "@/modules/documents/query-defs";
 import "@/modules/exams/query-defs";
 import "@/modules/finance/query-defs";
 import "@/modules/imports/query-defs";

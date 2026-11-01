@@ -181,7 +181,9 @@ create policy tenant_docs_select on storage.objects
     bucket_id = 'tenant-docs'
     and exists (
       select 1 from public.documents d
-      where d.path = storage.objects.name and d.status = 'active'
+      where d.path = storage.objects.name
+        -- the uploader also sees their own pending object, so confirmUpload can check it exists
+        and (d.status = 'active' or (d.status = 'pending' and d.created_by = app.current_user_id()))
     )
   );
 

@@ -156,6 +156,13 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     }),
   },
   "data.import.commit": { permission: "data.import", input: () => ({ batchId: U() }) },
+  "document.requestUpload": {
+    permission: "document.write",
+    input: () => ({ entityType: "student", entityId: U(), kind: "id_proof", fileName: "file.pdf", mime: "application/pdf", sizeBytes: 1000 }),
+  },
+  "document.confirmUpload": { permission: "document.write", input: () => ({ documentId: U() }) },
+  "document.getReadUrl": { permission: "document.read", input: () => ({ documentId: U() }) },
+  "document.delete": { permission: "document.write", input: () => ({ documentId: U() }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

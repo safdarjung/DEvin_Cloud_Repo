@@ -8,6 +8,7 @@ import "@/modules/admissions/actions";
 import "@/modules/ai/student-study.actions";
 import "@/modules/attendance/actions";
 import "@/modules/core/actions";
+import "@/modules/documents/actions";
 import "@/modules/exams/actions";
 import "@/modules/finance/actions";
 import "@/modules/imports/actions";
