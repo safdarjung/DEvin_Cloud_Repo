@@ -235,6 +235,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "attendance.sectionsBelowThreshold": {},
         "attendance.getSectionAttendancePatterns": { classSectionId: UUID, termId: UUID },
         "core.getDashboardData": {},
+        "core.audit.list": { page: 1 },
         "documents.listForEntity": { entityType: "student", entityId: UUID },
         "exams.listTermOptions": {},
         "exams.listSectionOptions": {},
