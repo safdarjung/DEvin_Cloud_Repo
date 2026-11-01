@@ -16,4 +16,5 @@ import "@/modules/imports/query-defs";
 import "@/modules/jobs/query-defs";
 import "@/modules/notifications/query-defs";
 import "@/modules/people/query-defs";
+import "@/modules/timetable/query-defs";
 import "@/modules/website/query-defs";

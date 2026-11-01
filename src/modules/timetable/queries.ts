@@ -1,0 +1,401 @@
+import "server-only";
+// M07-T5 — timetable.* reads: the demoTimetable (src/components/widgets/
+// timetable-widget.tsx) + fabric fixture (TimetableConflict/TeacherWorkload/
+// RoomUtilisation, src/modules/fabric/types.ts) replacement. RLS (0069)
+// already narrows visibility (guardian/student: published + own section
+// only); the institution_id/version_id/etc filters below are defense in
+// depth, same shape as every other queries.ts in this codebase. Mirrors
+// src/modules/documents/queries.ts.
+import { createClient } from "@/lib/supabase/server";
+import type { TenantContext } from "@/lib/auth/types";
+import { InstitutionSettingsSchema } from "@/modules/core/schemas";
+import type { RoomUtilisation, TeacherWorkload, TimetableConflict } from "@/modules/fabric/types";
+import type { TimetablePeriod } from "@/components/widgets/timetable-widget";
+
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DEFAULT_MAX_PERIODS_WEEK = 36; // rulings: settings.timetable.max_periods_week, default 36
+
+function toHHMM(time: string): string {
+  return time.slice(0, 5); // postgrest "time" -> "HH:MM:SS"
+}
+
+/** Institution-local weekday (0=Sun..6=Sat) and "HH:MM" — timezone source mirrors attendance/queries.ts's todayInInstitutionTimezone. */
+function nowPartsInInstitutionTimezone(ctx: TenantContext): { weekday: number; hhmm: string } {
+  const locale = InstitutionSettingsSchema.shape.locale.safeParse(ctx.institution.settings.locale);
+  const timeZone = locale.success ? locale.data.timezone : "Asia/Kolkata";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const byType = new Map(parts.map((p) => [p.type, p.value]));
+  const weekday = WEEKDAY_LABELS.indexOf(byType.get("weekday") ?? "Mon");
+  return { weekday: weekday < 0 ? 1 : weekday, hhmm: `${byType.get("hour")}:${byType.get("minute")}` };
+}
+
+/** `settings.timetable.max_periods_week` — no schema field exists for it yet (core/schemas.ts is a different module's file; out of scope here), so a plain numeric default, same shortcut shape as settings.academic.max_section_size (0005 migration). */
+function maxPeriodsPerWeek(ctx: TenantContext): number {
+  const timetable = ctx.institution.settings.timetable;
+  const raw = typeof timetable === "object" && timetable !== null ? (timetable as Record<string, unknown>).max_periods_week : undefined;
+  return typeof raw === "number" && raw > 0 ? raw : DEFAULT_MAX_PERIODS_WEEK;
+}
+
+/** The current academic year's published version, or null if none. */
+async function defaultPublishedVersionId(ctx: TenantContext): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("timetable_versions")
+    .select("id, academic_years!inner(is_current)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("status", "published")
+    .eq("academic_years.is_current", true)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ?? null;
+}
+
+export interface SectionTimetableSlot {
+  weekday: number;
+  period: { seq: number; name: string; startsAt: string; endsAt: string };
+  subject: { id: string; name: string } | null;
+  teacher: { id: string; name: string };
+  room: { id: string; name: string } | null;
+}
+
+export interface TeacherTimetableSlot extends SectionTimetableSlot {
+  section: { id: string; name: string };
+}
+
+function bySlot(a: SectionTimetableSlot, b: SectionTimetableSlot): number {
+  return a.weekday - b.weekday || a.period.seq - b.period.seq;
+}
+
+/**
+ * Shared slot fetch for forSection/forTeacher/forStudent/todayFor.
+ * timetable_slots.subject_id (0069, amended) is the direct source of
+ * subject — no subject_assignments inference needed.
+ */
+async function fetchSlots(
+  ctx: TenantContext,
+  versionId: string,
+  filter: { classSectionId?: string; teacherId?: string; weekday?: number },
+): Promise<TeacherTimetableSlot[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("timetable_slots")
+    .select(
+      "weekday, class_sections(id, name), subjects(id, name), staff(id, full_name), rooms(id, name), periods(seq, name, starts_at, ends_at)",
+    )
+    .eq("institution_id", ctx.institution.id)
+    .eq("version_id", versionId);
+  if (filter.classSectionId) query = query.eq("class_section_id", filter.classSectionId);
+  if (filter.teacherId) query = query.eq("teacher_id", filter.teacherId);
+  if (filter.weekday) query = query.eq("weekday", filter.weekday);
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = data ?? [];
+
+  return rows
+    .map((row) => {
+      const section = row.class_sections as { id: string; name: string } | null;
+      const subject = row.subjects as { id: string; name: string } | null;
+      const teacher = row.staff as { id: string; full_name: string } | null;
+      const room = row.rooms as { id: string; name: string } | null;
+      const period = row.periods as { seq: number; name: string; starts_at: string; ends_at: string } | null;
+      return {
+        weekday: row.weekday,
+        period: {
+          seq: period?.seq ?? 0,
+          name: period?.name ?? "",
+          startsAt: period ? toHHMM(period.starts_at) : "",
+          endsAt: period ? toHHMM(period.ends_at) : "",
+        },
+        subject: subject ? { id: subject.id, name: subject.name } : null,
+        teacher: { id: teacher?.id ?? "", name: teacher?.full_name ?? "" },
+        room: room ? { id: room.id, name: room.name } : null,
+        section: { id: section?.id ?? "", name: section?.name ?? "" },
+      };
+    })
+    .sort(bySlot);
+}
+
+/** The weekly grid for one section (default version: the current year's published one). RLS further narrows guardian/student to their own section's published slots. */
+export async function timetableForSection(
+  ctx: TenantContext,
+  classSectionId: string,
+  versionId?: string,
+): Promise<SectionTimetableSlot[]> {
+  const version = versionId ?? (await defaultPublishedVersionId(ctx));
+  if (!version) return [];
+  const rows = await fetchSlots(ctx, version, { classSectionId });
+  return rows.map((row) => ({ weekday: row.weekday, period: row.period, subject: row.subject, teacher: row.teacher, room: row.room }));
+}
+
+/** A teacher's own weekly grid (default: the caller's own staffId). */
+export async function timetableForTeacher(
+  ctx: TenantContext,
+  staffId?: string,
+  versionId?: string,
+): Promise<TeacherTimetableSlot[]> {
+  const teacherId = staffId ?? ctx.membership.staffId ?? undefined;
+  if (!teacherId) return [];
+  const version = versionId ?? (await defaultPublishedVersionId(ctx));
+  if (!version) return [];
+  return fetchSlots(ctx, version, { teacherId });
+}
+
+/** A student's weekly grid, resolved via their own active enrolment section; RLS decides visibility (a guardian outside that student's family reads no enrolment row at all, so this returns empty rather than leaking). */
+export async function timetableForStudent(ctx: TenantContext, studentId: string): Promise<SectionTimetableSlot[]> {
+  const supabase = await createClient();
+  const { data: enrolment, error } = await supabase
+    .from("enrolments")
+    .select("class_section_id")
+    .eq("institution_id", ctx.institution.id)
+    .eq("student_id", studentId)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  if (!enrolment) return [];
+  return timetableForSection(ctx, enrolment.class_section_id);
+}
+
+/** The guardian's first child (listMyChildren's own admission_no ordering) or the student's own active enrolment section; null for every other role. */
+async function firstOwnSectionId(ctx: TenantContext): Promise<string | null> {
+  const supabase = await createClient();
+
+  if (ctx.membership.role === "student" && ctx.membership.studentId) {
+    const { data, error } = await supabase
+      .from("enrolments")
+      .select("class_section_id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("student_id", ctx.membership.studentId)
+      .eq("status", "active")
+      .maybeSingle();
+    if (error) throw error;
+    return data?.class_section_id ?? null;
+  }
+
+  if (ctx.membership.role === "guardian" && ctx.membership.guardianId) {
+    const { data, error } = await supabase
+      .from("guardian_students")
+      .select("students(admission_no, enrolments(status, class_section_id))")
+      .eq("institution_id", ctx.institution.id)
+      .eq("guardian_id", ctx.membership.guardianId)
+      .eq("portal_access", true);
+    if (error) throw error;
+    const children = (data ?? [])
+      .map((row) => row.students as { admission_no: string; enrolments: { status: string; class_section_id: string }[] } | null)
+      .filter((s): s is NonNullable<typeof s> => s != null)
+      .sort((a, b) => a.admission_no.localeCompare(b.admission_no));
+    const activeEnrolment = children[0]?.enrolments.find((e) => e.status === "active");
+    return activeEnrolment?.class_section_id ?? null;
+  }
+
+  return null;
+}
+
+/**
+ * Today's grid for the caller (teacher: own slots; guardian/student: first
+ * child/own section; every other role: the bare bell schedule), breaks
+ * included, with isCurrent/isNext set — the demoTimetable
+ * (timetable-widget.tsx) replacement. Sunday (weekday 0) returns [].
+ */
+export async function timetableTodayFor(ctx: TenantContext): Promise<TimetablePeriod[]> {
+  const { weekday, hhmm } = nowPartsInInstitutionTimezone(ctx);
+  if (weekday < 1 || weekday > 6) return [];
+
+  const supabase = await createClient();
+  const { data: periodRows, error: periodsError } = await supabase
+    .from("periods")
+    .select("seq, name, starts_at, ends_at, is_break")
+    .eq("institution_id", ctx.institution.id)
+    .order("seq");
+  if (periodsError) throw periodsError;
+  const periods = periodRows ?? [];
+  if (periods.length === 0) return [];
+
+  const version = await defaultPublishedVersionId(ctx);
+  const slotsBySeq = new Map<number, SectionTimetableSlot>();
+  if (version) {
+    const teacherId = ctx.membership.role === "teacher" ? ctx.membership.staffId : null;
+    const classSectionId = teacherId ? null : await firstOwnSectionId(ctx);
+    if (teacherId || classSectionId) {
+      const rows = await fetchSlots(ctx, version, {
+        weekday,
+        ...(teacherId ? { teacherId } : { classSectionId: classSectionId as string }),
+      });
+      for (const row of rows) slotsBySeq.set(row.period.seq, row);
+    }
+  }
+
+  const startsAt = periods.map((p) => toHHMM(p.starts_at));
+  const endsAt = periods.map((p) => toHHMM(p.ends_at));
+  const currentIdx = periods.findIndex((_p, i) => hhmm >= startsAt[i] && hhmm < endsAt[i]);
+  const nextIdx = currentIdx >= 0 ? -1 : periods.findIndex((_p, i) => startsAt[i] > hhmm);
+
+  return periods.map((p, i) => {
+    const slot = slotsBySeq.get(p.seq);
+    const timing = { start: startsAt[i], end: endsAt[i] };
+    const base: TimetablePeriod = p.is_break
+      ? { ...timing, title: p.name }
+      : { ...timing, title: slot?.subject?.name ?? p.name, subtitle: slot?.teacher.name, room: slot?.room?.name };
+    if (i === currentIdx) return { ...base, isCurrent: true };
+    if (i === nextIdx) return { ...base, isNext: true };
+    return base;
+  });
+}
+
+/** room_capacity (room smaller than the section's active strength) + teacher_unavailable (over settings.timetable.max_periods_week) — double-booking can't occur, it's a DB constraint (0069 rulings). Requires timetable.manage. */
+export async function timetableConflicts(ctx: TenantContext, versionId: string): Promise<TimetableConflict[]> {
+  const supabase = await createClient();
+  const { data: slotRows, error } = await supabase
+    .from("timetable_slots")
+    .select(
+      "id, weekday, teacher_id, class_section_id, periods(seq), rooms(name, capacity), class_sections(name, grades(code))",
+    )
+    .eq("institution_id", ctx.institution.id)
+    .eq("version_id", versionId);
+  if (error) throw error;
+  const rows = slotRows ?? [];
+  if (rows.length === 0) return [];
+
+  const sectionIds = [...new Set(rows.map((r) => r.class_section_id))];
+  const { data: enrolmentRows, error: enrolError } = await supabase
+    .from("enrolments")
+    .select("class_section_id")
+    .eq("institution_id", ctx.institution.id)
+    .eq("status", "active")
+    .in("class_section_id", sectionIds);
+  if (enrolError) throw enrolError;
+  const strengthBySection = new Map<string, number>();
+  for (const row of enrolmentRows ?? []) {
+    strengthBySection.set(row.class_section_id, (strengthBySection.get(row.class_section_id) ?? 0) + 1);
+  }
+
+  const conflicts: TimetableConflict[] = [];
+  for (const row of rows) {
+    const room = row.rooms as { name: string; capacity: number } | null;
+    if (!room) continue;
+    const strength = strengthBySection.get(row.class_section_id) ?? 0;
+    if (room.capacity >= strength) continue;
+    const section = row.class_sections as { name: string; grades: { code: string } | null } | null;
+    const period = row.periods as { seq: number } | null;
+    conflicts.push({
+      id: row.id,
+      day: WEEKDAY_LABELS[row.weekday] ?? String(row.weekday),
+      period: period?.seq ?? 0,
+      kind: "room_capacity",
+      entities: [room.name, `${section?.grades?.code ?? "?"}-${section?.name ?? "?"}`],
+      suggestion: `${room.name} seats ${room.capacity}; section strength is ${strength} — move to a larger room.`,
+    });
+  }
+
+  const maxPeriods = maxPeriodsPerWeek(ctx);
+  const periodsByTeacher = new Map<string, number>();
+  for (const row of rows) periodsByTeacher.set(row.teacher_id, (periodsByTeacher.get(row.teacher_id) ?? 0) + 1);
+  const overloaded = [...periodsByTeacher.entries()].filter(([, n]) => n > maxPeriods);
+  if (overloaded.length > 0) {
+    const { data: teachers, error: teachersError } = await supabase
+      .from("staff")
+      .select("id, full_name")
+      .in(
+        "id",
+        overloaded.map(([id]) => id),
+      );
+    if (teachersError) throw teachersError;
+    const nameById = new Map((teachers ?? []).map((t) => [t.id, t.full_name]));
+    for (const [teacherId, periodsWeek] of overloaded) {
+      const name = nameById.get(teacherId) ?? teacherId;
+      conflicts.push({
+        id: `${versionId}:${teacherId}:overload`,
+        day: "",
+        period: 0,
+        kind: "teacher_unavailable",
+        entities: [name],
+        suggestion: `${name} is scheduled for ${periodsWeek} periods/week, above the ${maxPeriods}/week limit — redistribute some sections.`,
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+/** Per-teacher periods/week against settings.timetable.max_periods_week, for every teacher who has at least one slot in this version. subjects/sections are the distinct values across their actual slots (subject_id is direct on timetable_slots, 0069 amended — no subject_assignments inference needed). Requires timetable.manage. leave_dates is always [] until M8. */
+export async function timetableTeacherWorkload(ctx: TenantContext, versionId: string): Promise<TeacherWorkload[]> {
+  const supabase = await createClient();
+  const { data: slotRows, error } = await supabase
+    .from("timetable_slots")
+    .select("teacher_id, subjects(name), class_sections(name, grades(code))")
+    .eq("institution_id", ctx.institution.id)
+    .eq("version_id", versionId);
+  if (error) throw error;
+  const rows = slotRows ?? [];
+  if (rows.length === 0) return [];
+
+  const teacherIds = [...new Set(rows.map((r) => r.teacher_id))];
+  const { data: teachers, error: teachersError } = await supabase.from("staff").select("id, full_name").in("id", teacherIds);
+  if (teachersError) throw teachersError;
+  const nameById = new Map((teachers ?? []).map((t) => [t.id, t.full_name]));
+
+  const maxPeriods = maxPeriodsPerWeek(ctx);
+  const byTeacher = new Map<string, { periodsWeek: number; subjects: Set<string>; sections: Set<string> }>();
+  for (const row of rows) {
+    const subject = row.subjects as { name: string } | null;
+    const section = row.class_sections as { name: string; grades: { code: string } | null } | null;
+    const label = `${section?.grades?.code ?? "?"}-${section?.name ?? "?"}`;
+    const entry = byTeacher.get(row.teacher_id) ?? { periodsWeek: 0, subjects: new Set<string>(), sections: new Set<string>() };
+    entry.periodsWeek += 1;
+    if (subject) entry.subjects.add(subject.name);
+    entry.sections.add(label);
+    byTeacher.set(row.teacher_id, entry);
+  }
+
+  return [...byTeacher.entries()].map(([staffId, entry]) => ({
+    staff_id: staffId,
+    name: nameById.get(staffId) ?? staffId,
+    periods_week: entry.periodsWeek,
+    max_periods: maxPeriods,
+    subjects: [...entry.subjects],
+    sections: [...entry.sections],
+    leave_dates: [],
+  }));
+}
+
+/** Every room's usage in this version against the bell schedule (periods_total = 6 x non-break periods, rulings). Requires timetable.manage. */
+export async function timetableRoomUtilisation(ctx: TenantContext, versionId: string): Promise<RoomUtilisation[]> {
+  const supabase = await createClient();
+  const [{ data: rooms, error: roomsError }, { count: nonBreakCount, error: periodsError }, { data: slotRows, error: slotsError }] =
+    await Promise.all([
+      supabase.from("rooms").select("id, name, capacity").eq("institution_id", ctx.institution.id),
+      supabase
+        .from("periods")
+        .select("id", { count: "exact", head: true })
+        .eq("institution_id", ctx.institution.id)
+        .eq("is_break", false),
+      supabase
+        .from("timetable_slots")
+        .select("room_id")
+        .eq("institution_id", ctx.institution.id)
+        .eq("version_id", versionId)
+        .not("room_id", "is", null),
+    ]);
+  if (roomsError) throw roomsError;
+  if (periodsError) throw periodsError;
+  if (slotsError) throw slotsError;
+
+  const periodsTotal = 6 * (nonBreakCount ?? 0);
+  const usedByRoom = new Map<string, number>();
+  for (const row of slotRows ?? []) {
+    if (!row.room_id) continue;
+    usedByRoom.set(row.room_id, (usedByRoom.get(row.room_id) ?? 0) + 1);
+  }
+
+  return (rooms ?? []).map((room) => ({
+    room: room.name,
+    capacity: room.capacity,
+    periods_used: usedByRoom.get(room.id) ?? 0,
+    periods_total: periodsTotal,
+  }));
+}
