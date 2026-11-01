@@ -206,7 +206,8 @@ export const notifyAnnouncement: JobHandler = async (job, { admin }) => {
   const { data: audiences, error: audiencesError } = await admin
     .from("announcement_audiences")
     .select("audience_type, role, grade_id, class_section_id")
-    .eq("announcement_id", announcement.id);
+    .eq("announcement_id", announcement.id)
+    .eq("institution_id", announcement.institution_id);
   if (audiencesError) throw audiencesError;
   if (!audiences || audiences.length === 0) return;
 
