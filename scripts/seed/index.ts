@@ -11,12 +11,14 @@ import { run as runCore } from "./sections/core.ts";
 import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
 import { run as runPeople } from "./sections/people.ts";
+import { run as runTimetable } from "./sections/timetable.ts";
 import { run as runWebsite } from "./sections/website.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "core", run: runCore },
   { name: "people", run: runPeople },
   { name: "academics", run: runAcademics },
+  { name: "timetable", run: runTimetable },
   { name: "attendance", run: runAttendance },
   { name: "admissions", run: runAdmissions },
   { name: "finance", run: runFinance },
