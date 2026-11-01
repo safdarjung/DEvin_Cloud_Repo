@@ -57,7 +57,8 @@ export type Permission =
   | "job.manage"
   | "data.import"
   | "document.read"
-  | "document.write";
+  | "document.write"
+  | "announcement.manage";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -101,6 +102,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "data.import",
     "document.read",
     "document.write",
+    "announcement.manage",
   ],
   principal: [
     "institution.settings.manage",
@@ -143,6 +145,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "data.import",
     "document.read",
     "document.write",
+    "announcement.manage",
   ],
   admin: [
     "institution.settings.manage",
@@ -176,6 +179,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "data.import",
     "document.read",
     "document.write",
+    "announcement.manage",
   ],
   admissions: [
     "dashboard.view",

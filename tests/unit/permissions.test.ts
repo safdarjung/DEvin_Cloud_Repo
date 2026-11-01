@@ -62,6 +62,7 @@ const MATRIX: Row[] = [
   ["data.import", true, true, true, false, false, false, false, false, false],
   ["document.read", true, true, true, true, true, true, true, true, true],
   ["document.write", true, true, true, true, false, false, false, false, false],
+  ["announcement.manage", true, true, true, false, false, false, false, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
