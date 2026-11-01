@@ -1747,14 +1747,14 @@ isOneToOne: false
                   ]
                 },"rooms": {
                   Row: {
-                    "capacity": number,"created_at": string,"id": string,"institution_id": string,"name": string,"updated_at": string
+                    "capacity": number,"created_at": string,"id": string,"institution_id": string,"kind": string,"name": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "capacity": number,"created_at"?: string,"id"?: string,"institution_id": string,"name": string,"updated_at"?: string
+                    "capacity": number,"created_at"?: string,"id"?: string,"institution_id": string,"kind"?: string,"name": string,"updated_at"?: string
                   }
                   Update: {
-                    "capacity"?: number,"created_at"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"updated_at"?: string
+                    "capacity"?: number,"created_at"?: string,"id"?: string,"institution_id"?: string,"kind"?: string,"name"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1967,14 +1967,14 @@ isOneToOne: false
                   ]
                 },"timetable_slots": {
                   Row: {
-                    "class_section_id": string,"created_at": string,"id": string,"institution_id": string,"period_id": string,"room_id": string | null,"teacher_id": string,"updated_at": string,"version_id": string,"weekday": number
+                    "class_section_id": string,"created_at": string,"id": string,"institution_id": string,"period_id": string,"room_id": string | null,"subject_id": string,"teacher_id": string,"updated_at": string,"version_id": string,"weekday": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_section_id": string,"created_at"?: string,"id"?: string,"institution_id": string,"period_id": string,"room_id"?: string | null,"teacher_id": string,"updated_at"?: string,"version_id": string,"weekday": number
+                    "class_section_id": string,"created_at"?: string,"id"?: string,"institution_id": string,"period_id": string,"room_id"?: string | null,"subject_id": string,"teacher_id": string,"updated_at"?: string,"version_id": string,"weekday": number
                   }
                   Update: {
-                    "class_section_id"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"period_id"?: string,"room_id"?: string | null,"teacher_id"?: string,"updated_at"?: string,"version_id"?: string,"weekday"?: number
+                    "class_section_id"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"period_id"?: string,"room_id"?: string | null,"subject_id"?: string,"teacher_id"?: string,"updated_at"?: string,"version_id"?: string,"weekday"?: number
                   }
                   Relationships: [
                     {
@@ -2000,6 +2000,12 @@ isOneToOne: false
       columns: ["room_id"]
 isOneToOne: false
       referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_slots_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "timetable_slots_teacher_id_fkey"

@@ -16,4 +16,5 @@ import "@/modules/jobs/actions";
 import "@/modules/notifications/actions";
 import "@/modules/notifications/announcements.actions";
 import "@/modules/people/actions";
+import "@/modules/timetable/actions";
 import "@/modules/website/actions";

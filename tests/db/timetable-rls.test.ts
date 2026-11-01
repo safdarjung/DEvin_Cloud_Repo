@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
-import { createAcademicYear, createClassSection, createEnrolment, createGrade, closeFactoriesHelper } from "../helpers/factories";
+import { createAcademicYear, createClassSection, createEnrolment, createGrade, createSubject, closeFactoriesHelper } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
 
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 10 });
@@ -55,6 +55,7 @@ interface Base {
   roomId: string;
   periodId: string;
   breakPeriodId: string;
+  subjectId: string;
 }
 
 async function buildBase(inst: TestInstitution): Promise<Base> {
@@ -66,7 +67,8 @@ async function buildBase(inst: TestInstitution): Promise<Base> {
   const roomId = await createRoom(inst.institutionId);
   const periodId = await createPeriod(inst.institutionId, { seq: 1 });
   const breakPeriodId = await createPeriod(inst.institutionId, { seq: 2, isBreak: true });
-  return { yearId, sectionA, sectionB, teacherId, roomId, periodId, breakPeriodId };
+  const subjectId = await createSubject(inst.institutionId);
+  return { yearId, sectionA, sectionB, teacherId, roomId, periodId, breakPeriodId, subjectId };
 }
 
 describe("timetable migration (0069) RLS + publish_timetable", () => {
@@ -80,6 +82,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionA,
+        subject_id: base.subjectId,
         teacher_id: base.teacherId,
         room_id: base.roomId,
         weekday: 1,
@@ -91,6 +94,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionB,
+        subject_id: base.subjectId,
         teacher_id: base.teacherId,
         weekday: 2,
         period_id: base.periodId,
@@ -114,6 +118,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionA,
+        subject_id: base.subjectId,
         teacher_id: base.teacherId,
         weekday: 1,
         period_id: base.periodId,
@@ -124,6 +129,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionB,
+        subject_id: base.subjectId,
         teacher_id: base.teacherId,
         weekday: 1,
         period_id: base.periodId,
@@ -150,6 +156,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionA,
+        subject_id: base.subjectId,
         teacher_id: base.teacherId,
         room_id: base.roomId,
         weekday: 1,
@@ -161,6 +168,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionB,
+        subject_id: base.subjectId,
         teacher_id: otherTeacherStaff[0].id,
         room_id: base.roomId,
         weekday: 1,
@@ -183,6 +191,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: inst.institutionId,
         version_id: version,
         class_section_id: base.sectionA,
+        subject_id: base.subjectId,
         teacher_id: base.teacherId,
         weekday: 1,
         period_id: base.breakPeriodId,
@@ -247,6 +256,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
           institution_id: inst.institutionId,
           version_id: version,
           class_section_id: base.sectionA,
+          subject_id: base.subjectId,
           teacher_id: base.teacherId,
           weekday: 1,
           period_id: base.periodId,
@@ -283,8 +293,8 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
       `;
 
       const ownSlot = await sql`
-        insert into public.timetable_slots (institution_id, version_id, class_section_id, teacher_id, weekday, period_id)
-        values (${inst.institutionId}, ${version}, ${base.sectionA}, ${base.teacherId}, 1, ${base.periodId})
+        insert into public.timetable_slots (institution_id, version_id, class_section_id, subject_id, teacher_id, weekday, period_id)
+        values (${inst.institutionId}, ${version}, ${base.sectionA}, ${base.subjectId}, ${base.teacherId}, 1, ${base.periodId})
         returning id
       `;
       const otherTeacherStaff = await sql`
@@ -293,8 +303,8 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         returning id
       `;
       const otherSlot = await sql`
-        insert into public.timetable_slots (institution_id, version_id, class_section_id, teacher_id, weekday, period_id)
-        values (${inst.institutionId}, ${version}, ${base.sectionB}, ${otherTeacherStaff[0].id}, 2, ${base.periodId})
+        insert into public.timetable_slots (institution_id, version_id, class_section_id, subject_id, teacher_id, weekday, period_id)
+        values (${inst.institutionId}, ${version}, ${base.sectionB}, ${base.subjectId}, ${otherTeacherStaff[0].id}, 2, ${base.periodId})
         returning id
       `;
 
@@ -319,15 +329,15 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
       const base = await buildBase(inst);
       const draftVersion = await createDraftVersion(inst.institutionId, base.yearId, inst.users.admin.id, { name: "Draft" });
       const draftSlot = await sql`
-        insert into public.timetable_slots (institution_id, version_id, class_section_id, teacher_id, weekday, period_id)
-        values (${inst.institutionId}, ${draftVersion}, ${base.sectionA}, ${base.teacherId}, 1, ${base.periodId})
+        insert into public.timetable_slots (institution_id, version_id, class_section_id, subject_id, teacher_id, weekday, period_id)
+        values (${inst.institutionId}, ${draftVersion}, ${base.sectionA}, ${base.subjectId}, ${base.teacherId}, 1, ${base.periodId})
         returning id
       `;
 
       const publishedVersion = await createDraftVersion(inst.institutionId, base.yearId, inst.users.admin.id, { name: "Published" });
       const publishedSlot = await sql`
-        insert into public.timetable_slots (institution_id, version_id, class_section_id, teacher_id, weekday, period_id)
-        values (${inst.institutionId}, ${publishedVersion}, ${base.sectionB}, ${base.teacherId}, 2, ${base.periodId})
+        insert into public.timetable_slots (institution_id, version_id, class_section_id, subject_id, teacher_id, weekday, period_id)
+        values (${inst.institutionId}, ${publishedVersion}, ${base.sectionB}, ${base.subjectId}, ${base.teacherId}, 2, ${base.periodId})
         returning id
       `;
       const publish = await inst.clientAs("admin").rpc("publish_timetable", { p_version_id: publishedVersion });
@@ -354,6 +364,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: instA.institutionId,
         version_id: versionA,
         class_section_id: baseA.sectionA,
+        subject_id: baseA.subjectId,
         teacher_id: baseB.teacherId,
         weekday: 1,
         period_id: baseA.periodId,
@@ -364,6 +375,7 @@ describe("timetable migration (0069) RLS + publish_timetable", () => {
         institution_id: instA.institutionId,
         version_id: versionA,
         class_section_id: baseA.sectionA,
+        subject_id: baseA.subjectId,
         teacher_id: baseA.teacherId,
         room_id: baseB.roomId,
         weekday: 1,

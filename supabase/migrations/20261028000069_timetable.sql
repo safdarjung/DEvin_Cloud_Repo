@@ -29,6 +29,7 @@ create table public.rooms (
   institution_id uuid not null references public.institutions (id),
   name text not null check (length(name) between 1 and 40),
   capacity int not null check (capacity between 1 and 500),
+  kind text not null default 'classroom' check (length(kind) between 1 and 30),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (institution_id, name)
@@ -197,6 +198,7 @@ create table public.timetable_slots (
   institution_id uuid not null references public.institutions (id),
   version_id uuid not null references public.timetable_versions (id),
   class_section_id uuid not null references public.class_sections (id),
+  subject_id uuid not null references public.subjects (id),
   teacher_id uuid not null references public.staff (id),
   room_id uuid references public.rooms (id),
   weekday int not null check (weekday between 1 and 6),
@@ -316,6 +318,10 @@ create policy timetable_slots_insert on public.timetable_slots
       select 1 from public.class_sections cs
       where cs.id = timetable_slots.class_section_id and cs.institution_id = timetable_slots.institution_id
     )
+    and exists (
+      select 1 from public.subjects sub
+      where sub.id = timetable_slots.subject_id and sub.institution_id = timetable_slots.institution_id
+    )
     and app.staff_in_institution(timetable_slots.teacher_id, timetable_slots.institution_id)
     and (
       timetable_slots.room_id is null
@@ -342,6 +348,10 @@ create policy timetable_slots_update on public.timetable_slots
     and exists (
       select 1 from public.class_sections cs
       where cs.id = timetable_slots.class_section_id and cs.institution_id = timetable_slots.institution_id
+    )
+    and exists (
+      select 1 from public.subjects sub
+      where sub.id = timetable_slots.subject_id and sub.institution_id = timetable_slots.institution_id
     )
     and app.staff_in_institution(timetable_slots.teacher_id, timetable_slots.institution_id)
     and (

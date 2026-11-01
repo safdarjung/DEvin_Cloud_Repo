@@ -172,6 +172,20 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     permission: "notification.read",
     input: () => ({ category: "announcement", channel: "sms", enabled: false }),
   },
+  "timetable.room.upsert": { permission: "timetable.manage", input: () => ({ name: "Probe Room", capacity: 30 }) },
+  "timetable.period.upsert": {
+    permission: "timetable.manage",
+    input: () => ({ seq: 1, name: "Period 1", startsAt: "08:00", endsAt: "08:40" }),
+  },
+  "timetable.version.create": { permission: "timetable.manage", input: () => ({ academicYearId: U(), name: "Probe" }) },
+  "timetable.saveDraft": {
+    permission: "timetable.manage",
+    input: () => ({
+      versionId: U(),
+      slots: [{ classSectionId: U(), weekday: 1, periodId: U(), subjectId: U(), teacherId: U(), roomId: U() }],
+    }),
+  },
+  "timetable.publish": { permission: "timetable.manage", input: () => ({ versionId: U() }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;
