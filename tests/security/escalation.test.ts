@@ -163,6 +163,15 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "document.confirmUpload": { permission: "document.write", input: () => ({ documentId: U() }) },
   "document.getReadUrl": { permission: "document.read", input: () => ({ documentId: U() }) },
   "document.delete": { permission: "document.write", input: () => ({ documentId: U() }) },
+  "announcement.create": {
+    permission: "announcement.manage",
+    input: () => ({ title: "Probe", body: "Probe body", audiences: [{ type: "school" }] }),
+  },
+  "announcement.publish": { permission: "announcement.manage", input: () => ({ announcementId: U() }) },
+  "notification.preferences.set": {
+    permission: "notification.read",
+    input: () => ({ category: "announcement", channel: "sms", enabled: false }),
+  },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;
