@@ -63,6 +63,76 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"announcement_audiences": {
+                  Row: {
+                    "announcement_id": string,"audience_type": string,"class_section_id": string | null,"created_at": string,"grade_id": string | null,"id": string,"institution_id": string,"role": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "announcement_id": string,"audience_type": string,"class_section_id"?: string | null,"created_at"?: string,"grade_id"?: string | null,"id"?: string,"institution_id": string,"role"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "announcement_id"?: string,"audience_type"?: string,"class_section_id"?: string | null,"created_at"?: string,"grade_id"?: string | null,"id"?: string,"institution_id"?: string,"role"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "announcement_audiences_announcement_id_fkey"
+      columns: ["announcement_id"]
+isOneToOne: false
+      referencedRelation: "announcements"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcement_audiences_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcement_audiences_grade_id_fkey"
+      columns: ["grade_id"]
+isOneToOne: false
+      referencedRelation: "grades"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcement_audiences_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"announcements": {
+                  Row: {
+                    "body": string,"category": string,"created_at": string,"created_by": string,"id": string,"institution_id": string,"published_at": string | null,"published_by": string | null,"status": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"category"?: string,"created_at"?: string,"created_by": string,"id"?: string,"institution_id": string,"published_at"?: string | null,"published_by"?: string | null,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "body"?: string,"category"?: string,"created_at"?: string,"created_by"?: string,"id"?: string,"institution_id"?: string,"published_at"?: string | null,"published_by"?: string | null,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "announcements_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcements_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "announcements_published_by_fkey"
+      columns: ["published_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"answer_sheets": {
                   Row: {
                     "created_at": string,"exam_paper_id": string,"id": string,"institution_id": string,"storage_path": string,"student_id": string,"updated_at": string,"uploaded_by": string | null
@@ -1327,6 +1397,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"notification_preferences": {
+                  Row: {
+                    "category": string,"channel": string,"created_at": string,"enabled": boolean,"institution_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "category": string,"channel": string,"created_at"?: string,"enabled": boolean,"institution_id": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "category"?: string,"channel"?: string,"created_at"?: string,"enabled"?: boolean,"institution_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notification_preferences_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "notification_preferences_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"notifications": {
                   Row: {
                     "body": string,"created_at": string,"data": Json | null,"id": string,"institution_id": string,"read_at": string | null,"recipient_user_id": string,"title": string,"type": string,"updated_at": string
@@ -1973,6 +2069,26 @@ isOneToOne: true
 "open_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },
+"publish_announcement":
+{ Args: { "p_announcement_id": string }; Returns: {
+              "body": string,
+"category": string,
+"created_at": string,
+"created_by": string,
+"id": string,
+"institution_id": string,
+"published_at": string | null,
+"published_by": string | null,
+"status": string,
+"title": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "announcements"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "publish_exam_results":
 { Args: { "p_exam_id": string }; Returns: Json
                            },

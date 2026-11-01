@@ -461,4 +461,26 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin", "admissions"],
   },
+
+  // 0068 (M06-T2) — managers-only; recipients never read these tables
+  // (they get a `notifications` row instead, fanned out by M06-T3's
+  // notify.announcement job handler). Explicit scoping proved in
+  // tests/db/announcements-rls.test.ts.
+  announcements: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  announcement_audiences: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"], // INSERT/UPDATE only while the parent announcement is still a draft
+  },
+  // Row-scoped (user_id = current user, same shape as `notifications`) —
+  // every role can read/write only their own preference rows.
+  notification_preferences: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+  },
 };

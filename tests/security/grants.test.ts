@@ -84,6 +84,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.invite_member",
   "public.jobs_requeue",
   "public.open_marks_entry",
+  "public.publish_announcement",
   "public.publish_exam_results",
   "public.publish_page",
   "public.record_audit_event",
