@@ -557,6 +557,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"documents": {
+                  Row: {
+                    "created_at": string,"created_by": string,"deleted_at": string | null,"deleted_by": string | null,"entity_id": string,"entity_type": string,"file_name": string,"id": string,"institution_id": string,"kind": string,"mime": string,"path": string,"size_bytes": number,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"deleted_at"?: string | null,"deleted_by"?: string | null,"entity_id": string,"entity_type": string,"file_name": string,"id"?: string,"institution_id": string,"kind": string,"mime": string,"path": string,"size_bytes": number,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"entity_id"?: string,"entity_type"?: string,"file_name"?: string,"id"?: string,"institution_id"?: string,"kind"?: string,"mime"?: string,"path"?: string,"size_bytes"?: number,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "documents_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documents_deleted_by_fkey"
+      columns: ["deleted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "documents_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"enquiries": {
                   Row: {
                     "assigned_to": string | null,"child_name": string,"created_at": string,"email": string | null,"grade_applied_id": string | null,"guardian_name": string,"id": string,"institution_id": string,"notes": Json | null,"phone": string,"source": string,"source_ip_hash": string | null,"status": string,"updated_at": string

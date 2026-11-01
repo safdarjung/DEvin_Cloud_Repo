@@ -444,4 +444,21 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
   },
+
+  // M05-T2 (20261028000067) — documents. Not a uniform per-institution read:
+  // owner/principal/admin see every row; admissions only student/application
+  // rows; teacher/accountant/exam_controller/guardian/student see only rows
+  // scoped to themselves (own staff doc, or own/linked-child's student doc) —
+  // explicit scoping is proved in tests/db/documents-rls.test.ts, not by the
+  // generated suite's own-institution assumption. Listed roles below are
+  // exactly those with document.read (07 §2.2); admissions/accountant/
+  // exam_controller/teacher/student/guardian all read 0 rows in the
+  // generated suite's plain cross-institution probe since it inserts no
+  // entity_id/staff ownership scoping, which is expected and does not
+  // contradict their real (scoped) read access.
+  documents: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions"],
+  },
 };
