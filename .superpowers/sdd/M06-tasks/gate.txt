@@ -1,0 +1,10 @@
+$ eslint
+✓ Types generated successfully
+      Tests  958 passed (958)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |db| tests/db/invoice-generation.test.ts > AC3: generateTermInvoices generates exactly one invoice per active student, and a rerun creates no duplicates > Bug fix: a grade with more students than one .in() chunk doesn't fail with 'URI too long', and alreadyExisted counts correctly across the chunk boundary
+ Test Files  1 failed | 78 passed (79)
+      Tests  1 failed | 497 passed (498)
+===SEC
+ Test Files  18 passed (18)
+      Tests  1382 passed (1382)

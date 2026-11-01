@@ -1,0 +1,24 @@
+$ eslint
+✓ Types generated successfully
+      Tests  928 passed (928)
+ FAIL  |db| tests/db/seed-finance.test.ts [ tests/db/seed-finance.test.ts ]
+⎯⎯⎯⎯⎯⎯ Failed Tests 44 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > teacher lacks dashboard.view — the page gate rejects before any aggregate runs (07 §2.2)
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > attendanceTodaySummary runs under principal RLS, within budget, as a valid percentage
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > sectionsBelowThreshold runs under principal RLS, within budget, listing only sections below the critical threshold
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > admissionsFunnel (getAdmissionsFunnelCounts) runs under principal RLS
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > examGradeDistribution runs under exam_controller RLS and its distribution sums to its own total
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > termCollectionSummary runs under accountant RLS and never shows collected > due
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > getDashboardData hides finance for exam_controller (07 §2.2) regardless of seed state
+ FAIL  |db| tests/db/dashboard-queries.test.ts > T-039 dashboard aggregates (seeded demo tenant, real RLS) > getDashboardData computes finance for accountant when a term exists (AC3)
+===SEC
+⎯⎯⎯⎯⎯⎯ Failed Tests 72 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > the registry holds every defineAction call in src (missing registration fails)
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > every registered action has an escalation fixture, and no fixture is stale
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as owner: forbidden exactly when the role lacks the permission
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as principal: forbidden exactly when the role lacks the permission
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as admin: forbidden exactly when the role lacks the permission
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as admissions: forbidden exactly when the role lacks the permission
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as accountant: forbidden exactly when the role lacks the permission
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as exam_controller: forbidden exactly when the role lacks the permission
+ FAIL  |security| tests/security/escalation.test.ts > C-03: action registry walk > core.academicYear.upsert > as teacher: forbidden exactly when the role lacks the permission

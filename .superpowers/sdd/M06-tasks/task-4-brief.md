@@ -1,0 +1,7 @@
+### Task 4: M06-T4 `core.audit.list` query (Haiku)
+READ: BRIEF-COMMON.md; `AuditEventRow` in `src/modules/fabric/types.ts`; `src/modules/imports/queries.ts` + `query-defs.ts` (pattern); `tests/db/audit-event.test.ts`
+FILES: `src/modules/core/audit.queries.ts` (new); `src/modules/core/query-defs.ts` (edit: add one def); `tests/db/audit-list-query.test.ts` (new); + sample input line in `tests/db/api-query-route.test.ts`
+EXPORTS: `listAuditEvents(ctx, { from?, to?, action?, entityType?, page = 1, pageSize = 50 (max 100) }) → { rows: AuditEventRow[]; total: number }` — RLS read of `audit_events` for `ctx.institution.id`, newest first, `count: "exact"`; one extra query for actor names (`profiles.full_name`) and one for roles (`memberships.role` in this institution) over the page's distinct `actor_user_id`s; `actor` = name or `"system"`, `actor_role` = role or `"system"`, `event` = action, `entity` = entity_type, `entity_id` = entity_id ?? "", `at` = created_at, `summary` = `${action} on ${entity_type}`. Query def `core.audit.list`, permission `audit.read`, Zod: dates ISO, strings ≤ 100, page ≥ 1, pageSize 1–100. Import the `AuditEventRow` type from fabric types (type equality = the fixture contract).
+TEST FIRST: admin lists events newest first with total; filter by action; teacher → forbidden; another institution's events never appear; pageSize 101 → validation_failed.
+ACCEPT: `pnpm test:db tests/db/audit-list-query.test.ts tests/db/api-query-route.test.ts`; `pnpm test tests/unit/action-names-unique.test.ts`; `pnpm lint`; `pnpm typecheck`
+

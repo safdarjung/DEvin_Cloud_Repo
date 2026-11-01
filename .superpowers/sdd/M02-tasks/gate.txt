@@ -1,0 +1,8 @@
+$ eslint
+✓ Types generated successfully
+      Tests  928 passed (928)
+ Test Files  54 passed (54)
+      Tests  376 passed (376)
+===SEC
+ Test Files  18 passed (18)
+      Tests  1098 passed (1098)

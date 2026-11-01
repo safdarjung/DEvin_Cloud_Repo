@@ -1,0 +1,9 @@
+- [Act, don't probe](feedback-act-dont-probe.md) — produce the deliverable from known facts; user interrupts extended inspection
+- [Fabric direction](fabric-direction.md) — long-term platform vision; CoolSkool = first domain pack; ADR D26; no packet scope change
+- [Token budget](feedback-token-budget.md) — owner burning tokens: caveman replies, ≤12-line agent briefs via BRIEF-COMMON.md, ≤4-line agent replies
+- [Skills and voice](feedback-skills-and-voice.md) — use ponytail/karpathy/Context7(docs-lookup)/superpowers explicitly; terse plain English, no dialect
+- [Agent briefing lessons](agent-briefing-lessons.md) — recurring review defects to pre-empt in Sonnet packet briefs; DB-owner fence
+- [CoolSkool project](coolskool-project.md) — greenfield school OS, remote schoolversee/schoolverse, planning prompt in docs/planning/coolskool/
+- [Fabric UI-first phase](fabric-ui-first-phase.md) — Phase 0 shipped on main 2026-10-31; Chayank executes F-UI-01..16; Laya replaces Jev; Phase 2 migrations 0052–0063 reserved
+- [Master plan V1→V2](master-plan-v1-v2.md) — 2026-10-31 backend/API-first plan M1–M27 in docs/planning/fabric/07-master-plan-v1-v2.md; Opus decomposes, Sonnet executes
+- [Model routing](feedback-model-routing.md) — parallel subagents; Haiku small, Sonnet integration, Opus hard only; token saving first

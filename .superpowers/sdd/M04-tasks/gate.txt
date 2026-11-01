@@ -1,0 +1,16 @@
+$ eslint
+✓ Types generated successfully
+      Tests  956 passed (956)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  |db| tests/db/api-query-route.test.ts > GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter) > owner smoke: every registered query runs, none returns internal
+ FAIL  |db| tests/db/imports-commit.test.ts > commit_import_batch (M04-T3) > 3 valid rows + 1 duplicate admission_no → 3 committed, 1 skipped
+ FAIL  |db| tests/db/imports-commit.test.ts > commit_import_batch (M04-T3) > a row with a bad guardian phone → invalid with an error, the other row still commits
+ FAIL  |db| tests/db/imports-commit.test.ts > commit_import_batch (M04-T3) > recommitting a committed batch returns the same counts and writes nothing new
+ FAIL  |db| tests/db/imports-commit.test.ts > commit_import_batch (M04-T3) > a staff batch commits staff rows
+ FAIL  |db| tests/db/imports-commit.test.ts > commit_import_batch (M04-T3) > a guardian is reused by phone across two imported students in the same batch
+ FAIL  |db| tests/db/invoice-generation.test.ts > AC3: generateTermInvoices generates exactly one invoice per active student, and a rerun creates no duplicates > Bug fix: a grade with more students than one .in() chunk doesn't fail with 'URI too long', and alreadyExisted counts correctly across the chunk boundary
+ Test Files  3 failed | 67 passed (70)
+      Tests  7 failed | 444 passed (451)
+===SEC
+ Test Files  18 passed (18)
+      Tests  1276 passed (1276)

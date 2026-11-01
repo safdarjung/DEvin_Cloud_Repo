@@ -1,0 +1,7 @@
+### Task 5: M04-T5 `data.import.stage` action
+READ: BRIEF-COMMON.md; Task 4 schemas; `src/modules/academics/setup.actions.ts` (style); current-year lookup in `src/modules/core/actions.ts`
+FILES: `src/modules/imports/actions.ts` (new, `"use server"`); `tests/db/imports-stage-action.test.ts` (new); + import line in `all-actions.ts` + fixture in `tests/security/escalation.test.ts`
+EXPORTS: `stageImport` = `defineAction({ name: "data.import.stage", permission: "data.import", schema: StageImportSchema })`: parse; validate each row; for students resolve `grade` (grades.code) + `section` (class_sections.name) in the current academic year with ONE query per batch → `class_section_id`, `academic_year_id` (unknown → row error `section: not found`); duplicate admission_no/employee_no inside the file → row error; for staff resolve `department` by name (unknown → row error). Insert the batch, then rows in chunks of 500 (`status` valid|invalid, `errors` as `{field: [msg]}`), update counts. Audit counts only. Returns `{ batchId, rowCount, validCount, errorCount, errors: [{ rowNo, errors }] (first 50) }` with `rowNo` = CSV line number (header = 1).
+TEST FIRST: 10-row CSV with 2 bad rows → 8 valid, 2 errors with row numbers 4 and 9; unknown section → row error; teacher → forbidden; 1 MB+ csv → validation_failed.
+ACCEPT: `pnpm test:db tests/db/imports-stage-action.test.ts`; `pnpm test tests/unit/action-names-unique.test.ts`; `pnpm test:security tests/security/escalation.test.ts`; `pnpm lint`; `pnpm typecheck`
+
