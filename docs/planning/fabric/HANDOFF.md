@@ -12,7 +12,8 @@ State on 2026-11-01. Read this, then root `CLAUDE.md`, then `07-master-plan-v1-v
 | M04 CSV import/export (0066) | done | `849a305` | `M04-tasks.md` |
 | M05 Documents/storage (0067) | done | `665a0ed` | `M05-tasks.md` |
 | M06 Announcements, preferences, audit list (0068) | done | `87fa977` | `M06-tasks.md` |
-| **M07 Timetable (0069)** | **next** | — | write `M07-tasks.md` |
+| M07 Timetable (0069) | done | see `git log` | `M07-tasks.md` |
+| **M08 Period/staff attendance, leave, substitution (0070)** | **next** | — | write `M08-tasks.md` |
 
 Hosted Supabase is migrated through `0079` (0049–0051 history repaired, 0064–0068 + 0079 pushed, grants verified). Last full gate: unit 958, db 497/498 (DBT-46 flaky invoice chunk test, passes alone), security 1382.
 
