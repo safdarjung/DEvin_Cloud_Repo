@@ -42,15 +42,21 @@ function maxPeriodsPerWeek(ctx: TenantContext): number {
   return typeof raw === "number" && raw > 0 ? raw : DEFAULT_MAX_PERIODS_WEEK;
 }
 
-/** The current academic year's published version, or null if none. */
+/**
+ * The most recently published version, or null if none. Not joined to
+ * academic_years: guardians/students can't read that table (staff-only RLS),
+ * and publishing archives the year's previous version, so the latest
+ * published one is the current year's.
+ */
 async function defaultPublishedVersionId(ctx: TenantContext): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("timetable_versions")
-    .select("id, academic_years!inner(is_current)")
+    .select("id")
     .eq("institution_id", ctx.institution.id)
     .eq("status", "published")
-    .eq("academic_years.is_current", true)
+    .order("published_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (error) throw error;
   return data?.id ?? null;
