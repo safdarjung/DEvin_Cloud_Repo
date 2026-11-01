@@ -40,6 +40,28 @@ describe("NOTIFICATION_TEMPLATES (06 §3)", () => {
     expect(NOTIFICATION_TEMPLATES.recheck_decided.channels).toEqual(["in_app", "sms"]);
     expect(NOTIFICATION_TEMPLATES.enquiry_received.channels).toEqual(["in_app"]);
     expect(NOTIFICATION_TEMPLATES.enrolment_welcome.channels).toEqual(["in_app", "email"]);
+    expect(NOTIFICATION_TEMPLATES.announcement.channels).toEqual(["in_app", "sms", "email"]);
+  });
+
+  // M06-T3: every template's category drives createNotification's
+  // preference lookup (notification_preferences.category, 0068).
+  it("every type's category matches the M06 header ruling", () => {
+    expect(NOTIFICATION_TEMPLATES.attendance_absence.category).toBe("attendance");
+    expect(NOTIFICATION_TEMPLATES.results_published.category).toBe("academic");
+    expect(NOTIFICATION_TEMPLATES.recheck_decided.category).toBe("academic");
+    expect(NOTIFICATION_TEMPLATES.enquiry_received.category).toBe("admissions");
+    expect(NOTIFICATION_TEMPLATES.enrolment_welcome.category).toBe("admissions");
+    expect(NOTIFICATION_TEMPLATES.announcement.category).toBe("announcement");
+  });
+
+  it("announcement renders title + excerpt and rejects extra or missing variables (strict schema)", () => {
+    const { varsSchema, body } = NOTIFICATION_TEMPLATES.announcement;
+    const vars = { title: "Holiday", excerpt: "School closed Friday for a festival." };
+    expect(varsSchema.safeParse(vars).success).toBe(true);
+    expect(varsSchema.safeParse({ ...vars, extra: "x" }).success).toBe(false);
+    expect(varsSchema.safeParse({ title: "Holiday" }).success).toBe(false);
+    expect(body(vars, "en")).toContain("Holiday");
+    expect(body(vars, "en")).toContain(vars.excerpt);
   });
 });
 

@@ -6,12 +6,17 @@ import { z } from "zod";
 export type NotificationChannel = "in_app" | "sms" | "email";
 export type Lang = "en" | "hi";
 
+// M06-T3 — `notification_preferences.category` check (0068). `createNotification`
+// looks up the recipient's disabled sms/email prefs for a template's category.
+export type NotificationCategory = "attendance" | "academic" | "admissions" | "announcement";
+
 export const NOTIFICATION_TYPES = [
   "attendance_absence",
   "results_published",
   "recheck_decided",
   "enquiry_received",
   "enrolment_welcome",
+  "announcement",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -42,8 +47,11 @@ const EnrolmentWelcomeVars = z
   .object({ student: z.string().min(1), class: z.string().min(1), admission_no: z.string().min(1) })
   .strict();
 
+const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
+
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
+  category: NotificationCategory;
   varsSchema: z.ZodType<V>;
   title(lang: Lang): string;
   body(vars: V, lang: Lang): string;
@@ -60,6 +68,7 @@ function def<V>(t: TemplateDef<V>): TemplateDef<V> {
 export const NOTIFICATION_TEMPLATES = {
   attendance_absence: def({
     channels: ["in_app", "sms"],
+    category: "attendance",
     varsSchema: AttendanceAbsenceVars,
     title: (lang) => (lang === "hi" ? "उपस्थिति: अनुपस्थित" : "Attendance: Absent"),
     body: (v, lang) =>
@@ -69,6 +78,7 @@ export const NOTIFICATION_TEMPLATES = {
   }),
   results_published: def({
     channels: ["in_app", "sms"],
+    category: "academic",
     varsSchema: ResultsPublishedVars,
     title: (lang) => (lang === "hi" ? "रिपोर्ट कार्ड प्रकाशित" : "Report card published"),
     body: (v, lang) =>
@@ -78,6 +88,7 @@ export const NOTIFICATION_TEMPLATES = {
   }),
   recheck_decided: def({
     channels: ["in_app", "sms"],
+    category: "academic",
     varsSchema: RecheckDecidedVars,
     title: (lang) => (lang === "hi" ? "रीचेक निर्णय" : "Recheck decision"),
     body: (v, lang) =>
@@ -87,6 +98,7 @@ export const NOTIFICATION_TEMPLATES = {
   }),
   enquiry_received: def({
     channels: ["in_app"],
+    category: "admissions",
     varsSchema: EnquiryReceivedVars,
     title: (lang) => (lang === "hi" ? "नई प्रवेश पूछताछ" : "New admissions enquiry"),
     body: (v, lang) =>
@@ -96,12 +108,20 @@ export const NOTIFICATION_TEMPLATES = {
   }),
   enrolment_welcome: def({
     channels: ["in_app", "email"],
+    category: "admissions",
     varsSchema: EnrolmentWelcomeVars,
     title: (lang) => (lang === "hi" ? "स्वागत है!" : "Welcome!"),
     body: (v, lang) =>
       lang === "hi"
         ? `स्वागत है! ${v.student} को ${v.class} में दाखिला मिला। प्रवेश क्रमांक ${v.admission_no}।`
         : `Welcome! ${v.student} is enrolled in ${v.class}. Admission no ${v.admission_no}.`,
+  }),
+  announcement: def({
+    channels: ["in_app", "sms", "email"],
+    category: "announcement",
+    varsSchema: AnnouncementVars,
+    title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
+    body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

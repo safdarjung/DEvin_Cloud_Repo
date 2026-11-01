@@ -1,6 +1,7 @@
 import type { JobHandler } from "./types.ts";
 import {
   generateTermInvoices,
+  notifyAnnouncement,
   notifyAttendanceAbsence,
   notifyEnquiryReceived,
   notifyEnrolmentWelcome,
@@ -17,6 +18,7 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "notify.recheck_decided": notifyRecheckDecided,
   "notify.enquiry_received": notifyEnquiryReceived,
   "notify.enrolment_welcome": notifyEnrolmentWelcome,
+  "notify.announcement": notifyAnnouncement,
   "finance.generate_term_invoices": generateTermInvoices,
 };
 

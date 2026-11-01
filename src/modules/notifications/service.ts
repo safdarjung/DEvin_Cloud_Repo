@@ -21,6 +21,28 @@ const CHANNELS: Record<Channel["name"], Channel> = {
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 
+/**
+ * M06-T3 — rows in `notification_preferences` are opt-out: a missing row
+ * means the channel is still on, only an explicit `enabled = false` row
+ * for this (user, institution, category) drops it. In-app is never
+ * looked up here — the table's own check constraint only allows
+ * channel in ('sms', 'email') (0068).
+ */
+async function disabledChannels(
+  admin: SupabaseClient<Database>,
+  params: { institutionId: string; userId: string; category: string },
+): Promise<Set<Channel["name"]>> {
+  const { data, error } = await admin
+    .from("notification_preferences")
+    .select("channel")
+    .eq("institution_id", params.institutionId)
+    .eq("user_id", params.userId)
+    .eq("category", params.category)
+    .eq("enabled", false);
+  if (error) throw error;
+  return new Set((data ?? []).map((row) => row.channel as Channel["name"]));
+}
+
 export interface CreateNotificationInput<T extends NotificationType> {
   institutionId: string;
   recipientUserId: string;
@@ -118,6 +140,13 @@ export async function createNotification<T extends NotificationType>(
   const title = template.title(lang);
   const body = template.body(vars, lang);
 
+  const disabled = await disabledChannels(admin, {
+    institutionId: input.institutionId,
+    userId: input.recipientUserId,
+    category: template.category,
+  });
+  const channels = template.channels.filter((channel) => channel === "in_app" || !disabled.has(channel));
+
   const { data: inserted, error: insertError } = await admin
     .from("notifications")
     .insert({
@@ -145,7 +174,7 @@ export async function createNotification<T extends NotificationType>(
     await ensureDeliveryAttempts(admin, {
       institutionId: input.institutionId,
       notificationId: existing.id,
-      channels: template.channels,
+      channels,
       body,
       contacts: input.contacts,
     });
@@ -156,7 +185,7 @@ export async function createNotification<T extends NotificationType>(
   await ensureDeliveryAttempts(admin, {
     institutionId: input.institutionId,
     notificationId: inserted.id,
-    channels: template.channels,
+    channels,
     body,
     contacts: input.contacts,
   });
