@@ -88,6 +88,14 @@ begin
     raise exception 'code:invalid_state' using detail = 'status only moves pending to active, or active to deleted';
   end if;
 
+  -- Deletion stamps are server-set on active→deleted and frozen otherwise.
+  if old.status = 'active' and new.status = 'deleted' then
+    new.deleted_at := now();
+    new.deleted_by := app.current_user_id();
+  elsif new.deleted_at is distinct from old.deleted_at or new.deleted_by is distinct from old.deleted_by then
+    raise exception 'code:forbidden' using detail = 'deleted_at and deleted_by are set only by deletion';
+  end if;
+
   return new;
 end;
 $$;
