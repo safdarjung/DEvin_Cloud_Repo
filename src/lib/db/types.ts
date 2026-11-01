@@ -1539,6 +1539,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"periods": {
+                  Row: {
+                    "created_at": string,"ends_at": string,"id": string,"institution_id": string,"is_break": boolean,"name": string,"seq": number,"starts_at": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"ends_at": string,"id"?: string,"institution_id": string,"is_break"?: boolean,"name": string,"seq": number,"starts_at": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"ends_at"?: string,"id"?: string,"institution_id"?: string,"is_break"?: boolean,"name"?: string,"seq"?: number,"starts_at"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "periods_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"profiles": {
                   Row: {
                     "avatar_path": string | null,"created_at": string,"full_name": string | null,"id": string,"is_platform_admin": boolean,"phone": string | null,"updated_at": string
@@ -1722,6 +1742,26 @@ isOneToOne: false
       columns: ["superseded_by"]
 isOneToOne: false
       referencedRelation: "results"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"rooms": {
+                  Row: {
+                    "capacity": number,"created_at": string,"id": string,"institution_id": string,"name": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "capacity": number,"created_at"?: string,"id"?: string,"institution_id": string,"name": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "capacity"?: number,"created_at"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "rooms_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
       referencedColumns: ["id"]
     }
                   ]
@@ -1925,6 +1965,94 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"timetable_slots": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"id": string,"institution_id": string,"period_id": string,"room_id": string | null,"teacher_id": string,"updated_at": string,"version_id": string,"weekday": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"id"?: string,"institution_id": string,"period_id": string,"room_id"?: string | null,"teacher_id": string,"updated_at"?: string,"version_id": string,"weekday": number
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"period_id"?: string,"room_id"?: string | null,"teacher_id"?: string,"updated_at"?: string,"version_id"?: string,"weekday"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "timetable_slots_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_slots_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_slots_period_id_fkey"
+      columns: ["period_id"]
+isOneToOne: false
+      referencedRelation: "periods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_slots_room_id_fkey"
+      columns: ["room_id"]
+isOneToOne: false
+      referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_slots_teacher_id_fkey"
+      columns: ["teacher_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_slots_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "timetable_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"timetable_versions": {
+                  Row: {
+                    "academic_year_id": string,"created_at": string,"created_by": string,"id": string,"institution_id": string,"name": string,"published_at": string | null,"published_by": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"created_at"?: string,"created_by": string,"id"?: string,"institution_id": string,"name": string,"published_at"?: string | null,"published_by"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"created_at"?: string,"created_by"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"published_at"?: string | null,"published_by"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "timetable_versions_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_versions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_versions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_versions_published_by_fkey"
+      columns: ["published_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"websites": {
                   Row: {
                     "created_at": string,"id": string,"institution_id": string,"is_live": boolean,"nav": Json | null,"theme": Json | null,"updated_at": string
@@ -2106,6 +2234,25 @@ isOneToOne: true
                           SetofOptions: {
         from: "*"
         to: "pages"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"publish_timetable":
+{ Args: { "p_version_id": string }; Returns: {
+              "academic_year_id": string,
+"created_at": string,
+"created_by": string,
+"id": string,
+"institution_id": string,
+"name": string,
+"published_at": string | null,
+"published_by": string | null,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "timetable_versions"
         isOneToOne: true
         isSetofReturn: false
       } },

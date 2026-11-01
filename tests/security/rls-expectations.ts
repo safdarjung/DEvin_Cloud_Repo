@@ -483,4 +483,33 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
   },
+
+  // 0069 (M07-T2) — rooms/periods: every active member reads (bell schedule
+  // is not sensitive); owner/principal/admin write.
+  rooms: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  periods: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  // timetable_versions/timetable_slots: owner/principal/admin see every
+  // version/slot (draft, published, archived); every other role sees
+  // published only, and guardian/student additionally only their own
+  // child's/own current section's slots — explicit scoping proved in
+  // tests/db/timetable-rls.test.ts, not by the generated suite's plain
+  // own-institution probe.
+  timetable_versions: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  timetable_slots: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
 };
