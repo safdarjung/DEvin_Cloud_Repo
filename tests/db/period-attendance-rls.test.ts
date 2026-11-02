@@ -77,22 +77,18 @@ async function publishVersion(institutionId: string, versionId: string, adminUse
   `;
 }
 
+/** Institution-local "today" (Asia/Kolkata, the test default) as YYYY-MM-DD — anchoring on bare `new Date()` (server/UTC date) drifts a day off near IST midnight, since assign_substitution/mark_period_attendance compare p_date against `now() at time zone v_timezone`. */
+function localToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
 /** Next date (today or later) whose ISO weekday (1=Mon..6=Sat) is `isodow` — for the future-date test (mirrors substitutions-rls.test.ts). */
 function nextDateForIsodow(isodow: number, minDaysAhead = 3): string {
-  const d = new Date();
+  const d = new Date(`${localToday()}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + minDaysAhead);
   const currentIsodow = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
   const diff = (isodow - currentIsodow + 7) % 7;
   d.setUTCDate(d.getUTCDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Most recent date (today or earlier, within 7 days) whose ISO weekday is `isodow` — mark_period_attendance rejects future dates. */
-function recentDateForIsodow(isodow: number): string {
-  const d = new Date();
-  const currentIsodow = d.getUTCDay() === 0 ? 7 : d.getUTCDay();
-  const diff = (currentIsodow - isodow + 7) % 7;
-  d.setUTCDate(d.getUTCDate() - diff);
   return d.toISOString().slice(0, 10);
 }
 
@@ -120,8 +116,12 @@ async function buildPublishedSlotWithStudent(inst: TestInstitution): Promise<Bas
   `;
   const teacherId = teacherStaff.staff_id as string;
   const versionId = await createDraftVersion(inst.institutionId, yearId, inst.users.admin.id);
-  const weekday = 1; // Monday
-  const date = recentDateForIsodow(weekday);
+  // Slot's weekday must equal institution-local "today": mark_period_attendance
+  // rejects p_date > today, assign_substitution rejects p_date < today, so the
+  // only date satisfying both is today itself — hardcoding weekday=1 (Monday)
+  // and picking the most recent Monday only worked by accident on Mondays.
+  const date = localToday();
+  const weekday = new Date(`${date}T00:00:00Z`).getUTCDay() || 7;
 
   const [slot] = await sql`
     insert into public.timetable_slots (institution_id, version_id, class_section_id, subject_id, teacher_id, weekday, period_id)

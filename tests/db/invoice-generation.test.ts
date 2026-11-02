@@ -371,7 +371,7 @@ describe("AC3: generateTermInvoices generates exactly one invoice per active stu
     } finally {
       await inst.cleanup();
     }
-  });
+  }, 60_000); // DBT-46: 170-student chunked lookup exceeds the 5s default under full-suite load.
 
   it("Fix round 1 (HIGH): a tiny budget stops early with remaining > 0, and a second call with the default budget finishes with no duplicates", async () => {
     const inst = await createTestInstitution("finance-generate-term-budget");

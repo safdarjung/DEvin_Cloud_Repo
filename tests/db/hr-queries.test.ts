@@ -20,8 +20,13 @@ afterAll(async () => {
   await closeRolesHelper();
 });
 
+/** Institution-local "today" (Asia/Kolkata, the test default) as YYYY-MM-DD — mirrors todayInInstitutionTimezone (attendance/queries.ts) so fixture dates agree with staffAvailabilityToday's own "today" near IST midnight, instead of drifting a day off bare UTC `new Date()`. */
+function localToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
 function isoDate(offsetDays: number): string {
-  const d = new Date();
+  const d = new Date(`${localToday()}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + offsetDays);
   return d.toISOString().slice(0, 10);
 }
