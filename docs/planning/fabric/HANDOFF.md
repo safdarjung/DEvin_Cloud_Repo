@@ -1,6 +1,6 @@
 # Handoff — continuing the V1→V2 backend plan from another machine
 
-State on 2026-11-01. Read this, then root `CLAUDE.md`, then `07-master-plan-v1-v2.md` §0–§5. Nothing else is needed to pick up.
+State on 2026-11-03 (updated after M08–M14 + M17). Read this, then root `CLAUDE.md`, then `07-master-plan-v1-v2.md` §0–§5. Nothing else is needed to pick up.
 
 ## Where things stand
 
@@ -13,7 +13,17 @@ State on 2026-11-01. Read this, then root `CLAUDE.md`, then `07-master-plan-v1-v
 | M05 Documents/storage (0067) | done | `665a0ed` | `M05-tasks.md` |
 | M06 Announcements, preferences, audit list (0068) | done | `87fa977` | `M06-tasks.md` |
 | M07 Timetable (0069) | done | see `git log` | `M07-tasks.md` |
-| **M08 Period/staff attendance, leave, substitution (0070)** | **next** | — | write `M08-tasks.md` |
+| M08 Staff attendance, leave, substitution, period attendance (0070) | done, hosted | `94a7032` | `M08-tasks.md` |
+| M09 Assignment submissions + grading (0071) | done, hosted | `e9ab47f` | `M09-tasks.md` |
+| M10 Lesson plans + curriculum coverage (0072) | done, hosted | `1bca1b2` | `M10-tasks.md` |
+| M11 Question bank, exam schedule, report card HTML (0073) | done, hosted push pending | `6277a35` | `M11-tasks.md` |
+| M13 Facilities, transport, calendar (0075) | done, hosted push pending | `5605727` | `M13-tasks.md` |
+| M14 Student lifecycle (0076) | done, hosted push pending | `7e4e1cb` | `M14-tasks.md` |
+| M17 Resend email channel (no migration) | done | `3c9a7e0` | `M17-tasks.md` |
+| **MOD plug-in modules (0084, D45)** | **next** | — | `MOD-tasks.md` (planned; retrofit all of M01–M17) |
+| M12, M15, M16, M18 | planned | — | `M12/M15/M16/M18-tasks.md` |
+| M19–M25 (V2, renumbered 0092–0096) | planned | — | `M19..M25-tasks.md` |
+| X01–X08 extension modules (0085–0091, 0099) | planned | — | `X01..X08-tasks.md` |
 
 Hosted Supabase is migrated through `0079` (0049–0051 history repaired, 0064–0068 + 0079 pushed, grants verified). Last full gate: unit 958, db 497/498 (DBT-46 flaky invoice chunk test, passes alone), security 1382.
 
@@ -42,3 +52,9 @@ Remaining: M07–M18 (12), V1-GATE, M19–M27 (9), then Workstream D (UI integra
 - Files the seed scripts import (e.g. `src/modules/core/schemas.ts`) use relative `.ts` imports, never `@/` — a broken reseed empties the demo tenant.
 - RLS violations (`42501`) and unique violations (`23505`) surface as `internal` unless the action maps them.
 - Plain RLS insert into `guardian_students` recurses (DBT-45) — use a definer or fix `app.my_student_ids`.
+
+## How the 2026-11-02/03 batch was run (reuse)
+
+- Two lanes: main tree + worktree `../coolschool-b` (branch `lane-b`) with its own Supabase stack (`project_id = "coolschool_b"`, ports 544xx, studio/realtime/smtp/edge/analytics off; `config.toml` marked `--skip-worktree`, `.env.local` copied with ports rewritten). Lanes merge into main, then one full gate.
+- Workflow scripts (controller session dir): milestone runner = Opus planner → Haiku/Sonnet tasks scheduled by deps with DB-exclusive tasks run alone → Sonnet security review → Sonnet fix → gate. Traps found: the `security-reviewer` agent type cannot write files (pass findings inline to the fixer); gate agents' 10-min command limit kills `test:db` (run it in background); fixtures must compute "today" in the institution timezone (UTC breaks 00:00–05:30 IST).
+- Hosted DB: owner runs `pnpm exec supabase db push --linked --include-all`. Once pushed, a migration is frozen — fixes go into a new number (BRIEF-COMMON HOSTED-APPLIED rule).
