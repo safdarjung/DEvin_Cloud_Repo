@@ -133,6 +133,14 @@ Real SMS/email providers (DLT registration), payment gateway, CSV import, backup
 | Hosted migration fails on `db push` | Do not edit merged migrations; add a numbered fix migration (`10 §3`), test locally with `db reset`, push again |
 | Suspected leak or security finding | `07 §8` |
 
+## 13.5. Onboarding M17 email (Resend) on hosted
+
+1. Create a Resend account and verify a sender domain (e.g. `school.example.com`).
+2. Generate an API key and set `RESEND_API_KEY` in Vercel environment (project settings, server only).
+3. Set `RESEND_FROM` to the verified sender domain (optional; default `onboarding@resend.dev` works for testing).
+4. Test: invite your own email address as a member; check that `/invitations/accept` sends an email (visible in Resend dashboard) or simulated (shown as failed status if the key is not set or the domain is unverified).
+5. Emails are sent for invitations and notifications (enrolment welcome, announcements) when the key is set. Reserved test domains (`.test`, `example.com`) remain simulated. Check the delivery attempt status in the message log (`notifications.listDeliveryLog`).
+
 ## 14. Onboarding a real school in 3 days (M03–M04 APIs)
 
 Every step is an API call (`docs/planning/fabric/07-master-plan-v1-v2.md` D40/D41); the UI pass wraps the same calls. Auth is the session cookie or `Authorization: Bearer <Supabase access token>`; tenant calls carry `{"institution": "<slug>", "input": {…}}`. `GET /api/v1/actions` and `GET /api/v1/query` list every name with its input schema.

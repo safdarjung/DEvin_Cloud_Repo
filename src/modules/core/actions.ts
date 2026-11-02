@@ -14,6 +14,7 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { FEATURE_CATALOG, type FeatureKey } from "@/lib/auth/entitlements";
 import { createClient } from "@/lib/supabase/server";
+import { emailChannel, resendConfigured } from "@/modules/notifications/channels/resend";
 import {
   AcademicYearUpsertSchema,
   InstitutionSettingsSchema,
@@ -88,6 +89,12 @@ export const setFeatureEnabled = defineAction({
   },
 });
 
+// M17-T3 (D42) — invite email text. Not exported: "use server" files may
+// only export async functions. No address/token logging (rulings "Invite").
+function buildInviteEmailText(schoolName: string, role: string, link: string): string {
+  return `You've been invited to join ${schoolName} as a ${role} on CoolSkool.\n\nAccept your invite: ${link}`;
+}
+
 // M03-T5 — invite_member/revoke_invitation (0079) are themselves the
 // authorization/escalation/audit boundary (owner/principal/admin only,
 // owner/principal invites gated further); these are thin wrappers, same
@@ -110,16 +117,31 @@ export const inviteMember = defineAction({
     const row = data?.[0];
     if (!row) throw new AppError("internal", "Invitation was not created.");
 
-    // No channel yet (D42/M17) — UI shows the link with <SimulatedBadge />.
-    // Email is intentionally not in the audit row (no PII).
+    // M17-T3 (D42, rulings "Invite") — not a notification: no
+    // delivery_attempts row (notification_id is NOT NULL). Status goes only
+    // in the result + audit `after`. A send failure never fails the action.
+    const appUrl = process.env.APP_URL?.replace(/\/+$/, "");
+    let delivery: "sent" | "simulated" | "failed" = "simulated";
+    if (resendConfigured() && appUrl) {
+      const link = `${appUrl}/invite#token=${row.token}`;
+      const result = await emailChannel().send({
+        toAddress: email,
+        renderedBody: buildInviteEmailText(ctx.institution.name, role, link),
+        subject: `You're invited to ${ctx.institution.name}`,
+        idempotencyKey: `invite:${row.invitation_id}`,
+      });
+      delivery = result.status;
+    }
+
+    // Email is intentionally not in the audit row (no PII, lesson 10).
     await audit(ctx, {
       action: "core.member.invite",
       entityType: "invitation",
       entityId: row.invitation_id,
-      after: { role },
+      after: { role, delivery },
     });
 
-    return { invitationId: row.invitation_id, token: row.token, delivery: "simulated" as const };
+    return { invitationId: row.invitation_id, token: row.token, delivery };
   },
 });
 

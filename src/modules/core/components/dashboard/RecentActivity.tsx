@@ -1,6 +1,6 @@
-// T-039 — "what just happened": the most recent simulated SMS/email
-// deliveries (listDeliveryLog). Always rendered with <SimulatedBadge />
-// (CLAUDE.md rule 7) — these never go to a real provider (06 §3).
+// T-039 — "what just happened": the most recent SMS/email deliveries
+// (listDeliveryLog). Section-level badge shows only when any row is simulated
+// (CLAUDE.md rule 7, M17 T4 ruling).
 import { SimulatedBadge } from "@/components/honesty";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DeliveryLogRow } from "@/modules/notifications/queries";
@@ -10,12 +10,14 @@ interface RecentActivityProps {
 }
 
 export function RecentActivity({ entries }: RecentActivityProps) {
+  const hasSimulated = entries.some((e) => e.status === "simulated");
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-medium">
           Recent activity
-          <SimulatedBadge />
+          {hasSimulated && <SimulatedBadge />}
         </CardTitle>
       </CardHeader>
       <CardContent>

@@ -58,13 +58,12 @@ export interface DeliveryLogRow {
   attemptedAt: string;
   notificationType: string;
 }
-
 /**
- * 07 §2.2 `notification.log.read` (owner/principal/admin/admissions) — SMS
- * and email rows always carry `status = 'simulated'` (C-31): never a real
- * provider reference, since no provider is ever called. Never selects
- * `to_address` or `provider`/`provider_ref` here — the log view shows the
- * rendered message, not the destination (06 §3 "no provider refs").
+ * 07 §2.2 `notification.log.read` (owner/principal/admin/admissions) — SMS rows always carry
+ * `status = "simulated"` (C-31). Email rows carry `status = "sent" | "failed" | "simulated"`
+ * (M17: Resend when configured, else simulated). Never a real provider reference in the log,
+ * never selects `to_address` or `provider`/`provider_ref` — shows the rendered message, not
+ * the destination (06 §3 "no provider refs").
  */
 export async function listDeliveryLog(ctx: TenantContext, limit = 100): Promise<DeliveryLogRow[]> {
   requirePermission(ctx, "notification.log.read");

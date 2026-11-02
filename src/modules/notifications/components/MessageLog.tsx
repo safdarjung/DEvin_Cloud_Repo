@@ -24,10 +24,10 @@ function deliveryStatusVariant(status: string): Variant {
   }
 }
 
-// Acceptance criterion 3 — SMS/email rows always carry the Simulated badge
-// and never a provider reference (06 §3, 07 §3 "delivery logs are
-// confidential"); `queries.ts` never selects `to_address`/`provider` for
-// this view in the first place.
+// M17 T4: Badge flips on delivery status. Show <SimulatedBadge /> only when
+// status==="simulated"; otherwise show the delivery status badge. SMS/email rows
+// never carry provider reference (06 §3, 07 §3 "delivery logs confidential");
+// queries.ts never selects to_address/provider for this view.
 export function MessageLog({ rows }: { rows: DeliveryLogRow[] }) {
   if (rows.length === 0) {
     return <EmptyState title="No delivery attempts" />;
@@ -53,10 +53,10 @@ export function MessageLog({ rows }: { rows: DeliveryLogRow[] }) {
             </TableCell>
             <TableCell className="hidden uppercase sm:table-cell">{humanize(row.channel)}</TableCell>
             <TableCell>
-              {row.channel === "in_app" ? (
-                <Badge variant={deliveryStatusVariant(row.status)}>{humanize(row.status)}</Badge>
-              ) : (
+              {row.status === "simulated" ? (
                 <SimulatedBadge />
+              ) : (
+                <Badge variant={deliveryStatusVariant(row.status)}>{humanize(row.status)}</Badge>
               )}
             </TableCell>
             <TableCell className="hidden max-w-sm truncate text-sm text-muted-foreground sm:table-cell" title={row.renderedBody}>

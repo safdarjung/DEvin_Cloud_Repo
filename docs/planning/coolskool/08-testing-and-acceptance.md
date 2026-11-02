@@ -50,7 +50,7 @@ Vitest uses `test.projects`: `unit` (environment `node`), `db` and `security` (e
 | C-22 | Section at capacity → `conflict` |
 | C-23 | Enrol from non-`accepted` state → `invalid_state` |
 | C-30 | Notification visible only to recipient |
-| C-31 | Simulated delivery stored with `status = 'simulated'` and rendered body |
+| C-31 | Email/SMS delivery: `status = 'sent'` (Resend) / `'simulated'` (no key or reserved domain) / `'failed'` (error); rendered body; badge per row |
 | C-40 | Publish blocked while marks are missing |
 | C-41 | Snapshot totals = Σ current marks; exactly one result per enrolled student; publish twice → `invalid_state` |
 | C-42 | Approve recheck → marks v2, results v2, v1 intact, request `applied`, audit + job present |

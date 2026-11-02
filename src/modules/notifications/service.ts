@@ -8,16 +8,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
 import { inApp } from "./channels/inApp.ts";
-import { simulatedEmail } from "./channels/simulatedEmail.ts";
+import { emailChannel } from "./channels/resend.ts";
 import { simulatedSms } from "./channels/simulatedSms.ts";
 import type { Channel } from "./channels/types.ts";
 import { NOTIFICATION_TEMPLATES, type Lang, type NotificationType, type TemplateDef, type VarsFor } from "./templates.ts";
 
-const CHANNELS: Record<Channel["name"], Channel> = {
-  in_app: inApp,
-  sms: simulatedSms,
-  email: simulatedEmail,
-};
+// M17-T2 — email resolved per call via emailChannel() (resendConfigured()
+// is read per call, never cached), so a key set mid-run or by a test's
+// vi.stubEnv takes effect on the next send.
+function channelFor(name: Channel["name"]): Channel {
+  if (name === "email") return emailChannel();
+  return name === "sms" ? simulatedSms : inApp;
+}
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 
@@ -76,6 +78,7 @@ async function ensureDeliveryAttempts(
     notificationId: string;
     channels: readonly Channel["name"][];
     body: string;
+    title: string;
     contacts?: { sms?: string | null; email?: string | null };
   },
 ): Promise<void> {
@@ -96,9 +99,15 @@ async function ensureDeliveryAttempts(
   };
 
   for (const channelName of missing) {
-    const channel = CHANNELS[channelName];
+    const channel = channelFor(channelName);
     const toAddress = toAddressFor(channelName);
-    const result = await channel.send({ toAddress, renderedBody: params.body });
+    const result = await channel.send({
+      toAddress,
+      renderedBody: params.body,
+      // M17-T2 — Resend-only; simulated/in-app adapters ignore both.
+      subject: params.title,
+      idempotencyKey: `${params.notificationId}:${channelName}`,
+    });
 
     const { error: attemptError } = await admin.from("delivery_attempts").insert({
       institution_id: params.institutionId,
@@ -176,6 +185,7 @@ export async function createNotification<T extends NotificationType>(
       notificationId: existing.id,
       channels,
       body,
+      title,
       contacts: input.contacts,
     });
 
@@ -187,6 +197,7 @@ export async function createNotification<T extends NotificationType>(
     notificationId: inserted.id,
     channels,
     body,
+    title,
     contacts: input.contacts,
   });
 

@@ -6,6 +6,9 @@ import type { NotificationChannel } from "../templates.ts";
 export interface DeliveryAttemptDraft {
   toAddress: string | null;
   renderedBody: string;
+  // M17-T1 — Resend-only; simulated/in-app adapters ignore both.
+  subject?: string;
+  idempotencyKey?: string;
 }
 
 export interface DeliveryResult {

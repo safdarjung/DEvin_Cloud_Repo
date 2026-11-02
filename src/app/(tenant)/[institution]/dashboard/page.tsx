@@ -518,6 +518,7 @@ export default async function DashboardPage({
       time: ago(e.attemptedAt, now),
     }));
 
+    const activityHasSimulated = (data.recentActivity ?? []).slice(0, 8).some((e) => e.status === "simulated");
     const tones = ["primary", "info", "success", "warning"] as const;
     const homeActions: HomeQuickAction[] = quickActions.map((a, i) => ({ href: a.href, label: a.label, icon: a.icon, tone: tones[i % tones.length] }));
     const scheduleItems: ScheduleItem[] = (events ?? []).map((e) => ({ id: e.id, time: shortDate.format(new Date(e.startsAt)), title: e.title, meta: [eventDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · ") }));
@@ -581,7 +582,7 @@ export default async function DashboardPage({
               </HomePerformance>
             )}
             <HomePromo icon={<Store />} tag="Add-ons" title="Explore the CoolSkool marketplace" body="Install modules for fee billing, timetable scheduling and parent messaging, and turn on only what your school needs." cta="Browse marketplace" href={`${basePath}/fabric/marketplace`} />
-            <HomeActivity title="Recent activity" items={activityItems} badge={<SimulatedBadge />} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
+            <HomeActivity title="Recent activity" items={activityItems} badge={activityHasSimulated ? <SimulatedBadge /> : undefined} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
           </div>
           <div className="min-w-0 space-y-4 lg:col-span-4">
             {carousel.length > 0 && <InsightCarousel items={carousel} allHref={`${basePath}/fabric/insights`} />}

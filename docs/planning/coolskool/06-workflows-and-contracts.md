@@ -276,7 +276,7 @@ stateDiagram-v2
 | `results_published` | guardians of student | in_app, sms (sim) | "Report card of {student} for {exam} is now available in the parent portal. -{school}" |
 | `recheck_decided` | requester | in_app, sms (sim) | "Recheck for {student}, {subject}: {decision}. Updated marks: {marks}. -{school}" |
 | `enquiry_received` | members with role admissions | in_app | "New enquiry: {child} for {grade} from {guardian}." |
-| `enrolment_welcome` | primary guardian | in_app, email (sim) | "Welcome! {student} is enrolled in {class}. Admission no {admission_no}." |
+| `enrolment_welcome` | primary guardian | in_app, email (Resend when `RESEND_API_KEY` set, else sim) | "Welcome! {student} is enrolled in {class}. Admission no {admission_no}." |
 
 ## 4. Audit action catalog
 
