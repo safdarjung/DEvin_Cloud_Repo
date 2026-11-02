@@ -1,0 +1,10 @@
+Packet: M13-T11 Seed section operations
+Files changed: scripts/seed/sections/operations.ts (new), scripts/seed/index.ts (registered after timetable), tests/db/seed-operations.test.ts (new)
+Behavior implemented: calendar (5 holiday events matching attendance.ts HOLIDAYS exactly, 2 exam_week bounded by exams.ts held_on window, PTM 11-21, Annual Day 12-12 matching website.ts, 1 staff training day); 20 assets (15 projectors in real rooms, lab kit, hall sound, generator, library AC, sports kit); 8 maintenance_requests (3 open/3 in_progress/2 done, raised by 8 distinct demo staff logins, assigned to office "admin" staff); 4 vehicles (cap 40) x 4 routes x 6 stops (07:00-07:50, schematic map_x/y); ~30 students/route assignments, Aarav+Ananya forced onto Route 1 Stop 3. Deterministic uuidV5("operations", ...) ids throughout.
+Tests run: pnpm test:db tests/db/seed-operations.test.ts -> 8/8 pass (incl. reseed-determinism). Regression: seed-timetable/seed-attendance/seed-people-academics/seed-determinism/seed-exams/seed-admissions/seed-finance all still pass (82/82) after inserting the new section. pnpm lint, pnpm typecheck clean for touched files.
+Tests not run: pnpm test:db full suite / tests/db/operations-rls.test.ts (other agents' concurrent files, not mine to run/own here).
+Limitations / honesty label: none added here (T13 owns docs/honesty copy). No MOD module-state store exists in this lane, so "enable facilities/transport/calendar" is a no-op (nothing to write).
+Security / integration risks: none — pure data seed, no RLS/action changes. Section order change (operations placed before attendance in SECTIONS) only shifts shared-rng draw order for new code; verified no existing section's output changed (regression tests above).
+Follow-ups: none beyond what rulings already list as debt.
+New dependencies: none.
+Assumptions made: PT2-X exam_week dates set equal to HY-2026's window (both exams.ts papers share the same heldOnFor(0..11) formula/range, so this is an exact superset bound, not a guess); projector category set to "it".
