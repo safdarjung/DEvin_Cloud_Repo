@@ -282,6 +282,7 @@ Rule: a merged migration is never edited. Fixes go in a new file numbered from `
 | `HY-2026` | exam `Half-Yearly 2026` | type `half_yearly`, Term 1, papers for all 72 sections, **published 2026-10-05**, results for 3,024 students; recheck requests: one `applied` (Ishaan Mehta, Science, 61 → 64), one `under_review` (a X-D student, English) |
 | `PT2-X` | exam `Periodic Test 2 (Grade X)` | type `unit_test`, Term 2, status `marks_entry`, papers for X-A…X-F × subjects (max 40, pass 13), all marks entered **except X-A Mathematics** → entered, verified, and published live in steps 9–10; Ananya's result is the live recheck target in steps 11–12 |
 | `UNIT-X-MATH-3` | curriculum unit | Grade X Mathematics unit 3 "Quadratic Equations" → AI quiz source in step 8 (teacher `teacher.x-a` also teaches X-A Mathematics) |
+| X-A Mathematics | curriculum coverage | Units 1–2 covered, unit 3 planned, not covered (M10 seed) |
 | attendance | | Aarav 92%, Ananya 96%, Ishaan 88% over the 60 seeded days; today's VI-A session is marked live with Aarav absent so `guardian.one` receives the absence notification |
 
 ### 8.2 Count assertions after seed

@@ -1,0 +1,10 @@
+Packet: T-0NN M10-T3 Curriculum actions (unit.upsert, lessonPlan.upsert/delete, markCovered) + manifest + C-03 fixtures
+Files changed: src/modules/academics/curriculum.actions.ts (new); tests/db/curriculum-actions.test.ts (new); src/app/api/v1/actions/all-actions.ts (+1 import line); tests/security/escalation.test.ts (+4 fixtures)
+Behavior implemented: curriculum.unit.upsert (academics.manage); curriculum.lessonPlan.upsert/.delete and curriculum.markCovered (assignment.manage). Shared `assertUnitMatchesSection` pre-checks unit-grade match (validation_failed/curriculumUnitId); lessonPlan.upsert additionally checks unit-subject match. markCovered: covered=true upserts on (class_section_id,curriculum_unit_id) with subject_id denormalised from the unit, marked_by=caller; covered=false selects-then-deletes to distinguish idempotent-absent (ok) from write-scope-denied (forbidden). RLS 42501 -> forbidden; coveredOn>today (institution tz via copied todayInTimezone) -> validation_failed. Audit action strings use snake_case (lesson_plan/mark_covered) per 0013's `^[a-z_]+(\.[a-z_]+)+$` check — defineAction `name`/registry/fixture keys stay camelCase per the ruling.
+Tests run: pnpm test:db tests/db/curriculum-actions.test.ts -> 6/6 pass; pnpm test tests/unit/action-names-unique.test.ts -> 4/4 pass; pnpm test:security tests/security/escalation.test.ts -> 842/842 pass; pnpm lint -> clean (touched files; 1 pre-existing warning in people/hr.queries.ts, not mine); pnpm typecheck -> clean.
+Tests not run and why: full pnpm test:db / pnpm test:security (brief: own files only, no DB owner role this task).
+Limitations / honesty label: none (real data, no AI, no channel).
+Security / integration risks: none found; FK/grade/subject pre-checks mirror RLS backstop; no new DB objects.
+Follow-ups: none new (T7 docs owns debt rows).
+New dependencies (justification): none.
+Assumptions made: audit() action strings diverge from the camelCase action `name` (snake_case only, matching 0013's regex and the timetable.saveDraft/timetable.save_draft precedent already in the codebase).
