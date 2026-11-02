@@ -60,7 +60,7 @@ One table per demo file. **Consumed by** maps each generator to the receiving pa
 | twin.ts | changeImpact | `(snapshot: TwinSnapshot, nodeId: Id) => ChangeImpact` | Impact of change on node | Affected array: node_id/effect/severity | F-UI-09 twin |
 | learning.ts | masteryCells | `(opts: FixtureOpts) => MasteryCell[]` | [1..24] cells | Section/subject/topic; mastery%; students_below_threshold | F-UI-03 learning |
 | learning.ts | curriculumCoverage | `(opts: FixtureOpts) => CurriculumCoverage[]` | [1..6] subjects | Subject/section; planned_units/completed_units; on_track | F-UI-03 learning |
-| learning.ts | assessmentPlan | `(opts: FixtureOpts) => AssessmentPlanItem[]` | [1..20] assessments | Title/subject/section/kind/date; status | F-UI-03 learning |
+| learning.ts | assessmentPlan | `(opts: FixtureOpts) => AssessmentPlanItem[]` | [1..20] assessments | Title/subject/section/kind/date; status; real source `exams.schedule` M11 | F-UI-03 learning |
 | data.ts | connectors | `(opts: FixtureOpts) => Connector[]` | [1..8] connectors; mixed status | Slug/kind/provider/scopes; last_sync_at; records_synced | F-UI-14 data |
 | data.ts | connectorSyncs | `(opts: FixtureOpts) => ConnectorSync[]` | [1..20] syncs; mixed status | Connector_id/status/records/errors array | F-UI-14 data |
 | data.ts | dataQualityScores | `(opts: FixtureOpts) => DataQualityScore[]` | [1..12] entities | Entity name; score 0–100; issues array (kind/count) | F-UI-14 data |

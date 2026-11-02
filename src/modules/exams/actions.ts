@@ -16,6 +16,7 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
+import { institutionTimeZone, localParts } from "./schedule-conflicts";
 import {
   CreateExamPapersSchema,
   CreateExamSchema,
@@ -25,6 +26,7 @@ import {
   RecheckIdSchema,
   RequestRecheckSchema,
   SaveResultRemarkSchema,
+  SchedulePapersSchema,
   type CreateExamInput,
   type CreateExamPapersInput,
   type DecideRecheckInput,
@@ -33,6 +35,7 @@ import {
   type RecheckIdInput,
   type RequestRecheckInput,
   type SaveResultRemarkInput,
+  type SchedulePapersInput,
 } from "./schemas";
 
 type ExamsClient = Awaited<ReturnType<typeof createClient>>;
@@ -41,6 +44,25 @@ function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
   if (mapped.ok) throw new AppError("internal", "Unexpected error.");
   throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
+
+// M11 security review fix round 1: mapSqlError only maps `code:<ErrorCode>`
+// exception messages, not raw PostgREST error codes — a real RLS violation
+// or check-constraint hit on schedulePapers's exam_papers select/update
+// calls (e.g. a row deleted between the pre-check and the write) fell
+// through to a generic "internal" error instead of the mapping the M11
+// rulings specify (42501 -> forbidden, 23514/23503/22P02 -> validation_failed),
+// matching the question-bank/actions.ts isRlsViolation precedent.
+const PG_FORBIDDEN_CODE = "42501";
+const PG_VALIDATION_CODES = new Set(["23514", "23503", "22P02"]);
+
+export function throwMappedSchedule(error: unknown): never {
+  const code = error && typeof error === "object" ? (error as { code?: unknown }).code : undefined;
+  if (code === PG_FORBIDDEN_CODE) throw new AppError("forbidden", "Outside your teaching scope.");
+  if (typeof code === "string" && PG_VALIDATION_CODES.has(code)) {
+    throw new AppError("validation_failed", "Invalid schedule data.");
+  }
+  throwMapped(error);
 }
 
 async function loadTerm(supabase: ExamsClient, institutionId: string, termId: string) {
@@ -152,6 +174,90 @@ export const createExamPapers = defineAction({
 
     revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}`);
     return { count: (data ?? []).length };
+  },
+});
+
+// M11-T5 — exam.paper.schedule (rulings "Schedule", "ErrorCode mapping").
+// Never rejects overlaps (T6/T7 report them); `held_on` is kept in sync from
+// `scheduledAt` (institution-local date) so it stays the canonical date even
+// though direct PostgREST writers to exam_papers (exam_write_roles only)
+// could desync it (rulings: display-only, accepted).
+export const schedulePapers = defineAction({
+  name: "exam.paper.schedule",
+  schema: SchedulePapersSchema,
+  permission: "exam.manage",
+  handler: async (input: SchedulePapersInput, ctx) => {
+    const supabase = await createClient();
+
+    const { data: exam, error: examError } = await supabase
+      .from("exams")
+      .select("id, status")
+      .eq("id", input.examId)
+      .eq("institution_id", ctx.institution.id)
+      .maybeSingle();
+    if (examError) throwMappedSchedule(examError);
+    if (!exam) throw new AppError("not_found", "Exam not found.");
+    if (exam.status === "published") throw new AppError("invalid_state", "Cannot reschedule papers of a published exam.");
+
+    const paperIds = input.papers.map((p) => p.paperId);
+    const { data: papers, error: papersError } = await supabase
+      .from("exam_papers")
+      .select("id")
+      .eq("exam_id", input.examId)
+      .eq("institution_id", ctx.institution.id)
+      .in("id", paperIds);
+    if (papersError) throwMappedSchedule(papersError);
+    if ((papers ?? []).length !== paperIds.length) {
+      throw new AppError("not_found", "One or more papers were not found for this exam.");
+    }
+
+    const roomIds = [...new Set(input.papers.map((p) => p.roomId).filter((id): id is string => Boolean(id)))];
+    if (roomIds.length > 0) {
+      const { data: rooms, error: roomsError } = await supabase
+        .from("rooms")
+        .select("id")
+        .eq("institution_id", ctx.institution.id)
+        .in("id", roomIds);
+      if (roomsError) throwMappedSchedule(roomsError);
+      const foundRoomIds = new Set((rooms ?? []).map((r) => r.id as string));
+      const badIndex = input.papers.findIndex((p) => p.roomId && !foundRoomIds.has(p.roomId));
+      if (badIndex >= 0) {
+        throw new AppError("validation_failed", "Room not found.", { papers: [`${badIndex}: room not found`] });
+      }
+    }
+
+    const timeZone = institutionTimeZone(ctx.institution.settings);
+
+    for (const paper of input.papers) {
+      const row = paper.scheduledAt
+        ? {
+            scheduled_at: paper.scheduledAt,
+            duration_minutes: paper.durationMinutes ?? null,
+            room_id: paper.roomId ?? null,
+            held_on: localParts(paper.scheduledAt, timeZone).date,
+          }
+        : { scheduled_at: null, duration_minutes: null, room_id: null };
+
+      const { data, error } = await supabase
+        .from("exam_papers")
+        .update(row)
+        .eq("id", paper.paperId)
+        .eq("exam_id", input.examId)
+        .eq("institution_id", ctx.institution.id)
+        .select("id");
+      if (error) throwMappedSchedule(error);
+      if ((data ?? []).length === 0) throw new AppError("not_found", "Paper not found.");
+    }
+
+    await audit(ctx, {
+      action: "exam.paper.schedule",
+      entityType: "exam",
+      entityId: input.examId,
+      metadata: { examId: input.examId, count: input.papers.length },
+    });
+
+    revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}`);
+    return { updated: input.papers.length };
   },
 });
 

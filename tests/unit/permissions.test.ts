@@ -58,6 +58,7 @@ const MATRIX: Row[] = [
   ["website.publish", true, true, true, false, false, false, false, false, false],
   ["notification.read", true, true, true, true, true, true, true, true, true],
   ["notification.log.read", true, true, true, true, false, false, false, false, false],
+  ["question.manage", true, true, false, false, false, true, true, false, false],
   ["job.manage", true, true, true, false, false, false, false, false, false],
   ["data.import", true, true, true, false, false, false, false, false, false],
   ["document.read", true, true, true, true, true, true, true, true, true],
@@ -65,6 +66,9 @@ const MATRIX: Row[] = [
   ["announcement.manage", true, true, true, false, false, false, false, false, false],
   ["timetable.manage", true, true, true, false, false, false, false, false, false],
   ["timetable.read", true, true, true, true, true, true, true, true, true],
+  ["facilities.manage", true, true, true, false, false, false, false, false, false],
+  ["transport.manage", true, true, true, false, false, false, false, false, false],
+  ["maintenance.request", true, true, true, true, true, true, true, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
@@ -92,5 +96,42 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
   it("data.import is held by exactly owner, principal, admin", () => {
     const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("data.import"));
     expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("facilities.manage is held by exactly owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("facilities.manage"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("transport.manage is held by exactly owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("transport.manage"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("maintenance.request is held by all 7 staff roles", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("maintenance.request"));
+    expect(holders.sort()).toEqual(["accountant", "admin", "admissions", "exam_controller", "owner", "principal", "teacher"].sort());
+  });
+
+  it("maintenance.request is not held by guardian or student", () => {
+    expect(permissionsFor("guardian").includes("maintenance.request")).toBe(false);
+    expect(permissionsFor("student").includes("maintenance.request")).toBe(false);
+  });
+
+  it("teacher has maintenance.request but not facilities.manage", () => {
+    expect(permissionsFor("teacher").includes("maintenance.request")).toBe(true);
+    expect(permissionsFor("teacher").includes("facilities.manage")).toBe(false);
+  });
+
+  it("accountant has maintenance.request but not facilities.manage or transport.manage", () => {
+    expect(permissionsFor("accountant").includes("maintenance.request")).toBe(true);
+    expect(permissionsFor("accountant").includes("facilities.manage")).toBe(false);
+    expect(permissionsFor("accountant").includes("transport.manage")).toBe(false);
+  });
+
+  it("admin has all three new permissions", () => {
+    expect(permissionsFor("admin").includes("facilities.manage")).toBe(true);
+    expect(permissionsFor("admin").includes("transport.manage")).toBe(true);
+    expect(permissionsFor("admin").includes("maintenance.request")).toBe(true);
   });
 });

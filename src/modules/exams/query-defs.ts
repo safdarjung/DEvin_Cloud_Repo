@@ -3,7 +3,7 @@
 // permission gate; RLS stays the actual data filter. Handlers only adapt
 // input -> the existing fn's positional args: no new logic, no new SQL.
 import { defineQuery } from "@/lib/actions/define-query";
-import { uuid } from "@/lib/schemas/common";
+import { isoDate, uuid } from "@/lib/schemas/common";
 import { z } from "zod";
 import {
   examGradeDistribution,
@@ -23,6 +23,8 @@ import {
   listSubjectOptions,
   listTermOptions,
 } from "./queries";
+import { renderReportCardHtml } from "./report-card-html";
+import { examSchedule, examScheduleConflicts } from "./schedule.queries";
 
 // permission: exam.manage — exams/new/page.tsx:16's only caller.
 export const listTermOptionsQuery = defineQuery({
@@ -168,4 +170,49 @@ export const examGradeDistributionQuery = defineQuery({
   schema: z.object({ examId: uuid.optional() }).strict(),
   permission: "exam.result.read",
   handler: (input, ctx) => examGradeDistribution(ctx, input.examId),
+});
+
+// permission: exam.result.read — AssessmentPlanItem replacement (rulings);
+// every exam.result.read holder (owner/principal/admin/exam_controller/
+// teacher/student/guardian) may call this, same floor as getCurrentResult;
+// RLS (staff-only exam_papers_select) is what actually narrows a
+// guardian/student's call to [].
+export const examScheduleQuery = defineQuery({
+  name: "exams.schedule",
+  schema: z
+    .object({
+      examId: uuid.optional(),
+      classSectionId: uuid.optional(),
+      from: isoDate.optional(),
+      to: isoDate.optional(),
+    })
+    .strict(),
+  permission: "exam.result.read",
+  handler: (input, ctx) => examSchedule(ctx, input),
+});
+
+// permission: exam.manage — rulings reuse this key for scheduleConflicts
+// (owner/principal/exam_controller only; teacher holds exam.result.read
+// but not exam.manage, so a teacher call is `forbidden` here).
+export const examScheduleConflictsQuery = defineQuery({
+  name: "exams.scheduleConflicts",
+  schema: z.object({ examId: uuid }).strict(),
+  permission: "exam.manage",
+  handler: (input, ctx) => examScheduleConflicts(ctx, input.examId),
+});
+
+// permission: exam.result.read — same floor/RLS scope as getCurrentResult
+// (rulings: Report card HTML). ?format=html (route.ts) renders this as the
+// document itself; a plain POST/GET without that param gets the raw
+// { html } string back in the JSON envelope.
+export const reportCardHtmlQuery = defineQuery({
+  name: "exams.reportCardHtml",
+  schema: z.object({ examId: uuid, studentId: uuid }).strict(),
+  permission: "exam.result.read",
+  handler: async (input, ctx) => {
+    const result = await getCurrentResult(ctx, input.examId, input.studentId);
+    if (!result) return null;
+    const remark = await getResultRemark(ctx, result.id);
+    return { html: renderReportCardHtml({ institutionName: ctx.institution.name, result, remark }) };
+  },
 });

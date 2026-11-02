@@ -298,6 +298,39 @@ describe("QuestionUpdateSchema", () => {
   });
 });
 
+describe("QuestionCreateSchema vs QuestionUpdateSchema parity", () => {
+  // M11 security review fix round 1: create/update used to inline two
+  // independent copies of the question rules. Diffing both schemas over
+  // the same invalid variants guards against a future edit landing on one
+  // copy and not the other.
+  const createBase = {
+    subjectId: validSubjectId,
+    gradeId: validGradeId,
+    type: "short_answer" as const,
+    difficulty: "medium" as const,
+    body: "What is 2+2?",
+    answer: "4",
+    marks: 1,
+  };
+  const updateBase = { ...createBase, id: validUuid };
+
+  const invalidVariants = [
+    { type: "mcq", answer: "A" }, // mcq without options
+    { type: "mcq", options: ["A", "B", "C"], answer: "D" }, // answer not in options
+    { type: "mcq", options: ["A", "B", "A"], answer: "A" }, // duplicate options
+    { type: "mcq", options: ["A"], answer: "A" }, // too few options
+    { type: "true_false", answer: "maybe" }, // invalid true/false answer
+    { type: "long_answer", options: ["A", "B"] }, // options on non-mcq
+  ];
+
+  it.each(invalidVariants)("rejects the same invalid variant on both schemas: %j", (variant) => {
+    const createResult = QuestionCreateSchema.safeParse({ ...createBase, ...variant });
+    const updateResult = QuestionUpdateSchema.safeParse({ ...updateBase, ...variant });
+    expect(createResult.success).toBe(false);
+    expect(updateResult.success).toBe(false);
+  });
+});
+
 describe("QuestionArchiveSchema", () => {
   it("accepts valid archive input", () => {
     const result = QuestionArchiveSchema.parse({

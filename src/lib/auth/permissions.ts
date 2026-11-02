@@ -54,13 +54,17 @@ export type Permission =
   | "website.publish"
   | "notification.read"
   | "notification.log.read"
+  | "question.manage"
   | "job.manage"
   | "data.import"
   | "document.read"
   | "document.write"
   | "announcement.manage"
   | "timetable.manage"
-  | "timetable.read";
+  | "timetable.read"
+  | "facilities.manage"
+  | "transport.manage"
+  | "maintenance.request";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -100,6 +104,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "website.publish",
     "notification.read",
     "notification.log.read",
+    "question.manage",
     "job.manage",
     "data.import",
     "document.read",
@@ -107,6 +112,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "announcement.manage",
     "timetable.read",
     "timetable.manage",
+    "facilities.manage",
+    "transport.manage",
+    "maintenance.request",
   ],
   principal: [
     "institution.settings.manage",
@@ -145,6 +153,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "website.publish",
     "notification.read",
     "notification.log.read",
+    "question.manage",
     "job.manage",
     "data.import",
     "document.read",
@@ -152,6 +161,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "announcement.manage",
     "timetable.read",
     "timetable.manage",
+    "facilities.manage",
+    "transport.manage",
+    "maintenance.request",
   ],
   admin: [
     "institution.settings.manage",
@@ -188,6 +200,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "announcement.manage",
     "timetable.read",
     "timetable.manage",
+    "facilities.manage",
+    "transport.manage",
+    "maintenance.request",
   ],
   admissions: [
     "dashboard.view",
@@ -208,6 +223,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.read",
     "document.write",
     "timetable.read",
+    "maintenance.request",
   ],
   accountant: [
     "dashboard.view",
@@ -222,6 +238,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "document.read",
     "timetable.read",
+    "maintenance.request",
   ],
   exam_controller: [
     "dashboard.view",
@@ -236,8 +253,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.recheck.review",
     "exam.recheck.decide",
     "notification.read",
+    "question.manage",
     "document.read",
     "timetable.read",
+    "maintenance.request",
   ],
   teacher: [
     "student.read",
@@ -252,8 +271,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "assignment.read",
     "ai.generate",
     "notification.read",
+    "question.manage",
     "document.read",
     "timetable.read",
+    "maintenance.request",
   ],
   student: [
     "student.read",

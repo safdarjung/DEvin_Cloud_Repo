@@ -25,137 +25,83 @@ const baseQuestionObject = z.object({
   marks: z.number().positive().max(100).multipleOf(0.01),
 });
 
-export const QuestionCreateSchema = baseQuestionObject
-  .strict()
-  .superRefine((data, ctx) => {
-    // MCQ must have options (2-6), and answer must be in options
-    if (data.type === "mcq") {
-      if (!data.options || data.options.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "MCQ questions must have options",
-        });
-      } else if (data.options.length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "MCQ questions must have at least 2 options",
-        });
-      } else if (data.options.length > 6) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "MCQ questions can have at most 6 options",
-        });
-      }
-
-      // Check for duplicate options
-      if (data.options && new Set(data.options).size !== data.options.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "Duplicate options not allowed",
-        });
-      }
-
-      // Check that answer is in options
-      if (data.options && !data.options.includes(data.answer)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["answer"],
-          message: "Answer must be one of the provided options",
-        });
-      }
-    } else {
-      // Non-MCQ questions must not have options
-      if (data.options && data.options.length > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "Only MCQ questions can have options",
-        });
-      }
+// M11 security review fix round 1: create/update each inlined an identical
+// ~40-line superRefine body — the only server-side gate keeping MCQ answers
+// inside their offered options and non-MCQ types option-free. Shared here so
+// a future edit to the rule can't silently diverge between the two schemas.
+function questionRules(
+  data: z.infer<typeof baseQuestionObject>,
+  ctx: z.RefinementCtx,
+): void {
+  // MCQ must have options (2-6), and answer must be in options
+  if (data.type === "mcq") {
+    if (!data.options || data.options.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["options"],
+        message: "MCQ questions must have options",
+      });
+    } else if (data.options.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["options"],
+        message: "MCQ questions must have at least 2 options",
+      });
+    } else if (data.options.length > 6) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["options"],
+        message: "MCQ questions can have at most 6 options",
+      });
     }
 
-    // True/false questions must have answer as "true" or "false"
-    if (data.type === "true_false") {
-      if (data.answer !== "true" && data.answer !== "false") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["answer"],
-          message: 'True/false questions must have answer "true" or "false"',
-        });
-      }
+    // Check for duplicate options
+    if (data.options && new Set(data.options).size !== data.options.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["options"],
+        message: "Duplicate options not allowed",
+      });
     }
-  });
+
+    // Check that answer is in options
+    if (data.options && !data.options.includes(data.answer)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["answer"],
+        message: "Answer must be one of the provided options",
+      });
+    }
+  } else {
+    // Non-MCQ questions must not have options
+    if (data.options && data.options.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["options"],
+        message: "Only MCQ questions can have options",
+      });
+    }
+  }
+
+  // True/false questions must have answer as "true" or "false"
+  if (data.type === "true_false") {
+    if (data.answer !== "true" && data.answer !== "false") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["answer"],
+        message: 'True/false questions must have answer "true" or "false"',
+      });
+    }
+  }
+}
+
+export const QuestionCreateSchema = baseQuestionObject.strict().superRefine(questionRules);
 export type QuestionCreateInput = z.infer<typeof QuestionCreateSchema>;
 
 export const QuestionUpdateSchema = baseQuestionObject
   .extend({ id: uuid })
   .strict()
-  .superRefine((data, ctx) => {
-    // MCQ must have options (2-6), and answer must be in options
-    if (data.type === "mcq") {
-      if (!data.options || data.options.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "MCQ questions must have options",
-        });
-      } else if (data.options.length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "MCQ questions must have at least 2 options",
-        });
-      } else if (data.options.length > 6) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "MCQ questions can have at most 6 options",
-        });
-      }
-
-      // Check for duplicate options
-      if (data.options && new Set(data.options).size !== data.options.length) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "Duplicate options not allowed",
-        });
-      }
-
-      // Check that answer is in options
-      if (data.options && !data.options.includes(data.answer)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["answer"],
-          message: "Answer must be one of the provided options",
-        });
-      }
-    } else {
-      // Non-MCQ questions must not have options
-      if (data.options && data.options.length > 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["options"],
-          message: "Only MCQ questions can have options",
-        });
-      }
-    }
-
-    // True/false questions must have answer as "true" or "false"
-    if (data.type === "true_false") {
-      if (data.answer !== "true" && data.answer !== "false") {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["answer"],
-          message: 'True/false questions must have answer "true" or "false"',
-        });
-      }
-    }
-  });
+  .superRefine(questionRules);
 export type QuestionUpdateInput = z.infer<typeof QuestionUpdateSchema>;
 
 export const QuestionArchiveSchema = z

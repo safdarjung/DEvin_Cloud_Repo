@@ -512,4 +512,63 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin"],
   },
+
+  // 0075 (M13-T2) — operations: facilities, transport, calendar. Explicit
+  // row/stop/route scoping (guardian/student own assignment only, teacher
+  // own-raised-only on maintenance_requests) proved in
+  // tests/db/operations-rls.test.ts, not by the generated suite's plain
+  // own-institution probe.
+  assets: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  // owner/principal/admin read every request; every other staff role
+  // (maintenance.request holder) reads only requests they raised
+  // (raised_by = caller) — row-owner scoped, same ["S","O"] shape as
+  // documents.
+  maintenance_requests: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"], // INSERT (raise) by all 7; UPDATE (assign/close) owner/principal/admin only
+  },
+  transport_vehicles: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // student/guardian scoped to their own assignment's route's vehicle
+    write: ["owner", "principal", "admin"],
+  },
+  transport_routes: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // student/guardian scoped to their own assignment's route
+    write: ["owner", "principal", "admin"],
+  },
+  transport_stops: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // student/guardian: own stop only, never the route's other stops
+    write: ["owner", "principal", "admin"],
+  },
+  transport_assignments: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // teacher: taught students only (app.my_taught_student_ids); student/guardian: own/linked student only
+    write: ["owner", "principal", "admin"],
+  },
+  academic_calendar_events: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // student/guardian: audience 'all' only
+    write: ["owner", "principal", "admin"],
+  },
+  student_lifecycle_events: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"], // teacher: taught students only (DBT-17 shape, app.my_taught_student_ids); student/guardian: own/linked student only
+    write: [], // rows come only from the 0076 SECURITY DEFINER functions (T3-T5)
+  },
+  // 0073 (M11-T2) — question_bank: staff-only, no admin (not in 07 §2.2's
+  // question.manage row). teacher scoped to the (grade, subject) pairs
+  // they teach (app.my_taught_section_subjects() joined to class_sections
+  // for grade_id); owner/principal/exam_controller institution-wide.
+  question_bank: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
 };

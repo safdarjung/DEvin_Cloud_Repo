@@ -92,7 +92,9 @@ Assumptions: website blocks are a fixed set of eight; one website per institutio
 | F-EXM-06 | Recheck request → review → decision → correction → re-snapshot → notify | Fairness, traceability | 1 | impl | P0 | F-EXM-04 | exams | conf | J-11, J-12, C-42 |
 | F-EXM-07 | Scanned answer sheets upload + secure view | Paper reality | 2 | planned | P1 | F-EXM-02, F-STU-08 | exams | conf | — |
 | F-EXM-08 | Per-question marks, OCR-assisted marking | Efficiency | 3 | planned | P3 | F-EXM-07 | exams | conf | — |
-| F-EXM-09 | Printable report cards, board-format marksheets | Compliance | 2 | planned | P2 | F-EXM-05 | exams | conf | — |
+| F-EXM-09 | Printable report cards, board-format marksheets | Compliance | 2 | limited (HTML print view; no PDF/board format) | P2 | F-EXM-05 | exams | conf | — |
+| F-EXM-10 | Question bank (create, list, filter by grade/subject/difficulty) | Learning preparation | 2 | limited (API only) | P2 | F-ACA-04 | question-bank | int | — |
+| F-EXM-11 | Exam schedule and conflict detection (dates, times, rooms, overlaps) | Planning | 2 | limited (API only) | P2 | F-EXM-01, F-ACA-02 | exams | int | — |
 
 Assumptions: daily single-mark attendance; one exam per term in the seed; CBSE 9-point grading default.
 
@@ -139,7 +141,7 @@ Assumptions: the only AI prompt in the demo is built from curriculum text, never
 | ID | Feature | Value | Phase | Demo | Pri | Deps | Owner | Sens | Accept |
 |---|---|---|---|---|---|---|---|---|---|
 | F-SVC-01 | Library | Operations | 2 | planned | P2 | F-STU-01 | library (reserved) | int | — |
-| F-SVC-02 | Transport routes, stops, fee linkage | Operations, safety | 2 | planned | P2 | F-STU-01, F-FIN-01 | transport (reserved) | conf | — |
+| F-SVC-02 | Transport routes, stops, assignments | Operations, safety | 2 | limited | P2 | F-STU-01 | transport | conf | — |
 | F-SVC-03 | Inventory and assets | Operations | 2 | planned | P3 | — | inventory (reserved) | int | — |
 | F-SVC-04 | Hostel, canteen, visitor management | Campus | 3 | planned | P3 | F-STU-01 | campus (reserved) | conf | — |
 | F-SVC-05 | Device registry, IoT attendance | Automation | 5 | planned | P3 | F-ATT-04 | campus (reserved) | conf | — |
