@@ -5,7 +5,7 @@
 // timetable.manage (M07-tasks.md header rulings).
 import { z } from "zod";
 import { defineQuery } from "@/lib/actions/define-query";
-import { ForSectionSchema, ForStudentSchema, ForTeacherSchema, VersionQuerySchema } from "./schemas";
+import { CoverNeededSchema, ForSectionSchema, ForStudentSchema, ForTeacherSchema, SubstitutionCandidatesSchema, SubstitutionsSchema, VersionQuerySchema } from "./schemas";
 import {
   timetableConflicts,
   timetableForSection,
@@ -15,6 +15,7 @@ import {
   timetableTeacherWorkload,
   timetableTodayFor,
 } from "./queries";
+import { timetableCoverNeeded, timetableSubstitutionCandidates, timetableSubstitutions } from "./substitution.queries";
 
 export const timetableForSectionQuery = defineQuery({
   name: "timetable.forSection",
@@ -63,4 +64,26 @@ export const timetableRoomUtilisationQuery = defineQuery({
   schema: VersionQuerySchema,
   permission: "timetable.manage",
   handler: (input, ctx) => timetableRoomUtilisation(ctx, input.versionId),
+});
+
+// M08-T12: timetable.coverNeeded / substitutionCandidates / substitutions
+export const timetableCoverNeededQuery = defineQuery({
+  name: "timetable.coverNeeded",
+  schema: CoverNeededSchema,
+  permission: "timetable.manage",
+  handler: (input, ctx) => timetableCoverNeeded(ctx, input.date),
+});
+
+export const timetableSubstitutionCandidatesQuery = defineQuery({
+  name: "timetable.substitutionCandidates",
+  schema: SubstitutionCandidatesSchema,
+  permission: "timetable.manage",
+  handler: (input, ctx) => timetableSubstitutionCandidates(ctx, input.slotId, input.date),
+});
+
+export const timetableSubstitutionsQuery = defineQuery({
+  name: "timetable.substitutions",
+  schema: SubstitutionsSchema,
+  permission: "timetable.read",
+  handler: (input, ctx) => timetableSubstitutions(ctx, input.date),
 });

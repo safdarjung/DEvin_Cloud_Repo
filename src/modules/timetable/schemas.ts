@@ -1,7 +1,7 @@
 // M07-T3 — zod schemas for timetable.* actions. Relative + .ts import: mirrors
 // src/modules/notifications/announcements.schemas.ts (seed-script safe).
 import { z } from "zod";
-import { uuid } from "../../lib/schemas/common.ts"
+import { uuid, isoDate } from "../../lib/schemas/common.ts"
 
 const timePattern = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time format, use HH:MM");
 
@@ -85,3 +85,40 @@ export type ForStudentInput = z.infer<typeof ForStudentSchema>;
 
 export const VersionQuerySchema = z.object({ versionId: uuid }).strict();
 export type VersionQueryInput = z.infer<typeof VersionQuerySchema>;
+
+// M08-T6: Substitution schemas
+export const SubstitutionAssignSchema = z
+  .object({
+    slotId: uuid,
+    date: isoDate,
+    substituteId: uuid,
+    leaveRequestId: uuid.optional(),
+    note: z.string().trim().max(200).optional(),
+  })
+  .strict();
+export type SubstitutionAssignInput = z.infer<typeof SubstitutionAssignSchema>;
+
+export const SubstitutionCancelSchema = z.object({ substitutionId: uuid }).strict();
+export type SubstitutionCancelInput = z.infer<typeof SubstitutionCancelSchema>;
+
+export const SubstitutionCandidatesSchema = z
+  .object({
+    slotId: uuid,
+    date: isoDate,
+  })
+  .strict();
+export type SubstitutionCandidatesInput = z.infer<typeof SubstitutionCandidatesSchema>;
+
+export const CoverNeededSchema = z
+  .object({
+    date: isoDate.optional(),
+  })
+  .strict();
+export type CoverNeededInput = z.infer<typeof CoverNeededSchema>;
+
+export const SubstitutionsSchema = z
+  .object({
+    date: isoDate.optional(),
+  })
+  .strict();
+export type SubstitutionsInput = z.infer<typeof SubstitutionsSchema>;

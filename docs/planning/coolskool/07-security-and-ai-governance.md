@@ -18,6 +18,7 @@
 | T12 | Rate abuse on public forms | Bots on enquiry form | Rate limit per `ip_hash` per hour inside the function; honeypot; (CAPTCHA planned) | C-81, C-83 |
 | T13 | Session fixation / stale claims | Long-lived cookies | `@supabase/ssr` refresh in `proxy.ts` with `getClaims()`; memberships read from DB each request (no role in JWT) | Manual + C-02 |
 | T14 | Secrets in repo or logs | `.env` commit, logging env | `.gitignore` covers `.env*` except example; CI secret scan (`gitleaks` action); logger redacts keys | CI job |
+| T15 | PII egress to email provider | Resend sees recipient addresses and plain-text names in messages | Reserved test domains never sent (`.test`, `example.com`); redaction of names applied server-side before send; no PII in error logs; keys never logged | `tests/unit/resend-channel.test.ts` (no fetch for reserved domains) |
 
 ## 2. Permission matrix
 
@@ -71,6 +72,7 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | exam.recheck.review / decide | ✓ | ✓ | | | | ✓ | | | |
 | assignment.manage | ✓ | ✓ | | | | | s | | |
 | assignment.read | ✓ | ✓ | ✓ | | | | s | s | s |
+| assignment.submit | | | | | | | | s | |
 | ai.generate | ✓ | ✓ | ✓ | ✓ | | | ✓ | | |
 | ai.usage.read | ✓ | ✓ | ✓ | | | | | | |
 | ai.study | | | | | | | | ✓ | |
@@ -81,10 +83,13 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | job.manage | ✓ | ✓ | ✓ | | | | | | |
 | data.import | ✓ | ✓ | ✓ | | | | | | |
 | document.read (RLS scopes: guardian/student own child's student docs; staff own staff docs; admissions student/application) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| document.write (admissions: student/application only) | ✓ | ✓ | ✓ | ✓ | | | | | |
+| document.write (admissions: student/application only; student: own ungraded submission only) | ✓ | ✓ | ✓ | ✓ | | | | s | |
 | announcement.manage (recipients read via their notifications, never the table) | ✓ | ✓ | ✓ | | | | | | |
 | timetable.manage | ✓ | ✓ | ✓ | | | | | | |
 | timetable.read (RLS: staff published; guardian/student own section published) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| staff.attendance.mark (s = self check-in only) | ✓ | ✓ | ✓ | s | s | s | s | | |
+| leave.request (s = own leave) | ✓ | ✓ | ✓ | s | s | s | s | | |
+| leave.approve (never own) | ✓ | ✓ | ✓ | | | | | | |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 
@@ -112,6 +117,11 @@ Exam marks are confidential at all times; pre-publication they are additionally 
 | Supabase Storage bucket `tenant-docs` (M05, `20261028000067`) | Private document files (pdf/jpeg/png, ≤ 10 MB, enforced by the bucket) | No service role. `storage.objects` policies delegate to `public.documents` RLS: SELECT an object only when a visible `documents` row with that `path` is `active`; INSERT only when a visible row with that `path` is `pending` and created by the caller. `documents` INSERT requires `status = 'pending'` and a server-built path under `<institution_id>/<entity_type>/<entity_id>/`; a guard trigger freezes identity columns and allows only pending→active→deleted. Signed read URLs live 60 s and every read is audited (`document.read_url`). |
 | SQL `security definer` — announcements (M06, `20261028000068`) | `public.publish_announcement` → `app.publish_announcement`: caller must be owner/principal/admin of the announcement's institution (`announcement.manage`); draft only; ≥ 1 audience; sets `published` under transaction GUC `app.allow_announcement_publish` (a guard trigger blocks every other status change and any edit of a non-draft row); enqueues `notify.announcement` with payload `{announcement_id}` built in SQL, idempotency key `announcement:<id>`; audits `announcement.published`. `public.*` wrapper granted to `authenticated` only; `app.*` revoked. Recipients never read `announcements` (managers-only RLS) — they receive `notifications` rows from the job; sms/email attempts honour `notification_preferences`. | Role and state re-checked inside the function; payload never caller-supplied. |
 | SQL `security definer` — timetable (M07, `20261028000069`) | `public.publish_timetable` → `app.publish_timetable`: owner/principal/admin of the version's institution (`timetable.manage`); draft only; archives that year's previous published version; sets `published` under GUC `app.allow_timetable_publish`; audits. Guard triggers: version status only under the GUC; slots writable only while their version is draft; slots never on a break period. Conflicts are unique constraints (section / teacher / room per version, weekday, period). Guardians/students read only published slots of `app.my_student_section_ids()`; other staff read published only. | Role and state re-checked inside the function; wrapper granted to `authenticated` only. |
+| SQL `security definer` — staffing (M08, `20261028000070`) | `app.my_staff_ids()` helper (initPlan, no PostgREST call); `public.staff_check_in` → `app.staff_check_in`: self check-in for the caller's staff id in their institution, today, idempotent upsert; `public.decide_leave` → `app.decide_leave`: owner/principal/admin decides `pending→approved|rejected|cancelled` or requester/approver cancels `pending|approved`, state machine under GUC `app.allow_leave_decision`; `public.assign_substitution` → `app.assign_substitution`: owner/principal/admin assigns a free substitute teacher to a slot on a future date, validates double-booking, published slot, leave conflicts, under no GUC; `public.cancel_substitution` → `app.cancel_substitution`: approver roles cancel `assigned→cancelled`. Guard triggers: `app.guard_leave_requests` (leave status/identity immutable, overlap check by trigger) under GUC `app.allow_leave_decision`; `app.guard_attendance_sessions_period` (period-marked sessions insert-only, status changes under GUC `app.allow_period_attendance`). | Role and state re-checked inside functions; wrappers granted to `authenticated` only; helpers used in RLS initPlans. |
+| M10, `20261028000072` — curriculum coverage | no `security definer`; plain RLS (write scope = 0026 assignments rule, coverage SELECT staff + own section, lesson plans owner/principal/admin + teaching scope) + invoker guards `app.guard_lesson_plan_identity`, `app.guard_coverage_identity` | —  |
+| SQL `security definer` — submissions (M09, `20261028000071`) | `public.submit_assignment(p_assignment_id uuid, p_text text default null, p_answers jsonb default null)` → `app.submit_assignment`: student id derived from caller (`app.own_student_id()`), never a parameter; validates assignment is published (`draft` → `not_found`), student is actively enrolled in the assignment's section (`forbidden`), status is `submitted` (`invalid_state` if `closed`), text/answers within limits; inserts or updates on conflict with `where status = 'submitted'` (guards `invalid_state` if already `graded`); audits `assignment.submitted`. `public.grade_submission(p_submission_id uuid, p_score numeric, p_max_score numeric, p_feedback text default null)` → `app.grade_submission`: owner/principal or in-scope teacher (admin excluded — no `assignment.manage`); validates bounds on score/feedback; sets status `graded`, `graded_by`, `graded_at`; allows re-grade; audits `assignment.graded`. Role and state re-checked inside each function; both wrappers granted to `authenticated` only; `app.*` revoked from anon/authenticated/service_role. | Caller id is derived; role re-checked inside; no caller-supplied payload. |
+
+M17: no new definer; outbound email to Resend only when `RESEND_API_KEY` set, plain text only, reserved test domains never sent over the wire.
 
 Any new service-role or `security definer` usage must be added to this table in the same PR.
 

@@ -14,6 +14,7 @@ import {
   getSession,
   getStudentAttendanceSummary,
   getTodaySectionsForTeacher,
+  periodSummary,
   sectionsBelowThreshold,
 } from "./queries";
 
@@ -76,4 +77,15 @@ export const getSectionAttendancePatternsQuery = defineQuery({
   schema: z.object({ classSectionId: uuid, termId: uuid }).strict(),
   permission: "attendance.read",
   handler: (input, ctx) => getSectionAttendancePatterns(ctx, input.classSectionId, input.termId),
+});
+
+// permission: attendance.read — M08-T10: the substitution dialog
+// (F-UI-05) and the teacher's own period register both read this; RLS on
+// attendance_sessions/attendance_records decides which sessions a
+// non-admin caller actually sees (DBT-49).
+export const periodSummaryQuery = defineQuery({
+  name: "attendance.periodSummary",
+  schema: z.object({ classSectionId: uuid, date: isoDate }).strict(),
+  permission: "attendance.read",
+  handler: (input, ctx) => periodSummary(ctx, input.classSectionId, input.date),
 });

@@ -77,12 +77,18 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "assignment.create": { permission: "assignment.manage", input: () => ({ classSectionId: U(), subjectId: U(), title: "Probe" }) },
   "assignment.update": { permission: "assignment.manage", input: () => ({ assignmentId: U(), title: "Probe" }) },
   "assignment.publish": { permission: "assignment.manage", input: () => ({ assignmentId: U() }) },
+  "assignment.submit": { permission: "assignment.submit", input: () => ({ assignmentId: U() }) },
+  "assignment.grade": { permission: "assignment.manage", input: () => ({ submissionId: U(), score: 1, maxScore: 10 }) },
   "attendance.mark": {
     permission: "attendance.mark",
     input: () => ({ classSectionId: U(), date: "2026-10-01", records: [{ studentId: U(), status: "P" }] }),
   },
   "attendance.submit": { permission: "attendance.mark", input: () => ({ sessionId: U() }) },
   "attendance.correct": { permission: "attendance.correct", input: () => ({ recordId: U(), newStatus: "P", reason: "Probe" }) },
+  "attendance.markPeriod": {
+    permission: "attendance.mark",
+    input: () => ({ classSectionId: U(), periodId: U(), date: "2026-10-01", records: [{ studentId: U(), status: "P" }] }),
+  },
   "website.page.create": { permission: "website.edit", input: () => ({ slug: "probe", title: "Probe" }) },
   "website.page.save_version": { permission: "website.edit", input: () => ({ pageId: U(), blocks: [] }) },
   "website.page.publish": { permission: "website.publish", input: () => ({ pageId: U(), versionId: U() }) },
@@ -147,6 +153,18 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     permission: "staff.write",
     input: () => ({ employeeNo: "E1", fullName: "Probe", designation: "Teacher" }),
   },
+  "people.staffAttendance.mark": {
+    permission: "staff.attendance.mark",
+    input: () => ({ date: "2026-10-01", records: [{ staffId: U(), status: "present" }] }),
+  },
+  "people.staffAttendance.checkIn": { permission: "staff.attendance.mark", input: () => ({}) },
+  "people.leave.request": {
+    permission: "leave.request",
+    input: () => ({ leaveType: "casual", startDate: "2026-11-09", endDate: "2026-11-10", reason: "Probe reason" }),
+  },
+  "people.leave.approve": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
+  "people.leave.reject": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
+  "people.leave.cancel": { permission: "leave.request", input: () => ({ leaveId: U() }) },
   "data.import.stage": {
     permission: "data.import",
     input: () => ({
@@ -172,6 +190,19 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     permission: "notification.read",
     input: () => ({ category: "announcement", channel: "sms", enabled: false }),
   },
+  "curriculum.unit.upsert": {
+    permission: "academics.manage",
+    input: () => ({ gradeId: U(), subjectId: U(), title: "Probe Unit", sequence: 1 }),
+  },
+  "curriculum.lessonPlan.upsert": {
+    permission: "assignment.manage",
+    input: () => ({ classSectionId: U(), subjectId: U(), plannedOn: "2026-07-01", title: "Probe", objectives: "Probe objectives" }),
+  },
+  "curriculum.lessonPlan.delete": { permission: "assignment.manage", input: () => ({ id: U() }) },
+  "curriculum.markCovered": {
+    permission: "assignment.manage",
+    input: () => ({ classSectionId: U(), curriculumUnitId: U(), covered: true, coveredOn: "2026-07-01" }),
+  },
   "timetable.room.upsert": { permission: "timetable.manage", input: () => ({ name: "Probe Room", capacity: 30 }) },
   "timetable.period.upsert": {
     permission: "timetable.manage",
@@ -186,6 +217,11 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     }),
   },
   "timetable.publish": { permission: "timetable.manage", input: () => ({ versionId: U() }) },
+  "timetable.substitution.assign": {
+    permission: "timetable.manage",
+    input: () => ({ slotId: U(), date: "2026-11-09", substituteId: U() }),
+  },
+  "timetable.substitution.cancel": { permission: "timetable.manage", input: () => ({ substitutionId: U() }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

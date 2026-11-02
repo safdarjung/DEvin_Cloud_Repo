@@ -18,9 +18,11 @@ import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import {
   CorrectAttendanceSchema,
   MarkAttendanceSchema,
+  MarkPeriodAttendanceSchema,
   SubmitAttendanceSchema,
   type CorrectAttendanceInput,
   type MarkAttendanceInput,
+  type MarkPeriodAttendanceInput,
   type SubmitAttendanceInput,
 } from "./schemas";
 
@@ -124,6 +126,7 @@ export const markAttendance = defineAction({
       .eq("institution_id", ctx.institution.id)
       .eq("class_section_id", input.classSectionId)
       .eq("date", input.date)
+      .is("period_id", null)
       .maybeSingle();
     if (sessionReadError) throwMapped(sessionReadError);
     if (existingSession?.status === "submitted") {
@@ -140,7 +143,7 @@ export const markAttendance = defineAction({
           status: "open",
           marked_by: ctx.membership.staffId,
         },
-        { onConflict: "class_section_id,date" },
+        { onConflict: "class_section_id,date,period_id" },
       )
       .select("id")
       .single();
@@ -177,6 +180,43 @@ export const submitAttendance = defineAction({
 
     revalidatePath(`/${ctx.institution.slug}/attendance`);
     return { sessionId: data.id as string, status: data.status as string };
+  },
+});
+
+// M08-T10 — period attendance (06 §W5 extension, 07 §4 definer row
+// `mark_period_attendance`). The RPC (20261028000070_staffing.sql) is the
+// authorization/state-machine boundary (slot teacher/substitute/admin,
+// published-slot lookup, 7-day window, already-marked check) — same split
+// as submitAttendance/correctAttendance above. This handler's only own job
+// is the status-code check against `settings.attendance.statuses`, same
+// rule as markAttendance, since the RPC does not parse per-institution
+// config.
+export const markPeriodAttendance = defineAction({
+  name: "attendance.markPeriod",
+  schema: MarkPeriodAttendanceSchema,
+  permission: "attendance.mark",
+  handler: async (input: MarkPeriodAttendanceInput, ctx) => {
+    const supabase = await createClient();
+
+    const validCodes = attendanceStatusCodes(ctx);
+    const badStatus = input.records.find((r) => !validCodes.has(r.status));
+    if (badStatus) {
+      throw new AppError("validation_failed", `"${badStatus.status}" is not a configured attendance status.`, {
+        status: [`"${badStatus.status}" is not a configured attendance status.`],
+      });
+    }
+
+    const { data, error } = await supabase.rpc("mark_period_attendance", {
+      p_institution_id: ctx.institution.id,
+      p_class_section_id: input.classSectionId,
+      p_period_id: input.periodId,
+      p_date: input.date,
+      p_records: input.records.map((r) => ({ student_id: r.studentId, status: r.status, note: r.note ?? null })),
+    });
+    if (error) throwMapped(error);
+
+    revalidatePath(`/${ctx.institution.slug}/attendance/${input.classSectionId}`);
+    return { sessionId: data.id as string, recordCount: input.records.length };
   },
 });
 

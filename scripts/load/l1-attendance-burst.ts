@@ -107,7 +107,7 @@ async function main(): Promise<void> {
       .from("attendance_sessions")
       .upsert(
         { institution_id: institutionId, class_section_id: task.classSectionId, date, status: "open" },
-        { onConflict: "class_section_id,date" },
+        { onConflict: "class_section_id,date,period_id" },
       )
       .select("id")
       .single();

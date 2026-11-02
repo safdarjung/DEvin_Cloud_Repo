@@ -166,8 +166,8 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   assignment_submissions: {
     classes: ["O", "T"],
-    read: ["teacher", "student", "guardian"], // teacher scoped to their sections; no staff-wide read
-    write: ["student"], // own submission only (P1)
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"], // teacher scoped to their sections (M09)
+    write: [], // self-grading hole closed (M09): writes only via submit_assignment/grade_submission RPCs, no INSERT/UPDATE policy
   },
   // T-036 phase 2 / DBT-21 (20261028000023) — answers/explanations moved out
   // of assignments.content into this staff-only table; scoped to
@@ -511,5 +511,52 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["S+G"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin"],
+  },
+
+  // 0072 (M10-T1) — lesson_plans: owner/principal/admin see every plan;
+  // teacher scoped to write-scope W (class teacher or taught section+
+  // subject); no guardian/student, accountant, admissions, exam_controller
+  // — explicit scoping proved in tests/db/curriculum-rls.test.ts, not by
+  // the generated suite's plain own-institution probe.
+  lesson_plans: {
+    classes: ["C", "T"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: ["owner", "principal", "teacher"],
+  },
+  // curriculum_unit_coverage: all staff roles read (same shape as 0020's
+  // subject_assignments_select), plus guardian/student via their own/
+  // linked child's current section; write is the same W as lesson_plans.
+  curriculum_unit_coverage: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "teacher"],
+  },
+
+  // 0070 part 1 (M08-T2) — staff_attendance/leave_requests: owner/principal/
+  // admin see every row of the institution; every other staff role sees
+  // only its own staff_id's rows via app.my_staff_ids(); guardian/student
+  // have no staff_id and see none — explicit own-row scoping proved in
+  // tests/db/staff-leave-rls.test.ts, not by the generated suite's plain
+  // own-institution probe.
+  staff_attendance: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  leave_requests: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+  },
+  // 0070 part 2 (M08-T3) — substitutions: owner/principal/admin see every
+  // row; every other staff role sees only rows where its own staff_id is
+  // substitute_teacher_id or original_teacher_id via app.my_staff_ids();
+  // own-row scoping proved in tests/db/substitutions-rls.test.ts, not by
+  // the generated suite's plain own-institution probe. No write policy at
+  // all: writes are assign_substitution/cancel_substitution only.
+  substitutions: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: [],
   },
 };

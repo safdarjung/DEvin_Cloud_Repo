@@ -3,7 +3,9 @@
 // dispatcher imports this so every action is registered before lookup.
 // every new action file must be imported here
 import "@/modules/academics/assignments.actions";
+import "@/modules/academics/curriculum.actions";
 import "@/modules/academics/setup.actions";
+import "@/modules/academics/submissions.actions";
 import "@/modules/admissions/actions";
 import "@/modules/ai/student-study.actions";
 import "@/modules/attendance/actions";
@@ -16,5 +18,8 @@ import "@/modules/jobs/actions";
 import "@/modules/notifications/actions";
 import "@/modules/notifications/announcements.actions";
 import "@/modules/people/actions";
+import "@/modules/people/leave.actions";
+import "@/modules/people/staff-attendance.actions";
 import "@/modules/timetable/actions";
+import "@/modules/timetable/substitution.actions";
 import "@/modules/website/actions";

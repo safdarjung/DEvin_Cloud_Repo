@@ -11,12 +11,20 @@ import type { TenantContext } from "@/lib/auth/types";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import type { RoomUtilisation, TeacherWorkload, TimetableConflict } from "@/modules/fabric/types";
 import type { TimetablePeriod } from "@/components/widgets/timetable-widget";
+import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
+import { approvedLeaveDates } from "@/modules/people/hr.queries";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_MAX_PERIODS_WEEK = 36; // rulings: settings.timetable.max_periods_week, default 36
 
-function toHHMM(time: string): string {
+export function toHHMM(time: string): string {
   return time.slice(0, 5); // postgrest "time" -> "HH:MM:SS"
+}
+
+/** `fromIso` + `days` as an ISO date string (UTC calendar arithmetic, no tz shift). */
+function addDaysIso(fromIso: string, days: number): string {
+  const [y, m, d] = fromIso.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 /** Institution-local weekday (0=Sun..6=Sat) and "HH:MM" — timezone source mirrors attendance/queries.ts's todayInInstitutionTimezone. */
@@ -36,7 +44,7 @@ function nowPartsInInstitutionTimezone(ctx: TenantContext): { weekday: number; h
 }
 
 /** `settings.timetable.max_periods_week` — no schema field exists for it yet (core/schemas.ts is a different module's file; out of scope here), so a plain numeric default, same shortcut shape as settings.academic.max_section_size (0005 migration). */
-function maxPeriodsPerWeek(ctx: TenantContext): number {
+export function maxPeriodsPerWeek(ctx: TenantContext): number {
   const timetable = ctx.institution.settings.timetable;
   const raw = typeof timetable === "object" && timetable !== null ? (timetable as Record<string, unknown>).max_periods_week : undefined;
   return typeof raw === "number" && raw > 0 ? raw : DEFAULT_MAX_PERIODS_WEEK;
@@ -48,7 +56,7 @@ function maxPeriodsPerWeek(ctx: TenantContext): number {
  * and publishing archives the year's previous version, so the latest
  * published one is the current year's.
  */
-async function defaultPublishedVersionId(ctx: TenantContext): Promise<string | null> {
+export async function defaultPublishedVersionId(ctx: TenantContext): Promise<string | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("timetable_versions")
@@ -328,7 +336,7 @@ export async function timetableConflicts(ctx: TenantContext, versionId: string):
   return conflicts;
 }
 
-/** Per-teacher periods/week against settings.timetable.max_periods_week, for every teacher who has at least one slot in this version. subjects/sections are the distinct values across their actual slots (subject_id is direct on timetable_slots, 0069 amended — no subject_assignments inference needed). Requires timetable.manage. leave_dates is always [] until M8. */
+/** Per-teacher periods/week against settings.timetable.max_periods_week, for every teacher who has at least one slot in this version. subjects/sections are the distinct values across their actual slots (subject_id is direct on timetable_slots, 0069 amended — no subject_assignments inference needed). Requires timetable.manage. leave_dates (M08-T12) = approvedLeaveDates for today..today+13 (0070 leave_requests). */
 export async function timetableTeacherWorkload(ctx: TenantContext, versionId: string): Promise<TeacherWorkload[]> {
   const supabase = await createClient();
   const { data: slotRows, error } = await supabase
@@ -358,6 +366,9 @@ export async function timetableTeacherWorkload(ctx: TenantContext, versionId: st
     byTeacher.set(row.teacher_id, entry);
   }
 
+  const today = todayInInstitutionTimezone(ctx);
+  const leaveByStaff = await approvedLeaveDates(ctx, teacherIds, today, addDaysIso(today, 13));
+
   return [...byTeacher.entries()].map(([staffId, entry]) => ({
     staff_id: staffId,
     name: nameById.get(staffId) ?? staffId,
@@ -365,7 +376,7 @@ export async function timetableTeacherWorkload(ctx: TenantContext, versionId: st
     max_periods: maxPeriods,
     subjects: [...entry.subjects],
     sections: [...entry.sections],
-    leave_dates: [],
+    leave_dates: leaveByStaff.get(staffId) ?? [],
   }));
 }
 

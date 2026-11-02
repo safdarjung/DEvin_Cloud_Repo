@@ -6,8 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 
-/** Institution-local calendar date (same approach as actions.ts's own `todayInTimezone` — not the server's UTC date). */
-function todayInInstitutionTimezone(ctx: TenantContext): string {
+/** Institution-local calendar date (same approach as actions.ts's own `todayInTimezone` — not the server's UTC date). Exported for src/modules/people/hr.queries.ts (M08-T11 rulings §Queries). */
+export function todayInInstitutionTimezone(ctx: TenantContext): string {
   const locale = InstitutionSettingsSchema.shape.locale.safeParse(ctx.institution.settings.locale);
   const timezone = locale.success ? locale.data.timezone : "Asia/Kolkata";
   return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).format(
@@ -119,6 +119,7 @@ export async function getSession(ctx: TenantContext, classSectionId: string, dat
     .eq("institution_id", ctx.institution.id)
     .eq("class_section_id", classSectionId)
     .eq("date", date)
+    .is("period_id", null)
     .maybeSingle();
   if (sessionReadError) throw sessionReadError;
 
@@ -224,6 +225,7 @@ export async function getStudentAttendanceSummary(
     .select("status, attendance_sessions!inner(date)")
     .eq("institution_id", ctx.institution.id)
     .eq("student_id", studentId)
+    .is("attendance_sessions.period_id", null)
     .gte("attendance_sessions.date", term.starts_on)
     .lte("attendance_sessions.date", term.ends_on);
   if (recordsError) throw recordsError;
@@ -267,6 +269,7 @@ export async function attendanceTodaySummary(ctx: TenantContext): Promise<Attend
     .from("attendance_records")
     .select("status, attendance_sessions!inner(date)")
     .eq("institution_id", ctx.institution.id)
+    .is("attendance_sessions.period_id", null)
     .eq("attendance_sessions.date", date);
   if (error) throw error;
 
@@ -294,6 +297,7 @@ export async function sectionsBelowThreshold(ctx: TenantContext): Promise<Sectio
     .from("attendance_records")
     .select("status, attendance_sessions!inner(date, class_sections(id, name, grades(code)))")
     .eq("institution_id", ctx.institution.id)
+    .is("attendance_sessions.period_id", null)
     .eq("attendance_sessions.date", date);
   if (error) throw error;
 
@@ -420,6 +424,7 @@ export async function getSectionAttendancePatterns(
     .select("id, date")
     .eq("institution_id", ctx.institution.id)
     .eq("class_section_id", classSectionId)
+    .is("period_id", null)
     .gte("date", term.starts_on)
     .lte("date", term.ends_on)
     .order("date", { ascending: false });
@@ -498,4 +503,82 @@ export async function getSectionAttendancePatterns(
   });
 
   return { classTeacherId: section.class_teacher_id, students };
+}
+
+// M08-T10 — period attendance summary (06 §W5 extension, timetable.manage's
+// substitution dialog and the teacher's own period register both read this).
+// RLS on attendance_sessions/attendance_records (06 §2.2, DBT-49) decides
+// which sessions are visible to the caller; this function does not add its
+// own narrowing on top.
+
+export interface PeriodSummaryRow {
+  periodId: string;
+  seq: number;
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  sessionId: string | null;
+  counts: Record<string, number>;
+}
+
+/** Every non-break period of the institution, with this section/date's session (if marked) and its status counts. */
+export async function periodSummary(
+  ctx: TenantContext,
+  classSectionId: string,
+  date: string,
+): Promise<PeriodSummaryRow[]> {
+  const supabase = await createClient();
+
+  const { data: periods, error: periodsError } = await supabase
+    .from("periods")
+    .select("id, seq, name, starts_at, ends_at")
+    .eq("institution_id", ctx.institution.id)
+    .eq("is_break", false)
+    .order("seq");
+  if (periodsError) throw periodsError;
+  const periodRows = periods ?? [];
+  if (periodRows.length === 0) return [];
+
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("attendance_sessions")
+    .select("id, period_id")
+    .eq("institution_id", ctx.institution.id)
+    .eq("class_section_id", classSectionId)
+    .eq("date", date)
+    .in(
+      "period_id",
+      periodRows.map((p) => p.id),
+    );
+  if (sessionsError) throw sessionsError;
+  const sessionRows = sessions ?? [];
+  const sessionIdByPeriod = new Map(sessionRows.map((s) => [s.period_id as string, s.id as string]));
+
+  const countsBySession = new Map<string, Record<string, number>>();
+  const sessionIds = sessionRows.map((s) => s.id);
+  if (sessionIds.length > 0) {
+    const { data: records, error: recordsError } = await supabase
+      .from("attendance_records")
+      .select("session_id, status")
+      .eq("institution_id", ctx.institution.id)
+      .in("session_id", sessionIds);
+    if (recordsError) throw recordsError;
+    for (const r of records ?? []) {
+      const counts = countsBySession.get(r.session_id) ?? {};
+      counts[r.status] = (counts[r.status] ?? 0) + 1;
+      countsBySession.set(r.session_id, counts);
+    }
+  }
+
+  return periodRows.map((p) => {
+    const sessionId = sessionIdByPeriod.get(p.id) ?? null;
+    return {
+      periodId: p.id,
+      seq: p.seq,
+      name: p.name,
+      startsAt: p.starts_at,
+      endsAt: p.ends_at,
+      sessionId,
+      counts: sessionId ? countsBySession.get(sessionId) ?? {} : {},
+    };
+  });
 }

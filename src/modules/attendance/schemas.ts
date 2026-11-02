@@ -42,3 +42,35 @@ export const CorrectAttendanceSchema = z
   .strict();
 
 export type CorrectAttendanceInput = z.infer<typeof CorrectAttendanceSchema>;
+
+// M08-T6: Period attendance schemas
+export const MarkPeriodAttendanceSchema = z
+  .object({
+    classSectionId: uuid,
+    periodId: uuid,
+    date: isoDate,
+    records: z
+      .array(
+        z
+          .object({
+            studentId: uuid,
+            status: attendanceStatusCode,
+            note: shortText.optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(200),
+  })
+  .strict();
+
+export type MarkPeriodAttendanceInput = z.infer<typeof MarkPeriodAttendanceSchema>;
+
+export const PeriodSummarySchema = z
+  .object({
+    classSectionId: uuid,
+    date: isoDate,
+  })
+  .strict();
+
+export type PeriodSummaryInput = z.infer<typeof PeriodSummarySchema>;

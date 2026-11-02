@@ -269,14 +269,14 @@ isOneToOne: false
                   ]
                 },"assignment_submissions": {
                   Row: {
-                    "assignment_id": string,"content": Json | null,"created_at": string,"feedback": string | null,"id": string,"institution_id": string,"score": number | null,"student_id": string,"submitted_at": string,"updated_at": string
+                    "assignment_id": string,"attempt": number,"content": Json | null,"created_at": string,"feedback": string | null,"graded_at": string | null,"graded_by": string | null,"id": string,"institution_id": string,"is_late": boolean,"max_score": number | null,"score": number | null,"status": string,"student_id": string,"submitted_at": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "assignment_id": string,"content"?: Json | null,"created_at"?: string,"feedback"?: string | null,"id"?: string,"institution_id": string,"score"?: number | null,"student_id": string,"submitted_at"?: string,"updated_at"?: string
+                    "assignment_id": string,"attempt"?: number,"content"?: Json | null,"created_at"?: string,"feedback"?: string | null,"graded_at"?: string | null,"graded_by"?: string | null,"id"?: string,"institution_id": string,"is_late"?: boolean,"max_score"?: number | null,"score"?: number | null,"status"?: string,"student_id": string,"submitted_at"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "assignment_id"?: string,"content"?: Json | null,"created_at"?: string,"feedback"?: string | null,"id"?: string,"institution_id"?: string,"score"?: number | null,"student_id"?: string,"submitted_at"?: string,"updated_at"?: string
+                    "assignment_id"?: string,"attempt"?: number,"content"?: Json | null,"created_at"?: string,"feedback"?: string | null,"graded_at"?: string | null,"graded_by"?: string | null,"id"?: string,"institution_id"?: string,"is_late"?: boolean,"max_score"?: number | null,"score"?: number | null,"status"?: string,"student_id"?: string,"submitted_at"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -284,6 +284,12 @@ isOneToOne: false
       columns: ["assignment_id"]
 isOneToOne: false
       referencedRelation: "assignments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "assignment_submissions_graded_by_fkey"
+      columns: ["graded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "assignment_submissions_institution_id_fkey"
@@ -409,14 +415,14 @@ isOneToOne: false
                   ]
                 },"attendance_sessions": {
                   Row: {
-                    "class_section_id": string,"created_at": string,"date": string,"id": string,"institution_id": string,"marked_by": string | null,"status": string,"submitted_at": string | null,"updated_at": string
+                    "class_section_id": string,"created_at": string,"date": string,"id": string,"institution_id": string,"marked_by": string | null,"period_id": string | null,"status": string,"submitted_at": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_section_id": string,"created_at"?: string,"date": string,"id"?: string,"institution_id": string,"marked_by"?: string | null,"status"?: string,"submitted_at"?: string | null,"updated_at"?: string
+                    "class_section_id": string,"created_at"?: string,"date": string,"id"?: string,"institution_id": string,"marked_by"?: string | null,"period_id"?: string | null,"status"?: string,"submitted_at"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "class_section_id"?: string,"created_at"?: string,"date"?: string,"id"?: string,"institution_id"?: string,"marked_by"?: string | null,"status"?: string,"submitted_at"?: string | null,"updated_at"?: string
+                    "class_section_id"?: string,"created_at"?: string,"date"?: string,"id"?: string,"institution_id"?: string,"marked_by"?: string | null,"period_id"?: string | null,"status"?: string,"submitted_at"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -436,6 +442,12 @@ isOneToOne: false
       columns: ["marked_by"]
 isOneToOne: false
       referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_sessions_period_id_fkey"
+      columns: ["period_id"]
+isOneToOne: false
+      referencedRelation: "periods"
       referencedColumns: ["id"]
     }
                   ]
@@ -546,6 +558,56 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"curriculum_unit_coverage": {
+                  Row: {
+                    "class_section_id": string,"covered_on": string,"created_at": string,"curriculum_unit_id": string,"id": string,"institution_id": string,"lesson_plan_id": string | null,"marked_by": string,"notes": string | null,"subject_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"covered_on": string,"created_at"?: string,"curriculum_unit_id": string,"id"?: string,"institution_id": string,"lesson_plan_id"?: string | null,"marked_by": string,"notes"?: string | null,"subject_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"covered_on"?: string,"created_at"?: string,"curriculum_unit_id"?: string,"id"?: string,"institution_id"?: string,"lesson_plan_id"?: string | null,"marked_by"?: string,"notes"?: string | null,"subject_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "curriculum_unit_coverage_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_unit_coverage_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_unit_coverage_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_unit_coverage_lesson_plan_id_fkey"
+      columns: ["lesson_plan_id"]
+isOneToOne: false
+      referencedRelation: "lesson_plans"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_unit_coverage_marked_by_fkey"
+      columns: ["marked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_unit_coverage_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
       referencedColumns: ["id"]
     }
                   ]
@@ -1257,6 +1319,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"leave_requests": {
+                  Row: {
+                    "created_at": string,"created_by": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"end_date": string,"id": string,"institution_id": string,"leave_type": string,"reason": string,"staff_id": string,"start_date": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"end_date": string,"id"?: string,"institution_id": string,"leave_type": string,"reason": string,"staff_id": string,"start_date": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"end_date"?: string,"id"?: string,"institution_id"?: string,"leave_type"?: string,"reason"?: string,"staff_id"?: string,"start_date"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "leave_requests_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "leave_requests_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "leave_requests_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "leave_requests_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"ledger_entries": {
                   Row: {
                     "account": string,"created_at": string,"credit": number,"debit": number,"entry_date": string,"id": string,"institution_id": string,"invoice_id": string | null,"memo": string | null,"payment_id": string | null
@@ -1286,6 +1386,50 @@ isOneToOne: false
       columns: ["payment_id"]
 isOneToOne: false
       referencedRelation: "payments"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"lesson_plans": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"created_by": string,"curriculum_unit_id": string | null,"id": string,"institution_id": string,"objectives": string,"planned_on": string,"resources": string | null,"subject_id": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"created_by": string,"curriculum_unit_id"?: string | null,"id"?: string,"institution_id": string,"objectives": string,"planned_on": string,"resources"?: string | null,"subject_id": string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"created_by"?: string,"curriculum_unit_id"?: string | null,"id"?: string,"institution_id"?: string,"objectives"?: string,"planned_on"?: string,"resources"?: string | null,"subject_id"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "lesson_plans_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lesson_plans_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lesson_plans_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lesson_plans_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "lesson_plans_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
       referencedColumns: ["id"]
     }
                   ]
@@ -1797,6 +1941,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"staff_attendance": {
+                  Row: {
+                    "check_in_at": string | null,"created_at": string,"date": string,"id": string,"institution_id": string,"marked_by": string | null,"note": string | null,"source": string,"staff_id": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "check_in_at"?: string | null,"created_at"?: string,"date": string,"id"?: string,"institution_id": string,"marked_by"?: string | null,"note"?: string | null,"source"?: string,"staff_id": string,"status": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "check_in_at"?: string | null,"created_at"?: string,"date"?: string,"id"?: string,"institution_id"?: string,"marked_by"?: string | null,"note"?: string | null,"source"?: string,"staff_id"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "staff_attendance_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "staff_attendance_marked_by_fkey"
+      columns: ["marked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "staff_attendance_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"students": {
                   Row: {
                     "admission_no": string,"created_at": string,"details": Json | null,"dob": string,"first_name": string,"gender": string,"id": string,"institution_id": string,"last_name": string | null,"photo_path": string | null,"source_application_id": string | null,"status": string,"updated_at": string,"user_id": string | null
@@ -1936,6 +2112,62 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"substitutions": {
+                  Row: {
+                    "cancelled_at": string | null,"created_at": string,"created_by": string | null,"date": string,"id": string,"institution_id": string,"leave_request_id": string | null,"note": string | null,"original_teacher_id": string,"period_id": string,"slot_id": string,"status": string,"substitute_teacher_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cancelled_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"date": string,"id"?: string,"institution_id": string,"leave_request_id"?: string | null,"note"?: string | null,"original_teacher_id": string,"period_id": string,"slot_id": string,"status"?: string,"substitute_teacher_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "cancelled_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"date"?: string,"id"?: string,"institution_id"?: string,"leave_request_id"?: string | null,"note"?: string | null,"original_teacher_id"?: string,"period_id"?: string,"slot_id"?: string,"status"?: string,"substitute_teacher_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "substitutions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "substitutions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "substitutions_leave_request_id_fkey"
+      columns: ["leave_request_id"]
+isOneToOne: false
+      referencedRelation: "leave_requests"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "substitutions_original_teacher_id_fkey"
+      columns: ["original_teacher_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "substitutions_period_id_fkey"
+      columns: ["period_id"]
+isOneToOne: false
+      referencedRelation: "periods"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "substitutions_slot_id_fkey"
+      columns: ["slot_id"]
+isOneToOne: false
+      referencedRelation: "timetable_slots"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "substitutions_substitute_teacher_id_fkey"
+      columns: ["substitute_teacher_id"]
+isOneToOne: false
+      referencedRelation: "staff"
       referencedColumns: ["id"]
     }
                   ]
@@ -2094,6 +2326,52 @@ isOneToOne: true
 "apply_recheck_decision":
 { Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
                            },
+"assign_substitution":
+{ Args: { "p_date": string,"p_leave_request_id"?: string,"p_note"?: string,"p_slot_id": string,"p_substitute_id": string }; Returns: {
+              "cancelled_at": string | null,
+"created_at": string,
+"created_by": string | null,
+"date": string,
+"id": string,
+"institution_id": string,
+"leave_request_id": string | null,
+"note": string | null,
+"original_teacher_id": string,
+"period_id": string,
+"slot_id": string,
+"status": string,
+"substitute_teacher_id": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "substitutions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"cancel_substitution":
+{ Args: { "p_substitution_id": string }; Returns: {
+              "cancelled_at": string | null,
+"created_at": string,
+"created_by": string | null,
+"date": string,
+"id": string,
+"institution_id": string,
+"leave_request_id": string | null,
+"note": string | null,
+"original_teacher_id": string,
+"period_id": string,
+"slot_id": string,
+"status": string,
+"substitute_teacher_id": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "substitutions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "close_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },
@@ -2126,6 +2404,29 @@ isOneToOne: true
 "decide_application":
 { Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
                            },
+"decide_leave":
+{ Args: { "p_decision": string,"p_leave_id": string,"p_note"?: string }; Returns: {
+              "created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decided_by": string | null,
+"decision_note": string | null,
+"end_date": string,
+"id": string,
+"institution_id": string,
+"leave_type": string,
+"reason": string,
+"staff_id": string,
+"start_date": string,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "leave_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "enqueue_term_invoices":
 { Args: { "p_grade_id"?: string,"p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
@@ -2146,6 +2447,31 @@ isOneToOne: true
               "institution_id": string,"institution_name": string,"nav": Json,"theme": Json,"website_id": string
             }[]
                            },
+"grade_submission":
+{ Args: { "p_feedback"?: string,"p_max_score": number,"p_score": number,"p_submission_id": string }; Returns: {
+              "assignment_id": string,
+"attempt": number,
+"content": Json | null,
+"created_at": string,
+"feedback": string | null,
+"graded_at": string | null,
+"graded_by": string | null,
+"id": string,
+"institution_id": string,
+"is_late": boolean,
+"max_score": number | null,
+"score": number | null,
+"status": string,
+"student_id": string,
+"submitted_at": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "assignment_submissions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "invite_member":
 { Args: { "p_email": string,"p_guardian_id"?: string,"p_institution_id": string,"p_role": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: {
               "invitation_id": string,"token": string
@@ -2197,6 +2523,25 @@ isOneToOne: true
                           SetofOptions: {
         from: "*"
         to: "jobs"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"mark_period_attendance":
+{ Args: { "p_class_section_id": string,"p_date": string,"p_institution_id": string,"p_period_id": string,"p_records": Json }; Returns: {
+              "class_section_id": string,
+"created_at": string,
+"date": string,
+"id": string,
+"institution_id": string,
+"marked_by": string | null,
+"period_id": string | null,
+"status": string,
+"submitted_at": string | null,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "attendance_sessions"
         isOneToOne: true
         isSetofReturn: false
       } },
@@ -2277,9 +2622,54 @@ isOneToOne: true
 "revoke_invitation":
 { Args: { "p_invitation_id": string }; Returns: undefined
                            },
+"staff_check_in":
+{ Args: { "p_institution_id": string }; Returns: {
+              "check_in_at": string | null,
+"created_at": string,
+"date": string,
+"id": string,
+"institution_id": string,
+"marked_by": string | null,
+"note": string | null,
+"source": string,
+"staff_id": string,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "staff_attendance"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "start_recheck_review":
 { Args: { "p_institution_id": string,"p_request_id": string }; Returns: Json
                            },
+"submit_assignment":
+{ Args: { "p_answers"?: Json,"p_assignment_id": string,"p_text"?: string }; Returns: {
+              "assignment_id": string,
+"attempt": number,
+"content": Json | null,
+"created_at": string,
+"feedback": string | null,
+"graded_at": string | null,
+"graded_by": string | null,
+"id": string,
+"institution_id": string,
+"is_late": boolean,
+"max_score": number | null,
+"score": number | null,
+"status": string,
+"student_id": string,
+"submitted_at": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "assignment_submissions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "submit_attendance":
 { Args: { "p_institution_id": string,"p_session_id": string }; Returns: {
               "class_section_id": string,
@@ -2288,6 +2678,7 @@ isOneToOne: true
 "id": string,
 "institution_id": string,
 "marked_by": string | null,
+"period_id": string | null,
 "status": string,
 "submitted_at": string | null,
 "updated_at": string

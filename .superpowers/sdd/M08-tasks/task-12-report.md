@@ -1,0 +1,10 @@
+Packet: T-0NN M08-T12 Substitution queries (coverNeeded, substitutionCandidates, substitutions) + workload leave_dates
+Files changed: src/modules/timetable/substitution.queries.ts (new), src/modules/timetable/query-defs.ts (+3 defs), src/modules/timetable/queries.ts (export defaultPublishedVersionId/toHHMM/maxPeriodsPerWeek; teacherWorkload.leave_dates now = approvedLeaveDates for today..today+13), tests/db/substitution-queries.test.ts (new), tests/db/api-query-route.test.ts (+3 smoke samples)
+Behavior: 3 queries registered under timetable.*. coverNeeded = published slots on date's weekday whose teacher is on leave/absent (reuses people/hr.queries' staffUnavailableOn), joined to any assigned substitution. substitutionCandidates mirrors assign_substitution's own checks (active is_teaching, not slot teacher, free at that weekday/period in-version, no clashing assignment, not unavailable), sorted periodsWeek asc then name. substitutions = assigned rows on date, RLS-scoped. teacherWorkload.leave_dates now real (was []).
+Tests run: pnpm test:db tests/db/substitution-queries.test.ts tests/db/timetable-queries.test.ts tests/db/api-query-route.test.ts -> 14/14 pass. pnpm lint -> clean. pnpm typecheck -> clean.
+Tests not run: full test:db/test:security (non-owner; brief forbids), db:reset/seed/types (not owner).
+Limitations/honesty: no UI this milestone; nothing to label. Candidates' periodsWeek/maxPeriods recompute per call (no caching) — fine at seed-data scale.
+Security/integration risks: none found; RLS already narrows substitutions, queries add institution_id filters as defense in depth only.
+Follow-ups: none new (F-UI-05 dialog consumes these queries in a later UI task).
+New dependencies: none.
+Assumptions: PostgREST multi-FK disambiguation via `alias:staff!fk_column(...)` (no prior example in repo) used for substitutions' two staff FKs — verified by passing tests. weekday computed from date via UTC calendar math (matches DB's extract(isodow), since slots never use Sunday).
