@@ -60,10 +60,10 @@ Assumptions: phone is the guardian's primary identity; one guardian record per p
 | F-ADM-05 | Interaction/entrance scheduling, waitlists, seat matrix | Scale | 2 | planned | P2 | F-ADM-02 | admissions | conf | — |
 | F-ADM-06 | Admissions funnel analytics | Principal insight | 1 | impl (counts) | P0 | F-ADM-01 | admissions | int | J-13 |
 | F-COM-01 | In-app notifications | Core channel | 1 | impl | P0 | F-IDN-03 | notifications | int | C-30 |
-| F-COM-02 | SMS and email delivery via adapters | Reach parents | 1 | sim | P0 | F-COM-01 | notifications | conf | C-31 |
+| F-COM-02 | SMS and email delivery via adapters | Reach parents | 1 | impl (email live when `RESEND_API_KEY` set; SMS sim) | P0 | F-COM-01 | notifications | conf | C-31 |
 | F-COM-03 | Circulars/notices to classes, PTM scheduling, diary notes | Daily communication | 2 | planned | P2 | F-COM-01 | notifications | int | — |
 | F-COM-04 | WhatsApp channel, bilingual templates | Reach | 2 | planned | P2 | F-COM-02 | notifications | conf | — |
-| F-COM-05 | Message log with simulated badge | Demo honesty | 1 | impl | P0 | F-COM-02 | notifications | conf | C-31 |
+| F-COM-05 | Message log with simulated/sent/failed badge per delivery row | Demo honesty | 1 | impl | P0 | F-COM-02 | notifications | conf | C-31 |
 
 Assumptions: website blocks are a fixed set of eight; one website per institution.
 
@@ -76,7 +76,7 @@ Assumptions: website blocks are a fixed set of eight; one website per institutio
 | F-ACA-03 | Subject–teacher assignments | Permissions, timetable | 1 | impl | P0 | F-ACA-02 | academics | int | C-13 |
 | F-ACA-04 | Curriculum units per subject/grade | AI input, planning | 1 | impl | P0 | F-ACA-01 | academics | int | J-08 |
 | F-ACA-05 | Assignments (create, publish, guardian/student view) | Homework | 1 | impl | P0 | F-ACA-02 | academics | int | J-08 |
-| F-ACA-06 | Assignment submissions and grading | Learning loop | 2 | planned | P1 | F-ACA-05 | academics | int | — |
+| F-ACA-06 | Assignment submissions and grading | Learning loop | 2 | impl | P1 | F-ACA-05 | academics | int | tests/db/submissions-acceptance.test.ts |
 | F-ACA-07 | Timetable (manual) | Operations | 2 | planned | P2 | F-ACA-03 | academics | int | — |
 | F-ACA-08 | Timetable optimization solver | Efficiency | 3 | planned | P3 | F-ACA-07 | academics | int | — |
 | F-ATT-01 | Daily attendance session per section, bulk marking | Core routine | 1 | impl | P0 | F-ACA-02 | attendance | conf | J-06 |

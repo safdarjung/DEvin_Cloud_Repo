@@ -16,6 +16,7 @@ import {
   listTeachableSections,
   listTeacherAssignments,
 } from "./assignments.queries";
+import { mySubmissions, submissionsForAssignment } from "./submissions.queries";
 
 // permission: assignment.read — assignments/page.tsx:21 and
 // assignments/[id]/page.tsx:20 gate on this directly.
@@ -70,4 +71,24 @@ export const listSectionSubjectsQuery = defineQuery({
   schema: z.object({ classSectionId: uuid }).strict(),
   permission: "academics.read",
   handler: (input, ctx) => listSectionSubjects(ctx, input.classSectionId),
+});
+
+// permission: assignment.read — the grading roster (06 §W6 "Assignments
+// awaiting review"); RLS (0071 assignment_submissions_select) narrows a
+// teacher to their own taught/class-teacher section.
+export const submissionsForAssignmentQuery = defineQuery({
+  name: "academics.submissionsForAssignment",
+  schema: z.object({ assignmentId: uuid }).strict(),
+  permission: "assignment.read",
+  handler: (input, ctx) => submissionsForAssignment(ctx, input.assignmentId),
+});
+
+// permission: assignment.read — student's own view by default; a guardian
+// passes their child's studentId. RLS + mySubmissions' own membership check
+// keep a guardian from reading another family's child.
+export const mySubmissionsQuery = defineQuery({
+  name: "academics.mySubmissions",
+  schema: z.object({ studentId: uuid.optional() }).strict(),
+  permission: "assignment.read",
+  handler: (input, ctx) => mySubmissions(ctx, input.studentId),
 });

@@ -132,9 +132,9 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-EDU-03 | admin, guardian | P1 | matrix §B | planned | coolskool (non-fabric) | see matrix §B | per coolskool rules 1–5 | 1 |
 | FB-EDU-04 | admin, principal | P1 | matrix §E | planned | coolskool (non-fabric) | see matrix §E | per coolskool rules 1–5 | 1 |
 | FB-EDU-05 | teacher, admin, principal | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
-| FB-EDU-06 | teacher, admin | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
+| FB-EDU-06 | teacher, admin | P1 | matrix §D | planned | coolskool (non-fabric), M10 (backend) | see matrix §D | per coolskool rules 1–5 | 1 |
 | FB-EDU-07 | admin, teacher, principal | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
-| FB-EDU-08 | teacher, student, guardian | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
+| FB-EDU-08 | teacher, student, guardian | P1 | matrix §D | live | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
 | FB-EDU-09 | exam_controller, teacher | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | immutable results/marks (rule 5) | 1 |
 | FB-EDU-10 | teacher, principal | P1 | matrix §F | planned | coolskool (non-fabric) | see matrix §F | per coolskool rules 1–5 | 1 |
 | FB-EDU-11 | teacher, principal, guardian | P1 | matrix §B | planned | coolskool (non-fabric) | — | AI signal only, human review required (vision §11.11) | 1 |
@@ -161,7 +161,7 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | id | role | priority | deps | status | packet | tests | security | phase |
 |---|---|---|---|---|---|---|---|---|
 | FB-WS-01 | owner, principal | P1 | FB-DASH-01 | simulated | F-UI-02 | tests/unit/fabric-fixtures/command.test.ts | dashboard scoped to caller's institution | 4 |
-| FB-WS-02 | teacher, principal | P1 | FB-EDU-06, FB-EDU-09, FB-EDU-10 | simulated | F-UI-03 | tests/unit/fabric-fixtures/learning.test.ts | read-only derived from owner module tables | 4 |
+| FB-WS-02 | teacher, principal | P1 | FB-EDU-06, FB-EDU-09, FB-EDU-10 | simulated | F-UI-03 + M10 (backend) | tests/unit/fabric-fixtures/learning.test.ts, tests/db/curriculum-rls.test.ts, tests/db/curriculum-actions.test.ts, tests/db/curriculum-queries.test.ts, tests/db/curriculum-acceptance.test.ts | read-only derived from owner module tables | 4 |
 | FB-WS-03 | teacher, principal, guardian | P1 | FB-EDU-02, FB-EDU-11 | simulated | F-UI-04 | tests/unit/fabric-fixtures/success.test.ts | restricted student records gated by role | 4 |
 | FB-WS-04 | admin, principal | P1 | FB-EDU-07, FB-EDU-14, FB-EDU-15 | simulated | F-UI-05 | tests/unit/fabric-fixtures/operations.test.ts | tenant-scoped reads | 4 |
 | FB-WS-05 | accountant, principal | P1 | FB-EDU-13 | simulated | F-UI-06 | tests/unit/fabric-fixtures/finance-intel.test.ts | finance data confidential sensitivity | 4 |

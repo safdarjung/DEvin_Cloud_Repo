@@ -27,11 +27,14 @@ type DocumentsClient = Awaited<ReturnType<typeof createClient>>;
 const BUCKET = "tenant-docs";
 const READ_URL_EXPIRES_IN = 60;
 
-const ENTITY_TABLE: Record<string, "students" | "staff" | "applications"> = {
+const ENTITY_TABLE: Record<string, "students" | "staff" | "applications" | "assignment_submissions"> = {
   student: "students",
   staff: "staff",
   application: "applications",
+  submission: "assignment_submissions",
 };
+
+const POSTGRES_RLS_VIOLATION = "42501";
 
 const MIME_EXT: Record<string, string> = {
   "application/pdf": "pdf",
@@ -53,9 +56,6 @@ async function requireVisibleEntity(
   entityType: RequestUploadInput["entityType"],
   entityId: string,
 ): Promise<void> {
-  if (entityType === "submission") {
-    throw new AppError("validation_failed", "Submission documents are not supported yet.");
-  }
   const table = ENTITY_TABLE[entityType];
   const { data, error } = await supabase.from(table).select("id").eq("id", entityId).eq("institution_id", institutionId).maybeSingle();
   if (error) throwMapped(error);
@@ -98,7 +98,14 @@ export const requestUpload = defineAction({
       path,
       created_by: ctx.user.id,
     });
-    if (insertError) throwMapped(insertError);
+    if (insertError) {
+      // RLS denies the insert (e.g. a student on a graded/foreign submission,
+      // or on an entity_type their role has no insert branch for) -> 42501.
+      if (insertError.code === POSTGRES_RLS_VIOLATION) {
+        throw new AppError("forbidden", "Not allowed to upload for this entity.");
+      }
+      throwMapped(insertError);
+    }
 
     const { data: signed, error: signError } = await supabase.storage.from(BUCKET).createSignedUploadUrl(path);
     if (signError) throwMapped(signError);
