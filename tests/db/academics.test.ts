@@ -61,21 +61,16 @@ describe("academics migration (0005) RLS", () => {
         createEnrolment(inst.institutionId, student2.id, sectionId, yearId, { rollNo: 1 }),
       ).rejects.toThrow();
 
-      // status change writes history with changed_by — go through a real
-      // authenticated session (owner) so app.current_user_id() isn't null.
+      // M14-T2: direct status writes are now blocked by
+      // app.guard_enrolment_status — status only changes through the 0076
+      // lifecycle functions. The history-row assertion (from/to/changed_by)
+      // moved to T4, exercised through `exit_student`.
       const update = await inst
         .clientAs("owner")
         .from("enrolments")
         .update({ status: "transferred" })
         .eq("id", enrolmentId);
-      expect(update.error).toBeNull();
-      const [history] = await sql`
-        select from_status, to_status, changed_by from public.enrolment_status_history
-        where enrolment_id = ${enrolmentId}
-      `;
-      expect(history.from_status).toBe("active");
-      expect(history.to_status).toBe("transferred");
-      expect(history.changed_by).not.toBeNull();
+      expect(update.error?.message).toContain("code:invalid_state");
     } finally {
       await inst.cleanup();
     }

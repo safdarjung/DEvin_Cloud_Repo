@@ -11,12 +11,19 @@ import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import {
   DepartmentUpsertSchema,
+  GuardianLinkSchema,
+  GuardianUpdateSchema,
   StaffUpsertSchema,
+  StudentUpdateSchema,
   type DepartmentUpsertInput,
+  type GuardianLinkInput,
+  type GuardianUpdateInput,
   type StaffUpsertInput,
+  type StudentUpdateInput,
 } from "@/modules/people/schemas";
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
+const POSTGRES_RLS_VIOLATION = "42501";
 
 function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
@@ -26,6 +33,10 @@ function throwMapped(error: unknown): never {
 
 function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === POSTGRES_UNIQUE_VIOLATION);
+}
+
+function isRlsViolation(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === POSTGRES_RLS_VIOLATION);
 }
 
 export const upsertDepartment = defineAction({
@@ -105,5 +116,122 @@ export const upsertStaff = defineAction({
       isTeaching: data.is_teaching,
       status: data.status,
     };
+  },
+});
+
+// M14-T7 — people.student.update / people.guardian.update / people.guardian.link
+// (rulings: plain RLS updates, invoker, same shape as upsertStaff above;
+// link_guardian is a thin RPC wrapper, same style as timetable/actions.ts's
+// publishVersion). Never touches status/user_id/details/photo_path. Audit
+// rows hold changed field names only — no values (lesson 10 / brief).
+
+export const updateStudent = defineAction({
+  name: "people.student.update",
+  schema: StudentUpdateSchema,
+  permission: "student.write",
+  handler: async ({ studentId, firstName, lastName, dob, gender, admissionNo }: StudentUpdateInput, ctx) => {
+    const supabase = await createClient();
+    const row = {
+      ...(firstName !== undefined ? { first_name: firstName } : {}),
+      ...(lastName !== undefined ? { last_name: lastName } : {}),
+      ...(dob !== undefined ? { dob } : {}),
+      ...(gender !== undefined ? { gender } : {}),
+      ...(admissionNo !== undefined ? { admission_no: admissionNo } : {}),
+    };
+    const { data, error } = await supabase
+      .from("students")
+      .update(row)
+      .eq("id", studentId)
+      .eq("institution_id", ctx.institution.id)
+      .select("id, admission_no, first_name, last_name, dob, gender")
+      .maybeSingle();
+    if (error) {
+      if (isUniqueViolation(error)) {
+        throw new AppError("conflict", "A student with this admission number already exists.", {
+          admissionNo: ["Admission number already in use."],
+        });
+      }
+      if (isRlsViolation(error)) throw new AppError("forbidden", "You do not have access to this student.");
+      throwMapped(error);
+    }
+    if (!data) throw new AppError("not_found", "Student not found.");
+
+    await audit(ctx, {
+      action: "people.student.update",
+      entityType: "student",
+      entityId: data.id,
+      after: { changedFields: Object.keys(row) },
+    });
+
+    return {
+      id: data.id,
+      admissionNo: data.admission_no,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      dob: data.dob,
+      gender: data.gender,
+    };
+  },
+});
+
+export const updateGuardian = defineAction({
+  name: "people.guardian.update",
+  schema: GuardianUpdateSchema,
+  permission: "student.write",
+  handler: async ({ guardianId, fullName, phone, email }: GuardianUpdateInput, ctx) => {
+    const supabase = await createClient();
+    const row = {
+      ...(fullName !== undefined ? { full_name: fullName } : {}),
+      ...(phone !== undefined ? { phone } : {}),
+      ...(email !== undefined ? { email } : {}),
+    };
+    const { data, error } = await supabase
+      .from("guardians")
+      .update(row)
+      .eq("id", guardianId)
+      .eq("institution_id", ctx.institution.id)
+      .select("id, full_name, phone, email")
+      .maybeSingle();
+    if (error) {
+      if (isUniqueViolation(error)) {
+        throw new AppError("conflict", "A guardian with this phone number already exists.", {
+          phone: ["Phone number already in use."],
+        });
+      }
+      if (isRlsViolation(error)) throw new AppError("forbidden", "You do not have access to this guardian.");
+      throwMapped(error);
+    }
+    if (!data) throw new AppError("not_found", "Guardian not found.");
+
+    await audit(ctx, {
+      action: "people.guardian.update",
+      entityType: "guardian",
+      entityId: data.id,
+      after: { changedFields: Object.keys(row) },
+    });
+
+    return { id: data.id, fullName: data.full_name, phone: data.phone, email: data.email };
+  },
+});
+
+export const linkGuardian = defineAction({
+  name: "people.guardian.link",
+  schema: GuardianLinkSchema,
+  permission: "student.write",
+  handler: async ({ studentId, relationship, isPrimary, guardianId, guardian }: GuardianLinkInput) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("link_guardian", {
+      p_student_id: studentId,
+      p_relationship: relationship,
+      p_is_primary: isPrimary ?? false,
+      p_guardian_id: guardianId,
+      p_full_name: guardian?.fullName,
+      p_phone: guardian?.phone,
+      p_email: guardian?.email,
+    });
+    if (error) throwMapped(error);
+    const result = data as { guardian_id: string; created: boolean };
+
+    return { guardianId: result.guardian_id, created: result.created };
   },
 });
