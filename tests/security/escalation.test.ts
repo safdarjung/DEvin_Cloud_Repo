@@ -33,10 +33,26 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "ai.study.item.update": { permission: "ai.study", input: () => ({ itemId: U(), pinned: true }) },
   "ai.study.item.delete": { permission: "ai.study", input: () => ({ itemId: U() }) },
   "job.requeue": { permission: "job.manage", input: () => ({ jobId: U() }) },
+  "lifecycle.promote": {
+    permission: "academics.manage",
+    input: () => ({ fromYearId: U(), toYearId: U(), mappings: [{ fromSectionId: U(), toSectionId: U() }] }),
+  },
+  "lifecycle.transfer": {
+    permission: "student.write",
+    input: () => ({ studentId: U(), reason: "Probe reason text.", destinationSchool: "Probe School" }),
+  },
+  "lifecycle.withdraw": {
+    permission: "student.write",
+    input: () => ({ studentId: U(), reason: "Probe reason text." }),
+  },
   "exam.create": { permission: "exam.manage", input: () => ({ termId: U(), name: "Probe", type: "unit_test" }) },
   "exam.papers.create": {
     permission: "exam.manage",
     input: () => ({ examId: U(), papers: [{ classSectionId: U(), subjectId: U(), maxMarks: 100, passMarks: 33 }] }),
+  },
+  "exam.paper.schedule": {
+    permission: "exam.manage",
+    input: () => ({ examId: U(), papers: [{ paperId: U(), scheduledAt: null }] }),
   },
   "exam.marks_entry.open": { permission: "exam.manage", input: () => ({ examId: U() }) },
   "exam.marks_entry.close": { permission: "exam.manage", input: () => ({ examId: U() }) },
@@ -165,6 +181,12 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "people.leave.approve": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
   "people.leave.reject": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
   "people.leave.cancel": { permission: "leave.request", input: () => ({ leaveId: U() }) },
+  "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
+  "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
+  "people.guardian.link": {
+    permission: "student.write",
+    input: () => ({ studentId: U(), relationship: "father", guardianId: U() }),
+  },
   "data.import.stage": {
     permission: "data.import",
     input: () => ({
@@ -222,6 +244,35 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ slotId: U(), date: "2026-11-09", substituteId: U() }),
   },
   "timetable.substitution.cancel": { permission: "timetable.manage", input: () => ({ substitutionId: U() }) },
+  "calendar.event.upsert": {
+    permission: "academics.manage",
+    input: () => ({ academicYearId: U(), kind: "event", title: "Probe", startsOn: "2026-04-10", endsOn: "2026-04-10" }),
+  },
+  "calendar.event.delete": { permission: "academics.manage", input: () => ({ id: U() }) },
+  "facilities.asset.upsert": { permission: "facilities.manage", input: () => ({ name: "Probe Asset", category: "other" }) },
+  "maintenance.request": { permission: "maintenance.request", input: () => ({ location: "Probe Hall", issue: "Probe issue." }) },
+  "maintenance.assign": { permission: "facilities.manage", input: () => ({ requestId: U(), assigneeStaffId: U() }) },
+  "maintenance.close": { permission: "facilities.manage", input: () => ({ requestId: U() }) },
+  "questionBank.create": {
+    permission: "question.manage",
+    input: () => ({ subjectId: U(), gradeId: U(), type: "short_answer", difficulty: "easy", body: "Probe?", answer: "Probe.", marks: 1 }),
+  },
+  "questionBank.update": {
+    permission: "question.manage",
+    input: () => ({ id: U(), subjectId: U(), gradeId: U(), type: "short_answer", difficulty: "easy", body: "Probe?", answer: "Probe.", marks: 1 }),
+  },
+  "questionBank.archive": { permission: "question.manage", input: () => ({ id: U(), isActive: false }) },
+  "transport.vehicle.upsert": {
+    permission: "transport.manage",
+    input: () => ({ registrationNo: "MH12AB1234", capacity: 10, driverName: "Probe Driver" }),
+  },
+  "transport.route.upsert": { permission: "transport.manage", input: () => ({ name: "Probe Route" }) },
+  "transport.stop.upsert": {
+    permission: "transport.manage",
+    input: () => ({ routeId: U(), seq: 1, name: "Probe Stop", eta: "07:00", mapX: 10, mapY: 10 }),
+  },
+  "transport.assign": { permission: "transport.manage", input: () => ({ studentId: U(), stopId: U() }) },
+  "transport.unassign": { permission: "transport.manage", input: () => ({ studentId: U() }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

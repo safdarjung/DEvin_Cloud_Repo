@@ -42,6 +42,40 @@ export const CreateExamPapersSchema = z
 
 export type CreateExamPapersInput = z.infer<typeof CreateExamPapersSchema>;
 
+// M11-T5 — exam.paper.schedule (rulings "Schedule is not a constraint").
+// scheduledAt/durationMinutes travel together; roomId only makes sense with
+// a scheduledAt. `scheduledAt: null` clears all three (handler keeps
+// `held_on`).
+const SchedulePaperInputSchema = z
+  .object({
+    paperId: uuid,
+    scheduledAt: z.iso.datetime({ offset: true }).nullable(),
+    durationMinutes: z.number().int().min(15).max(300).optional(),
+    roomId: uuid.nullable().optional(),
+  })
+  .strict()
+  .refine((p) => (p.scheduledAt !== null) === (p.durationMinutes !== undefined), {
+    message: "scheduledAt and durationMinutes must be set together.",
+    path: ["durationMinutes"],
+  })
+  .refine((p) => p.scheduledAt !== null || !p.roomId, {
+    message: "roomId requires scheduledAt.",
+    path: ["roomId"],
+  });
+
+export const SchedulePapersSchema = z
+  .object({
+    examId: uuid,
+    papers: z.array(SchedulePaperInputSchema).min(1).max(200),
+  })
+  .strict()
+  .refine((input) => new Set(input.papers.map((p) => p.paperId)).size === input.papers.length, {
+    message: "Duplicate paperId in papers.",
+    path: ["papers"],
+  });
+
+export type SchedulePapersInput = z.infer<typeof SchedulePapersSchema>;
+
 const MarksRowSchema = z
   .object({
     studentId: uuid,

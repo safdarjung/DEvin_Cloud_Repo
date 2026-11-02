@@ -26,3 +26,82 @@ export const StaffUpsertSchema = z
   })
   .strict();
 export type StaffUpsertInput = z.infer<typeof StaffUpsertSchema>;
+
+// M14-T1 — student lifecycle people schemas.
+export const StudentUpdateSchema = z
+  .object({
+    studentId: uuid,
+    firstName: shortText.optional(),
+    lastName: shortText.nullable().optional(),
+    dob: z.string().date().optional(),
+    gender: z.enum(["male", "female", "other"]).optional(),
+    admissionNo: z.string().trim().min(1).max(40).optional(),
+  })
+  .strict()
+  .refine(
+    (data) => {
+      const hasOtherField = [
+        data.firstName,
+        data.lastName,
+        data.dob,
+        data.gender,
+        data.admissionNo,
+      ].some((v) => v !== undefined);
+      return hasOtherField;
+    },
+    "Must update at least one field besides studentId"
+  );
+
+export type StudentUpdateInput = z.infer<typeof StudentUpdateSchema>;
+
+export const GuardianUpdateSchema = z
+  .object({
+    guardianId: uuid,
+    fullName: shortText.optional(),
+    phone: phoneIN.optional(),
+    email: z.string().trim().email().max(200).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (data) => {
+      const hasOtherField = [data.fullName, data.phone, data.email].some(
+        (v) => v !== undefined
+      );
+      return hasOtherField;
+    },
+    "Must update at least one field besides guardianId"
+  );
+
+export type GuardianUpdateInput = z.infer<typeof GuardianUpdateSchema>;
+
+export const GuardianLinkSchema = z
+  .object({
+    studentId: uuid,
+    relationship: z.enum([
+      "father",
+      "mother",
+      "legal_guardian",
+      "grandparent",
+      "other",
+    ]),
+    isPrimary: z.boolean().optional(),
+    guardianId: uuid.optional(),
+    guardian: z
+      .object({
+        fullName: shortText,
+        phone: phoneIN,
+        email: z.string().trim().email().max(200).optional(),
+      })
+      .optional(),
+  })
+  .strict()
+  .refine(
+    (data) => {
+      const hasGuardianId = data.guardianId !== undefined;
+      const hasGuardian = data.guardian !== undefined;
+      return hasGuardianId !== hasGuardian;
+    },
+    "Exactly one of guardianId or guardian must be provided"
+  );
+
+export type GuardianLinkInput = z.infer<typeof GuardianLinkSchema>;

@@ -6,6 +6,7 @@ import type { ActionResult } from "@/lib/actions/result";
 import { fail } from "@/lib/actions/result";
 import { apiResponse } from "@/lib/http/api-envelope";
 import { toCsvResponse } from "@/lib/http/csv";
+import { toHtmlResponse } from "@/lib/http/html";
 import { dispatchCall, readPostBody } from "@/lib/http/dispatch";
 
 export const runtime = "nodejs";
@@ -45,10 +46,11 @@ export async function GET(
 
   const response = await dispatchCall(request, name, getRegisteredQueries(), { institution, input });
 
-  // M04-T7: ?format=csv exports the same result dispatchCall already
-  // computed — read its JSON body back out and re-wrap, nothing else here
-  // changes.
-  if (url.searchParams.get("format") !== "csv") return response;
+  // M04-T7 / M11-T10: ?format=csv|html export the same result dispatchCall
+  // already computed — read its JSON body back out and re-wrap, nothing
+  // else here changes.
+  const format = url.searchParams.get("format");
+  if (format !== "csv" && format !== "html") return response;
   const result = (await response.json()) as ActionResult<unknown>;
-  return toCsvResponse(result, name);
+  return format === "csv" ? toCsvResponse(result, name) : toHtmlResponse(result);
 }

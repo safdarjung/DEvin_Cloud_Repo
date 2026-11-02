@@ -109,7 +109,7 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | `class_sections` | Section per year | `grade_id →` · `academic_year_id →` · `name text` (`A`) · `class_teacher_id?→ staff` · `capacity int default 40` (seed sets 45 so live enrolment into a 42-student section succeeds) | unique(grade_id, academic_year_id, name); index(class_teacher_id) | op | int |
 | `subjects` | Subject master | `code text` · `name` · `kind text check in (scholastic, co_scholastic, skill, language)` | unique(institution_id, code) | op | int |
 | `subject_assignments` | Who teaches what | `class_section_id →` · `subject_id →` · `teacher_id → staff` | unique(class_section_id, subject_id); index(teacher_id) | op | int |
-| `enrolments` | Student in a section for a year | `student_id →` · `class_section_id →` · `academic_year_id →` · `roll_no int?` · `status text check in (active, transferred, completed, withdrawn)` · `started_on date` · `ended_on?` | partial unique(student_id, academic_year_id) where status = 'active' (a transfer closes one row and opens another); unique(class_section_id, roll_no) where roll_no not null and status = 'active'; index(class_section_id, status) | op + history table | int |
+| `enrolments` | Student in a section for a year | `student_id →` · `class_section_id →` · `academic_year_id →` · `roll_no int?` · `status text check in (active, transferred, completed, withdrawn)` · `started_on date` · `ended_on?` | partial unique(student_id, academic_year_id) where status = 'active' (a transfer closes one row and opens another); unique(class_section_id, roll_no) where roll_no not null and status = 'active'; index(class_section_id, status); note: `transferred` = intra-school section move (reserved for future, 05 §2 transfers to another section close the old row and open a new one under the same year), `completed` = year promotion/graduation (via `promote_students`), `withdrawn` = school exit (via `exit_student`, recorded in `student_lifecycle_events` with event kind `transferred_out` or `withdrawn`) | op + history table | int |
 | `enrolment_status_history` | Transitions | `enrolment_id →` · `from_status?` · `to_status` · `reason?` · `changed_by?` | index(enrolment_id) | app | int |
 | `curriculum_units` | Syllabus units | `subject_id →` · `grade_id →` · `title` · `description text` · `sequence int` | unique(subject_id, grade_id, sequence) | op | int |
 | `assignments` | Homework / quizzes | `class_section_id →` · `subject_id →` · `curriculum_unit_id?→` · `title` · `instructions text?` · `content jsonb?` (quiz questions) · `due_at?` · `status text check in (draft, published, closed)` · `created_by → staff` · `ai_generated bool default false` | index(class_section_id, status) | op | int |
@@ -167,6 +167,24 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | `notices` | Circulars | `title` · `body` · `publish_at` · `expires_at?` · `is_public bool` · `audience jsonb?` | index(institution_id, publish_at desc) | op | pub/int |
 | `events` | Calendar | `title` · `starts_at` · `ends_at?` · `location?` · `is_public bool` | index(institution_id, starts_at) | op | pub/int |
 
+### 2.9 operations (migration 0075)
+
+| Table | Purpose | Essential columns | Constraints / indexes | Hist | Sens |
+|---|---|---|---|---|---|
+| `assets` | Physical inventory (furniture, electrical, IT, lab, sports, plumbing, vehicles, other) | `name 1–80` · `category text check in (furniture, electrical, it, lab, sports, plumbing, vehicle, other)` · `asset_tag? 1–40` · `room_id?→ rooms` · `location? 1–80` · `status text default 'in_use' check in (in_use, under_repair, retired)` | unique(institution_id, asset_tag); index(institution_id, status) | op (retire only) | int |
+| `maintenance_requests` | Work orders raised by staff (never deleted) | `asset_id?→ assets` · `location? 1–80` · `issue 1–500` · `priority text default 'medium' check in (low, medium, high)` · `status text default 'open' check in (open, in_progress, done)` · `raised_by → profiles` (forced to current user on INSERT) · `raised_at timestamptz` · `assignee_staff_id?→ staff` (when status = in_progress) · `assigned_at?` (stamped by trigger) · `closed_at?` · `closed_by?→ profiles` · `resolution_note? ≤ 500` | check (asset_id is not null or location is not null); unique(request raised_by) immutable; `assigned_at`/`closed_at`/`closed_by` stamped by trigger only; done is terminal; in_progress→open forbidden | imm (delete blocked) | conf |
+| `transport_vehicles` | Fleet (capacity 1–100) | `registration_no 1–20` · `capacity int` · `driver_name 1–80` (PII stays out; no phone) · `status text default 'active' check in (active, off_road)` | unique(institution_id, registration_no); index(institution_id) | op | int |
+| `transport_routes` | Routes with assignment of stops and students | `name 1–60` · `vehicle_id?→ transport_vehicles` (null = no cap) · `status text default 'on_time' check in (on_time, delayed, off_road)` (set by staff; never computed) | unique(institution_id, name); index(institution_id) | op | int |
+| `transport_stops` | Waypoints on a route (seq 1–50 per route) | `route_id →` · `seq int` · `name 1–80` · `pickup_time time` · `map_x, map_y smallint 0–100` (schematic position, not GPS) | unique(route_id, seq); unique(id, route_id) as composite-FK target for assignments; index(route_id) | op | int |
+| `transport_assignments` | Current assignment per student (upsert on student_id) | `student_id →!` (one per student) · `route_id →` · `stop_id →` · `assigned_by → profiles` · `FK (stop_id, route_id) → transport_stops (id, route_id)` (stop bound to its route) | unique(student_id); check vehicle capacity before INSERT/UPDATE OF route_id (trigger); index(route_id), (stop_id) | op (change = upsert; unassign = delete) | int |
+| `academic_calendar_events` | School calendar (whole-school only; no per-grade scope, debt) | `academic_year_id →` · `kind text check in (holiday, exam_week, ptm, event)` · `title 1–120` · `description? ≤ 1000` · `starts_on, ends_on date` · `audience text default 'all' check in (all, staff)` · `created_by → profiles` · `check (ends_on >= starts_on)` · `check (ends_on - starts_on <= 92)` · `check (kind <> 'holiday' or audience = 'all')` | index(institution_id, kind, starts_on, ends_on); event dates must fall within the academic year (trigger) | op (delete allowed) | int |
+
+### 2.10 lifecycle (migration 0076)
+
+| Table | Purpose | Essential columns | Constraints / indexes | Hist | Sens |
+|---|---|---|---|---|---|
+| `student_lifecycle_events` | Year transitions and exits (append-only) | `student_id →` · `kind text check in (promoted, graduated, transferred_out, withdrawn)` · `batch_id uuid?` (shared per promote call) · `from_enrolment_id?→ enrolments` · `to_enrolment_id?→ enrolments` · `effective_on date` · `reason text?` (≤ 500) · `tc_no text?` (transfer certificate) · `tc_snapshot jsonb?` (student/grade/section/year/guardian/dues/conduct snapshot) · `created_by → profiles` · `created_at`/`updated_at` | partial unique(institution_id, tc_no) where tc_no is not null; index(student_id, created_at); checks: `(kind in ('transferred_out','withdrawn')) = (tc_no is not null and tc_snapshot is not null)`, `(kind = 'promoted') = (to_enrolment_id is not null)` | app (imm rows) | conf |
+
 ## 3. Ownership matrix
 
 | Module | Owns | Reads from |
@@ -174,13 +192,18 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | core | institutions, campuses, academic_years, terms, profiles, memberships, institution_sequences, audit_events, jobs, notifications, delivery_attempts, ai_usage_events | — |
 | people | students, guardians, guardian_students, staff, departments | core |
 | academics | grades, class_sections, subjects, subject_assignments, enrolments, enrolment_status_history, curriculum_units, assignments, assignment_submissions | people |
+| question-bank | question_bank | academics, people |
 | attendance | attendance_sessions, attendance_records, attendance_corrections | academics, people |
 | admissions | enquiries, applications, application_decisions | people, academics, finance (via `finance.generate_invoice`) |
 | finance | fee_structures, fee_components, fee_assignments, concessions, invoices, invoice_lines, payments, receipts, ledger_entries | people, academics |
 | exams | exams, exam_papers, marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
+| facilities | assets, maintenance_requests | people |
+| transport | transport_vehicles, transport_routes, transport_stops, transport_assignments | people |
+| calendar | academic_calendar_events | academics |
+| lifecycle | student_lifecycle_events | people, academics |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |
 
-Reserved names, not created: `payroll_*`, `library_*`, `transport_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.
+Reserved names, not created: `payroll_*`, `library_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.
 
 ## 4. Configurable data points
 

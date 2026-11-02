@@ -13,6 +13,7 @@ import type { RoomUtilisation, TeacherWorkload, TimetableConflict } from "@/modu
 import type { TimetablePeriod } from "@/components/widgets/timetable-widget";
 import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { approvedLeaveDates } from "@/modules/people/hr.queries";
+import type { RoomSlot } from "@/modules/exams/schedule-conflicts";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_MAX_PERIODS_WEEK = 36; // rulings: settings.timetable.max_periods_week, default 36
@@ -415,4 +416,37 @@ export async function timetableRoomUtilisation(ctx: TenantContext, versionId: st
     periods_used: usedByRoom.get(room.id) ?? 0,
     periods_total: periodsTotal,
   }));
+}
+
+/** Non-break slots for the given rooms in the latest published version — exam-schedule-conflicts (M11-T7) checking a room's exam papers against the bell schedule. Empty `roomIds` or no published version short-circuits to []. */
+export async function timetableRoomSlots(ctx: TenantContext, roomIds: string[]): Promise<RoomSlot[]> {
+  if (roomIds.length === 0) return [];
+  const versionId = await defaultPublishedVersionId(ctx);
+  if (!versionId) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("timetable_slots")
+    .select(
+      "weekday, room_id, class_sections(name, grades(code)), subjects(name), periods!inner(name, starts_at, ends_at, is_break)",
+    )
+    .eq("institution_id", ctx.institution.id)
+    .eq("version_id", versionId)
+    .in("room_id", roomIds)
+    .eq("periods.is_break", false);
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const section = row.class_sections as { name: string; grades: { code: string } | null } | null;
+    const subject = row.subjects as { name: string } | null;
+    const period = row.periods as { name: string; starts_at: string; ends_at: string } | null;
+    const sectionLabel = `${section?.grades?.code ?? "?"}-${section?.name ?? "?"}`;
+    return {
+      roomId: row.room_id as string,
+      weekday: row.weekday,
+      startsAt: period ? toHHMM(period.starts_at) : "",
+      endsAt: period ? toHHMM(period.ends_at) : "",
+      label: `${sectionLabel} ${subject?.name ?? ""} ${period?.name ?? ""}`.trim(),
+    };
+  });
 }

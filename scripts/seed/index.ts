@@ -11,6 +11,7 @@ import { run as runCore } from "./sections/core.ts";
 import { run as runCurriculum } from "./sections/curriculum.ts";
 import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
+import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
@@ -22,6 +23,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "academics", run: runAcademics },
   { name: "timetable", run: runTimetable },
   { name: "staffing", run: runStaffing },
+  // M13-T11: right after timetable, so public.rooms already exists for assets.room_id.
+  { name: "operations", run: runOperations },
   { name: "curriculum", run: runCurriculum },
   { name: "attendance", run: runAttendance },
   { name: "admissions", run: runAdmissions },
