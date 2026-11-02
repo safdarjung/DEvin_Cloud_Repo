@@ -53,13 +53,13 @@ Out of scope for this plan (stay fixtures with `<SimulatedBadge />`): What-if si
 | 0078 | M16 | `approvals` view/function unifying pending items; `audit_events` read RPC with paging |
 | 0079–0089 | spare | fix rounds, found bugs (Opus records purpose in §3) |
 | 0052 | M26 | `marketplace_modules`, `module_installs` (entitlement-backed) |
-| 0054 | M19 | `insights`, `insight_actions`, `briefings` |
-| 0055 | M22 | `agent_definitions`, `agent_runs` |
-| 0056 | M23 | `workflows`, `workflow_runs` |
-| 0062 | M27 | seed section `fabric` (insights, agents, workflows, mastery, forecasts) |
-| 0063 | M27 | grants audit + security suite for 0052–0078 |
-| 0080 | M20 | `mastery_snapshots` |
-| 0081 | M21 | `forecasts`, `forecast_backtests` |
+| 0092 | M19 | `insights`, `insight_actions`, `briefings` |
+| 0093 | M20 | `mastery_snapshots` |
+| 0094 | M21 | `forecasts`, `forecast_backtests` |
+| 0095 | M22 | `agent_definitions`, `agent_runs` |
+| 0096 | M23 | `workflows`, `workflow_runs` |
+| 0097 | M27 | seed section `fabric` (insights, agents, workflows, mastery, forecasts) |
+| 0098 | M27 | grants audit + security suite for 0052–0078 |
 
 New permission keys (added to `permissions.ts` + `07 §2.2` in the milestone that first needs them): `timetable.manage`, `timetable.read`, `staff.attendance.mark`, `leave.request`, `leave.approve`, `document.read`, `document.write`, `announcement.manage`, `data.import`, `data.export`, `report.schedule`, `facilities.manage`, `transport.manage`, `insight.read`, `insight.review`, `agent.run`, `agent.approve`, `workflow.manage`, `module.install`. Guardians/students get only `document.read` (own), `announcement` read via `notification.read`, `insight` nothing.
 
@@ -82,6 +82,8 @@ Each milestone: **Goal · Builds · Replaces fixture · Acceptance (tests Opus m
 **M6 Announcements + preferences + audit viewer** — 0068, 0078 (audit RPC part). Builds: `announcement.create/publish` (audience: school, grade, section, role; publish enqueues `notify.announcement` job → channel adapter), `notification.preferences.set` (per channel per category), `core.audit.list` query (paged, filterable, `audit.read`). Replaces: `AuditEventRow` fixture (trust workspace). Acceptance: staff-only announcement invisible to guardian via direct PostgREST (lesson 1); preference `sms=false` suppresses delivery attempt.
 
 **M7 Timetable** — 0069. Builds: rooms, periods (per institution bell schedule), `timetable_slots` (section, weekday, period, subject, teacher, room) with **unique constraints** `(teacher, weekday, period, version)` and `(room, weekday, period, version)` = conflict detection in the DB; `timetable.saveDraft/publish` (versions), queries `timetable.forSection/forTeacher/forStudent/conflicts`. Replaces: `demoTimetable`, `TimetableConflict`, `TeacherWorkload` (periods/week), `RoomUtilisation`. Acceptance: inserting a double-booked teacher fails with `conflict`; published version read by guardian/student for own section only. Seed: a full weekly timetable for the demo tenant (seed section `timetable`).
+
+**MOD Core + plug-and-play modules** — D45, 0084 (owner directive 2026-11-02). Runs after batch M08–M14 + M17 merges; supersedes M26's foundation part (marketplace commerce stays V3). Builds: code catalog `src/lib/modules/catalog.ts` (33 keys: 6 always-on core, 27 optional in 10 categories), state in `institutions.settings.modules`, `isModuleEnabled` + SQL mirror `app.module_enabled`, gate in `defineAction`/`defineQuery` (`forbidden`), nav/page/job/channel/AI-route gates, `core.module.set` + `core.modules.list` + `/settings/modules`, retrofit of every existing action/query. Acceptance: `tests/security/module-gate.test.ts` (every optional-module name → `forbidden` when its module is off); SQL/TS drift test; typecheck with `module` required. Tasks: `06-backend-packets/MOD-tasks.md`. **Every later milestone declares its module key** (header + `module` on each definition, `requireModule` on pages, `JOB_MODULES` row per job type).
 
 **M8 Period attendance, staff attendance, leave, substitution** — 0070. Builds: optional `period_id` on sessions (daily stays default), `staff_attendance` (mark by admin/principal, self check-in optional), `leave.request/approve/reject` (state machine + guard trigger, lesson 11), `substitution.assign` (links a timetable slot + date + substitute teacher; conflict-checked against M7). Replaces: `demoStaffAvailability`, `demoApprovals` (leave part). Acceptance: approve path audited; teacher cannot approve own leave; substitute double-booking rejected.
 
@@ -125,7 +127,7 @@ Each milestone: **Goal · Builds · Replaces fixture · Acceptance (tests Opus m
 
 **M25 Briefings + AI timetable suggestions** — Builds: job `briefing.generate` (principal/teacher/finance/admissions daily, weekly performance) persisting to `briefings` with source refs (extends `dashboard-briefing` route to read persisted first); `timetable.suggest` (greedy conflict-aware fill for unassigned slots, returns proposals as `insight_actions`, never auto-applies). Replaces: `DailyBrief`. Acceptance: briefing row links ≥3 queries; suggestion never writes `timetable_slots`.
 
-**M26 Module/entitlement foundation** — 0052. Builds: `marketplace_modules` (global catalogue = feature catalog v2 keys grouped; free only), `module_installs` → sets entitlements (D30/D33) on install/disable; `module.install/disable`. Replaces: marketplace fixtures (install state only). Acceptance: disabling a module hides its permissions' actions (dispatcher returns `forbidden`).
+**M26 Module/entitlement foundation** — 0052. **Foundation superseded by MOD (D45); only marketplace commerce remains, V3.** Builds: `marketplace_modules` (global catalogue = feature catalog v2 keys grouped; free only), `module_installs` → sets entitlements (D30/D33) on install/disable; `module.install/disable`. Replaces: marketplace fixtures (install state only). Acceptance: disabling a module hides its permissions' actions (dispatcher returns `forbidden`).
 
 **M27 Fabric seed + security suite + V2 gate** — 0062, 0063. Builds: seed section `fabric` (insights, mastery, forecasts, agents, workflows, briefings for the demo tenant), RLS isolation generator extended to all new tables, grants audit, perf test on big new tables (lesson 10). Opus writes `reports/v2-completion.md` with evidence per roadmap V2 acceptance criterion; updates `03-roadmap-and-tracker.md` statuses to `limited`/`live`; posts `DONE V2 <sha>`.
 
