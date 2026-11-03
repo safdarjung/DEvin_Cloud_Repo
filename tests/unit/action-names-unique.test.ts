@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { MODULE_KEYS } from "@/lib/modules/catalog";
 
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
@@ -86,5 +87,25 @@ describe("Query names (M02)", () => {
     const { getRegisteredQueries } = await import("@/lib/actions/define-query");
 
     expect(new Set(getRegisteredQueries().keys())).toEqual(names);
+  });
+});
+
+describe("Module declared on every registered action/query (MOD-T13)", () => {
+  it("every action meta has a module in MODULE_KEYS", async () => {
+    await import("@/app/api/v1/actions/all-actions");
+    const { getActionMeta } = await import("@/lib/actions/registry");
+
+    for (const [name, meta] of getActionMeta()) {
+      expect(MODULE_KEYS, `action "${name}" has no module`).toContain(meta.module);
+    }
+  });
+
+  it("every query meta has a module in MODULE_KEYS", async () => {
+    await import("@/app/api/v1/query/all-queries");
+    const { getQueryMeta } = await import("@/lib/actions/define-query");
+
+    for (const [name, meta] of getQueryMeta()) {
+      expect(MODULE_KEYS, `query "${name}" has no module`).toContain(meta.module);
+    }
   });
 });

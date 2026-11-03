@@ -15,6 +15,7 @@ import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { getStudentAttendanceSummary } from "@/modules/attendance/queries";
 import { demoAttendanceTrend, demoFixturesEnabled, demoInsights, demoTimetable } from "@/modules/core/demo/fixtures";
 import { listResultsForStudent } from "@/modules/exams/queries";
@@ -84,16 +85,16 @@ export default async function PortalOverviewPage({
   // Extras never fail the page: each rejected one renders ErrorState in its own widget.
   const canNotifications = hasPermission(ctx, "notification.read");
   const extras = Promise.allSettled([
-    listPublicNotices(ctx.institution.id, 4),
-    listPublicEvents(ctx.institution.id, 4),
+    isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 4) : Promise.resolve([]),
+    isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 4) : Promise.resolve([]),
     canNotifications ? listMyNotifications(ctx, 5) : Promise.resolve([]),
   ]);
 
   const [attendance, invoices, results, assignments] = await Promise.all([
-    termId ? getStudentAttendanceSummary(ctx, selection.studentId, termId) : Promise.resolve(null),
-    listInvoicesForStudent(ctx, selection.studentId),
-    listResultsForStudent(ctx, selection.studentId),
-    listStudentAssignments(ctx, selection.studentId),
+    termId && isModuleEnabled(ctx, "attendance") ? getStudentAttendanceSummary(ctx, selection.studentId, termId) : Promise.resolve(null),
+    isModuleEnabled(ctx, "fees") ? listInvoicesForStudent(ctx, selection.studentId) : Promise.resolve([]),
+    isModuleEnabled(ctx, "exams") ? listResultsForStudent(ctx, selection.studentId) : Promise.resolve([]),
+    isModuleEnabled(ctx, "assignments") ? listStudentAssignments(ctx, selection.studentId) : Promise.resolve([]),
   ]);
   const [notices, events, notifications] = await extras;
 
@@ -234,7 +235,7 @@ export default async function PortalOverviewPage({
       <Failed key="evt" title="Events" icon={<CalendarDays />} />
     );
   const notificationFeed =
-    canNotifications &&
+    canNotifications && isModuleEnabled(ctx, "notifications") &&
     (notifications.status === "fulfilled" ? (
       <ActivityTimeline
         key="ntf"

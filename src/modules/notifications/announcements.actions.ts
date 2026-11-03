@@ -28,6 +28,7 @@ function throwMapped(error: unknown): never {
 
 export const createAnnouncement = defineAction({
   name: "announcement.create",
+  module: "announcements",
   schema: CreateAnnouncementSchema,
   permission: "announcement.manage",
   handler: async (input: CreateAnnouncementInput, ctx) => {
@@ -78,6 +79,7 @@ export const createAnnouncement = defineAction({
 
 export const publishAnnouncement = defineAction({
   name: "announcement.publish",
+  module: "announcements",
   schema: PublishAnnouncementSchema,
   permission: "announcement.manage",
   handler: async (input: PublishAnnouncementInput) => {
@@ -94,6 +96,7 @@ export const publishAnnouncement = defineAction({
 
 export const setNotificationPreference = defineAction({
   name: "notification.preferences.set",
+  module: "notifications",
   schema: SetNotificationPreferenceSchema,
   permission: "notification.read",
   handler: async (input: SetNotificationPreferenceInput, ctx) => {

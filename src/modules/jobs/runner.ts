@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
 import { redact } from "../../lib/ai/redact.ts";
-import { resolveHandler } from "./registry.ts";
+import { isModuleEnabled } from "../../lib/modules/catalog.ts";
+import { JOB_MODULES, resolveHandler } from "./registry.ts";
 import type { JobRow } from "./types.ts";
 
 // No `@/` or `server-only` imports above the line this comment sits on:
@@ -125,6 +126,23 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
       if (updateError) throw updateError;
     },
     async dispatch(job) {
+      // MOD-T11 (rulings "Jobs") — a job of a module-off institution
+      // completes as succeeded with no side effects: dropped, never
+      // retried. `Object.hasOwn` (same reasoning as resolveHandler above)
+      // so a core job type (no row) is never gated.
+      const moduleKey = Object.hasOwn(JOB_MODULES, job.type) ? JOB_MODULES[job.type] : undefined;
+      if (moduleKey && job.institution_id) {
+        const { data, error } = await admin
+          .from("institutions")
+          .select("settings")
+          .eq("id", job.institution_id)
+          .single();
+        if (error) throw error;
+        if (!isModuleEnabled({ institution: { settings: data.settings as Record<string, unknown> | null } }, moduleKey)) {
+          return;
+        }
+      }
+
       const handler = resolveHandler(job.type);
       if (!handler) throw new UnknownJobTypeError(job.type);
       await handler(job, { admin });

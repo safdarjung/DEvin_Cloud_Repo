@@ -11,6 +11,7 @@ import { AppError, fail, ok, type ActionResult, type ErrorCode } from "@/lib/act
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
 import { EnquiryReplyRequestSchema, EnquiryReplySchema } from "@/modules/ai/enquiry-reply.schemas";
@@ -113,6 +114,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (err) {
     if (err instanceof AppError) return json(fail(err.code, err.message, err.fieldErrors));
     throw err;
+  }
+
+  if (!isModuleEnabled(ctx, "ai_teacher")) {
+    return json(fail("ai_unavailable", "AI features are not available for your institution."));
   }
 
   // `getEnquiry` is already institution-scoped — a cross-tenant id reads

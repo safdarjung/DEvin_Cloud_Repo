@@ -9,6 +9,7 @@ import { getStudyItem, listStudyFolders, listStudyItems } from "./student-study.
 
 export const listStudyItemsQuery = defineQuery({
   name: "ai.listStudyItems",
+  module: "ai_student",
   schema: z.object({ folder: z.string().optional(), search: z.string().optional() }).strict(),
   permission: "ai.study",
   handler: (input, ctx) => listStudyItems(ctx, input),
@@ -16,6 +17,7 @@ export const listStudyItemsQuery = defineQuery({
 
 export const listStudyFoldersQuery = defineQuery({
   name: "ai.listStudyFolders",
+  module: "ai_student",
   schema: z.object({}).strict(),
   permission: "ai.study",
   handler: (_input, ctx) => listStudyFolders(ctx),
@@ -23,6 +25,7 @@ export const listStudyFoldersQuery = defineQuery({
 
 export const getStudyItemQuery = defineQuery({
   name: "ai.getStudyItem",
+  module: "ai_student",
   schema: z.object({ itemId: uuid }).strict(),
   permission: "ai.study",
   handler: (input, ctx) => getStudyItem(ctx, input.itemId),

@@ -60,6 +60,7 @@ function mapLeaveRow(row: Record<string, unknown>): LeaveRow {
 
 export const requestLeave = defineAction({
   name: "people.leave.request",
+  module: "staff_attendance",
   schema: LeaveRequestSchema,
   permission: "leave.request",
   handler: async ({ staffId, leaveType, startDate, endDate, reason }: LeaveRequestInput, ctx) => {
@@ -111,6 +112,7 @@ async function decideLeave(_ctx: TenantContext, leaveId: string, decision: "appr
 
 export const approveLeave = defineAction({
   name: "people.leave.approve",
+  module: "staff_attendance",
   schema: LeaveDecisionSchema,
   permission: "leave.approve",
   handler: async ({ leaveId, note }: LeaveDecisionInput, ctx) => decideLeave(ctx, leaveId, "approved", note),
@@ -118,6 +120,7 @@ export const approveLeave = defineAction({
 
 export const rejectLeave = defineAction({
   name: "people.leave.reject",
+  module: "staff_attendance",
   schema: LeaveDecisionSchema,
   permission: "leave.approve",
   handler: async ({ leaveId, note }: LeaveDecisionInput, ctx) => decideLeave(ctx, leaveId, "rejected", note),
@@ -125,6 +128,7 @@ export const rejectLeave = defineAction({
 
 export const cancelLeave = defineAction({
   name: "people.leave.cancel",
+  module: "staff_attendance",
   schema: LeaveCancelSchema,
   permission: "leave.request",
   handler: async ({ leaveId }: LeaveCancelInput, ctx) => decideLeave(ctx, leaveId, "cancelled"),

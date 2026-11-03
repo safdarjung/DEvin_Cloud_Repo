@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { AppError, fail, ok, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
 import {
@@ -104,6 +105,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (err) {
     if (err instanceof AppError) return json(fail(err.code, err.message, err.fieldErrors));
     throw err;
+  }
+
+  if (!isModuleEnabled(ctx, "ai_briefings")) {
+    return json(fail("ai_unavailable", "AI features are not available for your institution."));
   }
 
   const prompt = buildDashboardBriefingPrompt(input);

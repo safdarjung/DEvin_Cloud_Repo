@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { PageList } from "@/modules/website/components/PageList";
 import { getWebsite, listPages } from "@/modules/website/queries";
 import { WebsiteLiveToggle } from "./WebsiteLiveToggle";
@@ -10,6 +10,7 @@ import { WebsiteLiveToggle } from "./WebsiteLiveToggle";
 export default async function WebsitePage({ params }: { params: Promise<{ institution: string }> }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "website");
   requirePermission(ctx, "website.edit");
 
   const [pages, website] = await Promise.all([listPages(ctx), getWebsite(ctx)]);

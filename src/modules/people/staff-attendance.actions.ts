@@ -41,6 +41,7 @@ function todayInTimezone(timezone: string): string {
 
 export const markStaffAttendance = defineAction({
   name: "people.staffAttendance.mark",
+  module: "staff_attendance",
   schema: StaffAttendanceMarkSchema,
   permission: "staff.attendance.mark",
   handler: async ({ date, records }: StaffAttendanceMarkInput, ctx) => {
@@ -104,6 +105,7 @@ export const markStaffAttendance = defineAction({
 
 export const checkIn = defineAction({
   name: "people.staffAttendance.checkIn",
+  module: "staff_attendance",
   schema: CheckInSchema,
   permission: "staff.attendance.mark",
   handler: async (_input, ctx) => {

@@ -143,6 +143,41 @@ export const InstitutionSettingsSchema = z
         student_ai_notebook: z.boolean().optional(),
       })
       .strict(),
+    // MOD — module entitlements (core modules always on; optional modules
+    // can be disabled). Only optional keys allowed; missing key falls back
+    // to catalog default in isModuleEnabled.
+    modules: z
+      .object({
+        timetable: z.boolean().optional(),
+        assignments: z.boolean().optional(),
+        lesson_plans: z.boolean().optional(),
+        question_bank: z.boolean().optional(),
+        exams: z.boolean().optional(),
+        admissions: z.boolean().optional(),
+        website: z.boolean().optional(),
+        staff_attendance: z.boolean().optional(),
+        substitution: z.boolean().optional(),
+        student_lifecycle: z.boolean().optional(),
+        finance_plus: z.boolean().optional(),
+        online_payments: z.boolean().optional(),
+        facilities: z.boolean().optional(),
+        transport: z.boolean().optional(),
+        calendar: z.boolean().optional(),
+        announcements: z.boolean().optional(),
+        email: z.boolean().optional(),
+        sms: z.boolean().optional(),
+        scheduled_reports: z.boolean().optional(),
+        ai_teacher: z.boolean().optional(),
+        ai_student: z.boolean().optional(),
+        ai_briefings: z.boolean().optional(),
+        insights: z.boolean().optional(),
+        mastery: z.boolean().optional(),
+        forecasts: z.boolean().optional(),
+        agents: z.boolean().optional(),
+        workflows: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -282,6 +317,15 @@ export const SetMemberStatusSchema = z
   .strict();
 export type SetMemberStatusInput = z.infer<typeof SetMemberStatusSchema>;
 
+// MOD-T4 — core.module.set action input.
+export const SetModuleEnabledSchema = z
+  .object({
+    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
+    enabled: z.boolean(),
+  })
+  .strict();
+export type SetModuleEnabledInput = z.infer<typeof SetModuleEnabledSchema>;
+
 // M03-T8 — academic year / term / institution settings setup actions.
 // `sequence` (terms) and date-ordering are not client input: the handler
 // derives sequence, and `app.validate_term_dates` (0002) enforces a term
@@ -311,12 +355,13 @@ export type TermUpsertInput = z.infer<typeof TermUpsertSchema>;
 // `settings` is a deep-partial patch validated against the real settings
 // schema (same per-key-strictness idea as setFeatureEnabled's `features`
 // patch): a key that's present must still be the full, valid shape for
-// that key; `.partial()` only makes top-level keys optional.
+// that key; `.partial()` only makes top-level keys optional. Modules are
+// never updated via updateSettings; they go through core.module.set.
 export const UpdateInstitutionSettingsSchema = z
   .object({
     name: shortText.optional(),
     timezone: z.string().trim().min(1).max(100).optional(),
-    settings: InstitutionSettingsSchema.partial().optional(),
+    settings: InstitutionSettingsSchema.omit({ modules: true }).partial().optional(),
   })
   .strict();
 export type UpdateInstitutionSettingsInput = z.infer<typeof UpdateInstitutionSettingsSchema>;

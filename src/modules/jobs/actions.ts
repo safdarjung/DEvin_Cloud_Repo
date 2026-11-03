@@ -19,6 +19,7 @@ const RequeueJobInput = z.object({ jobId: z.string().uuid() }).strict();
 // audit row itself (status+attempts only, never payload/last_error).
 export const requeueJob = defineAction({
   name: "job.requeue",
+  module: "core",
   schema: RequeueJobInput,
   permission: "job.manage",
   handler: async ({ jobId }, ctx) => {

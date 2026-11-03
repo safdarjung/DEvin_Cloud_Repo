@@ -247,4 +247,40 @@ describe("POST /api/public/enquiry (06 §W3, C-80..C-83)", () => {
       await inst.cleanup();
     }
   });
+
+  it("MOD-T8: returns 404 when admissions module is disabled (like unknown slug)", async () => {
+    const inst = await createTestInstitution("enquiry-route-admissions-off");
+    try {
+      await makeLiveWebsite(inst.institutionId);
+      // Disable admissions module
+      await sql`
+        update public.institutions
+        set settings = settings || '{"modules": {"admissions": false}}'::jsonb
+        where id = ${inst.institutionId}::uuid
+      `;
+      const { POST } = await import("@/app/api/public/enquiry/route");
+
+      const res = await POST(
+        enquiryRequest({
+          slug: inst.slug,
+          childName: "Test Child",
+          guardianName: "Test Guardian",
+          phone: "9800040004",
+          website: "",
+        }),
+      );
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("not_found");
+
+      // Verify no enquiry was created
+      const rows = await sql`
+        select id from public.enquiries where institution_id = ${inst.institutionId}::uuid
+      `;
+      expect(rows).toHaveLength(0);
+    } finally {
+      await inst.cleanup();
+    }
+  });
 });

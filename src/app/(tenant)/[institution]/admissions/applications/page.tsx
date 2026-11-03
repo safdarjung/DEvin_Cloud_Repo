@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { applicationStatusVariant } from "@/modules/admissions/status";
 import { listApplications, type ApplicationRow } from "@/modules/admissions/queries";
 import type { ApplicationStatus } from "@/modules/admissions/state";
@@ -21,6 +21,7 @@ export default async function ApplicationsPage({
   const { institution: institutionSlug } = await params;
   const { status } = await searchParams;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "admissions");
   requirePermission(ctx, "admissions.enquiry.read");
 
   const applications = await listApplications(ctx, status as ApplicationStatus | undefined);

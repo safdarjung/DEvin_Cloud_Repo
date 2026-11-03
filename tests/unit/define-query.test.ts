@@ -31,6 +31,7 @@ describe("defineQuery", () => {
   it("returns ok(data) for a permitted ctx", async () => {
     const query = defineQuery({
       name: "test.query.ok",
+      module: "core",
       schema: Input,
       permission: "attendance.read",
       handler: async (input) => ({ echoed: input.value }),
@@ -45,6 +46,7 @@ describe("defineQuery", () => {
   it("returns forbidden for a role lacking the permission", async () => {
     const query = defineQuery({
       name: "test.query.forbidden",
+      module: "core",
       schema: Input,
       permission: "finance.read",
       handler: async (input) => input,
@@ -62,6 +64,7 @@ describe("defineQuery", () => {
   it("returns validation_failed for bad input", async () => {
     const query = defineQuery({
       name: "test.query.bad-input",
+      module: "core",
       schema: Input,
       permission: "attendance.read",
       handler: async (input) => input,
@@ -80,6 +83,7 @@ describe("defineQuery", () => {
   it("registers in getRegisteredQueries, not getRegisteredActions", () => {
     defineQuery({
       name: "test.query.registers",
+      module: "core",
       schema: Input,
       permission: "attendance.read",
       handler: async (input) => input,
@@ -93,6 +97,7 @@ describe("defineQuery", () => {
   it("records schema + static permission in getQueryMeta", () => {
     defineQuery({
       name: "test.query.meta-static",
+      module: "core",
       schema: Input,
       permission: "attendance.read",
       handler: async (input) => input,

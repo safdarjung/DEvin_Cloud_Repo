@@ -41,6 +41,7 @@ function isRlsViolation(error: unknown): boolean {
 
 export const upsertDepartment = defineAction({
   name: "people.department.upsert",
+  module: "people",
   schema: DepartmentUpsertSchema,
   permission: "staff.write",
   handler: async ({ id, name }: DepartmentUpsertInput, ctx) => {
@@ -66,6 +67,7 @@ export const upsertDepartment = defineAction({
 
 export const upsertStaff = defineAction({
   name: "people.staff.upsert",
+  module: "people",
   schema: StaffUpsertSchema,
   permission: "staff.write",
   handler: async (
@@ -127,6 +129,7 @@ export const upsertStaff = defineAction({
 
 export const updateStudent = defineAction({
   name: "people.student.update",
+  module: "people",
   schema: StudentUpdateSchema,
   permission: "student.write",
   handler: async ({ studentId, firstName, lastName, dob, gender, admissionNo }: StudentUpdateInput, ctx) => {
@@ -176,6 +179,7 @@ export const updateStudent = defineAction({
 
 export const updateGuardian = defineAction({
   name: "people.guardian.update",
+  module: "people",
   schema: GuardianUpdateSchema,
   permission: "student.write",
   handler: async ({ guardianId, fullName, phone, email }: GuardianUpdateInput, ctx) => {
@@ -216,6 +220,7 @@ export const updateGuardian = defineAction({
 
 export const linkGuardian = defineAction({
   name: "people.guardian.link",
+  module: "people",
   schema: GuardianLinkSchema,
   permission: "student.write",
   handler: async ({ studentId, relationship, isPrimary, guardianId, guardian }: GuardianLinkInput) => {

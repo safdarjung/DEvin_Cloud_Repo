@@ -8,6 +8,7 @@ import { listAttentionJobs } from "./queries";
 // permission: job.manage — jobs/page.tsx:39's only caller.
 export const listAttentionJobsQuery = defineQuery({
   name: "jobs.listAttentionJobs",
+  module: "core",
   schema: z.object({}).strict(),
   permission: "job.manage",
   handler: (_input, ctx) => listAttentionJobs(ctx),

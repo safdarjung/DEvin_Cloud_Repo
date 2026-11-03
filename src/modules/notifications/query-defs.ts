@@ -10,6 +10,7 @@ import { listDeliveryLog, listMyNotifications, unreadCount } from "./queries";
 // conditioned calls all gate on this.
 export const listMyNotificationsQuery = defineQuery({
   name: "notifications.listMyNotifications",
+  module: "notifications",
   schema: z.object({ limit: z.number().int().positive().max(200).optional() }).strict(),
   permission: "notification.read",
   handler: (input, ctx) => listMyNotifications(ctx, input.limit),
@@ -19,6 +20,7 @@ export const listMyNotificationsQuery = defineQuery({
 // (the fn itself has no permission narrowing beyond RLS's own-row scope).
 export const unreadCountQuery = defineQuery({
   name: "notifications.unreadCount",
+  module: "notifications",
   schema: z.object({}).strict(),
   permission: "notification.read",
   handler: (_input, ctx) => unreadCount(ctx),
@@ -29,6 +31,7 @@ export const unreadCountQuery = defineQuery({
 // itself also enforces it internally (defense in depth).
 export const listDeliveryLogQuery = defineQuery({
   name: "notifications.listDeliveryLog",
+  module: "notifications",
   schema: z.object({ limit: z.number().int().positive().max(500).optional() }).strict(),
   permission: "notification.log.read",
   handler: (input, ctx) => listDeliveryLog(ctx, input.limit),

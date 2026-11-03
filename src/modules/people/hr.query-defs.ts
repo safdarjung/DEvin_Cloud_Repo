@@ -7,6 +7,7 @@ import { leaveRequests, pendingLeaveApprovals, staffAttendanceForDate, staffAvai
 
 export const staffAvailabilityTodayQuery = defineQuery({
   name: "people.staffAvailabilityToday",
+  module: "staff_attendance",
   schema: z.object({}).strict(),
   permission: "staff.read",
   handler: (_input, ctx) => staffAvailabilityToday(ctx),
@@ -14,6 +15,7 @@ export const staffAvailabilityTodayQuery = defineQuery({
 
 export const pendingLeaveApprovalsQuery = defineQuery({
   name: "people.pendingLeaveApprovals",
+  module: "staff_attendance",
   schema: z.object({}).strict(),
   permission: "leave.approve",
   handler: (_input, ctx) => pendingLeaveApprovals(ctx),
@@ -21,6 +23,7 @@ export const pendingLeaveApprovalsQuery = defineQuery({
 
 export const leaveRequestsQuery = defineQuery({
   name: "people.leaveRequests",
+  module: "staff_attendance",
   schema: LeaveListSchema,
   permission: "leave.request",
   handler: (input, ctx) => leaveRequests(ctx, input),
@@ -28,6 +31,7 @@ export const leaveRequestsQuery = defineQuery({
 
 export const staffAttendanceForDateQuery = defineQuery({
   name: "people.staffAttendanceForDate",
+  module: "staff_attendance",
   schema: StaffAttendanceForDateSchema,
   permission: "staff.attendance.mark",
   handler: (input, ctx) => staffAttendanceForDate(ctx, input.date),

@@ -3,13 +3,14 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { EventForm } from "@/modules/website/components/EventForm";
 import { listEvents } from "@/modules/website/queries";
 
 export default async function EventsPage({ params }: { params: Promise<{ institution: string }> }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "website");
   requirePermission(ctx, "website.edit");
 
   const events = await listEvents(ctx);

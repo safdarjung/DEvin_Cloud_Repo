@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { MarksEntryGrid } from "@/modules/exams/components/MarksEntryGrid";
 import { getPaperMarks } from "@/modules/exams/queries";
 
@@ -12,6 +12,7 @@ export default async function PaperMarksPage({
 }) {
   const { institution: institutionSlug, examId, paperId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.marks.enter");
 
   const paper = await getPaperMarks(ctx, paperId);

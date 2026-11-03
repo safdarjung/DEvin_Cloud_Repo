@@ -7,6 +7,7 @@ import { facilitiesAssets, facilitiesMaintenanceRequests } from "./queries";
 
 export const facilitiesAssetsQuery = defineQuery({
   name: "facilities.assets",
+  module: "facilities",
   schema: AssetListSchema,
   permission: "maintenance.request",
   handler: (input, ctx) => facilitiesAssets(ctx, input),
@@ -14,6 +15,7 @@ export const facilitiesAssetsQuery = defineQuery({
 
 export const facilitiesMaintenanceRequestsQuery = defineQuery({
   name: "facilities.maintenanceRequests",
+  module: "facilities",
   schema: MaintenanceListSchema,
   permission: "maintenance.request",
   handler: (input, ctx) => facilitiesMaintenanceRequests(ctx, input),

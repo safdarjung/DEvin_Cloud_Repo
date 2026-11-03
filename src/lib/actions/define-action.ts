@@ -4,6 +4,7 @@ import { registerAction } from "@/lib/actions/registry";
 import { hasPermission } from "@/lib/auth/require";
 import type { Permission } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
+import { isModuleEnabled, MODULE_DISABLED_MESSAGE, type ModuleKey } from "@/lib/modules/catalog";
 
 export type Action<O> = (
   institutionSlug: string,
@@ -37,11 +38,15 @@ export interface GuardedCallOptions<I, O> {
    * file doesn't hard-depend on that module existing at build time.
    */
   resolveContext?: (institutionSlug: string) => Promise<TenantContext>;
+  /** Gate order (MOD rulings): context → module → Zod → permission → handler. */
+  module?: ModuleKey;
 }
 
 interface DefineActionOptions<I, O> extends GuardedCallOptions<I, O> {
   /** Audit action string; also the registry key (06 §1.2). */
   name: string;
+  /** Required (MOD-T13): every action declares its module, core keys included. */
+  module: ModuleKey;
 }
 
 async function defaultResolveContext(institutionSlug: string): Promise<TenantContext> {
@@ -88,6 +93,10 @@ export function guardedCall<I, O>(opts: GuardedCallOptions<I, O>): Action<O> {
       }
     }
 
+    if (opts.module && !isModuleEnabled(ctx, opts.module)) {
+      return fail("forbidden", MODULE_DISABLED_MESSAGE);
+    }
+
     const parsed = opts.schema.safeParse(raw);
     if (!parsed.success) {
       const { fieldErrors } = parsed.error.flatten();
@@ -117,6 +126,7 @@ export function defineAction<I, O>(opts: DefineActionOptions<I, O>): Action<O> {
   registerAction(opts.name, action as Action<unknown>, {
     schema: opts.schema,
     permission: typeof opts.permission === "function" ? null : opts.permission,
+    module: opts.module,
   });
   return action;
 }

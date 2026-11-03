@@ -10,5 +10,5 @@ export default async function TenantHome({
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
 
-  redirect(`/${institutionSlug}${homePathFor(ctx.permissions)}`);
+  redirect(`/${institutionSlug}${homePathFor(ctx.permissions, ctx.institution.settings)}`);
 }

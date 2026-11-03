@@ -66,6 +66,7 @@ async function assertUnderItemCap(supabase: StudyClient, ctx: TenantContext): Pr
 
 export const saveStudyChat = defineAction({
   name: "ai.study.chat.save",
+  module: "ai_student",
   schema: SaveStudyChatSchema,
   permission: "ai.study",
   handler: async ({ title, folder, messages }, ctx) => {
@@ -95,6 +96,7 @@ export const saveStudyChat = defineAction({
 
 export const saveStudyNote = defineAction({
   name: "ai.study.note.save",
+  module: "ai_student",
   schema: SaveStudyNoteSchema,
   permission: "ai.study",
   handler: async ({ title, folder, blocks, sourceChatId }, ctx) => {
@@ -131,6 +133,7 @@ export const saveStudyNote = defineAction({
 
 export const updateStudyItem = defineAction({
   name: "ai.study.item.update",
+  module: "ai_student",
   schema: UpdateStudyItemSchema,
   permission: "ai.study",
   handler: async ({ itemId, title, folder, pinned }, ctx) => {
@@ -168,6 +171,7 @@ export const updateStudyItem = defineAction({
 
 export const deleteStudyItem = defineAction({
   name: "ai.study.item.delete",
+  module: "ai_student",
   schema: DeleteStudyItemSchema,
   permission: "ai.study",
   handler: async ({ itemId }, ctx) => {

@@ -27,6 +27,7 @@ import {
 // data; every role holds it (07 §2.2).
 export const listAcademicYearsQuery = defineQuery({
   name: "finance.listAcademicYears",
+  module: "fees",
   schema: z.object({}).strict(),
   permission: "academics.read",
   handler: (_input, ctx) => listAcademicYears(ctx),
@@ -39,6 +40,7 @@ export const listAcademicYearsQuery = defineQuery({
 // finance.read's holders.
 export const listGradeOptionsQuery = defineQuery({
   name: "finance.listGradeOptions",
+  module: "fees",
   schema: z.object({}).strict(),
   permission: "finance.read",
   handler: (_input, ctx) => listGradeOptions(ctx),
@@ -50,6 +52,7 @@ export const listGradeOptionsQuery = defineQuery({
 // caller sets are subsets of finance.read's holders.
 export const listTermOptionsQuery = defineQuery({
   name: "finance.listTermOptions",
+  module: "fees",
   schema: z.object({ academicYearId: uuid.optional() }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => listTermOptions(ctx, input.academicYearId),
@@ -61,6 +64,7 @@ export const listTermOptionsQuery = defineQuery({
 // both actual caller sets, so student.read (every role) is used.
 export const listFeeStructuresQuery = defineQuery({
   name: "finance.listFeeStructures",
+  module: "fees",
   schema: z.object({ academicYearId: uuid.optional(), gradeId: uuid.optional() }).strict(),
   permission: "student.read",
   handler: (input, ctx) => listFeeStructures(ctx, { academicYearId: input.academicYearId, gradeId: input.gradeId }),
@@ -69,6 +73,7 @@ export const listFeeStructuresQuery = defineQuery({
 // permission: finance.structure.manage — finance/structures/[id]/page.tsx's only caller.
 export const getFeeStructureQuery = defineQuery({
   name: "finance.getFeeStructure",
+  module: "fees",
   schema: z.object({ id: uuid }).strict(),
   permission: "finance.structure.manage",
   handler: (input, ctx) => getFeeStructure(ctx, input.id),
@@ -77,6 +82,7 @@ export const getFeeStructureQuery = defineQuery({
 // permission: finance.read — finance/invoices/page.tsx's only caller.
 export const listInvoicesQuery = defineQuery({
   name: "finance.listInvoices",
+  module: "fees",
   schema: z.object({ termId: uuid.optional(), status: z.string().trim().min(1).max(50).optional(), gradeId: uuid.optional() }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => listInvoices(ctx, { termId: input.termId, status: input.status, gradeId: input.gradeId }),
@@ -86,6 +92,7 @@ export const listInvoicesQuery = defineQuery({
 // renders invoices behind only student.read; RLS still filters there (DBT-43).
 export const listInvoicesForStudentQuery = defineQuery({
   name: "finance.listInvoicesForStudent",
+  module: "fees",
   schema: z.object({ studentId: uuid }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => listInvoicesForStudent(ctx, input.studentId),
@@ -94,6 +101,7 @@ export const listInvoicesForStudentQuery = defineQuery({
 // permission: finance.read — finance/invoices/[id]/page.tsx's only caller.
 export const getInvoiceQuery = defineQuery({
   name: "finance.getInvoice",
+  module: "fees",
   schema: z.object({ id: uuid }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => getInvoice(ctx, input.id),
@@ -104,6 +112,7 @@ export const getInvoiceQuery = defineQuery({
 // all gate finance.read.
 export const getReceiptQuery = defineQuery({
   name: "finance.getReceipt",
+  module: "fees",
   schema: z.object({ id: uuid }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => getReceipt(ctx, input.id),
@@ -112,6 +121,7 @@ export const getReceiptQuery = defineQuery({
 // permission: finance.read — portal/fees/page.tsx's only caller.
 export const listReceiptsForStudentQuery = defineQuery({
   name: "finance.listReceiptsForStudent",
+  module: "fees",
   schema: z.object({ studentId: uuid }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => listReceiptsForStudent(ctx, input.studentId),
@@ -120,6 +130,7 @@ export const listReceiptsForStudentQuery = defineQuery({
 // permission: finance.structure.manage — finance/ledger/page.tsx's only caller.
 export const listLedgerEntriesQuery = defineQuery({
   name: "finance.listLedgerEntries",
+  module: "fees",
   schema: z
     .object({
       from: isoDate,
@@ -140,6 +151,7 @@ export const listLedgerEntriesQuery = defineQuery({
 // both actual caller sets equal finance.structure.manage's own holders.
 export const listDefaultersQuery = defineQuery({
   name: "finance.listDefaulters",
+  module: "fees",
   schema: z.object({ termId: uuid }).strict(),
   permission: "finance.structure.manage",
   handler: (input, ctx) => listDefaulters(ctx, { termId: input.termId }),
@@ -150,6 +162,7 @@ export const listDefaultersQuery = defineQuery({
 // gated on finance.read before it ever calls this.
 export const termCollectionSummaryQuery = defineQuery({
   name: "finance.termCollectionSummary",
+  module: "fees",
   schema: z.object({ termId: uuid }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => termCollectionSummary(ctx, input.termId),

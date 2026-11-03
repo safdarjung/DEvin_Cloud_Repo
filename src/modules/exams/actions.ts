@@ -80,6 +80,7 @@ async function loadTerm(supabase: ExamsClient, institutionId: string, termId: st
 export const createExam = defineAction({
   name: "exam.create",
   schema: CreateExamSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: CreateExamInput, ctx) => {
     const supabase = await createClient();
@@ -112,6 +113,7 @@ export const createExam = defineAction({
 export const createExamPapers = defineAction({
   name: "exam.papers.create",
   schema: CreateExamPapersSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: CreateExamPapersInput, ctx) => {
     const supabase = await createClient();
@@ -185,6 +187,7 @@ export const createExamPapers = defineAction({
 export const schedulePapers = defineAction({
   name: "exam.paper.schedule",
   schema: SchedulePapersSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: SchedulePapersInput, ctx) => {
     const supabase = await createClient();
@@ -264,6 +267,7 @@ export const schedulePapers = defineAction({
 export const openMarksEntry = defineAction({
   name: "exam.marks_entry.open",
   schema: ExamIdSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: ExamIdInput, ctx) => {
     const supabase = await createClient();
@@ -280,6 +284,7 @@ export const openMarksEntry = defineAction({
 export const closeMarksEntry = defineAction({
   name: "exam.marks_entry.close",
   schema: ExamIdSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: ExamIdInput, ctx) => {
     const supabase = await createClient();
@@ -296,6 +301,7 @@ export const closeMarksEntry = defineAction({
 export const reopenMarksEntry = defineAction({
   name: "exam.marks_entry.reopen",
   schema: ExamIdSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: ExamIdInput, ctx) => {
     const supabase = await createClient();
@@ -312,6 +318,7 @@ export const reopenMarksEntry = defineAction({
 export const enterMarks = defineAction({
   name: "exam.marks.enter",
   schema: EnterMarksSchema,
+  module: "exams",
   permission: "exam.marks.enter",
   handler: async (input: EnterMarksInput, ctx) => {
     const supabase = await createClient();
@@ -333,6 +340,7 @@ export const enterMarks = defineAction({
 export const publishExamResults = defineAction({
   name: "exam.result.publish",
   schema: ExamIdSchema,
+  module: "exams",
   permission: "exam.result.publish",
   handler: async (input: ExamIdInput, ctx) => {
     const supabase = await createClient();
@@ -368,6 +376,7 @@ export const publishExamResults = defineAction({
 export const requestRecheck = defineAction({
   name: "exam.recheck.request",
   schema: RequestRecheckSchema,
+  module: "exams",
   permission: "exam.recheck.request",
   handler: async (input: RequestRecheckInput, ctx) => {
     const supabase = await createClient();
@@ -387,6 +396,7 @@ export const requestRecheck = defineAction({
 export const startRecheckReview = defineAction({
   name: "exam.recheck.review",
   schema: RecheckIdSchema,
+  module: "exams",
   permission: "exam.recheck.review",
   handler: async (input: RecheckIdInput, ctx) => {
     const supabase = await createClient();
@@ -404,6 +414,7 @@ export const startRecheckReview = defineAction({
 export const decideRecheck = defineAction({
   name: "exam.recheck.decide",
   schema: DecideRecheckSchema,
+  module: "exams",
   permission: "exam.recheck.decide",
   handler: async (input: DecideRecheckInput, ctx) => {
     const supabase = await createClient();
@@ -450,6 +461,7 @@ export const decideRecheck = defineAction({
 export const saveResultRemark = defineAction({
   name: "exam.remark.save",
   schema: SaveResultRemarkSchema,
+  module: "exams",
   permission: "exam.marks.enter",
   handler: async (input: SaveResultRemarkInput, ctx) => {
     const supabase = await createClient();
@@ -511,6 +523,7 @@ export const saveResultRemark = defineAction({
 export const verifyExam = defineAction({
   name: "exam.verify",
   schema: ExamIdSchema,
+  module: "exams",
   permission: "exam.manage",
   handler: async (input: ExamIdInput, ctx) => {
     const supabase = await createClient();

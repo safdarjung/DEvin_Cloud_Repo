@@ -137,20 +137,32 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
 });
 
 // Minimal fake of the one supabase-js surface `createRunnerPorts` touches:
-// `.rpc(fn, args)` for the jobs_claim/jobs_complete wrappers (20261028000012)
-// and `.from('jobs').update(...).eq('id', id)` for the unknown-type kill
-// path. No real Postgres connection anywhere in this module (lead rework:
-// the web route must use the service role, never a superuser DSN).
+// `.rpc(fn, args)` for the jobs_claim/jobs_complete wrappers (20261028000012),
+// `.from('jobs').update(...).eq('id', id)` for the unknown-type kill path,
+// and (MOD-T11) `.from('institutions').select('settings').eq('id', id).single()`
+// for the module gate — `institutionSettings` defaults to `{}` (every
+// batch-2 module's catalog default applies, so a job type's module reads as
+// on unless a test says otherwise). No real Postgres connection anywhere in
+// this module (lead rework: the web route must use the service role, never
+// a superuser DSN).
 function fakeAdmin(opts: {
   rpcResult?: { data: unknown; error: { message: string } | null };
   updateError?: { message: string } | null;
-} = {}): { admin: SupabaseClient<Database>; rpc: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> } {
+  institutionSettings?: Record<string, unknown> | null;
+} = {}): {
+  admin: SupabaseClient<Database>;
+  rpc: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  from: ReturnType<typeof vi.fn>;
+} {
   const rpc = vi.fn(async () => opts.rpcResult ?? { data: null, error: null });
   const eq = vi.fn(async () => ({ error: opts.updateError ?? null }));
   const update = vi.fn(() => ({ eq }));
-  const from = vi.fn(() => ({ update }));
+  const single = vi.fn(async () => ({ data: { settings: opts.institutionSettings ?? {} }, error: null }));
+  const select = vi.fn(() => ({ eq: vi.fn(() => ({ single })) }));
+  const from = vi.fn((table: string) => (table === "institutions" ? { select } : { update }));
   const admin = { rpc, from } as unknown as SupabaseClient<Database>;
-  return { admin, rpc, update };
+  return { admin, rpc, update, from };
 }
 
 describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs UPDATE)", () => {
@@ -232,6 +244,29 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     await expect(
       ports.dispatch(makeJob({ type: "notify.recheck_decided", payload: {} })),
     ).rejects.toThrow(/missing request_id/);
+  });
+
+  // MOD-T11 (rulings "Jobs") — JOB_MODULES gate.
+  it("dispatch resolves without touching the handler when the job's module is off for the institution", async () => {
+    const { admin, from } = fakeAdmin({ institutionSettings: { modules: { exams: false } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(
+      ports.dispatch(makeJob({ type: "notify.recheck_decided", payload: {} })),
+    ).resolves.toBeUndefined();
+    expect(from).toHaveBeenCalledWith("institutions");
+  });
+
+  it("dispatch still runs a core job type's handler with no institutions lookup (no JOB_MODULES row)", async () => {
+    const { admin, from } = fakeAdmin();
+    const ports = createRunnerPorts(admin);
+
+    // notify.attendance_absence is core (no JOB_MODULES row): its own real
+    // handler runs and fails on this job's empty payload, same validation
+    // shape as the recheck_decided case above — proving the gate was
+    // skipped entirely rather than reading settings for a core type.
+    await expect(ports.dispatch(makeJob({ type: "notify.attendance_absence", payload: {} }))).rejects.toThrow();
+    expect(from).not.toHaveBeenCalledWith("institutions");
   });
 });
 

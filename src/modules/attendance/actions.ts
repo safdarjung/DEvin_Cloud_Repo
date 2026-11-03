@@ -80,6 +80,7 @@ function isClassTeacherOrAdmin(ctx: TenantContext, classTeacherId: string | null
 
 export const markAttendance = defineAction({
   name: "attendance.mark",
+  module: "attendance",
   schema: MarkAttendanceSchema,
   permission: "attendance.mark",
   handler: async (input: MarkAttendanceInput, ctx) => {
@@ -168,6 +169,7 @@ export const markAttendance = defineAction({
 
 export const submitAttendance = defineAction({
   name: "attendance.submit",
+  module: "attendance",
   schema: SubmitAttendanceSchema,
   permission: "attendance.mark",
   handler: async (input: SubmitAttendanceInput, ctx) => {
@@ -193,6 +195,7 @@ export const submitAttendance = defineAction({
 // config.
 export const markPeriodAttendance = defineAction({
   name: "attendance.markPeriod",
+  module: "timetable",
   schema: MarkPeriodAttendanceSchema,
   permission: "attendance.mark",
   handler: async (input: MarkPeriodAttendanceInput, ctx) => {
@@ -222,6 +225,7 @@ export const markPeriodAttendance = defineAction({
 
 export const correctAttendance = defineAction({
   name: "attendance.correct",
+  module: "attendance",
   schema: CorrectAttendanceSchema,
   permission: "attendance.correct",
   handler: async (input: CorrectAttendanceInput, ctx) => {

@@ -7,6 +7,7 @@ import { calendarForRole } from "./queries";
 
 export const calendarForRoleQuery = defineQuery({
   name: "calendar.forRole",
+  module: "calendar",
   schema: CalendarForRoleSchema,
   permission: "academics.read",
   handler: (input, ctx) => calendarForRole(ctx, input),

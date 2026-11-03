@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
+import { allModulesOn } from "@/lib/modules/catalog";
 
 // createAdminClient() requires this; set once here rather than depending on
 // globalSetup env propagation across worker processes (unreliable across
@@ -59,7 +60,10 @@ export async function createTestInstitution(name: string): Promise<TestInstituti
   const slug = `test-${name}-${institutionId}`;
   const admin = adminClient();
 
-  await sql`insert into public.institutions (id, slug, name, is_demo) values (${institutionId}, ${slug}, ${name}, true)`;
+  await sql`
+    insert into public.institutions (id, slug, name, is_demo, settings)
+    values (${institutionId}, ${slug}, ${name}, true, ${sql.json({ modules: allModulesOn() })})
+  `;
 
   const users = {} as TestInstitution["users"];
   const clients = {} as Record<FixtureRole, SupabaseClient>;

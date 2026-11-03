@@ -6,6 +6,7 @@ import { clientIp } from "@/modules/website/request-ip";
 import { EnquiryInputSchema } from "@/modules/website/schemas";
 import { createPublicEnquiryAdminClient } from "@/modules/website/with-service-role";
 import { readJsonBody } from "@/lib/http/request";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -91,8 +92,31 @@ export async function POST(request: Request): Promise<Response> {
   try {
     // Service-role client, scoped to this call only (07 §4): the route is
     // the sole caller of `public.submit_public_enquiry`, which is granted
-    // to `service_role` only — never anon, never authenticated.
+    // to `service_role` only — never anon, never authenticated. Reused below
+    // for the module-gate lookup too, instead of opening a second, unpooled
+    // `postgres()` connection for it (security review fix).
     const admin = createPublicEnquiryAdminClient();
+
+    // Check if admissions module is enabled for this institution before accepting enquiry.
+    // Return 404 (same as unknown slug) if module is disabled or the slug is unknown.
+    const { data: institution, error: institutionError } = await admin
+      .from("institutions")
+      .select("settings")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (institutionError) {
+      const mapped = mapSqlError(institutionError);
+      const status = mapped.ok ? 500 : STATUS_BY_CODE[mapped.error.code] ?? 500;
+      return NextResponse.json(mapped, { status });
+    }
+
+    if (!institution || !isModuleEnabled({ institution: { settings: institution.settings as Record<string, unknown> } }, "admissions")) {
+      return NextResponse.json(
+        { ok: false, error: { code: "not_found", message: "Institution not found." } },
+        { status: 404 },
+      );
+    }
+
     const { data, error } = await admin.rpc("submit_public_enquiry", {
       p_slug: slug,
       p_payload: payload,

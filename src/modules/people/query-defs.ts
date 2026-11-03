@@ -15,6 +15,7 @@ import { getCurrentTermId, getMyStudent, getStudentProfile, listMyChildren, list
 // default per the task brief.
 export const listStudentsQuery = defineQuery({
   name: "people.listStudents",
+  module: "people",
   schema: z.object({ query: z.string().trim().max(200).optional(), page: z.number().int().positive() }).strict(),
   permission: "student.read",
   handler: (input, ctx) => listStudents(ctx, input.query, input.page),
@@ -22,6 +23,7 @@ export const listStudentsQuery = defineQuery({
 
 export const getStudentProfileQuery = defineQuery({
   name: "people.getStudentProfile",
+  module: "people",
   schema: z.object({ studentId: uuid }).strict(),
   permission: "student.read",
   handler: (input, ctx) => getStudentProfile(ctx, input.studentId),
@@ -33,6 +35,7 @@ export const getStudentProfileQuery = defineQuery({
 // that's the one permission every actual caller is guaranteed to have.
 export const getCurrentTermIdQuery = defineQuery({
   name: "people.getCurrentTermId",
+  module: "people",
   schema: z.object({ academicYearId: uuid }).strict(),
   permission: "student.read",
   handler: (input, ctx) => getCurrentTermId(ctx, input.academicYearId),
@@ -42,6 +45,7 @@ export const getCurrentTermIdQuery = defineQuery({
 // guardian/student portal shell both fns are called from).
 export const listMyChildrenQuery = defineQuery({
   name: "people.listMyChildren",
+  module: "people",
   schema: z.object({}).strict(),
   permission: "student.read",
   handler: (_input, ctx) => listMyChildren(ctx),
@@ -49,6 +53,7 @@ export const listMyChildrenQuery = defineQuery({
 
 export const getMyStudentQuery = defineQuery({
   name: "people.getMyStudent",
+  module: "people",
   schema: z.object({}).strict(),
   permission: "student.read",
   handler: (_input, ctx) => getMyStudent(ctx),

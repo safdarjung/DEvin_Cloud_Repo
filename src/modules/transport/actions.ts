@@ -71,6 +71,7 @@ function throwForWriteError(error: unknown, notFoundMessage: string): never {
 
 export const upsertVehicle = defineAction({
   name: "transport.vehicle.upsert",
+  module: "transport",
   schema: VehicleUpsertSchema,
   permission: "transport.manage",
   handler: async ({ id, registrationNo, capacity, driverName, status }: VehicleUpsertInput, ctx) => {
@@ -97,6 +98,7 @@ export const upsertVehicle = defineAction({
 
 export const upsertRoute = defineAction({
   name: "transport.route.upsert",
+  module: "transport",
   schema: RouteUpsertSchema,
   permission: "transport.manage",
   handler: async ({ id, name, vehicleId, status }: RouteUpsertInput, ctx) => {
@@ -122,6 +124,7 @@ export const upsertRoute = defineAction({
 
 export const upsertStop = defineAction({
   name: "transport.stop.upsert",
+  module: "transport",
   schema: StopUpsertSchema,
   permission: "transport.manage",
   handler: async ({ id, routeId, seq, name, eta, mapX, mapY }: StopUpsertInput, ctx) => {
@@ -150,6 +153,7 @@ export const upsertStop = defineAction({
 
 export const assignTransport = defineAction({
   name: "transport.assign",
+  module: "transport",
   schema: TransportAssignSchema,
   permission: "transport.manage",
   handler: async ({ studentId, stopId }: TransportAssignInput, ctx) => {
@@ -198,6 +202,7 @@ export const assignTransport = defineAction({
 
 export const unassignTransport = defineAction({
   name: "transport.unassign",
+  module: "transport",
   schema: TransportUnassignSchema,
   permission: "transport.manage",
   handler: async ({ studentId }: TransportUnassignInput, ctx) => {

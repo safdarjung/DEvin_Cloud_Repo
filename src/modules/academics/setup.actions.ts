@@ -50,6 +50,7 @@ async function assertInInstitution(
 
 export const upsertGrade = defineAction({
   name: "academics.grade.upsert",
+  module: "academic_structure",
   schema: GradeUpsertSchema,
   permission: "academics.manage",
   handler: async ({ id, code, displayName, sortKey, gradeGroup }: GradeUpsertInput, ctx) => {
@@ -75,6 +76,7 @@ export const upsertGrade = defineAction({
 
 export const upsertSection = defineAction({
   name: "academics.section.upsert",
+  module: "academic_structure",
   schema: SectionUpsertSchema,
   permission: "academics.manage",
   handler: async ({ id, gradeId, academicYearId, name, capacity, classTeacherId }: SectionUpsertInput, ctx) => {
@@ -116,6 +118,7 @@ export const upsertSection = defineAction({
 
 export const upsertSubject = defineAction({
   name: "academics.subject.upsert",
+  module: "academic_structure",
   schema: SubjectUpsertSchema,
   permission: "academics.manage",
   handler: async ({ id, code, name, kind }: SubjectUpsertInput, ctx) => {
@@ -141,6 +144,7 @@ export const upsertSubject = defineAction({
 
 export const setSubjectAssignment = defineAction({
   name: "academics.subjectAssignment.set",
+  module: "academic_structure",
   schema: SubjectAssignmentSetSchema,
   permission: "academics.manage",
   handler: async ({ classSectionId, subjectId, teacherId }: SubjectAssignmentSetInput, ctx) => {

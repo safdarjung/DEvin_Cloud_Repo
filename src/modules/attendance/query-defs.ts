@@ -24,6 +24,7 @@ import {
 // caller holds.
 export const getTodaySectionsForTeacherQuery = defineQuery({
   name: "attendance.getTodaySectionsForTeacher",
+  module: "attendance",
   schema: z.object({}).strict(),
   permission: "attendance.read",
   handler: (_input, ctx) => getTodaySectionsForTeacher(ctx),
@@ -33,6 +34,7 @@ export const getTodaySectionsForTeacherQuery = defineQuery({
 // today/page.tsx:57 both gate on attendance.mark before calling this fn.
 export const getSessionQuery = defineQuery({
   name: "attendance.getSession",
+  module: "attendance",
   schema: z.object({ classSectionId: uuid, date: isoDate }).strict(),
   permission: "attendance.mark",
   handler: (input, ctx) => getSession(ctx, input.classSectionId, input.date),
@@ -43,6 +45,7 @@ export const getSessionQuery = defineQuery({
 // behind only student.read; RLS still filters there (DBT-43).
 export const getStudentAttendanceSummaryQuery = defineQuery({
   name: "attendance.getStudentAttendanceSummary",
+  module: "attendance",
   schema: z.object({ studentId: uuid, termId: uuid }).strict(),
   permission: "attendance.read",
   handler: (input, ctx) => getStudentAttendanceSummary(ctx, input.studentId, input.termId),
@@ -52,6 +55,7 @@ export const getStudentAttendanceSummaryQuery = defineQuery({
 // (only composed internally by core's getDashboardData).
 export const attendanceTodaySummaryQuery = defineQuery({
   name: "attendance.attendanceTodaySummary",
+  module: "attendance",
   schema: z.object({}).strict(),
   permission: "attendance.read",
   handler: (_input, ctx) => attendanceTodaySummary(ctx),
@@ -60,6 +64,7 @@ export const attendanceTodaySummaryQuery = defineQuery({
 // permission: attendance.read — same reasoning as attendanceTodaySummary.
 export const sectionsBelowThresholdQuery = defineQuery({
   name: "attendance.sectionsBelowThreshold",
+  module: "attendance",
   schema: z.object({}).strict(),
   permission: "attendance.read",
   handler: (_input, ctx) => sectionsBelowThreshold(ctx),
@@ -74,6 +79,7 @@ export const sectionsBelowThresholdQuery = defineQuery({
 // teacher via the role-restricted AI route) hold attendance.read.
 export const getSectionAttendancePatternsQuery = defineQuery({
   name: "attendance.getSectionAttendancePatterns",
+  module: "attendance",
   schema: z.object({ classSectionId: uuid, termId: uuid }).strict(),
   permission: "attendance.read",
   handler: (input, ctx) => getSectionAttendancePatterns(ctx, input.classSectionId, input.termId),
@@ -85,6 +91,7 @@ export const getSectionAttendancePatternsQuery = defineQuery({
 // non-admin caller actually sees (DBT-49).
 export const periodSummaryQuery = defineQuery({
   name: "attendance.periodSummary",
+  module: "timetable",
   schema: z.object({ classSectionId: uuid, date: isoDate }).strict(),
   permission: "attendance.read",
   handler: (input, ctx) => periodSummary(ctx, input.classSectionId, input.date),

@@ -24,7 +24,7 @@ export default async function TenantLayout({
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
   const hasNotifications = ctx.permissions.has("notification.read");
-  const navItems = navItemsFor(ctx.permissions).map(({ href, label, icon: Icon, group }) => ({
+  const navItems = navItemsFor(ctx.permissions, ctx.institution.settings).map(({ href, label, icon: Icon, group }) => ({
     href: `/${ctx.institution.slug}${href}`,
     label,
     icon: <Icon className="size-4 shrink-0" aria-hidden />,

@@ -22,6 +22,7 @@ function throwMapped(error: unknown): never {
 
 export const submitAssignment = defineAction({
   name: "assignment.submit",
+  module: "assignments",
   schema: SubmitAssignmentSchema,
   permission: "assignment.submit",
   handler: async ({ assignmentId, text, answers }: SubmitAssignmentInput) => {
@@ -45,6 +46,7 @@ export const submitAssignment = defineAction({
 
 export const gradeSubmission = defineAction({
   name: "assignment.grade",
+  module: "assignments",
   schema: GradeSubmissionSchema,
   permission: "assignment.manage",
   handler: async ({ submissionId, score, maxScore, feedback }: GradeSubmissionInput) => {

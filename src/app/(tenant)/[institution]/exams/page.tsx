@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { humanize } from "@/lib/format";
 import { examStatusVariant } from "@/modules/exams/status";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { getMyPapers, listExams } from "@/modules/exams/queries";
 
 export default async function ExamsPage({
@@ -17,6 +17,7 @@ export default async function ExamsPage({
 }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.result.read");
 
   const canManage = hasPermission(ctx, "exam.manage");

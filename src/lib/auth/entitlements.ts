@@ -6,6 +6,7 @@
 // added there without a matching `FEATURE_CATALOG` entry is a compile error.
 import type { InstitutionSettings } from "@/modules/core/schemas";
 import type { TenantContext } from "@/lib/auth/types";
+import { isModuleEnabled, type ModuleKey } from "@/lib/modules/catalog";
 
 export type FeatureKey = keyof NonNullable<InstitutionSettings["features"]>;
 
@@ -14,23 +15,31 @@ interface FeatureCatalogEntry {
   default: boolean;
   /** D33 — a sub-feature is never enabled while its parent is off, regardless of its own stored value. */
   parent?: FeatureKey;
+  /** Module required for this feature to be enabled. */
+  module: ModuleKey;
+  /** Short plain label for UI display. */
+  label: string;
 }
 
 // D33 — every key here defaults to `false` except `teacher_ai_agent`
 // (D30's own promise, kept exactly: existing customers keep what they had).
 export const FEATURE_CATALOG: Record<FeatureKey, FeatureCatalogEntry> = {
-  teacher_ai_agent: { default: true },
-  teacher_ai_visuals: { default: false, parent: "teacher_ai_agent" },
-  teacher_ai_class_insights: { default: false, parent: "teacher_ai_agent" },
-  teacher_ai_lesson_plans: { default: false, parent: "teacher_ai_agent" },
-  teacher_ai_parent_messages: { default: false, parent: "teacher_ai_agent" },
-  student_ai_study: { default: false },
-  student_ai_visuals: { default: false, parent: "student_ai_study" },
-  student_ai_notebook: { default: false, parent: "student_ai_study" },
+  teacher_ai_agent: { default: true, module: "ai_teacher", label: "Agent" },
+  teacher_ai_visuals: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Visuals" },
+  teacher_ai_class_insights: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Class Insights" },
+  teacher_ai_lesson_plans: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Lesson Plans" },
+  teacher_ai_parent_messages: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Parent Messages" },
+  student_ai_study: { default: false, module: "ai_student", label: "Study" },
+  student_ai_visuals: { default: false, parent: "student_ai_study", module: "ai_student", label: "Visuals" },
+  student_ai_notebook: { default: false, parent: "student_ai_study", module: "ai_student", label: "Notebook" },
 };
 
 export function isFeatureEnabled(ctx: TenantContext, key: FeatureKey): boolean {
   const entry = FEATURE_CATALOG[key];
+
+  // Check module first
+  if (!isModuleEnabled(ctx, entry.module)) return false;
+
   if (entry.parent && !isFeatureEnabled(ctx, entry.parent)) return false;
 
   const features = ctx.institution.settings.features;

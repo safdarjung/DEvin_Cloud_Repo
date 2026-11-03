@@ -13,8 +13,10 @@ import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { FEATURE_CATALOG, type FeatureKey } from "@/lib/auth/entitlements";
+import { isModuleEnabled, MODULE_KEYS, MODULES, type ModuleKey } from "@/lib/modules/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { emailChannel, resendConfigured } from "@/modules/notifications/channels/resend";
+import { getWebsite } from "@/modules/website/queries";
 import {
   AcademicYearUpsertSchema,
   InstitutionSettingsSchema,
@@ -22,6 +24,7 @@ import {
   RevokeInvitationSchema,
   SetMemberRoleSchema,
   SetMemberStatusSchema,
+  SetModuleEnabledSchema,
   TermUpsertSchema,
   UpdateInstitutionSettingsSchema,
   type AcademicYearUpsertInput,
@@ -46,6 +49,7 @@ function throwMapped(error: unknown): never {
 
 export const setFeatureEnabled = defineAction({
   name: "core.feature.set",
+  module: "core",
   schema: z.object({ key: z.enum(FEATURE_KEYS), enabled: z.boolean() }).strict(),
   permission: "institution.settings.manage",
   handler: async ({ key, enabled }, ctx) => {
@@ -101,6 +105,7 @@ function buildInviteEmailText(schoolName: string, role: string, link: string): s
 // shape as attendance's submitAttendance.
 export const inviteMember = defineAction({
   name: "core.member.invite",
+  module: "core",
   schema: InviteMemberSchema,
   permission: "member.manage",
   handler: async ({ email, role, staffId, guardianId, studentId }: InviteMemberInput, ctx) => {
@@ -122,7 +127,9 @@ export const inviteMember = defineAction({
     // in the result + audit `after`. A send failure never fails the action.
     const appUrl = process.env.APP_URL?.replace(/\/+$/, "");
     let delivery: "sent" | "simulated" | "failed" = "simulated";
-    if (resendConfigured() && appUrl) {
+    // MOD-T11 (rulings "Channels") — `email` off falls back to simulated,
+    // same as a missing Resend key.
+    if (resendConfigured() && appUrl && isModuleEnabled(ctx, "email")) {
       const link = `${appUrl}/invite#token=${row.token}`;
       const result = await emailChannel().send({
         toAddress: email,
@@ -147,6 +154,7 @@ export const inviteMember = defineAction({
 
 export const revokeInvite = defineAction({
   name: "core.member.revokeInvite",
+  module: "core",
   schema: RevokeInvitationSchema,
   permission: "member.manage",
   handler: async ({ invitationId }, ctx) => {
@@ -169,6 +177,7 @@ export const revokeInvite = defineAction({
 // fix-round-1 lesson as website.notice.upsert/website.event.upsert).
 export const setMemberRole = defineAction({
   name: "core.member.setRole",
+  module: "core",
   schema: SetMemberRoleSchema,
   permission: "member.manage",
   handler: async ({ membershipId, role }: SetMemberRoleInput, ctx) => {
@@ -190,6 +199,7 @@ export const setMemberRole = defineAction({
 
 export const setMemberStatus = defineAction({
   name: "core.member.setStatus",
+  module: "core",
   schema: SetMemberStatusSchema,
   permission: "member.manage",
   handler: async ({ membershipId, status }: SetMemberStatusInput, ctx) => {
@@ -214,6 +224,7 @@ export const setMemberStatus = defineAction({
 // No deletes (YAGNI; FK history, brief).
 export const upsertAcademicYear = defineAction({
   name: "core.academicYear.upsert",
+  module: "core",
   schema: AcademicYearUpsertSchema,
   permission: "academics.manage",
   handler: async ({ id, name, startsOn, endsOn, isCurrent }: AcademicYearUpsertInput, ctx) => {
@@ -253,6 +264,7 @@ export const upsertAcademicYear = defineAction({
 
 export const upsertTerm = defineAction({
   name: "core.term.upsert",
+  module: "core",
   schema: TermUpsertSchema,
   permission: "academics.manage",
   handler: async ({ id, academicYearId, name, startsOn, endsOn }: TermUpsertInput, ctx) => {
@@ -290,6 +302,7 @@ export const upsertTerm = defineAction({
 
 export const updateInstitutionSettings = defineAction({
   name: "core.institution.updateSettings",
+  module: "core",
   schema: UpdateInstitutionSettingsSchema,
   permission: "institution.settings.manage",
   handler: async ({ name, timezone, settings }: UpdateInstitutionSettingsInput, ctx) => {
@@ -334,5 +347,74 @@ export const updateInstitutionSettings = defineAction({
       name: name ?? ctx.institution.name,
       settings: newSettings ?? existingSettings,
     };
+  },
+});
+
+// MOD-T4 — the only write path for `institutions.settings.modules` (mirrors
+// setFeatureEnabled's narrow-patch shape above; `core.institution.updateSettings`
+// omits `modules` from its own schema so this stays the sole writer).
+export const setModuleEnabled = defineAction({
+  name: "core.module.set",
+  module: "core",
+  schema: SetModuleEnabledSchema,
+  permission: "institution.settings.manage",
+  handler: async ({ key, enabled }, ctx) => {
+    // MODULES is a `satisfies Record<string, ModuleEntry>` const — one entry per
+    // key, so a union member narrows to object, not a shared shape; read
+    // `core`/`requires` the same defensive way catalog.ts's own isModuleEnabled does.
+    const entry = MODULES[key] as Record<string, unknown>;
+    if (entry.core === true) {
+      throw new AppError("invalid_state", "Core modules are always on.");
+    }
+
+    if (enabled) {
+      const requires = (entry.requires ?? []) as ModuleKey[];
+      const unmet = requires.filter((reqKey) => !isModuleEnabled(ctx, reqKey));
+      if (unmet.length > 0) {
+        const labels = unmet.map((reqKey) => MODULES[reqKey].label).join(", ");
+        throw new AppError("conflict", `Turn on ${labels} first.`);
+      }
+    } else {
+      const dependents = MODULE_KEYS.filter((otherKey) => {
+        const otherRequires = (MODULES[otherKey] as Record<string, unknown>).requires as ModuleKey[] | undefined;
+        return otherRequires?.includes(key) && isModuleEnabled(ctx, otherKey);
+      });
+      if (dependents.length > 0) {
+        const labels = dependents.map((otherKey) => MODULES[otherKey].label).join(", ");
+        throw new AppError("conflict", `Turn off ${labels} first.`);
+      }
+
+      if (key === "website") {
+        const website = await getWebsite(ctx);
+        if (website?.isLive) {
+          throw new AppError("conflict", "Take the public website offline first.");
+        }
+      }
+    }
+
+    const existingModules = ctx.institution.settings.modules;
+    const modulesPatch = {
+      ...(typeof existingModules === "object" && existingModules !== null ? existingModules : {}),
+      [key]: enabled,
+    };
+    const parsedModules = InstitutionSettingsSchema.shape.modules.safeParse(modulesPatch);
+    if (!parsedModules.success) {
+      throw new AppError("validation_failed", "This institution's settings could not be updated safely.");
+    }
+    const settings = { ...ctx.institution.settings, modules: parsedModules.data };
+
+    const supabase = await createClient();
+    const { error } = await supabase.from("institutions").update({ settings }).eq("id", ctx.institution.id);
+    if (error) throwMapped(error);
+
+    await audit(ctx, {
+      action: "core.module.set",
+      entityType: "institution",
+      entityId: ctx.institution.id,
+      after: { key, enabled },
+    });
+
+    revalidatePath(`/${ctx.institution.slug}`, "layout");
+    return { key, enabled };
   },
 });

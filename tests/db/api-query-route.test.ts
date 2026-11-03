@@ -247,6 +247,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "calendar.forRole": {},
         "core.getDashboardData": {},
         "core.audit.list": { page: 1 },
+        "core.modules.list": {},
         "documents.listForEntity": { entityType: "student", entityId: UUID },
         "exams.listTermOptions": {},
         "exams.listSectionOptions": {},

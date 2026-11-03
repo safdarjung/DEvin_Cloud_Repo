@@ -8,6 +8,7 @@ import { transportForStudent, transportRoutes } from "./queries";
 
 export const transportRoutesQuery = defineQuery({
   name: "transport.routes",
+  module: "transport",
   schema: TransportRoutesSchema,
   permission: "transport.manage",
   handler: (_input, ctx) => transportRoutes(ctx),
@@ -15,6 +16,7 @@ export const transportRoutesQuery = defineQuery({
 
 export const transportForStudentQuery = defineQuery({
   name: "transport.forStudent",
+  module: "transport",
   schema: TransportForStudentSchema,
   permission: "student.read",
   handler: (input, ctx) => transportForStudent(ctx, input.studentId),

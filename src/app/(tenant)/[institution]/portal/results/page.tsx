@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { ReportCard } from "@/modules/exams/components/ReportCard";
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -16,6 +16,7 @@ export default async function PortalResultsPage({
   const { institution: institutionSlug } = await params;
   const { student: studentParam } = await searchParams;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.result.read");
 
   const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/results`);

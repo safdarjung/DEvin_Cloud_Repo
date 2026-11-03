@@ -1,4 +1,5 @@
 import { DEFAULT_INSTITUTION_SETTINGS, InstitutionSettingsSchema } from "../../../src/modules/core/schemas.ts";
+import { allModulesOn } from "../../../src/lib/modules/catalog.ts";
 import type { SeedContext } from "../lib/context.ts";
 import { uuidV5 } from "../lib/ids.ts";
 
@@ -57,7 +58,7 @@ async function getOrCreateAuthUser(
 }
 
 export async function run(ctx: SeedContext): Promise<void> {
-  const settings = InstitutionSettingsSchema.parse(DEFAULT_INSTITUTION_SETTINGS);
+  const settings = InstitutionSettingsSchema.parse({ ...DEFAULT_INSTITUTION_SETTINGS, modules: allModulesOn() });
 
   ctx.institutionId = uuidV5("core", "st-josephs-demo");
   await ctx.admin.from("institutions").upsert({

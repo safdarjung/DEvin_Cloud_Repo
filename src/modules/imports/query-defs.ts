@@ -8,6 +8,7 @@ import { getImportBatch } from "./queries";
 
 export const getImportBatchQuery = defineQuery({
   name: "imports.getBatch",
+  module: "core",
   schema: z.object({ batchId: uuid }).strict(),
   permission: "data.import",
   handler: (input, ctx) => getImportBatch(ctx, input.batchId),

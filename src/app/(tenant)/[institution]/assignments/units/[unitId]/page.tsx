@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
@@ -15,6 +15,7 @@ export default async function CurriculumUnitQuizPage({
 }) {
   const { institution: institutionSlug, unitId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "assignments");
   requirePermission(ctx, "ai.generate");
 
   const supabase = await createClient();

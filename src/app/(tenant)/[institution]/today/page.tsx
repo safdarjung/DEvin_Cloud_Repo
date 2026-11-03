@@ -14,6 +14,7 @@ import { TimetableWidget } from "@/components/widgets/timetable-widget";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listTeacherAssignments } from "@/modules/academics/assignments.queries";
 import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getSession, getTodaySectionsForTeacher } from "@/modules/attendance/queries";
@@ -65,7 +66,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
   const canReadNotifications = hasPermission(ctx, "notification.read");
 
   const [sectionsR, papersR, assignmentsR, notificationsR, noticesR, eventsR] = await Promise.allSettled([
-    getTodaySectionsForTeacher(ctx).then((sections) =>
+    isModuleEnabled(ctx, "attendance") ? getTodaySectionsForTeacher(ctx).then((sections) =>
       Promise.all(
         sections.map(async (s, i) => ({
           ...s,
@@ -74,13 +75,13 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
             : undefined) as RegisterStatus,
         })),
       ),
-    ),
-    canEnterMarks ? getMyPapers(ctx) : Promise.resolve([]),
-    canReadAssignments ? listTeacherAssignments(ctx) : Promise.resolve([]),
-    canReadNotifications ? listMyNotifications(ctx, 5) : Promise.resolve([]),
-    listPublicNotices(ctx.institution.id, 3),
+    ) : Promise.resolve([]),
+    canEnterMarks && isModuleEnabled(ctx, "exams") ? getMyPapers(ctx) : Promise.resolve([]),
+    canReadAssignments && isModuleEnabled(ctx, "assignments") ? listTeacherAssignments(ctx) : Promise.resolve([]),
+    canReadNotifications && isModuleEnabled(ctx, "notifications") ? listMyNotifications(ctx, 5) : Promise.resolve([]),
+    isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 3) : Promise.resolve([]),
     // Ordered oldest-first with no date filter, so over-fetch and keep the upcoming ones.
-    listPublicEvents(ctx.institution.id, 20).then((events) => events.filter((e) => new Date(e.endsAt ?? e.startsAt) >= now).slice(0, 3)),
+    isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 20).then((events) => events.filter((e) => new Date(e.endsAt ?? e.startsAt) >= now).slice(0, 3)) : Promise.resolve([]),
   ]);
 
   const sections = sectionsR.status === "fulfilled" ? sectionsR.value : [];

@@ -25,6 +25,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/ai/usage",
     "/notifications",
     "/jobs",
+    "/settings/modules",
   ],
   principal: [
     ...FABRIC_HREFS, "/me",
@@ -41,6 +42,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/ai/usage",
     "/notifications",
     "/jobs",
+    "/settings/modules",
   ],
   admin: [
     ...FABRIC_HREFS, "/me",
@@ -56,6 +58,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/ai/usage",
     "/notifications",
     "/jobs",
+    "/settings/modules",
   ],
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...FABRIC_HREFS, "/me"],
   accountant: ["/dashboard", "/students", "/finance", "/notifications", ...FABRIC_HREFS],
@@ -103,6 +106,19 @@ describe("navItemsFor", () => {
     expect(hrefs).toContain("/portal");
     expect(hrefs).not.toContain("/settings");
     expect(hrefs).not.toContain("/dashboard");
+  });
+
+  it("owner with exams module disabled gets no /exams and no /exams/rechecks", () => {
+    const settings = { modules: { exams: false } };
+    const hrefs = navItemsFor(new Set(permissionsFor("owner")), settings).map((item) => item.href);
+    expect(hrefs).not.toContain("/exams");
+    expect(hrefs).not.toContain("/exams/rechecks");
+  });
+
+  it("owner with assignments module disabled has no /assignments", () => {
+    const settings = { modules: { assignments: false } };
+    const hrefs = navItemsFor(new Set(permissionsFor("owner")), settings).map((item) => item.href);
+    expect(hrefs).not.toContain("/assignments");
   });
 });
 

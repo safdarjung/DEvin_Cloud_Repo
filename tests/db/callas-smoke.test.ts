@@ -15,6 +15,7 @@ describe("callAs (T-009 test harness smoke test)", () => {
     try {
       const probe = defineAction({
         name: "test.callas-smoke",
+        module: "core",
         schema: z.object({ value: z.string() }).strict(),
         permission: "attendance.mark",
         handler: async (input, ctx) => ({ echoed: input.value, role: ctx.membership.role }),

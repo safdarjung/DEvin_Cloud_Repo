@@ -7,6 +7,7 @@ import { listDocumentsForEntity } from "./queries";
 
 export const listDocumentsForEntityQuery = defineQuery({
   name: "documents.listForEntity",
+  module: "core",
   schema: ListForEntitySchema,
   permission: "document.read",
   handler: (input, ctx) => listDocumentsForEntity(ctx, input.entityType, input.entityId),

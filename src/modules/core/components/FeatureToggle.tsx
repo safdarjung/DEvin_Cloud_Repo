@@ -7,16 +7,29 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { FeatureKey } from "@/lib/auth/entitlements";
-import { setFeatureEnabled } from "@/modules/core/actions";
+import type { ModuleKey } from "@/lib/modules/catalog";
+import { setFeatureEnabled, setModuleEnabled } from "@/modules/core/actions";
 
 interface FeatureToggleProps {
   institutionSlug: string;
   featureKey: FeatureKey;
   label: string;
   initialEnabled: boolean;
+  kind?: "feature";
 }
 
-export function FeatureToggle({ institutionSlug, featureKey, label, initialEnabled }: FeatureToggleProps) {
+interface ModuleToggleProps {
+  institutionSlug: string;
+  featureKey: ModuleKey;
+  label: string;
+  initialEnabled: boolean;
+  kind: "module";
+}
+
+type FeatureToggleAllProps = FeatureToggleProps | ModuleToggleProps;
+
+export function FeatureToggle(props: FeatureToggleAllProps) {
+  const { institutionSlug, featureKey, label, initialEnabled, kind = "feature" } = props;
   const [enabled, setEnabled] = useState(initialEnabled);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +38,8 @@ export function FeatureToggle({ institutionSlug, featureKey, label, initialEnabl
     setSaving(true);
     setError(null);
     const next = !enabled;
-    const result = await setFeatureEnabled(institutionSlug, { key: featureKey, enabled: next });
+    const action = kind === "module" ? setModuleEnabled : setFeatureEnabled;
+    const result = await action(institutionSlug, { key: featureKey, enabled: next });
     if (!result.ok) {
       setError(result.error.message);
     } else {
@@ -40,7 +54,13 @@ export function FeatureToggle({ institutionSlug, featureKey, label, initialEnabl
         <div>
           <h2 className="text-sm font-semibold">{label}</h2>
           <p className="text-muted-foreground text-xs">
-            {enabled ? "Included in this school's plan." : "Not included in this school's plan."}
+            {enabled
+              ? kind === "module"
+                ? "Enabled for this school."
+                : "Included in this school's plan."
+              : kind === "module"
+                ? "Disabled for this school."
+                : "Not included in this school's plan."}
           </p>
         </div>
         <Button type="button" variant={enabled ? "outline" : "default"} onClick={handleToggle} disabled={saving}>

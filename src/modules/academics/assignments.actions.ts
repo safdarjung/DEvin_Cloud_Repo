@@ -110,6 +110,7 @@ async function assertTeacherScope(
 
 export const createAssignment = defineAction({
   name: "assignment.create",
+  module: "assignments",
   schema: CreateAssignmentSchema,
   permission: "assignment.manage",
   handler: async (input: CreateAssignmentInput, ctx) => {
@@ -167,6 +168,7 @@ export const createAssignment = defineAction({
 
 export const updateAssignment = defineAction({
   name: "assignment.update",
+  module: "assignments",
   schema: UpdateAssignmentSchema,
   permission: "assignment.manage",
   handler: async (input: UpdateAssignmentInput, ctx) => {
@@ -241,6 +243,7 @@ export const updateAssignment = defineAction({
 
 export const publishAssignment = defineAction({
   name: "assignment.publish",
+  module: "assignments",
   schema: PublishAssignmentSchema,
   permission: "assignment.manage",
   handler: async (input: PublishAssignmentInput, ctx) => {

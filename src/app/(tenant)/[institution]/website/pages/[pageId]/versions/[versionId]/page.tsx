@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { DraftPreview } from "@/modules/website/components/DraftPreview";
 import { getPageWithVersions, getVersion } from "@/modules/website/queries";
 import { PublishThisVersion } from "./PublishThisVersion";
@@ -14,6 +14,7 @@ export default async function VersionDetailPage({
 }) {
   const { institution: institutionSlug, pageId, versionId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "website");
   requirePermission(ctx, "website.edit");
 
   const page = await getPageWithVersions(ctx, pageId);

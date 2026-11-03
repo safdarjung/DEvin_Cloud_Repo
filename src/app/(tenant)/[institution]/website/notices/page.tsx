@@ -3,13 +3,14 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { NoticeForm } from "@/modules/website/components/NoticeForm";
 import { listNotices } from "@/modules/website/queries";
 
 export default async function NoticesPage({ params }: { params: Promise<{ institution: string }> }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "website");
   requirePermission(ctx, "website.edit");
 
   const notices = await listNotices(ctx);

@@ -123,6 +123,7 @@ async function requireFeeStructure(supabase: FinanceClient, institutionId: strin
 
 export const upsertFeeStructure = defineAction({
   name: "finance.structure.upsert",
+  module: "fees",
   schema: UpsertFeeStructureSchema,
   permission: "finance.structure.manage",
   handler: async (input: UpsertFeeStructureInput, ctx) => {
@@ -205,6 +206,7 @@ export const upsertFeeStructure = defineAction({
 
 export const assignFeeStructure = defineAction({
   name: "finance.structure.assign",
+  module: "fees",
   schema: AssignFeeStructureSchema,
   permission: "finance.structure.manage",
   handler: async (input: AssignFeeStructureInput, ctx) => {
@@ -389,6 +391,7 @@ export async function runGenerateTermInvoices(
 
 export const generateTermInvoices = defineAction({
   name: "finance.invoice.generateTerm",
+  module: "fees",
   schema: GenerateTermInvoicesSchema,
   permission: "finance.invoice.generate",
   handler: async (input: GenerateTermInvoicesInput, ctx): Promise<GenerateTermInvoicesResult | EnqueueTermInvoicesResult> => {
@@ -418,6 +421,7 @@ export const generateTermInvoices = defineAction({
 
 export const generateStudentInvoice = defineAction({
   name: "finance.invoice.generateStudent",
+  module: "fees",
   schema: GenerateStudentInvoiceSchema,
   permission: "finance.invoice.generate",
   handler: async (input: GenerateStudentInvoiceInput, ctx) => {
@@ -463,6 +467,7 @@ interface RecordPaymentRpcResult {
 // `finance.payment.recorded` audit row — no second audit call here.
 export const recordPayment = defineAction({
   name: "finance.payment.record",
+  module: "fees",
   schema: RecordPaymentSchema,
   permission: "finance.payment.record",
   handler: async (input: RecordPaymentInput, ctx): Promise<RecordPaymentResult> => {

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
 import { EnquiryDetail } from "@/modules/admissions/components/EnquiryDetail";
 import { getEnquiry } from "@/modules/admissions/queries";
@@ -12,6 +12,7 @@ export default async function EnquiryDetailPage({
 }) {
   const { institution: institutionSlug, id } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "admissions");
   requirePermission(ctx, "admissions.enquiry.read");
 
   const enquiry = await getEnquiry(ctx, id);

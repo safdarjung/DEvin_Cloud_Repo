@@ -77,6 +77,7 @@ async function objectExistsInStorage(supabase: DocumentsClient, storedPath: stri
 
 export const requestUpload = defineAction({
   name: "document.requestUpload",
+  module: "core",
   schema: RequestUploadSchema,
   permission: "document.write",
   handler: async (input: RequestUploadInput, ctx) => {
@@ -123,6 +124,7 @@ export const requestUpload = defineAction({
 
 export const confirmUpload = defineAction({
   name: "document.confirmUpload",
+  module: "core",
   schema: ConfirmUploadSchema,
   permission: "document.write",
   handler: async ({ documentId }: ConfirmUploadInput, ctx) => {
@@ -157,6 +159,7 @@ export const confirmUpload = defineAction({
 
 export const getReadUrl = defineAction({
   name: "document.getReadUrl",
+  module: "core",
   schema: GetReadUrlSchema,
   permission: "document.read",
   handler: async ({ documentId }: GetReadUrlInput, ctx) => {
@@ -182,6 +185,7 @@ export const getReadUrl = defineAction({
 
 export const deleteDocument = defineAction({
   name: "document.delete",
+  module: "core",
   schema: DeleteDocumentSchema,
   permission: "document.write",
   handler: async ({ documentId }: DeleteDocumentInput, ctx) => {

@@ -1,0 +1,10 @@
+Packet: T-012 MOD-T12 Migration — app.module_catalog + app.module_enabled + drift test
+Files changed: supabase/migrations/20261028000084_module_enabled.sql (new); tests/db/module-enabled-sql.test.ts (new); docs/planning/coolskool/07-security-and-ai-governance.md (one §4 row)
+Behavior implemented: app.module_catalog(key, default_enabled) seeded with all 33 MODULES rows; app.module_enabled(institution_id, key) — core always true, optional = stored bool or catalog default, AND hardcoded requires (substitution, online_payments, mastery, agents) recursively, unknown key raises code:internal; both revoked from public/anon/authenticated. Re-created app.block_attendance_on_holiday (0075) to call app.module_enabled instead of the inline Lane B predicate; 0075 itself untouched.
+Tests run: pnpm db:reset → clean, seed ok (75s). pnpm test:db tests/db/module-enabled-sql.test.ts → 7/7 pass (catalog drift, 4 settings-variant parity sweeps over all MODULE_KEYS vs isModuleEnabled, unknown-key raise). pnpm test:db tests/db/operations-rls.test.ts (re-created function's existing test) → 7/7 pass, no edits needed. pnpm test:security tests/security/grants.test.ts → 9/9 pass, no expectation changes needed (module_enabled correctly excluded from APP_AUTHENTICATED). pnpm lint → clean. pnpm typecheck → clean.
+Tests not run and why: full pnpm test:db / pnpm test:e2e — out of scope, DB owner ran only this task's files per brief.
+Limitations / honesty label: none; not a UI-facing change.
+Security / integration risks: app.module_enabled is callable only from within other definer/trigger bodies (no grant to authenticated) — a future RLS policy calling it directly as the invoking role would need an explicit grant added then, not here.
+Follow-ups: none beyond MOD-tasks.md's own controller checklist (backlog-index "built" mark, full gate, hosted push — controller stage, not this task).
+New dependencies: none.
+Assumptions made: requires edges hardcoded in SQL (no table column) since ruling's table schema has none; matches T1 catalog.ts exactly. Many other files in the tree were modified by concurrent MOD tasks (T2–T11) during this session — none touched by T12.

@@ -11,6 +11,7 @@ import { listQuestions } from "@/modules/question-bank/queries";
 
 export const questionBankListQuery = defineQuery({
   name: "questionBank.list",
+  module: "question_bank",
   schema: QuestionListSchema,
   permission: "question.manage",
   handler: (input, ctx) => listQuestions(ctx, input),

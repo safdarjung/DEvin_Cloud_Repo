@@ -31,6 +31,7 @@ function errorCode(error: unknown): string | undefined {
 
 export const upsertCalendarEvent = defineAction({
   name: "calendar.event.upsert",
+  module: "calendar",
   schema: CalendarEventUpsertSchema,
   permission: "academics.manage",
   handler: async (
@@ -78,6 +79,7 @@ export const upsertCalendarEvent = defineAction({
 
 export const deleteCalendarEvent = defineAction({
   name: "calendar.event.delete",
+  module: "calendar",
   schema: CalendarEventDeleteSchema,
   permission: "academics.manage",
   handler: async ({ id }: CalendarEventDeleteInput, ctx) => {

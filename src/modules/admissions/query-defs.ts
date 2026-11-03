@@ -35,6 +35,7 @@ const APPLICATION_STATUS = z.enum([
 export const listEnquiriesByStageQuery = defineQuery({
   name: "admissions.listEnquiriesByStage",
   schema: z.object({}).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (_input, ctx) => listEnquiriesByStage(ctx),
 });
@@ -45,6 +46,7 @@ export const listEnquiriesByStageQuery = defineQuery({
 export const getEnquiryQuery = defineQuery({
   name: "admissions.getEnquiry",
   schema: z.object({ enquiryId: uuid }).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (input, ctx) => getEnquiry(ctx, input.enquiryId),
 });
@@ -52,6 +54,7 @@ export const getEnquiryQuery = defineQuery({
 export const listApplicationsQuery = defineQuery({
   name: "admissions.listApplications",
   schema: z.object({ status: APPLICATION_STATUS.optional() }).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (input, ctx) => listApplications(ctx, input.status),
 });
@@ -59,6 +62,7 @@ export const listApplicationsQuery = defineQuery({
 export const getApplicationQuery = defineQuery({
   name: "admissions.getApplication",
   schema: z.object({ applicationId: uuid }).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (input, ctx) => getApplication(ctx, input.applicationId),
 });
@@ -66,6 +70,7 @@ export const getApplicationQuery = defineQuery({
 export const listApplicationDecisionsQuery = defineQuery({
   name: "admissions.listApplicationDecisions",
   schema: z.object({ applicationId: uuid }).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (input, ctx) => listApplicationDecisions(ctx, input.applicationId),
 });
@@ -73,6 +78,7 @@ export const listApplicationDecisionsQuery = defineQuery({
 export const listSectionsForGradeQuery = defineQuery({
   name: "admissions.listSectionsForGrade",
   schema: z.object({ gradeId: uuid, academicYearId: uuid }).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (input, ctx) => listSectionsForGrade(ctx, input.gradeId, input.academicYearId),
 });
@@ -82,6 +88,7 @@ export const listSectionsForGradeQuery = defineQuery({
 export const getAdmissionsFunnelCountsQuery = defineQuery({
   name: "admissions.getAdmissionsFunnelCounts",
   schema: z.object({ academicYearId: uuid.optional() }).strict(),
+  module: "admissions",
   permission: "admissions.enquiry.read",
   handler: (input, ctx) => getAdmissionsFunnelCounts(ctx, input.academicYearId),
 });

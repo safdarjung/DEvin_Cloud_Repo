@@ -94,6 +94,7 @@ async function getOrCreateWebsite(supabase: WebsiteClient, ctx: TenantContext): 
 export const createPage = defineAction({
   name: "website.page.create",
   schema: CreatePageSchema,
+  module: "website",
   permission: "website.edit",
   handler: async (input: CreatePageInput, ctx) => {
     const supabase = await createClient();
@@ -125,6 +126,7 @@ export const createPage = defineAction({
 export const savePageVersion = defineAction({
   name: "website.page.save_version",
   schema: SavePageVersionSchema,
+  module: "website",
   permission: "website.edit",
   handler: async (input: SavePageVersionInput, ctx) => {
     const supabase = await createClient();
@@ -187,6 +189,7 @@ export const savePageVersion = defineAction({
 export const publishPage = defineAction({
   name: "website.page.publish",
   schema: PublishPageSchema,
+  module: "website",
   permission: "website.publish",
   handler: async (input: PublishPageInput, ctx) => {
     const supabase = await createClient();
@@ -213,6 +216,7 @@ export const publishPage = defineAction({
 export const setWebsiteLive = defineAction({
   name: "website.live_set",
   schema: SetWebsiteLiveSchema,
+  module: "website",
   permission: "website.publish",
   handler: async (input: SetWebsiteLiveInput, ctx) => {
     const supabase = await createClient();
@@ -247,6 +251,7 @@ export const setWebsiteLive = defineAction({
 export const upsertNotice = defineAction({
   name: "website.notice.upsert",
   schema: UpsertNoticeSchema,
+  module: "website",
   permission: "website.edit",
   handler: async (input: UpsertNoticeInput, ctx) => {
     const supabase = await createClient();
@@ -287,6 +292,7 @@ export const upsertNotice = defineAction({
 export const upsertEvent = defineAction({
   name: "website.event.upsert",
   schema: UpsertEventSchema,
+  module: "website",
   permission: "website.edit",
   handler: async (input: UpsertEventInput, ctx) => {
     const supabase = await createClient();

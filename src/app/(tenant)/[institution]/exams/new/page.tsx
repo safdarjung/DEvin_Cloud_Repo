@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import { ExamForm } from "@/modules/exams/components/ExamForm";
 import { listTermOptions } from "@/modules/exams/queries";
@@ -13,6 +13,7 @@ export default async function NewExamPage({
 }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.manage");
 
   const terms = await listTermOptions(ctx);

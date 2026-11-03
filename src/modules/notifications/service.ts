@@ -7,6 +7,7 @@
 // instead.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
+import { isModuleEnabled } from "../../lib/modules/catalog.ts";
 import { inApp } from "./channels/inApp.ts";
 import { emailChannel } from "./channels/resend.ts";
 import { simulatedSms } from "./channels/simulatedSms.ts";
@@ -43,6 +44,25 @@ async function disabledChannels(
     .eq("enabled", false);
   if (error) throw error;
   return new Set((data ?? []).map((row) => row.channel as Channel["name"]));
+}
+
+/**
+ * MOD-T11 (rulings "Channels") — `email`/`sms` are not attempted (no
+ * `delivery_attempts` row) when their module is off for this institution;
+ * `in_app` is never gated here (it has no row in `MODULES`'s `email`/`sms`
+ * sense and the caller never passes it to this set).
+ */
+async function moduleOffChannels(
+  admin: SupabaseClient<Database>,
+  institutionId: string,
+): Promise<Set<Channel["name"]>> {
+  const { data, error } = await admin.from("institutions").select("settings").eq("id", institutionId).single();
+  if (error) throw error;
+  const moduleCtx = { institution: { settings: data.settings as Record<string, unknown> | null } };
+  const off = new Set<Channel["name"]>();
+  if (!isModuleEnabled(moduleCtx, "email")) off.add("email");
+  if (!isModuleEnabled(moduleCtx, "sms")) off.add("sms");
+  return off;
 }
 
 export interface CreateNotificationInput<T extends NotificationType> {
@@ -149,12 +169,17 @@ export async function createNotification<T extends NotificationType>(
   const title = template.title(lang);
   const body = template.body(vars, lang);
 
-  const disabled = await disabledChannels(admin, {
-    institutionId: input.institutionId,
-    userId: input.recipientUserId,
-    category: template.category,
-  });
-  const channels = template.channels.filter((channel) => channel === "in_app" || !disabled.has(channel));
+  const [disabled, moduleOff] = await Promise.all([
+    disabledChannels(admin, {
+      institutionId: input.institutionId,
+      userId: input.recipientUserId,
+      category: template.category,
+    }),
+    moduleOffChannels(admin, input.institutionId),
+  ]);
+  const channels = template.channels.filter(
+    (channel) => channel === "in_app" || (!disabled.has(channel) && !moduleOff.has(channel)),
+  );
 
   const { data: inserted, error: insertError } = await admin
     .from("notifications")

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { ApplicationDetail } from "@/modules/admissions/components/ApplicationDetail";
 import { getApplication, listApplicationDecisions, listSectionsForGrade } from "@/modules/admissions/queries";
 import { listFeeStructures } from "@/modules/finance/queries";
@@ -12,6 +12,7 @@ export default async function ApplicationDetailPage({
 }) {
   const { institution: institutionSlug, id } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "admissions");
   requirePermission(ctx, "admissions.enquiry.read");
 
   const application = await getApplication(ctx, id);

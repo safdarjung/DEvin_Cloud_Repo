@@ -30,6 +30,7 @@ import { examSchedule, examScheduleConflicts } from "./schedule.queries";
 export const listTermOptionsQuery = defineQuery({
   name: "exams.listTermOptions",
   schema: z.object({}).strict(),
+  module: "exams",
   permission: "exam.manage",
   handler: (_input, ctx) => listTermOptions(ctx),
 });
@@ -39,6 +40,7 @@ export const listTermOptionsQuery = defineQuery({
 export const listSectionOptionsQuery = defineQuery({
   name: "exams.listSectionOptions",
   schema: z.object({}).strict(),
+  module: "exams",
   permission: "exam.manage",
   handler: (_input, ctx) => listSectionOptions(ctx),
 });
@@ -46,6 +48,7 @@ export const listSectionOptionsQuery = defineQuery({
 export const listSubjectOptionsQuery = defineQuery({
   name: "exams.listSubjectOptions",
   schema: z.object({}).strict(),
+  module: "exams",
   permission: "exam.manage",
   handler: (_input, ctx) => listSubjectOptions(ctx),
 });
@@ -58,6 +61,7 @@ export const listSubjectOptionsQuery = defineQuery({
 export const listExamsQuery = defineQuery({
   name: "exams.listExams",
   schema: z.object({}).strict(),
+  module: "exams",
   permission: "exam.manage",
   handler: (_input, ctx) => listExams(ctx),
 });
@@ -70,6 +74,7 @@ export const listExamsQuery = defineQuery({
 export const getExamWithPapersQuery = defineQuery({
   name: "exams.getExamWithPapers",
   schema: z.object({ examId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => getExamWithPapers(ctx, input.examId),
 });
@@ -78,6 +83,7 @@ export const getExamWithPapersQuery = defineQuery({
 export const getPaperMarksQuery = defineQuery({
   name: "exams.getPaperMarks",
   schema: z.object({ paperId: uuid }).strict(),
+  module: "exams",
   permission: "exam.marks.enter",
   handler: (input, ctx) => getPaperMarks(ctx, input.paperId),
 });
@@ -87,6 +93,7 @@ export const getPaperMarksQuery = defineQuery({
 export const getMyPapersQuery = defineQuery({
   name: "exams.getMyPapers",
   schema: z.object({}).strict(),
+  module: "exams",
   permission: "exam.marks.enter",
   handler: (_input, ctx) => getMyPapers(ctx),
 });
@@ -97,6 +104,7 @@ export const getMyPapersQuery = defineQuery({
 export const getCurrentResultQuery = defineQuery({
   name: "exams.getCurrentResult",
   schema: z.object({ examId: uuid, studentId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => getCurrentResult(ctx, input.examId, input.studentId),
 });
@@ -104,6 +112,7 @@ export const getCurrentResultQuery = defineQuery({
 export const listResultsForExamQuery = defineQuery({
   name: "exams.listResultsForExam",
   schema: z.object({ examId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => listResultsForExam(ctx, input.examId),
 });
@@ -113,6 +122,7 @@ export const listResultsForExamQuery = defineQuery({
 export const listResultsForStudentQuery = defineQuery({
   name: "exams.listResultsForStudent",
   schema: z.object({ studentId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => listResultsForStudent(ctx, input.studentId),
 });
@@ -124,6 +134,7 @@ export const listResultsForStudentQuery = defineQuery({
 export const getResultHistoryQuery = defineQuery({
   name: "exams.getResultHistory",
   schema: z.object({ examId: uuid, studentId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => getResultHistory(ctx, input.examId, input.studentId),
 });
@@ -133,6 +144,7 @@ export const getResultHistoryQuery = defineQuery({
 export const listRechecksForResultQuery = defineQuery({
   name: "exams.listRechecksForResult",
   schema: z.object({ resultId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => listRechecksForResult(ctx, input.resultId),
 });
@@ -142,6 +154,7 @@ export const listRechecksForResultQuery = defineQuery({
 export const listRecheckQueueQuery = defineQuery({
   name: "exams.listRecheckQueue",
   schema: z.object({ status: z.string().trim().min(1).max(50).optional() }).strict(),
+  module: "exams",
   permission: "exam.recheck.review",
   handler: (input, ctx) => listRecheckQueue(ctx, input.status),
 });
@@ -150,6 +163,7 @@ export const listRecheckQueueQuery = defineQuery({
 export const getRecheckQuery = defineQuery({
   name: "exams.getRecheck",
   schema: z.object({ requestId: uuid }).strict(),
+  module: "exams",
   permission: "exam.recheck.review",
   handler: (input, ctx) => getRecheck(ctx, input.requestId),
 });
@@ -159,6 +173,7 @@ export const getRecheckQuery = defineQuery({
 export const getResultRemarkQuery = defineQuery({
   name: "exams.getResultRemark",
   schema: z.object({ resultId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => getResultRemark(ctx, input.resultId),
 });
@@ -168,6 +183,7 @@ export const getResultRemarkQuery = defineQuery({
 export const examGradeDistributionQuery = defineQuery({
   name: "exams.examGradeDistribution",
   schema: z.object({ examId: uuid.optional() }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => examGradeDistribution(ctx, input.examId),
 });
@@ -187,6 +203,7 @@ export const examScheduleQuery = defineQuery({
       to: isoDate.optional(),
     })
     .strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: (input, ctx) => examSchedule(ctx, input),
 });
@@ -197,6 +214,7 @@ export const examScheduleQuery = defineQuery({
 export const examScheduleConflictsQuery = defineQuery({
   name: "exams.scheduleConflicts",
   schema: z.object({ examId: uuid }).strict(),
+  module: "exams",
   permission: "exam.manage",
   handler: (input, ctx) => examScheduleConflicts(ctx, input.examId),
 });
@@ -208,6 +226,7 @@ export const examScheduleConflictsQuery = defineQuery({
 export const reportCardHtmlQuery = defineQuery({
   name: "exams.reportCardHtml",
   schema: z.object({ examId: uuid, studentId: uuid }).strict(),
+  module: "exams",
   permission: "exam.result.read",
   handler: async (input, ctx) => {
     const result = await getCurrentResult(ctx, input.examId, input.studentId);

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentList } from "@/modules/academics/components/AssignmentList";
 import { StudentAssignments } from "@/modules/academics/components/StudentAssignments";
 import {
@@ -18,6 +18,7 @@ export default async function AssignmentsPage({
 }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "assignments");
   requirePermission(ctx, "assignment.read");
 
   // Guardian/student: published assignments for their own child/section

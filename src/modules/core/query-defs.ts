@@ -6,11 +6,13 @@ import { defineQuery } from "@/lib/actions/define-query";
 import { z } from "zod";
 import { getDashboardData } from "./dashboard.queries";
 import { listAuditEvents } from "./audit.queries";
+import { listModules } from "./queries";
 
 // permission: dashboard.view — dashboard/page.tsx:124 gates on this before
 // calling getDashboardData; also the module default (06 task-3/4 brief).
 export const getDashboardDataQuery = defineQuery({
   name: "core.getDashboardData",
+  module: "core",
   schema: z.object({}).strict(),
   permission: "dashboard.view",
   handler: (_input, ctx) => getDashboardData(ctx),
@@ -19,6 +21,7 @@ export const getDashboardDataQuery = defineQuery({
 // M06-T4 — audit.list query for audit viewer
 export const listAuditEventsQuery = defineQuery({
   name: "core.audit.list",
+  module: "core",
   schema: z
     .object({
       from: z.string().datetime().optional(),
@@ -39,4 +42,13 @@ export const listAuditEventsQuery = defineQuery({
       page: input.page,
       pageSize: input.pageSize,
     }),
+});
+
+// MOD-T4 — module catalog + per-institution state, for /settings/modules (T5).
+export const listModulesQuery = defineQuery({
+  name: "core.modules.list",
+  module: "core",
+  schema: z.object({}).strict(),
+  permission: "institution.settings.manage",
+  handler: async (_input, ctx) => listModules(ctx),
 });

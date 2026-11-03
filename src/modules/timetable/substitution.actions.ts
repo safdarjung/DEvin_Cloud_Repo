@@ -74,6 +74,7 @@ function toSubstitution(data: SubstitutionRow) {
 
 export const assignSubstitution = defineAction({
   name: "timetable.substitution.assign",
+  module: "substitution",
   schema: SubstitutionAssignSchema,
   permission: "timetable.manage",
   handler: async ({ slotId, date, substituteId, leaveRequestId, note }: SubstitutionAssignInput) => {
@@ -92,6 +93,7 @@ export const assignSubstitution = defineAction({
 
 export const cancelSubstitution = defineAction({
   name: "timetable.substitution.cancel",
+  module: "substitution",
   schema: SubstitutionCancelSchema,
   permission: "timetable.manage",
   handler: async ({ substitutionId }: SubstitutionCancelInput) => {

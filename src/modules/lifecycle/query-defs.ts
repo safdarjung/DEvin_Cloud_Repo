@@ -8,6 +8,7 @@ import { lifecycleHistory } from "./queries";
 
 export const lifecycleHistoryQuery = defineQuery({
   name: "lifecycle.history",
+  module: "student_lifecycle",
   schema: HistorySchema,
   permission: "student.read",
   handler: (input, ctx) => lifecycleHistory(ctx, input.studentId),

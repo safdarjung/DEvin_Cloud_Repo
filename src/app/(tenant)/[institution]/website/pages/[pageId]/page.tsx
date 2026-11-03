@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { BlockEditor } from "@/modules/website/components/BlockEditor";
 import { DraftPreview } from "@/modules/website/components/DraftPreview";
 import { VersionList } from "@/modules/website/components/VersionList";
@@ -15,6 +15,7 @@ export default async function PageEditorPage({
 }) {
   const { institution: institutionSlug, pageId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "website");
   requirePermission(ctx, "website.edit");
 
   const page = await getPageWithVersions(ctx, pageId);

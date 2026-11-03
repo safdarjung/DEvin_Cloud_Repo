@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { QuizContentView } from "@/modules/academics/components/QuizContentView";
 import { assignmentStatusVariant } from "@/modules/academics/status";
@@ -17,6 +17,7 @@ export default async function AssignmentDetailPage({
 }) {
   const { institution: institutionSlug, id } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "assignments");
   requirePermission(ctx, "assignment.read");
 
   const assignment = await getAssignment(ctx, id);

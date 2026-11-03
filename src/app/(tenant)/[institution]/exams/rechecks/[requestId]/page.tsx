@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { humanize } from "@/lib/format";
 import { recheckStatusVariant } from "@/modules/exams/status";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { RecheckDecisionForm } from "@/modules/exams/components/RecheckDecisionForm";
 import { ResultVersionHistory } from "@/modules/exams/components/ResultVersionHistory";
 import { getRecheck, getResultHistory } from "@/modules/exams/queries";
@@ -21,6 +21,7 @@ export default async function RecheckDecisionPage({
 }) {
   const { institution: institutionSlug, requestId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.recheck.review");
 
   const request = await getRecheck(ctx, requestId);

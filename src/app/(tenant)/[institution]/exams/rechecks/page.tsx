@@ -1,6 +1,6 @@
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { RecheckQueue } from "@/modules/exams/components/RecheckQueue";
 import { listRecheckQueue } from "@/modules/exams/queries";
 
@@ -15,6 +15,7 @@ export default async function RecheckQueuePage({
   const { institution: institutionSlug } = await params;
   const { status } = await searchParams;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.recheck.review");
 
   const rows = await listRecheckQueue(ctx, status);

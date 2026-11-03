@@ -9,6 +9,7 @@ import { curriculumCoverageBySection, curriculumLessonPlans, curriculumSectionUn
 
 export const curriculumCoverageBySectionQuery = defineQuery({
   name: "curriculum.coverageBySection",
+  module: "lesson_plans",
   schema: CoverageQuerySchema,
   permission: "academics.read",
   handler: (input, ctx) => curriculumCoverageBySection(ctx, input),
@@ -16,6 +17,7 @@ export const curriculumCoverageBySectionQuery = defineQuery({
 
 export const curriculumSectionUnitsQuery = defineQuery({
   name: "curriculum.sectionUnits",
+  module: "academic_structure",
   schema: SectionUnitsQuerySchema,
   permission: "academics.read",
   handler: (input, ctx) => curriculumSectionUnits(ctx, input),
@@ -23,6 +25,7 @@ export const curriculumSectionUnitsQuery = defineQuery({
 
 export const curriculumLessonPlansQuery = defineQuery({
   name: "curriculum.lessonPlans",
+  module: "lesson_plans",
   schema: LessonPlansQuerySchema,
   permission: "academics.read",
   handler: (input, ctx) => curriculumLessonPlans(ctx, input),

@@ -12,6 +12,7 @@ import { getRegisteredActions } from "@/lib/actions/registry";
 import type { ActionResult } from "@/lib/actions/result";
 import { permissionsFor, type Permission, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
+import { allModulesOn } from "@/lib/modules/catalog";
 
 // 07 §6 C-03 (T-042): walk the action registry and call every action as
 // every role. A role without the action's permission must get `forbidden`; a
@@ -22,6 +23,7 @@ const at = "2026-10-01T09:00:00.000Z";
 
 const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown> }> = {
   "core.feature.set": { permission: "institution.settings.manage", input: () => ({ key: "teacher_ai_agent", enabled: true }) },
+  "core.module.set": { permission: "institution.settings.manage", input: () => ({ key: "timetable", enabled: true }) },
   "ai.study.chat.save": {
     permission: "ai.study",
     input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }),
@@ -280,7 +282,7 @@ type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) =
 function ctxFor(role: Role): TenantContext {
   const isStaff = role !== "student" && role !== "guardian";
   return {
-    institution: { id: U(), slug: "escalation", name: "Escalation", settings: {}, ai_policy: "local_only", is_demo: true },
+    institution: { id: U(), slug: "escalation", name: "Escalation", settings: { modules: allModulesOn() }, ai_policy: "local_only", is_demo: true },
     user: { id: U(), profile: { fullName: "Probe", phone: null, avatarPath: null, isPlatformAdmin: false } },
     membership: {
       role,

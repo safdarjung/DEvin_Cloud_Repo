@@ -1,5 +1,5 @@
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
 import { StudentAssignments } from "@/modules/academics/components/StudentAssignments";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -15,6 +15,7 @@ export default async function PortalAssignmentsPage({
   const { institution: institutionSlug } = await params;
   const { student: studentParam } = await searchParams;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "assignments");
   requirePermission(ctx, "assignment.read");
 
   const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assignments`);

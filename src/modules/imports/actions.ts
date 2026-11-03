@@ -88,6 +88,7 @@ async function loadDepartments(supabase: ImportsClient, institutionId: string): 
 
 export const stageImport = defineAction({
   name: "data.import.stage",
+  module: "core",
   schema: StageImportSchema,
   permission: "data.import",
   handler: async ({ entityType, fileName, csv }: StageImportInput, ctx) => {
@@ -220,6 +221,7 @@ export const stageImport = defineAction({
 
 export const commitImport = defineAction({
   name: "data.import.commit",
+  module: "core",
   schema: CommitImportSchema,
   permission: "data.import",
   handler: async ({ batchId }: CommitImportInput) => {

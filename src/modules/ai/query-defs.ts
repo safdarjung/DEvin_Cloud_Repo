@@ -8,6 +8,7 @@ import { usageSummary } from "./queries";
 
 export const usageSummaryQuery = defineQuery({
   name: "ai.usageSummary",
+  module: "core",
   schema: z.object({}).strict(),
   permission: "ai.usage.read",
   handler: (_input, ctx) => usageSummary(ctx),

@@ -100,6 +100,7 @@ async function assertUnitMatchesSection(
 
 export const upsertUnit = defineAction({
   name: "curriculum.unit.upsert",
+  module: "academic_structure",
   schema: CurriculumUnitUpsertSchema,
   permission: "academics.manage",
   handler: async ({ id, gradeId, subjectId, title, description, sequence }: CurriculumUnitUpsertInput, ctx) => {
@@ -134,6 +135,7 @@ export const upsertUnit = defineAction({
 
 export const upsertLessonPlan = defineAction({
   name: "curriculum.lessonPlan.upsert",
+  module: "lesson_plans",
   schema: LessonPlanUpsertSchema,
   permission: "assignment.manage",
   handler: async (
@@ -204,6 +206,7 @@ export const upsertLessonPlan = defineAction({
 
 export const deleteLessonPlan = defineAction({
   name: "curriculum.lessonPlan.delete",
+  module: "lesson_plans",
   schema: LessonPlanDeleteSchema,
   permission: "assignment.manage",
   handler: async ({ id }: LessonPlanDeleteInput, ctx) => {
@@ -225,6 +228,7 @@ export const deleteLessonPlan = defineAction({
 
 export const markCovered = defineAction({
   name: "curriculum.markCovered",
+  module: "lesson_plans",
   schema: MarkCoveredSchema,
   permission: "assignment.manage",
   handler: async ({ classSectionId, curriculumUnitId, covered, coveredOn, lessonPlanId, notes }: MarkCoveredInput, ctx) => {

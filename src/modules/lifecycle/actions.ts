@@ -38,6 +38,7 @@ function asJsonRecord(data: unknown): Record<string, unknown> {
 
 export const promote = defineAction({
   name: "lifecycle.promote",
+  module: "student_lifecycle",
   schema: PromoteSchema,
   permission: "academics.manage",
   handler: async ({ fromYearId, toYearId, mappings, overrides, exclude }: PromoteInput) => {
@@ -79,6 +80,7 @@ async function exitStudent(kind: "transferred_out" | "withdrawn", input: Transfe
 
 export const transfer = defineAction({
   name: "lifecycle.transfer",
+  module: "student_lifecycle",
   schema: TransferSchema,
   permission: "student.write",
   handler: async (input: TransferInput) => exitStudent("transferred_out", input),
@@ -86,6 +88,7 @@ export const transfer = defineAction({
 
 export const withdraw = defineAction({
   name: "lifecycle.withdraw",
+  module: "student_lifecycle",
   schema: WithdrawSchema,
   permission: "student.write",
   handler: async (input: WithdrawInput) => exitStudent("withdrawn", input),

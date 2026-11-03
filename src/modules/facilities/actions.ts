@@ -40,6 +40,7 @@ function isRlsViolation(error: unknown): boolean {
 
 export const upsertAsset = defineAction({
   name: "facilities.asset.upsert",
+  module: "facilities",
   schema: AssetUpsertSchema,
   permission: "facilities.manage",
   handler: async ({ id, name, category, assetTag, roomId, location, status }: AssetUpsertInput, ctx) => {
@@ -76,6 +77,7 @@ export const upsertAsset = defineAction({
 
 export const raiseMaintenanceRequest = defineAction({
   name: "maintenance.request",
+  module: "facilities",
   schema: MaintenanceRequestSchema,
   permission: "maintenance.request",
   handler: async ({ assetId, location, issue, priority }: MaintenanceRequestInput, ctx) => {
@@ -107,6 +109,7 @@ export const raiseMaintenanceRequest = defineAction({
 
 export const assignMaintenanceRequest = defineAction({
   name: "maintenance.assign",
+  module: "facilities",
   schema: MaintenanceAssignSchema,
   permission: "facilities.manage",
   handler: async ({ requestId, assigneeStaffId }: MaintenanceAssignInput, ctx) => {
@@ -139,6 +142,7 @@ export const assignMaintenanceRequest = defineAction({
 
 export const closeMaintenanceRequest = defineAction({
   name: "maintenance.close",
+  module: "facilities",
   schema: MaintenanceCloseSchema,
   permission: "facilities.manage",
   handler: async ({ requestId, resolutionNote }: MaintenanceCloseInput, ctx) => {

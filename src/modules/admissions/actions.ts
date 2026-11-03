@@ -55,6 +55,7 @@ function asJsonArray(data: unknown): Record<string, unknown>[] {
 export const updateEnquiryStatus = defineAction({
   name: "admissions.enquiry.status",
   schema: UpdateEnquiryStatusSchema,
+  module: "admissions",
   permission: "admissions.enquiry.write",
   handler: async (input: UpdateEnquiryStatusInput, ctx: TenantContext) => {
     const supabase = await createClient();
@@ -104,6 +105,7 @@ export const updateEnquiryStatus = defineAction({
 export const addEnquiryNote = defineAction({
   name: "admissions.enquiry.note",
   schema: AddEnquiryNoteSchema,
+  module: "admissions",
   permission: "admissions.enquiry.write",
   handler: async (input: AddEnquiryNoteInput, ctx: TenantContext) => {
     const supabase = await createClient();
@@ -122,6 +124,7 @@ export const addEnquiryNote = defineAction({
 export const assignEnquiry = defineAction({
   name: "admissions.enquiry.assign",
   schema: AssignEnquirySchema,
+  module: "admissions",
   permission: "admissions.enquiry.write",
   handler: async (input: AssignEnquiryInput, ctx: TenantContext) => {
     const supabase = await createClient();
@@ -165,6 +168,7 @@ export const assignEnquiry = defineAction({
 export const convertEnquiryToApplication = defineAction({
   name: "admissions.enquiry.convert",
   schema: ConvertEnquirySchema,
+  module: "admissions",
   permission: "admissions.enquiry.write",
   handler: async (input: ConvertEnquiryInput, ctx: TenantContext) => {
     const supabase = await createClient();
@@ -191,6 +195,7 @@ export const convertEnquiryToApplication = defineAction({
 export const decideApplication = defineAction({
   name: "admissions.application.decide",
   schema: DecideApplicationSchema,
+  module: "admissions",
   permission: "admissions.application.decide",
   handler: async (input: DecideApplicationInput, ctx: TenantContext) => {
     // Fast client-side check against state.ts (06 §W4) so a stale UI gets a
@@ -226,6 +231,7 @@ export const decideApplication = defineAction({
 export const enrolApplicant = defineAction({
   name: "admissions.enrol",
   schema: EnrolApplicantSchema,
+  module: "admissions",
   permission: "admissions.enrol",
   handler: async (input: EnrolApplicantInput, ctx: TenantContext) => {
     const supabase = await createClient();

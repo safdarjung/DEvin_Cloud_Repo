@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { PipelineBoard } from "@/modules/admissions/components/PipelineBoard";
 import { enquiryStagesFor, listEnquiriesByStage } from "@/modules/admissions/queries";
 
@@ -13,6 +13,7 @@ export default async function AdmissionsPage({
 }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "admissions");
   requirePermission(ctx, "admissions.enquiry.read");
 
   const stages = enquiryStagesFor(ctx);

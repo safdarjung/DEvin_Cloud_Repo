@@ -1,3 +1,4 @@
+import type { ModuleKey } from "@/lib/modules/catalog";
 import type { JobHandler } from "./types.ts";
 import {
   generateTermInvoices,
@@ -8,6 +9,20 @@ import {
   notifyRecheckDecided,
   notifyResultsPublished,
 } from "./handlers/index.ts";
+
+// MOD-T11 — job type -> owning module (rulings "Jobs"). Core job types
+// (notify.attendance_absence, finance.generate_term_invoices) have no row:
+// the runner never gates them. `finance.fee_reminder` has no handler yet
+// (M12 key map; batch-2 job types only) but is listed now so the gate is
+// correct the day that handler lands.
+export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
+  "notify.results_published": "exams",
+  "notify.recheck_decided": "exams",
+  "notify.enquiry_received": "admissions",
+  "notify.enrolment_welcome": "admissions",
+  "notify.announcement": "announcements",
+  "finance.fee_reminder": "finance_plus",
+};
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
 // lettered immediately by `runOnceCore` with `last_error = 'unknown_type'`

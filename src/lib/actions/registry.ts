@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { Permission } from "@/lib/auth/permissions";
+import type { ModuleKey } from "@/lib/modules/catalog";
 
 // Every action defineAction() creates registers itself here by name so the
 // C-03 escalation suite can call every action as every role (06 §1.2).
@@ -8,7 +9,7 @@ export type AnyAction = (institutionSlug: string, raw: unknown) => Promise<unkno
 // M01-T5: metadata for GET /api/v1/actions (M01-T6). permission is null when
 // it's a function of input (06 §1.2) — the manifest can't resolve that
 // statically.
-export type ActionMeta = { schema: z.ZodType; permission: Permission | null };
+export type ActionMeta = { schema: z.ZodType; permission: Permission | null; module?: ModuleKey };
 
 const registry = new Map<string, AnyAction>();
 const metaRegistry = new Map<string, ActionMeta>();

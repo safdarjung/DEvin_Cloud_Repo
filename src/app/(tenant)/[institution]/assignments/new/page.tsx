@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 
@@ -12,6 +12,7 @@ export default async function NewAssignmentPage({
 }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "assignments");
   requirePermission(ctx, "assignment.manage");
 
   const sections = await listTeachableSections(ctx);

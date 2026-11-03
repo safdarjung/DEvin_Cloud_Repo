@@ -22,6 +22,7 @@ import { mySubmissions, submissionsForAssignment } from "./submissions.queries";
 // assignments/[id]/page.tsx:20 gate on this directly.
 export const listTeacherAssignmentsQuery = defineQuery({
   name: "academics.listTeacherAssignments",
+  module: "assignments",
   schema: z.object({}).strict(),
   permission: "assignment.read",
   handler: (_input, ctx) => listTeacherAssignments(ctx),
@@ -29,6 +30,7 @@ export const listTeacherAssignmentsQuery = defineQuery({
 
 export const getAssignmentQuery = defineQuery({
   name: "academics.getAssignment",
+  module: "assignments",
   schema: z.object({ assignmentId: uuid }).strict(),
   permission: "assignment.read",
   handler: (input, ctx) => getAssignment(ctx, input.assignmentId),
@@ -40,6 +42,7 @@ export const getAssignmentQuery = defineQuery({
 // admin/teacher/student/guardian).
 export const listStudentAssignmentsQuery = defineQuery({
   name: "academics.listStudentAssignments",
+  module: "assignments",
   schema: z.object({ studentId: uuid }).strict(),
   permission: "assignment.read",
   handler: (input, ctx) => listStudentAssignments(ctx, input.studentId),
@@ -49,6 +52,7 @@ export const listStudentAssignmentsQuery = defineQuery({
 // calls this fn directly today (grep turned up only this file's own export).
 export const listCurriculumUnitsQuery = defineQuery({
   name: "academics.listCurriculumUnits",
+  module: "academic_structure",
   schema: z.object({ gradeId: uuid, subjectId: uuid }).strict(),
   permission: "assignment.read",
   handler: (input, ctx) => listCurriculumUnits(ctx, { gradeId: input.gradeId, subjectId: input.subjectId }),
@@ -60,6 +64,7 @@ export const listCurriculumUnitsQuery = defineQuery({
 // assignment.manage, but an API read must not hang off an AI key (M02).
 export const listTeachableSectionsQuery = defineQuery({
   name: "academics.listTeachableSections",
+  module: "academic_structure",
   schema: z.object({}).strict(),
   permission: "academics.read",
   handler: (_input, ctx) => listTeachableSections(ctx),
@@ -68,6 +73,7 @@ export const listTeachableSectionsQuery = defineQuery({
 // permission: academics.read — same reasoning as listTeachableSections.
 export const listSectionSubjectsQuery = defineQuery({
   name: "academics.listSectionSubjects",
+  module: "academic_structure",
   schema: z.object({ classSectionId: uuid }).strict(),
   permission: "academics.read",
   handler: (input, ctx) => listSectionSubjects(ctx, input.classSectionId),
@@ -78,6 +84,7 @@ export const listSectionSubjectsQuery = defineQuery({
 // teacher to their own taught/class-teacher section.
 export const submissionsForAssignmentQuery = defineQuery({
   name: "academics.submissionsForAssignment",
+  module: "assignments",
   schema: z.object({ assignmentId: uuid }).strict(),
   permission: "assignment.read",
   handler: (input, ctx) => submissionsForAssignment(ctx, input.assignmentId),
@@ -88,6 +95,7 @@ export const submissionsForAssignmentQuery = defineQuery({
 // keep a guardian from reading another family's child.
 export const mySubmissionsQuery = defineQuery({
   name: "academics.mySubmissions",
+  module: "assignments",
   schema: z.object({ studentId: uuid.optional() }).strict(),
   permission: "assignment.read",
   handler: (input, ctx) => mySubmissions(ctx, input.studentId),

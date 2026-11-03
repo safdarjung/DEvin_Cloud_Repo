@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
 import { canDraftRemarkForResult } from "@/modules/ai/remark-scope";
 import { ReportCard } from "@/modules/exams/components/ReportCard";
@@ -21,6 +21,7 @@ export default async function StudentReportCardPage({
 }) {
   const { institution: institutionSlug, examId, studentId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.result.read");
 
   const current = await getCurrentResult(ctx, examId, studentId);

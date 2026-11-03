@@ -37,6 +37,7 @@ function isRlsViolation(error: unknown): boolean {
 
 export const createQuestion = defineAction({
   name: "questionBank.create",
+  module: "question_bank",
   schema: QuestionCreateSchema,
   permission: "question.manage",
   handler: async (
@@ -71,6 +72,7 @@ export const createQuestion = defineAction({
 
 export const updateQuestion = defineAction({
   name: "questionBank.update",
+  module: "question_bank",
   schema: QuestionUpdateSchema,
   permission: "question.manage",
   handler: async (
@@ -110,6 +112,7 @@ export const updateQuestion = defineAction({
 
 export const archiveQuestion = defineAction({
   name: "questionBank.archive",
+  module: "question_bank",
   schema: QuestionArchiveSchema,
   permission: "question.manage",
   handler: async ({ id, isActive }: QuestionArchiveInput, ctx) => {

@@ -85,6 +85,7 @@ function identifySlotConflict(error: unknown, slots: SlotInput[]): { kind: SlotC
 
 export const upsertRoom = defineAction({
   name: "timetable.room.upsert",
+  module: "timetable",
   schema: RoomUpsertSchema,
   permission: "timetable.manage",
   handler: async ({ id, name, capacity, kind }: RoomUpsertInput, ctx) => {
@@ -110,6 +111,7 @@ export const upsertRoom = defineAction({
 
 export const upsertPeriod = defineAction({
   name: "timetable.period.upsert",
+  module: "timetable",
   schema: PeriodUpsertSchema,
   permission: "timetable.manage",
   handler: async ({ id, seq, name, startsAt, endsAt, isBreak }: PeriodUpsertInput, ctx) => {
@@ -165,6 +167,7 @@ async function assertVersionInInstitution(
 
 export const createVersion = defineAction({
   name: "timetable.version.create",
+  module: "timetable",
   schema: VersionCreateSchema,
   permission: "timetable.manage",
   handler: async ({ academicYearId, name, copyFromVersionId }: VersionCreateInput, ctx) => {
@@ -234,6 +237,7 @@ export const createVersion = defineAction({
 
 export const saveDraft = defineAction({
   name: "timetable.saveDraft",
+  module: "timetable",
   schema: SaveSlotsSchema,
   permission: "timetable.manage",
   handler: async ({ versionId, slots, replaceSectionIds }: SaveSlotsInput, ctx) => {
@@ -303,6 +307,7 @@ export const saveDraft = defineAction({
 
 export const publishVersion = defineAction({
   name: "timetable.publish",
+  module: "timetable",
   schema: PublishVersionSchema,
   permission: "timetable.manage",
   handler: async ({ versionId }: PublishVersionInput) => {

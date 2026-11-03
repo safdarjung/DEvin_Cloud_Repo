@@ -13,6 +13,7 @@ import { MarkNotificationReadSchema } from "./schemas";
 
 export const markRead = defineAction({
   name: "notification.read",
+  module: "notifications",
   schema: MarkNotificationReadSchema,
   permission: "notification.read",
   handler: async ({ notificationId }, ctx) => {

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, requireModule } from "@/lib/auth/require";
 import { verifyExam } from "@/modules/exams/actions";
 import { humanize } from "@/lib/format";
 import { PublishButton } from "@/modules/exams/components/PublishButton";
@@ -23,6 +23,7 @@ export default async function ExamResultsPage({
 }) {
   const { institution: institutionSlug, examId } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  requireModule(ctx, "exams");
   requirePermission(ctx, "exam.result.read");
   if (!LIST_ROLES.has(ctx.membership.role)) notFound();
 

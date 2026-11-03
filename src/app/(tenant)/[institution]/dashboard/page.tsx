@@ -16,6 +16,7 @@ import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { humanize, inr } from "@/lib/format";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listEnquiriesByStage } from "@/modules/admissions/queries";
 import { AttendanceChart } from "@/modules/core/components/dashboard/AttendanceChart";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
@@ -141,12 +142,12 @@ export default async function DashboardPage({
   // run in parallel; allSettled so one failure is one ErrorState, not a crash.
   const skip = Promise.resolve(null);
   const extrasP = Promise.allSettled([
-    showWebsite ? listPublicNotices(ctx.institution.id, 4) : skip,
+    showWebsite && isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 4) : skip,
     // shortcut: listPublicEvents has no date filter, so take 20 and keep upcoming; upgrade if a school has >20 past public events.
-    showWebsite ? listPublicEvents(ctx.institution.id, 20) : skip,
-    (isLeader || role === "exam_controller") && canRechecks ? listRecheckQueue(ctx, "submitted") : skip,
-    role === "exam_controller" && canResults ? listExams(ctx) : skip,
-    role === "admissions" && canEnquiries ? listEnquiriesByStage(ctx) : skip,
+    showWebsite && isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 20) : skip,
+    (isLeader || role === "exam_controller") && canRechecks && isModuleEnabled(ctx, "exams") ? listRecheckQueue(ctx, "submitted") : skip,
+    role === "exam_controller" && canResults && isModuleEnabled(ctx, "exams") ? listExams(ctx) : skip,
+    role === "admissions" && canEnquiries && isModuleEnabled(ctx, "admissions") ? listEnquiriesByStage(ctx) : skip,
   ]);
   const data = await getDashboardData(ctx);
   const termId = data.collections?.termId;
@@ -217,7 +218,7 @@ export default async function DashboardPage({
   );
   const actions = (className?: string) => <QuickActions actions={quickActions} className={className} />;
 
-  const enquiryKpi = canEnquiries && (
+  const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && (
     <KpiTile label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
   );
   const collectedKpi = collections && (
@@ -251,14 +252,14 @@ export default async function DashboardPage({
       </Widget>
     );
   const funnel = (className: string) =>
-    canEnquiries && (
+    canEnquiries && isModuleEnabled(ctx, "admissions") && (
       <Widget title="Admissions funnel" action={{ href: `${basePath}/admissions`, label: "Pipeline" }} className={cn("md:col-span-2", className)}>
         <FunnelChart funnel={data.funnel} />
       </Widget>
     );
   const gd = data.gradeDistribution;
   const grades = (className: string) =>
-    canResults && (
+    canResults && isModuleEnabled(ctx, "exams") && (
       <Widget
         title="Exam grade distribution"
         description={gd ? `${gd.examName} — ${gd.total} results` : undefined}
@@ -340,7 +341,7 @@ export default async function DashboardPage({
         <Kpis
           items={[
             enquiryKpi,
-            canEnquiries && <KpiTile label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
+            canEnquiries && isModuleEnabled(ctx, "admissions") && <KpiTile label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
             quickActions.length > 0 && actions("h-full"),
           ]}
         />
@@ -348,7 +349,7 @@ export default async function DashboardPage({
         {failed(enquiriesR) ? (
           <FailedWidget title="Newest enquiries" className={NARROW} />
         ) : (
-          canEnquiries && (
+          canEnquiries && isModuleEnabled(ctx, "admissions") && (
             <ListWidget
               title="Newest enquiries"
               action={{ href: `${basePath}/admissions`, label: "All enquiries" }}
@@ -481,7 +482,7 @@ export default async function DashboardPage({
 
     const sentence = [
       canAttendance && `attendance is at ${data.attendanceToday.percentage}% today`,
-      canEnquiries && `${openEnquiries} ${openEnquiries === 1 ? "enquiry is" : "enquiries are"} open`,
+      canEnquiries && isModuleEnabled(ctx, "admissions") && `${openEnquiries} ${openEnquiries === 1 ? "enquiry is" : "enquiries are"} open`,
       collections && `${formatINR(outstandingPaise)} in fees is outstanding`,
     ].filter(Boolean) as string[];
     const description = sentence.length ? `Here is where ${ctx.institution.name} stands: ${sentence.join(", ")}.` : `Here is what is happening at ${ctx.institution.name} today.`;
@@ -490,13 +491,13 @@ export default async function DashboardPage({
       canAttendance && (
         <HomeKpi key="att" icon={<CalendarCheck />} tone="info" label="Attendance today" value={`${data.attendanceToday.percentage}%`} animateTo={data.attendanceToday.percentage} format="percent" delta={deltaOf(sparkAtt)} spark={sparkAtt} footLeft={`${data.attendanceToday.totalInDenominator} students marked`} footRight={data.sectionsAtRisk.length ? `${data.sectionsAtRisk.length} sections at risk` : "All sections on track"} href={`${basePath}/attendance`} />
       ),
-      canEnquiries && (
+      canEnquiries && isModuleEnabled(ctx, "admissions") && (
         <HomeKpi key="enq" icon={<UserPlus />} tone="primary" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} delta={deltaOf(sparkEnq)} spark={sparkEnq} footLeft={`${enrolledCount} enrolled this year`} footRight="Pipeline" href={`${basePath}/admissions`} />
       ),
       collections && (
         <HomeKpi key="fee" icon={<Banknote />} tone="success" label="Collected this term" value={formatINR(collections.collectedPaise)} animateTo={collections.collectedPaise / 100} format="inr" delta={deltaOf(sparkFee)} spark={sparkFee} footLeft={`of ${formatINR(collections.duePaise)} due`} footRight={collectionPct === null ? undefined : `${collectionPct}% collected`} href={`${basePath}/finance`} />
       ),
-      canResults && (
+      canResults && isModuleEnabled(ctx, "exams") && (
         <HomeKpi key="res" icon={<GraduationCap />} tone="warning" label="Published results" value={String(gd?.total ?? 0)} animateTo={gd?.total ?? 0} delta={deltaOf(sparkRes)} spark={sparkRes} footLeft={gd ? gd.examName : "No published exam yet"} footRight="Exams" href={`${basePath}/exams`} />
       ),
     ].filter(Boolean);
