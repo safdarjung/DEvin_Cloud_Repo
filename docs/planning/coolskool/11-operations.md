@@ -18,7 +18,10 @@
 | `ANTHROPIC_API_KEY` | server | Optional; absent in the demo |
 | `AI_CLOUD_MODEL_QUALITY` / `AI_CLOUD_MODEL_CHEAP` | server | Defaults `claude-sonnet-5` / `claude-haiku-4-5` |
 | `NEXT_PUBLIC_DEMO_LOGIN_HINTS` | all | `true` shows the demo account list on the login page (demo deployments only; DBT-11) |
-| `SERVICE_ROLE_CALLER` | scripts, jobs | Set by entrypoints to `seed`, `reset`, or `jobs`; the admin client refuses otherwise |
+| `SERVICE_ROLE_CALLER` | scripts, jobs | Set by entrypoints to `seed`, `reset`, `jobs`, `public_enquiry`, or `payments_webhook` (route-scoped, `07 §4`); the admin client refuses otherwise |
+| `RAZORPAY_KEY_ID` | server | Razorpay key id; **test mode only** — `onlinePaymentsMode()` is `test` iff it starts `rzp_test_` and the secret is set, anything else (including `rzp_live_`) is `simulated` (M12) |
+| `RAZORPAY_KEY_SECRET` | server | Razorpay key secret (Basic auth for `POST /v1/orders`); never logged |
+| `RAZORPAY_WEBHOOK_SECRET` | server | HMAC secret for `POST /api/public/payments/razorpay`; unset → the route answers 503 `dependency_failed` |
 | `BENCH_KWH_USD`, `BENCH_HW_USD_PER_HOUR` | bench | Cost assumptions for local inference (flagged in output) |
 
 `.env.example` lists all names with comments; `.env.local` is git-ignored. CI uses repository secrets only for the deploy job.
@@ -140,6 +143,16 @@ Real SMS/email providers (DLT registration), payment gateway, CSV import, backup
 3. Set `RESEND_FROM` to the verified sender domain (optional; default `onboarding@resend.dev` works for testing).
 4. Test: invite your own email address as a member; check that `/invitations/accept` sends an email (visible in Resend dashboard) or simulated (shown as failed status if the key is not set or the domain is unverified).
 5. Emails are sent for invitations and notifications (enrolment welcome, announcements) when the key is set. Reserved test domains (`.test`, `example.com`) remain simulated. Check the delivery attempt status in the message log (`notifications.listDeliveryLog`).
+
+## 13.6. Onboarding M12 online payments (Razorpay test mode) on hosted
+
+Scope: Razorpay **test mode** only. Live keys are refused by design (`onlinePaymentsMode()` treats `rzp_live_` as `simulated`); live mode needs DBT-67/DBT-68 closed first.
+
+1. Razorpay dashboard → switch to Test Mode → Settings → API Keys → generate a test key pair. Set `RAZORPAY_KEY_ID` (starts `rzp_test_`) and `RAZORPAY_KEY_SECRET` in Vercel environment (server only). Without both, intents are created as `simulated` (`sim_order_` id, no checkout, nothing captured) and the UI shows `<SimulatedBadge />`; with both, `<LimitedBadge />` "test mode".
+2. Settings → Webhooks → add `https://<app-host>/api/public/payments/razorpay`, choose a secret, set the same value as `RAZORPAY_WEBHOOK_SECRET` in Vercel. Subscribe to events `payment.captured` and `order.paid` only (anything else is answered 200 `ignored: "event"`). Redeploy after setting env.
+3. Enable the module for the school: `online_payments` (requires `finance_plus`) in `institutions.settings.modules` via the MOD toggle. While disabled, the webhook acknowledges with 200 `ignored: "module_disabled"` and writes nothing — Razorpay will not retry, so enable the module before the first test payment.
+4. Test: log in as a guardian, open an `issued`/`part_paid` invoice, call `finance.payment.createIntent` (amount between ₹1.00 and the outstanding) → use the returned `orderId`/`keyId` with Razorpay Checkout test cards/UPI → the webhook records the payment through `record_online_payment` (receipt visible on the invoice; `finance.payment.recorded` audit with no actor). Replaying the same event returns 200 `duplicate: true`; the Razorpay dashboard "resend webhook" is safe.
+5. Troubleshooting: 503 → `RAZORPAY_WEBHOOK_SECRET` missing on the deployment; 400 `validation_failed` → signature mismatch (secret differs between dashboard and env) or body over 64 KB; 404 `not_found` → order id unknown (intent created against another environment/database); 409 → paid under a different payment id, or invoice no longer `issued`/`part_paid`; 500 carries a correlation id — search Vercel logs for it (the request body is never logged). Refunds: `finance.payment.void` kind `refund` reverses the books only; refund the money in the Razorpay dashboard (DBT-67).
 
 ## 14. Onboarding a real school in 3 days (M03–M04 APIs)
 

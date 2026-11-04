@@ -41,6 +41,15 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  {
+    // M12-T12: the Razorpay webhook's own scoped helper — the webhook route
+    // itself never imports the admin client directly, only this factory
+    // (`07 §4, payments_webhook` caller).
+    files: ["src/modules/finance/with-service-role.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

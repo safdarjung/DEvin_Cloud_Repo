@@ -283,6 +283,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "finance.listLedgerEntries": { from: DATE, to: DATE },
         "finance.listDefaulters": { termId: UUID },
         "finance.termCollectionSummary": { termId: UUID },
+        "finance.collectionReport": { groupBy: "mode" },
         "lifecycle.history": { studentId: UUID },
         "notifications.listMyNotifications": {},
         "notifications.unreadCount": {},

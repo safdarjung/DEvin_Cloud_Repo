@@ -4,8 +4,10 @@ import "server-only";
 // concessions are finance_roles()-only (05 §5), invoices/invoice_lines also
 // allow guardian/student own-scope, which these queries rely on for scoping
 // rather than re-checking role here.
+import { AppError, mapSqlError } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import type { CollectionReportInput } from "./schemas";
 
 export interface PickerOption {
   id: string;
@@ -306,29 +308,53 @@ export interface ReceiptSnapshot {
   heads: ReceiptHeadSnapshot[];
 }
 
+export interface ReceiptReversal {
+  kind: string;
+  reason: string;
+  reversedAt: string;
+}
+
 export interface ReceiptDetail {
   id: string;
   receiptNo: string;
   financialYear: string;
   createdAt: string;
   snapshot: ReceiptSnapshot;
+  reversal: ReceiptReversal | null;
 }
 
 function toReceiptHeadSnapshot(h: Record<string, unknown>): ReceiptHeadSnapshot {
   return { head: String(h.head), amount: Number(h.amount), concessionAmount: Number(h.concession_amount) };
 }
 
-/** RLS scopes to finance roles or the receipt's own student's guardian/student (05 §5); the explicit `institution_id` filter plus null-check still gives a clean `not_found` instead of relying on RLS alone (packet rule 2). */
+/**
+ * RLS scopes to finance roles or the receipt's own student's guardian/student
+ * (05 §5); the explicit `institution_id` filter plus null-check still gives a
+ * clean `not_found` instead of relying on RLS alone (packet rule 2).
+ *
+ * M12-T7: `reversal` (void/refund/cheque_bounce) is a second read of
+ * `payment_reversals` by `payment_id` — that table's own RLS (mirrors
+ * `receipts_select`, 0074) already scopes it to the same finance-roles-or-
+ * this-student audience, so no extra institution filter is needed beyond
+ * what the row's own policy already enforces for this signed-in client.
+ */
 export async function getReceipt(ctx: TenantContext, id: string): Promise<ReceiptDetail | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("receipts")
-    .select("id, receipt_no, financial_year, created_at, snapshot")
+    .select("id, receipt_no, financial_year, created_at, snapshot, payment_id")
     .eq("id", id)
     .eq("institution_id", ctx.institution.id)
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
+
+  const { data: reversalRow, error: reversalError } = await supabase
+    .from("payment_reversals")
+    .select("kind, reason, created_at")
+    .eq("payment_id", data.payment_id)
+    .maybeSingle();
+  if (reversalError) throw reversalError;
 
   const snap = data.snapshot as Record<string, unknown>;
   return {
@@ -336,6 +362,7 @@ export async function getReceipt(ctx: TenantContext, id: string): Promise<Receip
     receiptNo: data.receipt_no,
     financialYear: data.financial_year,
     createdAt: data.created_at,
+    reversal: reversalRow ? { kind: reversalRow.kind, reason: reversalRow.reason, reversedAt: reversalRow.created_at } : null,
     snapshot: {
       invoiceId: String(snap.invoice_id),
       studentId: String(snap.student_id),
@@ -478,25 +505,28 @@ export async function listLedgerEntries(
     .range((safePage - 1) * size, safePage * size - 1);
   if (filters.account) listQuery = listQuery.eq("account", filters.account);
 
-  let sumQuery = supabase
-    .from("ledger_entries")
-    .select("debit, credit")
-    .eq("institution_id", ctx.institution.id)
-    .gte("entry_date", filters.from)
-    .lte("entry_date", filters.to);
-  if (filters.account) sumQuery = sumQuery.eq("account", filters.account);
+  // DBT-40 fix: totals from the `ledger_totals` SQL function (sums every
+  // matching row server-side), never from a PostgREST select — the old
+  // `sumQuery` here had no `.range()`, so `max_rows = 1000`
+  // (supabase/config.toml) silently truncated it on any institution with
+  // more than 1,000 ledger rows in the filtered range.
+  const totalsQuery = supabase
+    .rpc("ledger_totals", {
+      p_institution_id: ctx.institution.id,
+      p_from: filters.from,
+      p_to: filters.to,
+      ...(filters.account ? { p_account: filters.account } : {}),
+    })
+    .single();
 
-  const [{ data, error, count }, { data: sumRows, error: sumError }] = await Promise.all([listQuery, sumQuery]);
+  const [{ data, error, count }, { data: totalsRow, error: totalsError }] = await Promise.all([listQuery, totalsQuery]);
   if (error) throw error;
-  if (sumError) throw sumError;
+  if (totalsError) throw totalsError;
 
-  const totalsPaise = (sumRows ?? []).reduce(
-    (acc, r) => ({
-      debitPaise: acc.debitPaise + moneyToPaise(r.debit),
-      creditPaise: acc.creditPaise + moneyToPaise(r.credit),
-    }),
-    { debitPaise: 0, creditPaise: 0 },
-  );
+  const totalsPaise = {
+    debitPaise: moneyToPaise(totalsRow.total_debit),
+    creditPaise: moneyToPaise(totalsRow.total_credit),
+  };
 
   return {
     entries: (data ?? []).map((r) => ({
@@ -566,23 +596,91 @@ export interface TermCollectionSummary {
   collectedPaise: number;
 }
 
-/** Collected vs due for one term, summed in integer paise (CLAUDE.md rule 4) — same reduce pattern as listLedgerEntries/listDefaulters above, never a float sum. */
+/** Collected vs due for one term, summed in integer paise (CLAUDE.md rule 4). DBT-40 fix: totals from the `term_collection_totals` SQL function (sums every matching row server-side), not a PostgREST select — the old select here had no `.range()`, so `max_rows = 1000` silently truncated a term with more than 1,000 invoices. */
 export async function termCollectionSummary(ctx: TenantContext, termId: string): Promise<TermCollectionSummary> {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("invoices")
-    .select("total, paid_total")
-    .eq("institution_id", ctx.institution.id)
-    .eq("term_id", termId);
+    .rpc("term_collection_totals", { p_institution_id: ctx.institution.id, p_term_id: termId })
+    .single();
   if (error) throw error;
 
-  const totals = (data ?? []).reduce(
-    (acc, row) => ({
-      duePaise: acc.duePaise + moneyToPaise(row.total),
-      collectedPaise: acc.collectedPaise + moneyToPaise(row.paid_total),
-    }),
-    { duePaise: 0, collectedPaise: 0 },
-  );
+  return {
+    termId,
+    invoiceCount: Number(data.invoice_count),
+    duePaise: moneyToPaise(data.due),
+    collectedPaise: moneyToPaise(data.collected),
+  };
+}
 
-  return { termId, invoiceCount: data?.length ?? 0, ...totals };
+// M12-T9 — finance.collectionReport (06 rulings). Wraps
+// `public.finance_collection_report` (20261028000074), `security invoker`
+// over tables already RLS-scoped to finance roles — no role check here.
+export interface CollectionReportRow {
+  groupKey: string;
+  groupLabel: string;
+  invoiceCount: number;
+  paymentCount: number;
+  billed: number | null;
+  collected: number;
+  reversed: number;
+  outstanding: number | null;
+}
+
+function throwMapped(error: unknown): never {
+  const mapped = mapSqlError(error);
+  if (mapped.ok) throw new AppError("internal", "Unexpected error.");
+  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
+
+/** Converts a possibly-null numeric (string or number, per the money-float comment above) to a rupee value via the integer-paise round trip. */
+function toMoneyOrNull(raw: string | number | null): number | null {
+  return raw === null ? null : paiseToMoney(moneyToPaise(raw));
+}
+
+export async function collectionReport(ctx: TenantContext, input: CollectionReportInput): Promise<CollectionReportRow[]> {
+  const supabase = await createClient();
+
+  let academicYearId = input.academicYearId;
+  if (!academicYearId) {
+    const { data: year, error: yearError } = await supabase
+      .from("academic_years")
+      .select("id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("is_current", true)
+      .maybeSingle();
+    if (yearError) throw yearError;
+    if (!year) return [];
+    academicYearId = year.id;
+  }
+
+  if (input.termId) {
+    const { data: term, error: termError } = await supabase
+      .from("terms")
+      .select("id")
+      .eq("id", input.termId)
+      .eq("institution_id", ctx.institution.id)
+      .eq("academic_year_id", academicYearId)
+      .maybeSingle();
+    if (termError) throw termError;
+    if (!term) throw new AppError("validation_failed", "Term does not belong to the academic year.");
+  }
+
+  const { data, error } = await supabase.rpc("finance_collection_report", {
+    p_institution_id: ctx.institution.id,
+    p_academic_year_id: academicYearId,
+    p_term_id: input.termId,
+    p_group_by: input.groupBy,
+  });
+  if (error) throwMapped(error);
+
+  return (data ?? []).map((row) => ({
+    groupKey: row.group_key,
+    groupLabel: row.group_label,
+    invoiceCount: Number(row.invoice_count),
+    paymentCount: Number(row.payment_count),
+    billed: toMoneyOrNull(row.billed),
+    collected: toMoneyOrNull(row.collected) ?? 0,
+    reversed: toMoneyOrNull(row.reversed) ?? 0,
+    outstanding: toMoneyOrNull(row.outstanding),
+  }));
 }

@@ -8,7 +8,7 @@ export type Lang = "en" | "hi";
 
 // M06-T3 — `notification_preferences.category` check (0068). `createNotification`
 // looks up the recipient's disabled sms/email prefs for a template's category.
-export type NotificationCategory = "attendance" | "academic" | "admissions" | "announcement" | "report";
+export type NotificationCategory = "attendance" | "academic" | "admissions" | "announcement" | "report" | "finance";
 
 export const NOTIFICATION_TYPES = [
   "attendance_absence",
@@ -18,6 +18,7 @@ export const NOTIFICATION_TYPES = [
   "enrolment_welcome",
   "announcement",
   "report_ready",
+  "fee_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -51,6 +52,15 @@ const EnrolmentWelcomeVars = z
 const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
 
 const ReportReadyVars = z.object({ report: z.string().min(1).max(80), date: z.string().min(1).max(20) }).strict();
+const FeeReminderVars = z
+  .object({
+    student: z.string().min(1),
+    invoice_no: z.string().min(1),
+    amount: z.string().min(1),
+    due_on: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -135,6 +145,16 @@ export const NOTIFICATION_TEMPLATES = {
       lang === "hi"
         ? `${v.report} (${v.date}) डाउनलोड के लिए तैयार है।`
         : `${v.report} for ${v.date} is ready to download.`,
+  }),
+  fee_reminder: def({
+    channels: ["in_app", "sms", "email"],
+    category: "finance",
+    varsSchema: FeeReminderVars,
+    title: (lang) => (lang === "hi" ? "शुल्क अनुस्मारक" : "Fee reminder"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${v.due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
+        : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${v.due_on}). Please pay at the school office. -${v.school}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

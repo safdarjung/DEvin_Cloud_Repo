@@ -88,6 +88,12 @@ export function mapSqlError(err: unknown): ActionResult<never> {
     return fail(match[1], detail);
   }
 
+  // Raw SQLSTATEs that must never surface as `internal` (M12 ruling "Error
+  // codes"); fixed messages, never the SQL text.
+  const sqlState = typeof err === "object" && err !== null ? (err as { code?: unknown }).code : undefined;
+  if (sqlState === "42501") return fail("forbidden", "You do not have access to this record.");
+  if (sqlState === "23505") return fail("conflict", "This record already exists.");
+
   const correlationId = crypto.randomUUID();
   console.error(`[${correlationId}] unexpected SQL error`, err);
   return fail("internal", `Something went wrong. Reference: ${correlationId}`);

@@ -42,6 +42,7 @@ const APP_AUTHENTICATED = [
   "app.exam_roles",
   "app.exam_write_roles",
   "app.finance_roles",
+  "app.finance_void_roles",
   "app.finance_write_roles",
   "app.guardian_student_ids",
   "app.has_role",
@@ -81,8 +82,10 @@ const PUBLIC_AUTHENTICATED = [
   "public.convert_enquiry",
   "public.correct_attendance",
   "public.create_institution",
+  "public.create_payment_intent",
   "public.decide_application",
   "public.decide_leave",
+  "public.enqueue_fee_reminders",
   "public.enqueue_term_invoices",
   "public.enrol_applicant",
   "public.enter_marks",
@@ -110,6 +113,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.start_recheck_review",
   "public.submit_assignment",
   "public.submit_attendance",
+  "public.void_payment",
 ];
 
 describe("grants audit (07 §4, T-042 AC3)", () => {
@@ -168,7 +172,7 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
   });
 
   it("service-role-only RPCs are not callable by anon/authenticated", () => {
-    const serviceOnly = ["jobs_claim", "jobs_complete", "submit_public_enquiry"];
+    const serviceOnly = ["jobs_claim", "jobs_complete", "submit_public_enquiry", "record_online_payment"];
     for (const name of serviceOnly) {
       const row = rows.find((r) => r.schema === "public" && r.name === name)!;
       expect({ name, anon: row.anon, authenticated: row.authenticated, service_role: row.service_role }).toEqual({
