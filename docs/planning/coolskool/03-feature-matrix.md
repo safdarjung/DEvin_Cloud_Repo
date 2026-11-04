@@ -109,8 +109,8 @@ Assumptions: daily single-mark attendance; one exam per term in the seed; CBSE 9
 | F-FIN-05 | Ledger entries (double entry, minimal chart of accounts) | Accounting trail | 1 | impl | P0 | F-FIN-04 | finance | conf | C-53 |
 | F-FIN-06 | Guardian fee view and printable receipt | Parent value | 1 | impl | P0 | F-FIN-04 | finance | conf | J-07 |
 | F-FIN-07 | Collection dashboard, defaulters list | Principal value | 1 | impl | P0 | F-FIN-04 | finance | conf | J-13 |
-| F-FIN-08 | Payment gateway (UPI/cards), reminders | Convenience | 2 | planned | P2 | F-FIN-04 | finance | conf | — |
-| F-FIN-09 | Payment void/refund with reversing entries | Corrections | 2 | planned | P1 | F-FIN-05 | finance | conf | — |
+| F-FIN-08 | Payment gateway (UPI/cards), reminders — M12: Razorpay **test mode** only (`rzp_test_` key; live keys refused, `11 §13.6`), intents + signed webhook, module `online_payments`; manual fee reminders per term (`finance.reminders.send`, module `finance_plus`, no daily schedule until M23); simulated badge when no key | Convenience | 2 | limited | P2 | F-FIN-04 | finance | conf | `tests/db/finance-completion-acceptance.test.ts`, `razorpay-webhook.test.ts`, `fee-reminders.test.ts` |
+| F-FIN-09 | Payment void/refund/cheque bounce with reversing entries (`finance.payment.void`, owner/principal, `payment_reversals` + ledger pair; module `finance_plus`; refund is record-only, DBT-67) | Corrections | 2 | impl | P1 | F-FIN-05 | finance | conf | `tests/db/finance-void.test.ts`, `finance-completion-acceptance.test.ts` |
 | F-FIN-10 | Late fees, instalment plans, fee receipts export (Tally/CSV) | Accounting fit | 2 | planned | P2 | F-FIN-03 | finance | conf | — |
 | F-HR-01 | Staff attendance, leave | Operations | 2 | planned | P2 | F-STU-03 | people | conf | — |
 | F-HR-02 | Payroll (salary structure, payslips, statutory) | Finance completeness | 2 | planned | P2 | F-STU-03 | payroll (reserved) | conf | — |

@@ -37,6 +37,9 @@ export type Permission =
   | "finance.structure.manage"
   | "finance.invoice.generate"
   | "finance.payment.record"
+  | "finance.payment.void"
+  | "finance.payment.online"
+  | "finance.reminder.send"
   | "finance.read"
   | "exam.manage"
   | "exam.marks.enter"
@@ -93,6 +96,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.structure.manage",
     "finance.invoice.generate",
     "finance.payment.record",
+    "finance.payment.void",
+    "finance.payment.online",
+    "finance.reminder.send",
     "finance.read",
     "exam.manage",
     "exam.marks.enter",
@@ -145,6 +151,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.structure.manage",
     "finance.invoice.generate",
     "finance.payment.record",
+    "finance.payment.void",
+    "finance.payment.online",
+    "finance.reminder.send",
     "finance.read",
     "exam.manage",
     "exam.marks.enter",
@@ -249,6 +258,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.structure.manage",
     "finance.invoice.generate",
     "finance.payment.record",
+    "finance.payment.online",
+    "finance.reminder.send",
     "finance.read",
     "notification.read",
     "document.read",
@@ -319,6 +330,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "academics.read",
     "attendance.read",
     "finance.read",
+    "finance.payment.online",
     "exam.result.read",
     "exam.recheck.request",
     "assignment.read",

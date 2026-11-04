@@ -1047,6 +1047,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"fee_reminders": {
+                  Row: {
+                    "created_at": string,"id": string,"institution_id": string,"invoice_id": string,"notification_id": string | null,"outstanding": number,"recipient_user_id": string,"reminder_date": string,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"institution_id": string,"invoice_id": string,"notification_id"?: string | null,"outstanding": number,"recipient_user_id": string,"reminder_date": string,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"institution_id"?: string,"invoice_id"?: string,"notification_id"?: string | null,"outstanding"?: number,"recipient_user_id"?: string,"reminder_date"?: string,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "fee_reminders_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_reminders_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_reminders_notification_id_fkey"
+      columns: ["notification_id"]
+isOneToOne: false
+      referencedRelation: "notifications"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_reminders_recipient_user_id_fkey"
+      columns: ["recipient_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "fee_reminders_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"fee_structures": {
                   Row: {
                     "academic_year_id": string,"created_at": string,"grade_id": string,"id": string,"institution_id": string,"is_default": boolean,"name": string,"updated_at": string
@@ -1701,6 +1745,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"online_payment_intents": {
+                  Row: {
+                    "amount": number,"created_at": string,"created_by": string | null,"currency": string,"id": string,"idempotency_key": string,"institution_id": string,"invoice_id": string,"payment_id": string | null,"provider": string,"provider_order_id": string,"provider_payment_id": string | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"id"?: string,"idempotency_key": string,"institution_id": string,"invoice_id": string,"payment_id"?: string | null,"provider": string,"provider_order_id": string,"provider_payment_id"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"created_by"?: string | null,"currency"?: string,"id"?: string,"idempotency_key"?: string,"institution_id"?: string,"invoice_id"?: string,"payment_id"?: string | null,"provider"?: string,"provider_order_id"?: string,"provider_payment_id"?: string | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "online_payment_intents_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "online_payment_intents_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "online_payment_intents_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "online_payment_intents_payment_id_fkey"
+      columns: ["payment_id"]
+isOneToOne: true
+      referencedRelation: "payments"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"page_versions": {
                   Row: {
                     "blocks": NonNullable<Json>,"created_at": string,"created_by": string | null,"id": string,"institution_id": string,"page_id": string,"published_at": string | null,"version_no": number
@@ -1756,6 +1838,44 @@ isOneToOne: false
       columns: ["website_id"]
 isOneToOne: false
       referencedRelation: "websites"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"payment_reversals": {
+                  Row: {
+                    "amount": number,"created_at": string,"id": string,"idempotency_key": string,"institution_id": string,"invoice_id": string,"kind": string,"payment_id": string,"reason": string,"reversed_by": string | null,"snapshot": NonNullable<Json>,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"id"?: string,"idempotency_key": string,"institution_id": string,"invoice_id": string,"kind": string,"payment_id": string,"reason": string,"reversed_by"?: string | null,"snapshot": NonNullable<Json>,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"id"?: string,"idempotency_key"?: string,"institution_id"?: string,"invoice_id"?: string,"kind"?: string,"payment_id"?: string,"reason"?: string,"reversed_by"?: string | null,"snapshot"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "payment_reversals_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_reversals_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_reversals_payment_id_fkey"
+      columns: ["payment_id"]
+isOneToOne: true
+      referencedRelation: "payments"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "payment_reversals_reversed_by_fkey"
+      columns: ["reversed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -2719,6 +2839,9 @@ isOneToOne: true
 "create_institution":
 { Args: { "p_name": string,"p_slug": string,"p_timezone"?: string,"p_year_start"?: string }; Returns: string
                            },
+"create_payment_intent":
+{ Args: { "p_amount": number,"p_idempotency_key": string,"p_invoice_id": string,"p_provider": string,"p_provider_order_id": string }; Returns: string
+                           },
 "decide_application":
 { Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
                            },
@@ -2745,6 +2868,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"enqueue_fee_reminders":
+{ Args: { "p_institution_id": string,"p_term_id": string }; Returns: Json
+                           },
 "enqueue_term_invoices":
 { Args: { "p_grade_id"?: string,"p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
@@ -2759,6 +2885,11 @@ isOneToOne: true
                            },
 "exit_student":
 { Args: { "p_conduct"?: string,"p_destination_school"?: string,"p_kind": string,"p_left_on"?: string,"p_reason": string,"p_student_id": string }; Returns: Json
+                           },
+"finance_collection_report":
+{ Args: { "p_academic_year_id": string,"p_group_by"?: string,"p_institution_id": string,"p_term_id"?: string }; Returns: {
+              "billed": number,"collected": number,"group_key": string,"group_label": string,"invoice_count": number,"outstanding": number,"payment_count": number,"reversed": number,"sort_order": number
+            }[]
                            },
 "generate_invoice":
 { Args: { "p_student_id": string,"p_term_id": string }; Returns: string
@@ -2847,6 +2978,11 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"ledger_totals":
+{ Args: { "p_account"?: string,"p_from": string,"p_institution_id": string,"p_to": string }; Returns: {
+              "total_credit": number,"total_debit": number
+            }[]
+                           },
 "link_guardian":
 { Args: { "p_email"?: string,"p_full_name"?: string,"p_guardian_id"?: string,"p_is_primary"?: boolean,"p_phone"?: string,"p_relationship": string,"p_student_id": string }; Returns: Json
                            },
@@ -2937,6 +3073,9 @@ isOneToOne: true
 "record_audit_event":
 { Args: { "p_action": string,"p_after"?: Json,"p_before"?: Json,"p_entity_id"?: string,"p_entity_type": string,"p_institution_id": string,"p_metadata"?: Json }; Returns: string
                            },
+"record_online_payment":
+{ Args: { "p_amount_paise": number,"p_method": string,"p_order_id": string,"p_provider_payment_id": string }; Returns: Json
+                           },
 "record_payment":
 { Args: { "p_amount": number,"p_idempotency_key": string,"p_invoice_id": string,"p_mode": string,"p_received_at": string,"p_reference": string }; Returns: Json
                            },
@@ -3018,6 +3157,14 @@ isOneToOne: true
       } },
 "submit_public_enquiry":
 { Args: { "p_ip_hash": string,"p_payload": Json,"p_slug": string }; Returns: Json
+                           },
+"term_collection_totals":
+{ Args: { "p_institution_id": string,"p_term_id": string }; Returns: {
+              "collected": number,"due": number,"invoice_count": number
+            }[]
+                           },
+"void_payment":
+{ Args: { "p_idempotency_key": string,"p_kind": string,"p_payment_id": string,"p_reason": string }; Returns: Json
                            }
           }
           Enums: {

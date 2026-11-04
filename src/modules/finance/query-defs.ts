@@ -7,7 +7,9 @@
 import { defineQuery } from "@/lib/actions/define-query";
 import { isoDate, uuid } from "@/lib/schemas/common";
 import { z } from "zod";
+import { CollectionReportSchema } from "./schemas";
 import {
+  collectionReport,
   getFeeStructure,
   getInvoice,
   getReceipt,
@@ -166,4 +168,14 @@ export const termCollectionSummaryQuery = defineQuery({
   schema: z.object({ termId: uuid }).strict(),
   permission: "finance.read",
   handler: (input, ctx) => termCollectionSummary(ctx, input.termId),
+});
+
+// permission: finance.structure.manage — same holders as the ledger/defaulters
+// reports (M12 rulings: "reuses finance.structure.manage").
+export const collectionReportQuery = defineQuery({
+  name: "finance.collectionReport",
+  module: "finance_plus",
+  schema: CollectionReportSchema,
+  permission: "finance.structure.manage",
+  handler: (input, ctx) => collectionReport(ctx, input),
 });
