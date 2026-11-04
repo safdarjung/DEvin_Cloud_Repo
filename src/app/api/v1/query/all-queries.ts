@@ -22,6 +22,7 @@ import "@/modules/notifications/query-defs";
 import "@/modules/people/hr.query-defs";
 import "@/modules/people/query-defs";
 import "@/modules/question-bank/query-defs";
+import "@/modules/reports/query-defs";
 import "@/modules/timetable/query-defs";
 import "@/modules/transport/query-defs";
 import "@/modules/website/query-defs";

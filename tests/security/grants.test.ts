@@ -52,6 +52,7 @@ const APP_AUTHENTICATED = [
   "app.member_institutions",
   "app.my_class_teacher_section_ids",
   "app.my_institution_ids",
+  "app.my_report_ids",
   "app.my_staff_ids",
   "app.my_student_ids",
   "app.my_student_section_ids",

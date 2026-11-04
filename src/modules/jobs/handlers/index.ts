@@ -5,8 +5,10 @@ import { notifyEnquiryReceived } from "./notify.enquiry_received.ts";
 import { notifyEnrolmentWelcome } from "./notify.enrolment_welcome.ts";
 import { notifyRecheckDecided } from "./notify.recheck_decided.ts";
 import { notifyResultsPublished } from "./notify.results_published.ts";
+import { generateReport } from "./report.generate.ts";
 
 export {
+  generateReport,
   generateTermInvoices,
   notifyAnnouncement,
   notifyAttendanceAbsence,

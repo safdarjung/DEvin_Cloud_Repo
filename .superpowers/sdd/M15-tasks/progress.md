@@ -1,0 +1,16 @@
+## Tasks
+- 2026-11-04 lane-b wave1: T1 T2 T3 T7
+- T1 DONE (19 unit)
+- T7 DONE (12 unit); notes lint errors in T2 schemas (T2 still running)
+- T2 DONE (48 unit)
+- T3 DONE (15 db, security 2200); T4 dispatched (exclusive)
+- T4 DONE (17 db); T5 (exclusive) + T6 dispatched
+- T6 DONE (16 unit)
+- T5 DONE (7 db); T8 T10 T11 dispatched
+- T8 DONE (33 unit); T9 dispatched
+- T10 DONE (3 db, escalation 1082)
+- T11 DONE (5 db); T12 waits for T9
+- T9 DONE (3 db); T12 dispatched
+- T12 DONE (1 acceptance); review + T13 docs dispatched
+- T13 DONE (docs)
+- review: 0 CRIT, 0 HIGH, 1 MED (report_fee_defaulters join unscoped), 2 LOW; fix dispatched

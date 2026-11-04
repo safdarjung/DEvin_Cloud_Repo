@@ -58,6 +58,7 @@ export type Permission =
   | "question.manage"
   | "job.manage"
   | "data.import"
+  | "data.export"
   | "document.read"
   | "document.write"
   | "announcement.manage"
@@ -68,7 +69,8 @@ export type Permission =
   | "leave.approve"
   | "facilities.manage"
   | "transport.manage"
-  | "maintenance.request";
+  | "maintenance.request"
+  | "report.schedule";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -122,6 +124,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "data.export",
+    "report.schedule",
   ],
   principal: [
     "institution.settings.manage",
@@ -174,6 +178,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "data.export",
+    "report.schedule",
   ],
   admin: [
     "institution.settings.manage",
@@ -216,6 +222,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "data.export",
+    "report.schedule",
   ],
   admissions: [
     "dashboard.view",
@@ -256,6 +264,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "data.export",
   ],
   exam_controller: [
     "dashboard.view",

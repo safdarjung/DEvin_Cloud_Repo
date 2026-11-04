@@ -2061,6 +2061,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"scheduled_reports": {
+                  Row: {
+                    "created_at": string,"created_by": string,"cron": string,"id": string,"institution_id": string,"name": string,"next_run_at": string | null,"params": NonNullable<Json>,"recipient_roles": (string)[],"source": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"cron": string,"id"?: string,"institution_id": string,"name": string,"next_run_at"?: string | null,"params"?: NonNullable<Json>,"recipient_roles": (string)[],"source": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"cron"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"next_run_at"?: string | null,"params"?: NonNullable<Json>,"recipient_roles"?: (string)[],"source"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "scheduled_reports_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "scheduled_reports_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"staff": {
                   Row: {
                     "created_at": string,"department_id": string | null,"designation": string,"email": string | null,"employee_no": string,"full_name": string,"id": string,"institution_id": string,"is_teaching": boolean,"phone": string | null,"status": string,"updated_at": string,"user_id": string | null
@@ -2745,6 +2771,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"enqueue_due_reports":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "enqueue_term_invoices":
 { Args: { "p_grade_id"?: string,"p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
@@ -2942,6 +2971,16 @@ isOneToOne: true
                            },
 "reopen_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
+                           },
+"report_attendance_daily":
+{ Args: { "p_as_of": string,"p_day_offset"?: number,"p_institution_id": string }; Returns: {
+              "date": string,"denominator": number,"enrolled": number,"grade": string,"marked": number,"percentage": number,"present_weighted": number,"section": string,"session_status": string
+            }[]
+                           },
+"report_fee_defaulters":
+{ Args: { "p_as_of": string,"p_institution_id": string,"p_min_days_overdue"?: number }; Returns: {
+              "admission_no": string,"days_overdue": number,"due_on": string,"grade": string,"invoice_no": string,"outstanding": string,"section": string,"student": string
+            }[]
                            },
 "request_recheck":
 { Args: { "p_exam_paper_id": string,"p_institution_id": string,"p_reason": string,"p_result_id": string }; Returns: Json

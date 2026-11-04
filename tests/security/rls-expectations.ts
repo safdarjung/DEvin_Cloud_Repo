@@ -618,4 +618,11 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "exam_controller", "teacher"],
     write: ["owner", "principal", "exam_controller", "teacher"],
   },
+  // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
+  // admin only (07 §2.2); no DELETE policy (pause instead of delete).
+  scheduled_reports: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
 };

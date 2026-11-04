@@ -98,3 +98,21 @@ describe("simulated channels never touch the network", () => {
     vi.unstubAllGlobals();
   });
 });
+
+  it("report_ready renders EN and HI with both vars and rejects missing date", () => {
+    const { varsSchema, body, channels, category } = NOTIFICATION_TEMPLATES.report_ready;
+    const vars = { report: "Daily Attendance", date: "2026-11-04" };
+    expect(varsSchema.safeParse(vars).success).toBe(true);
+    expect(varsSchema.safeParse({ ...vars, extra: "x" }).success).toBe(false);
+    expect(varsSchema.safeParse({ report: "Daily Attendance" }).success).toBe(false);
+    expect(varsSchema.safeParse({ ...vars, date: "" }).success).toBe(false);
+    const en = body(vars, "en");
+    const hi = body(vars, "hi");
+    expect(en).not.toBe(hi);
+    expect(en).toContain(vars.report);
+    expect(en).toContain(vars.date);
+    expect(hi).toContain(vars.report);
+    expect(hi).toContain(vars.date);
+    expect(channels).toEqual(["in_app"]);
+    expect(category).toBe("report");
+  });

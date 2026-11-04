@@ -299,3 +299,5 @@ stateDiagram-v2
 ## 7. Job types
 
 Job execution, handler signature, retry and idempotency: see §W12. The dispatch table of job types is `src/modules/jobs/registry.ts`; payload types are in `src/modules/jobs/types.ts`.
+
+**`report.generate`** (M15, module `scheduled_reports`): payload `{scheduled_report_id uuid, fire_at timestamptz}`, built by `public.enqueue_due_reports()` sweep. Reads schedule (missing/paused → no-op), re-parses params with source schema, calls `runReportSource(institution_id, source, params, fire_at)` to fetch allowlisted rows via RPC invoker, converts to CSV (`rowsToCsvText`), uploads to `tenant-docs` at deterministic path, inserts/upserts `documents` row (entity_type `report`, mime `text/csv`), notifies recipient-role members of that schedule. Idempotent: same path, document, and notification key on replay. Cron subset evaluates in institution timezone (05 §4.1); cadence = runner cadence (default 5 min). Shortcut 10 MB / 20 000-row cap; later sources need a migration + `app.report_source_roles` case.

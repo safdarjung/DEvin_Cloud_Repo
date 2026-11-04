@@ -133,6 +133,7 @@ Assumptions: financial year April–March; receipts numbered per financial year.
 | F-INT-01 | Principal dashboard (attendance, fees, admissions, exams) | Decision view | 1 | impl | P0 | F-ATT-05, F-FIN-07, F-ADM-06, F-EXM-04 | core | conf | J-13 |
 | F-INT-02 | School Intelligence Center: early warning, cohort analytics | Outcomes | 3 | planned | P3 | F-INT-01 | core | conf | — |
 | F-INT-03 | Natural-language questions over school data (policy-bounded) | Access | 3 | planned | P3 | F-AI-01, F-INT-01 | ai | conf | — |
+| F-INT-04 | Scheduled reports (attendance, finance defaulters) with cron and in-app delivery | Automation, export | 1 | impl | P1 | F-ATT-05, F-FIN-07 | reports | int | — |
 
 Assumptions: the only AI prompt in the demo is built from curriculum text, never from student records.
 

@@ -8,7 +8,7 @@ export type Lang = "en" | "hi";
 
 // M06-T3 — `notification_preferences.category` check (0068). `createNotification`
 // looks up the recipient's disabled sms/email prefs for a template's category.
-export type NotificationCategory = "attendance" | "academic" | "admissions" | "announcement";
+export type NotificationCategory = "attendance" | "academic" | "admissions" | "announcement" | "report";
 
 export const NOTIFICATION_TYPES = [
   "attendance_absence",
@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPES = [
   "enquiry_received",
   "enrolment_welcome",
   "announcement",
+  "report_ready",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -48,6 +49,8 @@ const EnrolmentWelcomeVars = z
   .strict();
 
 const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
+
+const ReportReadyVars = z.object({ report: z.string().min(1).max(80), date: z.string().min(1).max(20) }).strict();
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -122,6 +125,16 @@ export const NOTIFICATION_TEMPLATES = {
     varsSchema: AnnouncementVars,
     title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
     body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
+  }),
+  report_ready: def({
+    channels: ["in_app"],
+    category: "report",
+    varsSchema: ReportReadyVars,
+    title: (lang) => (lang === "hi" ? "रिपोर्ट तैयार" : "Report ready"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.report} (${v.date}) डाउनलोड के लिए तैयार है।`
+        : `${v.report} for ${v.date} is ready to download.`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 
