@@ -68,7 +68,9 @@ export type Permission =
   | "leave.approve"
   | "facilities.manage"
   | "transport.manage"
-  | "maintenance.request";
+  | "maintenance.request"
+  | "insight.read"
+  | "insight.review";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -122,6 +124,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
   ],
   principal: [
     "institution.settings.manage",
@@ -174,6 +178,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
   ],
   admin: [
     "institution.settings.manage",
@@ -216,6 +222,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
   ],
   admissions: [
     "dashboard.view",
@@ -239,6 +247,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
   ],
   accountant: [
     "dashboard.view",
@@ -256,6 +266,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
   ],
   exam_controller: [
     "dashboard.view",
@@ -276,6 +288,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
   ],
   teacher: [
     "student.read",
@@ -296,6 +310,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "insight.read",
   ],
   student: [
     "student.read",
