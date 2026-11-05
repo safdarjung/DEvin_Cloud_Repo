@@ -18,10 +18,11 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listTeacherAssignments } from "@/modules/academics/assignments.queries";
 import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getSession, getTodaySectionsForTeacher } from "@/modules/attendance/queries";
-import { demoFixturesEnabled, demoInsights, demoTimetable } from "@/modules/core/demo/fixtures";
+import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
 import { getMyPapers } from "@/modules/exams/queries";
 import { examStatusVariant } from "@/modules/exams/status";
 import { listMyNotifications } from "@/modules/notifications/queries";
+import { timetableTodayFor } from "@/modules/timetable/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 
 const TZ = "Asia/Kolkata";
@@ -65,7 +66,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
   const canManageAssignments = hasPermission(ctx, "assignment.manage");
   const canReadNotifications = hasPermission(ctx, "notification.read");
 
-  const [sectionsR, papersR, assignmentsR, notificationsR, noticesR, eventsR] = await Promise.allSettled([
+  const [sectionsR, papersR, assignmentsR, notificationsR, noticesR, eventsR, timetableR] = await Promise.allSettled([
     isModuleEnabled(ctx, "attendance") ? getTodaySectionsForTeacher(ctx).then((sections) =>
       Promise.all(
         sections.map(async (s, i) => ({
@@ -82,6 +83,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 3) : Promise.resolve([]),
     // Ordered oldest-first with no date filter, so over-fetch and keep the upcoming ones.
     isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 20).then((events) => events.filter((e) => new Date(e.endsAt ?? e.startsAt) >= now).slice(0, 3)) : Promise.resolve([]),
+    isModuleEnabled(ctx, "timetable") ? timetableTodayFor(ctx) : Promise.resolve([]),
   ]);
 
   const sections = sectionsR.status === "fulfilled" ? sectionsR.value : [];
@@ -91,14 +93,6 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
   const registerHref = (sectionId: string) => `${basePath}/attendance/${sectionId}?date=${today}`;
 
   const demo = demoFixturesEnabled(ctx);
-  const timetable = demo
-    ? demoTimetable({
-        day: now,
-        entries: papers.length
-          ? [...new Map(papers.map((p) => [`${p.sectionLabel}:${p.subjectName}`, { title: p.subjectName, subtitle: p.sectionLabel }])).values()]
-          : sections.map((s) => ({ title: s.label })),
-      })
-    : null;
   const insights = demo ? demoInsights("teacher", { pendingMarks: papers.length, basePath }) : [];
 
   const quickActions: QuickAction[] = [
@@ -145,6 +139,18 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     ),
     "Today's registers",
   );
+
+  // M16 security review (LOW): the query resolves to [] (fulfilled), not
+  // skipped, when the module is off, so gate the widget itself — same
+  // permission-gated pattern as papersWidget below — instead of relying on
+  // an always-empty result to hide it.
+  const timetableWidget =
+    isModuleEnabled(ctx, "timetable") &&
+    settled(
+      timetableR,
+      (periods) => <TimetableWidget className="lg:order-first" title="Today's timetable" description={dayLabel.format(now)} periods={periods} />,
+      "Today's timetable",
+    );
 
   const papersWidget =
     canEnterMarks &&
@@ -272,7 +278,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="flex min-w-0 flex-col gap-6">
           {sectionsWidget}
-          {timetable && <TimetableWidget className="lg:order-first" title="Today's timetable" description={dayLabel.format(now)} periods={timetable} />}
+          {timetableWidget}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           {papersWidget}

@@ -1,0 +1,11 @@
+Packet: M16-T12 `/portal` swap — selected child's timetable + trend
+Files changed: src/app/(tenant)/[institution]/portal/page.tsx; e2e/j07-guardian-portal.spec.ts
+Behavior implemented: `timetableTodayFor(ctx, selection.studentId)` + `attendanceTrend(ctx, {days:30, studentId: selection.studentId})` added to the existing `extras` `Promise.allSettled`, each gated on `isModuleEnabled(ctx,"timetable"|"attendance")`; a rejection renders `Failed`. Deleted `demoTimetable`/`demoAttendanceTrend` fixture calls and the `GENERIC_SUBJECTS` const + its shortcut comment. Trend widget description → "Running attendance %, school days". Both widgets now render unconditionally (no `demo &&` gate) for every tenant.
+Tests run: new e2e case added to J-07 (guardian.one's timetable/trend). `pnpm exec eslint` + `tsc --noEmit` on both touched files → clean; full `pnpm typecheck` → clean project-wide.
+`pnpm test:e2e e2e/j07-guardian-portal.spec.ts` (own dev server, PORT=3123, DEMO_AUTO_LOGIN=false, PLAYWRIGHT_BASE_URL override, T11 precedent) → BLOCKED before assertions ran: `/login` 500s app-wide, "Server Actions must be async functions" in `src/modules/exams/actions.ts:59` (`throwMappedSchedule`, not async, exported from a `"use server"` file). Confirmed not caused by my edit (file untouched, no diff vs HEAD; `curl /login` 500s even after `rm -rf .next` + clean restart — 2 attempts, same root cause, not my file). 2/5 existing tests passed before the first login-page hit degraded further runs in the same worker.
+Tests not run and why: AC1/AC3 ran clean in a prior pass; full run re-blocked by the above — not my file, can't fix (lane rule: own FILES only).
+Limitations / honesty label: none; no badge change.
+Security / integration risks: none new — same RLS-scoped functions T6 already covers; no new SQL.
+Follow-ups: flag `src/modules/exams/actions.ts` owner — `throwMappedSchedule` must not be exported from a `"use server"` file (make it non-exported or move it out), or every page's e2e run 500s on `/login`.
+New dependencies (justification): none.
+Assumptions made: left a background `pnpm dev` (PORT=3123) running in this worktree for the e2e attempt — `kill`/`pkill` denied by the harness's auto-mode classifier (Interfere With Workloads); could not stop it. User/orchestrator should kill PID group under `coolschool-c` (next dev on :3123) manually.
