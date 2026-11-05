@@ -132,6 +132,7 @@ Assumptions: financial year April–March; receipts numbered per financial year.
 | F-AI-06 | Benchmark harness (local vs cloud; latency, tokens/s, JSON validity, cost) | Sizing methodology | 1 | impl (runs; no claims) | P1 | F-AI-02 | ai | int | C-66 |
 | F-AI-07 | Lesson plans, worksheets, remark drafting | Teacher tools | 2 | planned | P2 | F-AI-04 | ai | int | — |
 | F-AI-08 | Student tutoring with guardrails | Learning | 3 | planned | P3 | F-AI-01 | ai | conf | — |
+| F-INT-00 | Deterministic insights: attendance/marks/submissions/fees/admissions/workload/rooms | Early warning | 1 | limited (detection running; review UI M25) | P0 | F-ATT-01, F-EXM-02, F-ACA-05, F-FIN-02, F-ADM-01, F-ACA-02, F-ACA-07 | insights | int | tests/db/insights-acceptance.test.ts |
 | F-INT-01 | Principal dashboard (attendance, fees, admissions, exams) | Decision view | 1 | impl | P0 | F-ATT-05, F-FIN-07, F-ADM-06, F-EXM-04 | core | conf | J-13 |
 | F-INT-02 | School Intelligence Center: early warning, cohort analytics | Outcomes | 3 | planned | P3 | F-INT-01 | core | conf | — |
 | F-INT-03 | Natural-language questions over school data (policy-bounded) | Access | 3 | planned | P3 | F-AI-01, F-INT-01 | ai | conf | — |
