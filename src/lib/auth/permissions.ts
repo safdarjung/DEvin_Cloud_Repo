@@ -78,7 +78,9 @@ export type Permission =
   | "maintenance.request"
   | "report.schedule"
   | "workflow.read"
-  | "workflow.manage";
+  | "workflow.manage"
+  | "library.manage"
+  | "library.read";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -142,6 +144,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "report.schedule",
     "workflow.read",
     "workflow.manage",
+    "library.manage",
+    "library.read",
   ],
   principal: [
     "institution.settings.manage",
@@ -204,6 +208,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "report.schedule",
     "workflow.read",
     "workflow.manage",
+    "library.manage",
+    "library.read",
   ],
   admin: [
     "institution.settings.manage",
@@ -251,6 +257,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "data.export",
     "report.schedule",
     "workflow.read",
+    "library.manage",
+    "library.read",
   ],
   admissions: [
     "dashboard.view",
@@ -274,6 +282,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "library.read",
   ],
   accountant: [
     "dashboard.view",
@@ -295,6 +304,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "leave.request",
     "maintenance.request",
     "data.export",
+    "library.read",
   ],
   exam_controller: [
     "dashboard.view",
@@ -317,6 +327,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "library.read",
   ],
   teacher: [
     "student.read",
@@ -339,6 +350,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "library.read",
   ],
   student: [
     "student.read",
@@ -356,6 +368,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.read",
     "document.write",
     "timetable.read",
+    "library.read",
   ],
   guardian: [
     "student.read",
@@ -371,6 +384,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "document.read",
     "timetable.read",
+    "library.read",
   ],
 };
 

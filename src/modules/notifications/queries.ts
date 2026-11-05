@@ -52,7 +52,7 @@ export async function unreadCount(ctx: TenantContext): Promise<number> {
 export interface DeliveryLogRow {
   id: string;
   notificationId: string;
-  channel: "in_app" | "sms" | "email";
+  channel: "in_app" | "sms" | "email" | "whatsapp";
   status: string;
   renderedBody: string;
   attemptedAt: string;

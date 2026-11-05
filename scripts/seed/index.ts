@@ -11,6 +11,8 @@ import { run as runCore } from "./sections/core.ts";
 import { run as runCurriculum } from "./sections/curriculum.ts";
 import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
+import { run as runLibrary } from "./sections/library.ts";
+import { run as runNotifications } from "./sections/notifications.ts";
 import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
@@ -31,6 +33,10 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "finance", run: runFinance },
   { name: "exams", run: runExams },
   { name: "website", run: runWebsite },
+  // X03-T8: reads students/staff ids every earlier section produced.
+  { name: "library", run: runLibrary },
+  // X05-T6: last — needs core.ts's user ids and people.ts's student rows.
+  { name: "notifications", run: runNotifications },
 ];
 
 async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {

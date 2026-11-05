@@ -286,17 +286,17 @@ stateDiagram-v2
 
 | Type | Recipients | Channels | Template (EN; HI variant in settings) |
 |---|---|---|---|
-| `attendance_absence` | primary guardian | in_app, sms (sim) | "Dear Parent, {student} ({class}) is marked absent today {date}. Contact the class teacher if unplanned. -{school}" |
+| `attendance_absence` | primary guardian | in_app, sms (sim), whatsapp (MSG91 when configured, else sim) | "Dear Parent, {student} ({class}) is marked absent today {date}. Contact the class teacher if unplanned. -{school}" |
 | `attendance_updated` | primary guardian | in_app | "Attendance for {student} on {date} was corrected to {status}. -{school}" |
-| `results_published` | guardians of student | in_app, sms (sim) | "Report card of {student} for {exam} is now available in the parent portal. -{school}" |
-| `recheck_decided` | requester | in_app, sms (sim) | "Recheck for {student}, {subject}: {decision}. Updated marks: {marks}. -{school}" |
+| `results_published` | guardians of student | in_app, sms (sim), whatsapp (MSG91 when configured, else sim) | "Report card of {student} for {exam} is now available in the parent portal. -{school}" |
+| `recheck_decided` | requester | in_app, sms (sim), whatsapp (MSG91 when configured, else sim) | "Recheck for {student}, {subject}: {decision}. Updated marks: {marks}. -{school}" |
 | `enquiry_received` | members with role admissions | in_app | "New enquiry: {child} for {grade} from {guardian}." |
 | `enrolment_welcome` | primary guardian | in_app, email (Resend when `RESEND_API_KEY` set, else sim) | "Welcome! {student} is enrolled in {class}. Admission no {admission_no}." |
-| `fee_reminder` (category `finance`, M12) | primary guardian with an active membership | in_app, sms (sim), email (Resend when key set, else sim) | "Fee reminder: {amount} is due for {student} (invoice {invoice_no}, due {due_on}). Please pay at the school office. -{school}" — `amount` pre-formatted (`₹12,345.00`); HI: "शुल्क अनुस्मारक: {student} के लिए {amount} बकाया है (चालान {invoice_no}, देय तिथि {due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -{school}" |
+| `fee_reminder` (category `finance`, M12) | primary guardian with an active membership | in_app, sms (sim), email (Resend when key set, else sim), whatsapp (MSG91 when configured, else sim) | "Fee reminder: {amount} is due for {student} (invoice {invoice_no}, due {due_on}). Please pay at the school office. -{school}" — `amount` pre-formatted (`₹12,345.00`); HI: "शुल्क अनुस्मारक: {student} के लिए {amount} बकाया है (चालान {invoice_no}, देय तिथि {due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -{school}" |
 
 ## 4. Audit action catalog
 
-`seed.completed` · `demo.reset` · `membership.changed` · `website.page.published` · `admissions.enquiry.status` · `admissions.decision` · `admissions.enrolled` · `attendance.submitted` · `attendance.corrected` · `assignment.published` · `exam.marks.entered` · `exam.published` · `exam.recheck.requested` · `exam.recheck.applied` · `exam.recheck.rejected` · `finance.invoice.generated` · `finance.payment.recorded` · `finance.payment.voided` (M12; never carries the free-text `reason`) · `finance.reminders.enqueued` (M12) · `finance.payment.intent_created` (M12; amount, provider) · `job.requeued` · `ai.request` (metadata only). Every entry carries `actor_user_id`, entity ids, and before/after where a row changed.
+`seed.completed` · `demo.reset` · `membership.changed` · `website.page.published` · `admissions.enquiry.status` · `admissions.decision` · `admissions.enrolled` · `attendance.submitted` · `attendance.corrected` · `assignment.published` · `exam.marks.entered` · `exam.published` · `exam.recheck.requested` · `exam.recheck.applied` · `exam.recheck.rejected` · `finance.invoice.generated` · `finance.payment.recorded` · `finance.payment.voided` (M12; never carries the free-text `reason`) · `finance.reminders.enqueued` (M12) · `finance.payment.intent_created` (M12; amount, provider) · `finance.invoice.charge_added` (X03; head, amount when library fines added) · `library.loan.issued` (X03; loan_id, copy_id, borrower_kind, due_on) · `library.loan.renewed` (X03; loan_id, due_on, renew_count) · `library.loan.returned` (X03; loan_id, days_late, fine_amount, fine_waived, invoice_id) · `job.requeued` · `ai.request` (metadata only). Every entry carries `actor_user_id`, entity ids, and before/after where a row changed.
 
 ## 5. Approval summary
 

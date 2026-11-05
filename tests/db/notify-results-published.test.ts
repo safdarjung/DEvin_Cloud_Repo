@@ -138,7 +138,7 @@ describe("notify.results_published handler (T-019)", () => {
     const primaryAttempts = await sql`
       select channel, status, to_address from public.delivery_attempts where notification_id = ${primaryWithId.id}::uuid order by channel
     `;
-    expect(primaryAttempts.map((a) => a.channel).sort()).toEqual(["in_app", "sms"]);
+    expect(primaryAttempts.map((a) => a.channel).sort()).toEqual(["in_app", "sms", "whatsapp"]);
     const sms = primaryAttempts.find((a) => a.channel === "sms");
     expect(sms?.status).toBe("simulated");
     expect(sms?.to_address).toBe(guardianPhone);
@@ -162,7 +162,7 @@ describe("notify.results_published handler (T-019)", () => {
     const attemptsAfter = await sql`
       select id from public.delivery_attempts where notification_id = ${primaryWithId.id}::uuid
     `;
-    expect(attemptsAfter).toHaveLength(2);
+    expect(attemptsAfter).toHaveLength(3);
   });
 
   it("re-check at send time: skips (no-op, no throw) when the result has since been superseded by a recheck correction", async () => {

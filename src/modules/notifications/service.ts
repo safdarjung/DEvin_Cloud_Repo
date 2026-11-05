@@ -11,14 +11,18 @@ import { isModuleEnabled } from "../../lib/modules/catalog.ts";
 import { inApp } from "./channels/inApp.ts";
 import { emailChannel } from "./channels/resend.ts";
 import { simulatedSms } from "./channels/simulatedSms.ts";
+import { simulatedWhatsApp, whatsappChannel } from "./channels/whatsapp.ts";
 import type { Channel } from "./channels/types.ts";
-import { NOTIFICATION_TEMPLATES, type Lang, type NotificationType, type TemplateDef, type VarsFor } from "./templates.ts";
+import { NOTIFICATION_TEMPLATES, whatsappMessage, type Lang, type NotificationType, type TemplateDef, type VarsFor, type WhatsAppType } from "./templates.ts";
 
 // M17-T2 — email resolved per call via emailChannel() (resendConfigured()
 // is read per call, never cached), so a key set mid-run or by a test's
-// vi.stubEnv takes effect on the next send.
-function channelFor(name: Channel["name"]): Channel {
+// vi.stubEnv takes effect on the next send. X05-T3 (rulings "Demo safety") —
+// whatsapp always goes through simulatedWhatsApp for a demo institution,
+// even with MSG91_AUTH_KEY set.
+function channelFor(name: Channel["name"], isDemo: boolean): Channel {
   if (name === "email") return emailChannel();
+  if (name === "whatsapp") return isDemo ? simulatedWhatsApp : whatsappChannel();
   return name === "sms" ? simulatedSms : inApp;
 }
 
@@ -29,7 +33,7 @@ const POSTGRES_UNIQUE_VIOLATION = "23505";
  * means the channel is still on, only an explicit `enabled = false` row
  * for this (user, institution, category) drops it. In-app is never
  * looked up here — the table's own check constraint only allows
- * channel in ('sms', 'email') (0068).
+ * channel in ('sms', 'email', 'whatsapp') (0068, widened by 0089).
  */
 async function disabledChannels(
   admin: SupabaseClient<Database>,
@@ -47,22 +51,25 @@ async function disabledChannels(
 }
 
 /**
- * MOD-T11 (rulings "Channels") — `email`/`sms` are not attempted (no
- * `delivery_attempts` row) when their module is off for this institution;
- * `in_app` is never gated here (it has no row in `MODULES`'s `email`/`sms`
- * sense and the caller never passes it to this set).
+ * MOD-T11 (rulings "Channels") — `email`/`sms`/`whatsapp` are not attempted
+ * (no `delivery_attempts` row) when their module is off for this
+ * institution; `in_app` is never gated here (it has no row in `MODULES`'s
+ * sense and the caller never passes it to this set). X05-T3 — also reads
+ * `is_demo` off the same row (rulings "Demo safety"): one institutions
+ * select per `createNotification` call.
  */
 async function moduleOffChannels(
   admin: SupabaseClient<Database>,
   institutionId: string,
-): Promise<Set<Channel["name"]>> {
-  const { data, error } = await admin.from("institutions").select("settings").eq("id", institutionId).single();
+): Promise<{ off: Set<Channel["name"]>; isDemo: boolean }> {
+  const { data, error } = await admin.from("institutions").select("settings, is_demo").eq("id", institutionId).single();
   if (error) throw error;
   const moduleCtx = { institution: { settings: data.settings as Record<string, unknown> | null } };
   const off = new Set<Channel["name"]>();
   if (!isModuleEnabled(moduleCtx, "email")) off.add("email");
   if (!isModuleEnabled(moduleCtx, "sms")) off.add("sms");
-  return off;
+  if (!isModuleEnabled(moduleCtx, "whatsapp")) off.add("whatsapp");
+  return { off, isDemo: Boolean(data.is_demo) };
 }
 
 export interface CreateNotificationInput<T extends NotificationType> {
@@ -100,6 +107,11 @@ async function ensureDeliveryAttempts(
     body: string;
     title: string;
     contacts?: { sms?: string | null; email?: string | null };
+    isDemo: boolean;
+    // X05-T3 — set when "whatsapp" is in `channels`; the whatsapp row alone
+    // gets this `.text` as its rendered_body and this `.template` on the
+    // adapter call (rulings "Which templates").
+    whatsapp?: { template: { name: string; lang: Lang; params: string[] }; text: string };
   },
 ): Promise<void> {
   const { data: existingAttempts, error: existingError } = await admin
@@ -115,18 +127,23 @@ async function ensureDeliveryAttempts(
   const toAddressFor = (channel: Channel["name"]): string | null => {
     if (channel === "sms") return params.contacts?.sms ?? null;
     if (channel === "email") return params.contacts?.email ?? null;
+    // X05-T3 (rulings "Address") — the whatsapp toAddress is contacts.sms,
+    // the same mobile the handlers already resolve from current rows.
+    if (channel === "whatsapp") return params.contacts?.sms ?? null;
     return null;
   };
 
   for (const channelName of missing) {
-    const channel = channelFor(channelName);
+    const channel = channelFor(channelName, params.isDemo);
     const toAddress = toAddressFor(channelName);
+    const renderedBody = channelName === "whatsapp" && params.whatsapp ? params.whatsapp.text : params.body;
     const result = await channel.send({
       toAddress,
-      renderedBody: params.body,
+      renderedBody,
       // M17-T2 — Resend-only; simulated/in-app adapters ignore both.
       subject: params.title,
       idempotencyKey: `${params.notificationId}:${channelName}`,
+      template: channelName === "whatsapp" ? params.whatsapp?.template : undefined,
     });
 
     const { error: attemptError } = await admin.from("delivery_attempts").insert({
@@ -135,7 +152,7 @@ async function ensureDeliveryAttempts(
       channel: channelName,
       status: result.status,
       to_address: toAddress,
-      rendered_body: params.body,
+      rendered_body: renderedBody,
       provider: result.provider ?? null,
       provider_ref: result.providerRef ?? null,
       error: result.error ?? null,
@@ -169,7 +186,7 @@ export async function createNotification<T extends NotificationType>(
   const title = template.title(lang);
   const body = template.body(vars, lang);
 
-  const [disabled, moduleOff] = await Promise.all([
+  const [disabled, { off: moduleOff, isDemo }] = await Promise.all([
     disabledChannels(admin, {
       institutionId: input.institutionId,
       userId: input.recipientUserId,
@@ -180,6 +197,13 @@ export async function createNotification<T extends NotificationType>(
   const channels = template.channels.filter(
     (channel) => channel === "in_app" || (!disabled.has(channel) && !moduleOff.has(channel)),
   );
+  // X05-T3 (rulings "Which templates") — computed once, only when the
+  // (already-filtered) channel list carries "whatsapp"; only the 5
+  // sms-channel types ever list it, so the cast matches `channels` by
+  // construction.
+  const whatsapp = channels.includes("whatsapp")
+    ? whatsappMessage(input.type as unknown as WhatsAppType, vars as unknown as VarsFor<WhatsAppType>, lang)
+    : undefined;
 
   const { data: inserted, error: insertError } = await admin
     .from("notifications")
@@ -212,6 +236,8 @@ export async function createNotification<T extends NotificationType>(
       body,
       title,
       contacts: input.contacts,
+      isDemo,
+      whatsapp,
     });
 
     return { notificationId: existing.id, created: false };
@@ -224,6 +250,8 @@ export async function createNotification<T extends NotificationType>(
     body,
     title,
     contacts: input.contacts,
+    isDemo,
+    whatsapp,
   });
 
   return { notificationId: inserted.id, created: true };

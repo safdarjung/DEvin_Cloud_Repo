@@ -62,7 +62,7 @@ Assumptions: phone is the guardian's primary identity; one guardian record per p
 | F-COM-01 | In-app notifications | Core channel | 1 | impl | P0 | F-IDN-03 | notifications | int | C-30 |
 | F-COM-02 | SMS and email delivery via adapters | Reach parents | 1 | impl (email live when `RESEND_API_KEY` set; SMS sim) | P0 | F-COM-01 | notifications | conf | C-31 |
 | F-COM-03 | Circulars/notices to classes, PTM scheduling, diary notes | Daily communication | 2 | planned | P2 | F-COM-01 | notifications | int | — |
-| F-COM-04 | WhatsApp channel, bilingual templates | Reach | 2 | planned | P2 | F-COM-02 | notifications | conf | — |
+| F-COM-04 | WhatsApp channel (MSG91 approved templates, en/hi; live when MSG91_AUTH_KEY + MSG91_WA_NUMBER set) | Reach | 2 | sim | P2 | F-COM-02 | notifications | conf | tests/db/whatsapp-acceptance.test.ts |
 | F-COM-05 | Message log with simulated/sent/failed badge per delivery row | Demo honesty | 1 | impl | P0 | F-COM-02 | notifications | conf | C-31 |
 
 Assumptions: website blocks are a fixed set of eight; one website per institution.
@@ -141,7 +141,7 @@ Assumptions: the only AI prompt in the demo is built from curriculum text, never
 
 | ID | Feature | Value | Phase | Demo | Pri | Deps | Owner | Sens | Accept |
 |---|---|---|---|---|---|---|---|---|---|
-| F-SVC-01 | Library | Operations | 2 | planned | P2 | F-STU-01 | library (reserved) | int | — |
+| F-SVC-01 | Library: catalogue with accession numbers, issue/renew/return, borrowing limits, overdue list, fines on the fee invoice | Operations | 2 | limited | P2 | F-STU-01, F-FIN-01 | library | int | tests/db/library-acceptance.test.ts |
 | F-SVC-02 | Transport routes, stops, assignments | Operations, safety | 2 | limited | P2 | F-STU-01 | transport | conf | — |
 | F-SVC-03 | Inventory and assets | Operations | 2 | planned | P3 | — | inventory (reserved) | int | — |
 | F-SVC-04 | Hostel, canteen, visitor management | Campus | 3 | planned | P3 | F-STU-01 | campus (reserved) | conf | — |

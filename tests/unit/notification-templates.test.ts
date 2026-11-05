@@ -3,6 +3,7 @@ import { NOTIFICATION_TEMPLATES, NOTIFICATION_TYPES } from "@/modules/notificati
 import { inApp } from "@/modules/notifications/channels/inApp";
 import { simulatedEmail } from "@/modules/notifications/channels/simulatedEmail";
 import { simulatedSms } from "@/modules/notifications/channels/simulatedSms";
+import { simulatedWhatsApp } from "@/modules/notifications/channels/whatsapp";
 
 const ATTENDANCE_VARS = { student: "Aarav Sharma", class: "X-A", date: "2026-10-29", school: "St. Joseph" };
 
@@ -34,13 +35,14 @@ describe("NOTIFICATION_TEMPLATES (06 §3)", () => {
     expect(body(ATTENDANCE_VARS, "en").length).toBeLessThanOrEqual(160);
   });
 
+  // X05-T3 — whatsapp sits right after sms in every sms-channel type's list.
   it("every type's channel list matches the 06 §3 table", () => {
-    expect(NOTIFICATION_TEMPLATES.attendance_absence.channels).toEqual(["in_app", "sms"]);
-    expect(NOTIFICATION_TEMPLATES.results_published.channels).toEqual(["in_app", "sms"]);
-    expect(NOTIFICATION_TEMPLATES.recheck_decided.channels).toEqual(["in_app", "sms"]);
+    expect(NOTIFICATION_TEMPLATES.attendance_absence.channels).toEqual(["in_app", "sms", "whatsapp"]);
+    expect(NOTIFICATION_TEMPLATES.results_published.channels).toEqual(["in_app", "sms", "whatsapp"]);
+    expect(NOTIFICATION_TEMPLATES.recheck_decided.channels).toEqual(["in_app", "sms", "whatsapp"]);
     expect(NOTIFICATION_TEMPLATES.enquiry_received.channels).toEqual(["in_app"]);
     expect(NOTIFICATION_TEMPLATES.enrolment_welcome.channels).toEqual(["in_app", "email"]);
-    expect(NOTIFICATION_TEMPLATES.announcement.channels).toEqual(["in_app", "sms", "email"]);
+    expect(NOTIFICATION_TEMPLATES.announcement.channels).toEqual(["in_app", "sms", "whatsapp", "email"]);
   });
 
   // M06-T3: every template's category drives createNotification's
@@ -79,9 +81,9 @@ describe("NOTIFICATION_TEMPLATES (06 §3)", () => {
     expect(hi).toContain(vars.student);
   });
 
-  it("fee_reminder has category 'finance' and channels ['in_app', 'sms', 'email']", () => {
+  it("fee_reminder has category 'finance' and channels ['in_app', 'sms', 'whatsapp', 'email']", () => {
     expect(NOTIFICATION_TEMPLATES.fee_reminder.category).toBe("finance");
-    expect(NOTIFICATION_TEMPLATES.fee_reminder.channels).toEqual(["in_app", "sms", "email"]);
+    expect(NOTIFICATION_TEMPLATES.fee_reminder.channels).toEqual(["in_app", "sms", "whatsapp", "email"]);
   });
 });
 
@@ -104,9 +106,19 @@ describe("simulated channels never touch the network", () => {
     vi.unstubAllGlobals();
   });
 
+  it("simulatedWhatsApp.send never calls fetch", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const result = await simulatedWhatsApp.send({ toAddress: "9876543210", renderedBody: "test" });
+    expect(result.status).toBe("simulated");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it("simulated channels fail gracefully with no contact address, without throwing", async () => {
     expect(await simulatedSms.send({ toAddress: null, renderedBody: "x" })).toMatchObject({ status: "failed" });
     expect(await simulatedEmail.send({ toAddress: null, renderedBody: "x" })).toMatchObject({ status: "failed" });
+    expect(await simulatedWhatsApp.send({ toAddress: null, renderedBody: "x" })).toMatchObject({ status: "failed" });
   });
 
   it("inApp.send never calls fetch and always succeeds", async () => {
