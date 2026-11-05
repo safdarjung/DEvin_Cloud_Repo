@@ -20,6 +20,7 @@ export const NOTIFICATION_TYPES = [
   "gate_pass_approved",
   "report_ready",
   "fee_reminder",
+  "workflow_alert",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -73,6 +74,8 @@ const FeeReminderVars = z
     school: z.string().min(1),
   })
   .strict();
+
+const WorkflowAlertVars = z.object({ workflow: z.string().min(1).max(80), message: z.string().min(1).max(300) }).strict();
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -177,6 +180,13 @@ export const NOTIFICATION_TEMPLATES = {
       lang === "hi"
         ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${v.due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
         : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${v.due_on}). Please pay at the school office. -${v.school}`,
+  }),
+  workflow_alert: def({
+    channels: ["in_app"],
+    category: "announcement",
+    varsSchema: WorkflowAlertVars,
+    title: (lang) => (lang === "hi" ? "वर्कफ़्लो अलर्ट" : "Workflow alert"),
+    body: (v) => `${v.workflow}: ${v.message}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

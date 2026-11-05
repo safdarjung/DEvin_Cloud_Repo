@@ -35,3 +35,12 @@ export const DashboardBriefingOutputSchema = z
   .strict();
 
 export type DashboardBriefingOutput = z.infer<typeof DashboardBriefingOutputSchema>;
+
+// Briefing headline schema (M25-T6): 1–200 chars, strict.
+export const BriefingHeadlineSchema = z
+  .object({
+    headline: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export type BriefingHeadlineOutput = z.infer<typeof BriefingHeadlineSchema>;

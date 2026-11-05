@@ -67,11 +67,14 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | finance.payment.void | ✓ | ✓ | | | | | | | |
 | finance.payment.online | ✓ | ✓ | | | ✓ | | | | s |
 | finance.reminder.send | ✓ | ✓ | | | ✓ | | | | |
+| finance.plan.manage | ✓ | ✓ | | | ✓ | | | | |
 | finance.read | ✓ | ✓ | ✓ | | ✓ | | | s | s |
 | exam.manage | ✓ | ✓ | | | | ✓ | | | |
 | exam.marks.enter | ✓ | ✓ | | | | ✓ | s | | |
 | exam.result.publish | ✓ | ✓ | | | | ✓ | | | |
 | exam.result.read | ✓ | ✓ | ✓ | | | ✓ | s | s | s |
+| mastery.read | ✓ | ✓ | ✓ | | | ✓ | s | s | s |
+| mastery.review (plans: RLS owner/principal/class teacher) | ✓ | ✓ | ✓ | | | ✓ | s | | |
 | exam.recheck.request | | | | | | | | s | s |
 | exam.recheck.review / decide | ✓ | ✓ | | | | ✓ | | | |
 | exam.seating.read (s = own seat; generate uses exam.manage) | ✓ | ✓ | ✓ | | | ✓ | | s | s |
@@ -97,6 +100,8 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | leave.approve (never own) | ✓ | ✓ | ✓ | | | | | | |
 | certificate.manage (issue/verify/print certificates + ID cards; staff-only table) | ✓ | ✓ | ✓ | ✓ | | | | | |
 | question.manage (teacher: taught grade + subject; staff-only table) | ✓ | ✓ | | | | ✓ | s | | |
+| workflow.read (queries) | ✓ | ✓ | ✓ | | | | | | |
+| workflow.manage (save, status, run now, approvals) | ✓ | ✓ | | | | | | | |
 | library.manage (catalogue, issue/renew/return, waive fines) | ✓ | ✓ | ✓ | | | | | | |
 | library.read (RLS: managers all loans; other staff own; guardian own children; student own) | ✓ | ✓ | ✓ | s | s | s | s | s | s |
 | insight.read | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | |

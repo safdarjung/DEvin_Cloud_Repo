@@ -40,11 +40,14 @@ export type Permission =
   | "finance.payment.void"
   | "finance.payment.online"
   | "finance.reminder.send"
+  | "finance.plan.manage"
   | "finance.read"
   | "exam.manage"
   | "exam.marks.enter"
   | "exam.result.publish"
   | "exam.result.read"
+  | "mastery.read"
+  | "mastery.review"
   | "exam.recheck.request"
   | "exam.recheck.review"
   | "exam.recheck.decide"
@@ -76,6 +79,8 @@ export type Permission =
   | "transport.manage"
   | "maintenance.request"
   | "report.schedule"
+  | "workflow.read"
+  | "workflow.manage"
   | "library.manage"
   | "library.read"
   | "insight.read"
@@ -114,11 +119,14 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.payment.void",
     "finance.payment.online",
     "finance.reminder.send",
+    "finance.plan.manage",
     "finance.read",
     "exam.manage",
     "exam.marks.enter",
     "exam.result.publish",
     "exam.result.read",
+    "mastery.read",
+    "mastery.review",
     "exam.recheck.review",
     "exam.recheck.decide",
     "exam.seating.read",
@@ -155,6 +163,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "agent.approve",
     "data.export",
     "report.schedule",
+    "workflow.read",
+    "workflow.manage",
     "library.manage",
     "library.read",
   ],
@@ -183,11 +193,14 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.payment.void",
     "finance.payment.online",
     "finance.reminder.send",
+    "finance.plan.manage",
     "finance.read",
     "exam.manage",
     "exam.marks.enter",
     "exam.result.publish",
     "exam.result.read",
+    "mastery.read",
+    "mastery.review",
     "exam.recheck.review",
     "exam.recheck.decide",
     "exam.seating.read",
@@ -224,6 +237,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "agent.approve",
     "data.export",
     "report.schedule",
+    "workflow.read",
+    "workflow.manage",
     "library.manage",
     "library.read",
   ],
@@ -249,6 +264,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.read",
     "exam.result.read",
     "exam.seating.read",
+    "mastery.read",
+    "mastery.review",
     "assignment.read",
     "ai.generate",
     "ai.usage.read",
@@ -279,6 +296,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "agent.run",
     "data.export",
     "report.schedule",
+    "workflow.read",
     "library.manage",
     "library.read",
   ],
@@ -320,6 +338,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.payment.record",
     "finance.payment.online",
     "finance.reminder.send",
+    "finance.plan.manage",
     "finance.read",
     "notification.read",
     "document.read",
@@ -343,6 +362,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.marks.enter",
     "exam.result.publish",
     "exam.result.read",
+    "mastery.read",
+    "mastery.review",
     "exam.recheck.review",
     "exam.recheck.decide",
     "exam.seating.read",
@@ -367,6 +388,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "attendance.read",
     "exam.marks.enter",
     "exam.result.read",
+    "mastery.read",
+    "mastery.review",
     "assignment.manage",
     "assignment.read",
     "ai.generate",
@@ -388,6 +411,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "attendance.read",
     "finance.read",
     "exam.result.read",
+    "mastery.read",
     "exam.recheck.request",
     "exam.seating.read",
     "assignment.read",
@@ -408,6 +432,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.read",
     "finance.payment.online",
     "exam.result.read",
+    "mastery.read",
     "exam.recheck.request",
     "exam.seating.read",
     "assignment.read",

@@ -12,6 +12,7 @@
 // else passes through `.passthrough()`. A single shared schema means a
 // fourth occurrence of this bug can only happen once, not once per route.
 import { z } from "zod";
+import type { UIMessage } from "ai";
 
 const DENIED_PART_TYPES = new Set(["file", "source-url", "source-document", "reasoning-file"]);
 
@@ -33,3 +34,32 @@ export const UIMessageRequestSchema = z
     parts: z.array(UIMessagePartSchema).min(1).max(50),
   })
   .passthrough();
+
+// M24-T1 — extract text-only history for models, dropping system messages
+// and all non-text parts (tool calls, reasoning). A message left with zero
+// text parts is dropped entirely.
+export function stripToText(messages: z.infer<typeof UIMessageRequestSchema>[]): UIMessage[] {
+  return messages
+    .filter((message) => message.role === "user" || message.role === "assistant")
+    .map((message) => ({
+      ...message,
+      parts: message.parts.filter((part): part is { type: "text"; text: string } => part.type === "text"),
+    }))
+    .filter((message) => message.parts.length > 0) as unknown as UIMessage[];
+}
+
+// M24-T1 — extract text parts from the most recent user message for
+// provider routing and redaction policy decisions. Returns undefined if
+// no user message exists; returns an empty string if the last user message
+// has no text parts.
+export function latestUserText(messages: z.infer<typeof UIMessageRequestSchema>[]): string | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role !== "user") continue;
+    return message.parts
+      .filter((part): part is { type: "text"; text: string } => part.type === "text")
+      .map((part) => part.text)
+      .join(" ");
+  }
+  return undefined;
+}
