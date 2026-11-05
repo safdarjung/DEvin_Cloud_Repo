@@ -80,6 +80,10 @@ export type Permission =
   | "library.read"
   | "insight.read"
   | "insight.review"
+  | "visitor.manage"
+  | "gatepass.manage"
+  | "pickup.manage"
+  | "forecast.read"
   | "report.schedule";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -141,6 +145,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "maintenance.request",
     "insight.read",
     "insight.review",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -204,6 +212,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "maintenance.request",
     "insight.read",
     "insight.review",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -254,6 +266,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "maintenance.request",
     "insight.read",
     "insight.review",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -306,6 +322,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "maintenance.request",
     "insight.read",
     "insight.review",
+    "forecast.read",
     "data.export",
     "library.read",
   ],
@@ -332,6 +349,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "library.read",
     "insight.read",
     "insight.review",
+    "forecast.read",
   ],
   teacher: [
     "student.read",
@@ -354,6 +372,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "maintenance.request",
     "library.read",
     "insight.read",
+    "gatepass.manage",
+    "forecast.read",
   ],
   student: [
     "student.read",
@@ -388,6 +408,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.read",
     "timetable.read",
     "library.read",
+    "pickup.manage",
   ],
 };
 

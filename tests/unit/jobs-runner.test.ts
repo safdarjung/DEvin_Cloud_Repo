@@ -40,6 +40,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     dispatch: vi.fn(async () => {}),
     enqueueDueReports: vi.fn(async () => 0),
     enqueueDueInsights: vi.fn(async () => 0),
+    enqueueDueForecasts: vi.fn(async () => {}),
     now: () => 0,
     ...overrides,
   };
@@ -176,6 +177,8 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
       calls.push("claimJob");
       return null;
     });
+  it("sweeps for due forecasts exactly once, after the report sweep and before the first claimJob", async () => {
+    const calls: string[] = [];
     const enqueueDueReports = vi.fn(async () => {
       calls.push("enqueueDueReports");
       return 0;
@@ -201,6 +204,29 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
       throw new Error("insights sweep boom");
     });
     const ports = fakePorts({ claimJob, completeJob, enqueueDueReports, enqueueDueInsights });
+    const enqueueDueForecasts = vi.fn(async () => {
+      calls.push("enqueueDueForecasts");
+    });
+    const claimJob = vi.fn(async () => {
+      calls.push("claimJob");
+      return null;
+    });
+    const ports = fakePorts({ enqueueDueReports, enqueueDueForecasts, claimJob });
+
+    await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(enqueueDueForecasts).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["enqueueDueReports", "enqueueDueForecasts", "claimJob"]);
+  });
+
+  it("still claims jobs and leaves the summary unchanged when the forecast sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueDueForecasts = vi.fn(async () => {
+      throw new Error("forecast sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueDueForecasts });
 
     const summary = await runOnceCore({ workerId: "w1" }, ports);
 
@@ -371,6 +397,19 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     const ports = createRunnerPorts(admin);
 
     await expect(ports.enqueueDueInsights()).rejects.toThrow("boom");
+  it("enqueueDueForecasts calls the enqueue_due_forecasts RPC", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: null, error: null } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueForecasts()).resolves.toBeUndefined();
+    expect(rpc).toHaveBeenCalledWith("enqueue_due_forecasts");
+  });
+
+  it("enqueueDueForecasts throws on an RPC error", async () => {
+    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "forecast boom" } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueForecasts()).rejects.toThrow("forecast boom");
   });
 });
 

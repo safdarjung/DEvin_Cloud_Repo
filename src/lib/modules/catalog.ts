@@ -177,6 +177,12 @@ export const MODULES = {
     description: 'Book catalogue with accession numbers, issue, renew and return, overdue list, and fines added to the fee invoice.',
     default: false,
   },
+  visitors: {
+    label: 'Visitors & gate pass',
+    category: 'Operations',
+    description: 'Front-desk visitor log, student early-leave gate passes and guardian-maintained pickup lists.',
+    default: false,
+  },
   announcements: {
     label: 'Announcements',
     category: 'Communication',
@@ -287,6 +293,7 @@ export const MODULE_KEYS: [ModuleKey, ...ModuleKey[]] = [
   'transport',
   'calendar',
   'library',
+  'visitors',
   'announcements',
   'email',
   'sms',
@@ -321,6 +328,7 @@ export const OPTIONAL_MODULE_KEYS: [OptionalModuleKey, ...OptionalModuleKey[]] =
   'transport',
   'calendar',
   'library',
+  'visitors',
   'announcements',
   'email',
   'sms',

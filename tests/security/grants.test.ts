@@ -52,6 +52,8 @@ const APP_AUTHENTICATED = [
   "app.lock_import_batch",
   "app.member_institutions",
   "app.my_class_teacher_section_ids",
+  "app.my_class_teacher_student_ids",
+  "app.my_guardian_student_ids",
   "app.my_institution_ids",
   "app.my_report_ids",
   "app.my_staff_ids",
@@ -180,7 +182,17 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
   });
 
   it("service-role-only RPCs are not callable by anon/authenticated", () => {
-    const serviceOnly = ["jobs_claim", "jobs_complete", "submit_public_enquiry", "record_online_payment"];
+    const serviceOnly = [
+      "jobs_claim",
+      "jobs_complete",
+      "submit_public_enquiry",
+      "record_online_payment",
+      // M21-T3: service-role-only series sources + sweep (rulings "Series sources").
+      "assert_forecast_window",
+      "forecast_fee_series",
+      "forecast_attendance_series",
+      "enqueue_due_forecasts",
+    ];
     for (const name of serviceOnly) {
       const row = rows.find((r) => r.schema === "public" && r.name === name)!;
       expect({ name, anon: row.anon, authenticated: row.authenticated, service_role: row.service_role }).toEqual({

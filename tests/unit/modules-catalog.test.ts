@@ -8,7 +8,7 @@ import {
   allModulesOn,
   MODULE_DISABLED_MESSAGE,
 } from '@/lib/modules/catalog';
-import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS } from '@/modules/core/schemas';
+import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS, SetModuleEnabledSchema } from '@/modules/core/schemas';
 
 type TestContext = {
   institution: {
@@ -275,6 +275,15 @@ describe('modules-catalog', () => {
       };
       const result = UpdateInstitutionSettingsSchema.safeParse(update);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('SetModuleEnabledSchema', () => {
+    it('accepts every optional module key (core.module.set must cover the full catalog)', () => {
+      for (const key of OPTIONAL_MODULE_KEYS) {
+        const result = SetModuleEnabledSchema.safeParse({ key, enabled: true });
+        expect(result.success).toBe(true);
+      }
     });
   });
 

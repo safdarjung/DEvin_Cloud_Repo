@@ -166,6 +166,7 @@ export const InstitutionSettingsSchema = z
         transport: z.boolean().optional(),
         calendar: z.boolean().optional(),
         library: z.boolean().optional(),
+        visitors: z.boolean().optional(),
         announcements: z.boolean().optional(),
         email: z.boolean().optional(),
         sms: z.boolean().optional(),
@@ -334,6 +335,7 @@ export type SetMemberStatusInput = z.infer<typeof SetMemberStatusSchema>;
 export const SetModuleEnabledSchema = z
   .object({
     key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "whatsapp", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows", "library"]),
+    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "visitors", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
     enabled: z.boolean(),
   })
   .strict();

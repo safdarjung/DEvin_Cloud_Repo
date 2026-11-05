@@ -5,10 +5,12 @@ import {
   feeReminder,
   generateTermInvoices,
   insightsDetect,
+  forecastRun,
   notifyAnnouncement,
   notifyAttendanceAbsence,
   notifyEnquiryReceived,
   notifyEnrolmentWelcome,
+  notifyGatePass,
   notifyRecheckDecided,
   notifyResultsPublished,
 } from "./handlers/index.ts";
@@ -22,9 +24,11 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "notify.enquiry_received": "admissions",
   "notify.enrolment_welcome": "admissions",
   "notify.announcement": "announcements",
+  "notify.gate_pass": "visitors",
   "finance.fee_reminder": "finance_plus",
   "report.generate": "scheduled_reports",
   "insights.detect": "insights",
+  "forecast.run": "forecasts",
 };
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
@@ -37,10 +41,12 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "notify.enquiry_received": notifyEnquiryReceived,
   "notify.enrolment_welcome": notifyEnrolmentWelcome,
   "notify.announcement": notifyAnnouncement,
+  "notify.gate_pass": notifyGatePass,
   "finance.generate_term_invoices": generateTermInvoices,
   "report.generate": generateReport,
   "finance.fee_reminder": feeReminder,
   "insights.detect": insightsDetect,
+  "forecast.run": forecastRun,
 };
 
 export function resolveHandler(type: string): JobHandler | undefined {

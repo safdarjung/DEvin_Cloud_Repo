@@ -656,6 +656,50 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"], // non-admin-tier roles see only role = their own role
     write: [], // M25 writes it (service role)
   },
+  // 0094 (M21-T2) — forecasts/forecast_backtests: no write policy at all,
+  // written only by the forecast.run job (service role, bypasses RLS).
+  // SELECT splits by row kind: fee_collections_term to finance_roles();
+  // attendance_rate_week to owner/principal/admin/exam_controller
+  // institution-wide, plus teacher scoped to app.my_taught_section_ids()
+  // (never attendance:school, never fees) — explicit per-role scoping
+  // proved in tests/db/forecasts-rls.test.ts, not by the generated suite's
+  // plain own-institution probe.
+  forecast_backtests: {
+    classes: ["C", "T"],
+    read: ["owner", "principal", "admin", "accountant", "exam_controller", "teacher"],
+    write: [],
+  },
+  forecasts: {
+    classes: ["C", "T"],
+    read: ["owner", "principal", "admin", "accountant", "exam_controller", "teacher"],
+    write: [],
+  },
+  // 0090 (X07-T2) — visitors module (default off). visitor_entries:
+  // owner/principal/admin only, class S. No column-level grants.
+  visitor_entries: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  // pickup_persons: owner/principal/admin, plus class teacher of the
+  // student's section (read-only), plus the linked guardian (read/write
+  // their own child's rows, no update — remove + add).
+  pickup_persons: {
+    // 0090 security review MED-1: raw `phone` is column-revoked; select the granted columns.
+    selectColumns: ["id", "institution_id", "student_id", "full_name", "relation", "phone_masked"],
+    classes: ["S", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "guardian"],
+    write: ["owner", "principal", "admin", "guardian"],
+  },
+  // gate_passes: owner/principal/admin, plus the class teacher of the
+  // student's section (read/create/decide own-section passes only — DBT-45
+  // collector validation in app.gate_pass_before_insert). No delete;
+  // guardians/students get a notification row, never read access here.
+  gate_passes: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
   // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
   // admin only (07 §2.2); no DELETE policy (pause instead of delete).
   scheduled_reports: {
