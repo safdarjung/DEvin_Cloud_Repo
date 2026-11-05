@@ -12,11 +12,11 @@
 // foreign id proven to belong to `ctx.institution` here (CLAUDE.md rule 10).
 import { revalidatePath } from "next/cache";
 import { defineAction } from "@/lib/actions/define-action";
-import { AppError, mapSqlError } from "@/lib/actions/result";
+import { AppError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
-import { institutionTimeZone, localParts } from "./schedule-conflicts";
+import { institutionTimeZone, localParts, throwMapped, throwMappedSchedule } from "./schedule-conflicts";
 import {
   CreateExamPapersSchema,
   CreateExamSchema,
@@ -39,31 +39,6 @@ import {
 } from "./schemas";
 
 type ExamsClient = Awaited<ReturnType<typeof createClient>>;
-
-function throwMapped(error: unknown): never {
-  const mapped = mapSqlError(error);
-  if (mapped.ok) throw new AppError("internal", "Unexpected error.");
-  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
-}
-
-// M11 security review fix round 1: mapSqlError only maps `code:<ErrorCode>`
-// exception messages, not raw PostgREST error codes — a real RLS violation
-// or check-constraint hit on schedulePapers's exam_papers select/update
-// calls (e.g. a row deleted between the pre-check and the write) fell
-// through to a generic "internal" error instead of the mapping the M11
-// rulings specify (42501 -> forbidden, 23514/23503/22P02 -> validation_failed),
-// matching the question-bank/actions.ts isRlsViolation precedent.
-const PG_FORBIDDEN_CODE = "42501";
-const PG_VALIDATION_CODES = new Set(["23514", "23503", "22P02"]);
-
-export function throwMappedSchedule(error: unknown): never {
-  const code = error && typeof error === "object" ? (error as { code?: unknown }).code : undefined;
-  if (code === PG_FORBIDDEN_CODE) throw new AppError("forbidden", "Outside your teaching scope.");
-  if (typeof code === "string" && PG_VALIDATION_CODES.has(code)) {
-    throw new AppError("validation_failed", "Invalid schedule data.");
-  }
-  throwMapped(error);
-}
 
 async function loadTerm(supabase: ExamsClient, institutionId: string, termId: string) {
   const { data, error } = await supabase

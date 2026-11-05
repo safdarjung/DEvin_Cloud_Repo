@@ -65,7 +65,9 @@ async function ensureTodayAttendance(admin: SupabaseClient, institutionId: strin
 }
 
 function kpiValue(page: Page, label: string): Locator {
-  return page.locator('[data-slot="card"]').filter({ hasText: label }).locator("p.text-2xl").first();
+  // HomeKpi's value <p> is "font-bold" (the only bold <p> in a KPI card; the
+  // class was "text-2xl" pre-M16-T10, HomeKpi now uses an arbitrary size).
+  return page.locator('[data-slot="card"]').filter({ hasText: label }).locator("p.font-bold").first();
 }
 
 test.describe("J-13: principal dashboard tiles", () => {
@@ -99,5 +101,13 @@ test.describe("J-13: principal dashboard tiles", () => {
     const gradeDistCard = page.locator('[data-slot="card"]').filter({ hasText: "Exam grade distribution" });
     await expect(gradeDistCard.getByText("No published exam yet.")).toHaveCount(0);
     await expect(gradeDistCard.getByText(/\d+ results/)).toBeVisible();
+
+    // M16-T10 — approvals, staff today and the attendance trend card are real data, not fixtures.
+    const approvalsCard = page.locator('[data-slot="card"]').filter({ hasText: "Pending approvals" });
+    await expect(approvalsCard.getByText(/Casual leave/).first()).toBeVisible();
+    await expect(approvalsCard.getByText("No pending approvals")).toHaveCount(0);
+
+    await expect(page.locator('[data-slot="card"]').filter({ hasText: "Staff today" })).toBeVisible();
+    await expect(page.locator('[data-slot="card"]').filter({ hasText: "Attendance performance" })).toBeVisible();
   });
 });

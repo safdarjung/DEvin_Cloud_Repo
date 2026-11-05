@@ -16,14 +16,15 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
 import { isModuleEnabled } from "@/lib/modules/catalog";
-import { getStudentAttendanceSummary } from "@/modules/attendance/queries";
-import { demoAttendanceTrend, demoFixturesEnabled, demoInsights, demoTimetable } from "@/modules/core/demo/fixtures";
+import { attendanceTrend, getStudentAttendanceSummary } from "@/modules/attendance/queries";
+import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { listMyNotifications } from "@/modules/notifications/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
 import { resolvePortalSelection } from "@/modules/people/portal";
+import { timetableTodayFor } from "@/modules/timetable/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 
 const TZ = "Asia/Kolkata";
@@ -31,8 +32,6 @@ const DAY_MS = 86_400_000;
 const longDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
 const shortDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, day: "numeric", month: "short" });
 const istHour = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" });
-// shortcut: the profile carries no subject list, so the demo timetable cycles generic subjects; upgrade when a student timetable query exists.
-const GENERIC_SUBJECTS = ["Mathematics", "English", "Science", "Hindi", "Social Studies", "Computer Science"].map((title) => ({ title }));
 
 function greeting(now: Date): string {
   const h = Number(istHour.format(now));
@@ -88,6 +87,8 @@ export default async function PortalOverviewPage({
     isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 4) : Promise.resolve([]),
     isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 4) : Promise.resolve([]),
     canNotifications ? listMyNotifications(ctx, 5) : Promise.resolve([]),
+    isModuleEnabled(ctx, "timetable") ? timetableTodayFor(ctx, selection.studentId) : Promise.resolve([]),
+    isModuleEnabled(ctx, "attendance") ? attendanceTrend(ctx, { days: 30, studentId: selection.studentId }) : Promise.resolve([]),
   ]);
 
   const [attendance, invoices, results, assignments] = await Promise.all([
@@ -96,7 +97,7 @@ export default async function PortalOverviewPage({
     isModuleEnabled(ctx, "exams") ? listResultsForStudent(ctx, selection.studentId) : Promise.resolve([]),
     isModuleEnabled(ctx, "assignments") ? listStudentAssignments(ctx, selection.studentId) : Promise.resolve([]),
   ]);
-  const [notices, events, notifications] = await extras;
+  const [notices, events, notifications, timetableR, trendR] = await extras;
 
   // invoices.total / paid_total are numeric(12,2) rupees (finance/queries.ts), not paise.
   const outstanding = invoices.reduce((sum, inv) => sum + (inv.total - inv.paidTotal), 0);
@@ -129,8 +130,6 @@ export default async function PortalOverviewPage({
 
   // CLAUDE.md rule 7 demo exception: fixtures render unbadged, demo tenant only.
   const demo = demoFixturesEnabled(ctx);
-  const periods = demo ? demoTimetable({ day: now, entries: GENERIC_SUBJECTS }) : null;
-  const trend = demo ? demoAttendanceTrend({ key: selection.studentId, days: 30, endDate: now, base: attendancePct }) : null;
   const insights = demo
     ? demoInsights(isGuardian ? "guardian" : "student", { attendancePct, outstandingFees: outstanding, basePath: `/${institutionSlug}` }).map((i) => ({
         ...i,
@@ -175,9 +174,23 @@ export default async function PortalOverviewPage({
     />,
   ];
 
-  const timetable = periods && (
-    <TimetableWidget key="tt" title={isGuardian ? `${firstName}'s timetable today` : "Today's timetable"} description={classLabel ?? undefined} icon={<CalendarDays />} periods={periods} />
-  );
+  // M16 security review (LOW): the query resolves to [] (fulfilled), not
+  // skipped, when the module is off, so gate the widget itself — same
+  // permission-gated pattern as studyHelper below — instead of relying on
+  // an always-empty/always-Failed result to hide it.
+  const timetable =
+    isModuleEnabled(ctx, "timetable") &&
+    (timetableR.status === "fulfilled" ? (
+      <TimetableWidget
+        key="tt"
+        title={isGuardian ? `${firstName}'s timetable today` : "Today's timetable"}
+        description={classLabel ?? undefined}
+        icon={<CalendarDays />}
+        periods={timetableR.value}
+      />
+    ) : (
+      <Failed key="tt" title="Today's timetable" icon={<CalendarDays />} />
+    ));
   const homework = (
     <ListWidget
       key="asg"
@@ -188,9 +201,20 @@ export default async function PortalOverviewPage({
       emptyTitle="No assignments right now"
     />
   );
-  const attendanceTrend = trend && (
-    <TrendWidget key="trend" title="Attendance, last 30 days" description="Daily attendance on school days" data={trend} unit="percent" action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }} />
-  );
+  const attendanceTrendWidget =
+    isModuleEnabled(ctx, "attendance") &&
+    (trendR.status === "fulfilled" ? (
+      <TrendWidget
+        key="trend"
+        title="Attendance, last 30 days"
+        description="Running attendance %, school days"
+        data={trendR.value}
+        unit="percent"
+        action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }}
+      />
+    ) : (
+      <Failed key="trend" title="Attendance, last 30 days" icon={<CalendarDays />} />
+    ));
   const latestResults = (
     <ListWidget key="res" title="Recent results" icon={<GraduationCap />} action={{ href: `${basePath}/results${q}`, label: "All results" }} rows={resultRows} emptyTitle="No published results yet" />
   );
@@ -265,8 +289,8 @@ export default async function PortalOverviewPage({
   );
 
   const sections = isGuardian
-    ? [feesDue, attendanceTrend, latestResults, homework, timetable, announcements, insightCards, schoolEvents, notificationFeed]
-    : [timetable, homework, attendanceTrend, latestResults, insightCards, studyHelper, announcements, schoolEvents, notificationFeed];
+    ? [feesDue, attendanceTrendWidget, latestResults, homework, timetable, announcements, insightCards, schoolEvents, notificationFeed]
+    : [timetable, homework, attendanceTrendWidget, latestResults, insightCards, studyHelper, announcements, schoolEvents, notificationFeed];
 
   return (
     <>

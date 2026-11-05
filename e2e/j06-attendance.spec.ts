@@ -47,6 +47,19 @@ test.describe("J-06: attendance marking and submission", () => {
     await expect(viaRow(page)).toHaveCount(1);
   });
 
+  test("teacher.vi-a's /today shows the Today's timetable widget", async ({ page }) => {
+    await loginAs(page, "teacher.vi-a@demo.coolskool.test");
+    await page.goto(`/${SLUG}/today`);
+
+    await expect(page.getByText("Today's timetable")).toBeVisible();
+    const isSunday = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }) === "Sun";
+    if (isSunday) {
+      await expect(page.getByText("No periods today")).toBeVisible();
+    } else {
+      await expect(page.getByText("No periods today")).not.toBeVisible();
+    }
+  });
+
   test("teacher.viii-b cannot open VI-A's register directly", async ({ page }) => {
     await loginAs(page, "teacher.vi-a@demo.coolskool.test");
     await page.goto(`/${SLUG}/attendance`);
