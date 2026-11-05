@@ -1,0 +1,10 @@
+Packet: T-8 M12-T8 Action finance.reminders.send + job finance.fee_reminder
+Files changed: src/modules/finance/reminders.actions.ts (new), src/modules/jobs/handlers/finance.fee_reminder.ts (new), tests/db/fee-reminders.test.ts (new); edited: src/modules/jobs/types.ts (JobType), src/modules/jobs/registry.ts (JOB_REGISTRY import/entry), src/modules/jobs/handlers/index.ts, src/app/api/v1/actions/all-actions.ts, tests/security/escalation.test.ts (C-03 fixture)
+Behavior implemented: sendFeeReminders wraps public.enqueue_fee_reminders (role/term checked in SQL too); asOf computed client-side via institution-local "today" (RPC returns only jobId). feeReminder handler pages overdue issued/part_paid invoices for the term (fresh read, never payload-trusted), resolves primary guardian + active membership, sends fee_reminder notification (createNotification, idempotent on type:entityId:recipient), logs fee_reminders row on conflict do nothing. Money via local integer-paise helper (queries.ts's is server-only, unusable in job runner).
+Tests run: pnpm test:db tests/db/fee-reminders.test.ts -> 7/7 pass; pnpm test tests/unit/jobs-runner.test.ts tests/unit/action-names-unique.test.ts -> 35/35 pass; pnpm test:security tests/security/escalation.test.ts -> 1092/1092 pass; pnpm lint -> clean; pnpm typecheck -> clean
+Tests not run and why: full test:db/db:reset/seed/db:types (brief: DB non-owner, single-file runs only)
+Limitations / honesty label: no honesty-badge change (reminder delivery reuses existing per-channel simulated predicate, no new UI)
+Security / integration risks: none new — SQL-side role/institution checks already in 0074 (T4); TS action adds no further trust boundary. Job handler re-reads all state at run time (no payload-trusted fields beyond term_id/as_of)
+Follow-ups: none
+New dependencies (justification): none
+Assumptions made: asOf echoed by the action may differ by one day from the SQL's own as_of in a midnight-boundary race (both independently compute "today" in the institution timezone) — informational field only, not used for the job's idempotency key (that's SQL-computed)

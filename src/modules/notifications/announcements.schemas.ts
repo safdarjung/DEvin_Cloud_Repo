@@ -10,7 +10,7 @@ export const AUDIENCE_ROLES = [
   "owner", "principal", "admin", "admissions", "accountant",
   "exam_controller", "teacher", "student", "guardian",
 ] as const;
-export const PREFERENCE_CATEGORIES = ["attendance", "academic", "admissions", "announcement"] as const;
+export const PREFERENCE_CATEGORIES = ["attendance", "academic", "admissions", "announcement", "finance"] as const;
 export const PREFERENCE_CHANNELS = ["sms", "email"] as const;
 
 export const AudienceSchema = z.discriminatedUnion("type", [

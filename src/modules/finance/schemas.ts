@@ -122,3 +122,44 @@ export const RecordPaymentSchema = z
   .strict();
 
 export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>;
+
+// T-M12 — M12 finance completions (06 §W9, 07 §2.2).
+
+export const VoidPaymentSchema = z
+  .object({
+    paymentId: uuid,
+    kind: z.enum(["void", "refund", "cheque_bounce"]),
+    reason: z.string().trim().min(5).max(500),
+    idempotencyKey: uuid,
+  })
+  .strict();
+
+export type VoidPaymentInput = z.infer<typeof VoidPaymentSchema>;
+
+export const SendFeeRemindersSchema = z
+  .object({
+    termId: uuid,
+  })
+  .strict();
+
+export type SendFeeRemindersInput = z.infer<typeof SendFeeRemindersSchema>;
+
+export const CreatePaymentIntentSchema = z
+  .object({
+    invoiceId: uuid,
+    amount: z.number().min(1).max(10_000_000).multipleOf(0.01),
+    idempotencyKey: uuid,
+  })
+  .strict();
+
+export type CreatePaymentIntentInput = z.infer<typeof CreatePaymentIntentSchema>;
+
+export const CollectionReportSchema = z
+  .object({
+    groupBy: z.enum(["term", "grade", "mode"]),
+    academicYearId: uuid.optional(),
+    termId: uuid.optional(),
+  })
+  .strict();
+
+export type CollectionReportInput = z.infer<typeof CollectionReportSchema>;

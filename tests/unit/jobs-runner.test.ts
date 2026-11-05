@@ -38,6 +38,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     completeJob: vi.fn(async () => {}),
     killUnknown: vi.fn(async () => {}),
     dispatch: vi.fn(async () => {}),
+    enqueueDueReports: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -133,6 +134,39 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
 
     expect(summary.claimed).toBe(3);
     expect(claimJob).toHaveBeenCalledTimes(3);
+  });
+
+  it("sweeps for due reports exactly once, before the first claimJob", async () => {
+    const calls: string[] = [];
+    const claimJob = vi.fn(async () => {
+      calls.push("claimJob");
+      return null;
+    });
+    const enqueueDueReports = vi.fn(async () => {
+      calls.push("enqueueDueReports");
+      return 2;
+    });
+    const ports = fakePorts({ claimJob, enqueueDueReports });
+
+    await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(enqueueDueReports).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["enqueueDueReports", "claimJob"]);
+  });
+
+  it("still claims jobs and leaves the summary unchanged when the report sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueDueReports = vi.fn(async () => {
+      throw new Error("sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueDueReports });
+
+    const summary = await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(completeJob).toHaveBeenCalledWith(job.id, true);
   });
 });
 
@@ -267,6 +301,21 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     // skipped entirely rather than reading settings for a core type.
     await expect(ports.dispatch(makeJob({ type: "notify.attendance_absence", payload: {} }))).rejects.toThrow();
     expect(from).not.toHaveBeenCalledWith("institutions");
+  });
+
+  it("enqueueDueReports calls the enqueue_due_reports RPC and returns its count", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: 2, error: null } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueReports()).resolves.toBe(2);
+    expect(rpc).toHaveBeenCalledWith("enqueue_due_reports");
+  });
+
+  it("enqueueDueReports throws on an RPC error", async () => {
+    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "boom" } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueReports()).rejects.toThrow("boom");
   });
 });
 

@@ -91,6 +91,15 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     permission: "finance.payment.record",
     input: () => ({ invoiceId: U(), amount: 100, mode: "cash", receivedAt: "2026-10-01", idempotencyKey: U() }),
   },
+  "finance.payment.void": {
+    permission: "finance.payment.void",
+    input: () => ({ paymentId: U(), kind: "void", reason: "Probe reversal reason.", idempotencyKey: U() }),
+  },
+  "finance.payment.createIntent": {
+    permission: "finance.payment.online",
+    input: () => ({ invoiceId: U(), amount: 100, idempotencyKey: U() }),
+  },
+  "finance.reminders.send": { permission: "finance.reminder.send", input: () => ({ termId: U() }) },
   "notification.read": { permission: "notification.read", input: () => ({ notificationId: U() }) },
   "assignment.create": { permission: "assignment.manage", input: () => ({ classSectionId: U(), subjectId: U(), title: "Probe" }) },
   "assignment.update": { permission: "assignment.manage", input: () => ({ assignmentId: U(), title: "Probe" }) },
@@ -285,6 +294,11 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "visitors.pickup.remove": { permission: "pickup.manage", input: () => ({ id: U() }) },
   "visitors.purge": { permission: "visitor.manage", input: () => ({}) },
+  "report.schedule.save": {
+    permission: "report.schedule",
+    input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
+  },
+  "report.schedule.setStatus": { permission: "report.schedule", input: () => ({ id: U(), status: "paused" }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

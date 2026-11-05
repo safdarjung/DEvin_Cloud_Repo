@@ -12,6 +12,7 @@ const ADMIN_IMPORT_ALLOWED = [
   "src/lib/ai/usage.ts",
   "src/modules/jobs/with-service-role.ts",
   "src/modules/website/with-service-role.ts",
+  "src/modules/finance/with-service-role.ts",
 ];
 
 function walk(dir: string): string[] {

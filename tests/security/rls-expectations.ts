@@ -343,6 +343,25 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     write: [], // app.generate_invoice / app.record_payment only; immutable (block_mutation)
   },
 
+  // 20261028000074 (M12-T4) — finance_plus.
+  payment_reversals: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the reversal's invoice
+    write: [], // app.void_payment only; immutable (block_mutation)
+  },
+  fee_reminders: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"], // not guardian/student-visible
+    write: [], // finance.fee_reminder job handler (service role) only
+  },
+
+  // 20261028000083 (M12-T5) — online_payments.
+  online_payment_intents: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the intent's invoice
+    write: [], // public.create_payment_intent / public.record_online_payment only; no UPDATE/DELETE policy at all
+  },
+
   // 0009 (T-017) — exams. app.exam_write_roles() (owner/principal/
   // exam_controller) is narrower than app.exam_roles() (0001, +admin) —
   // 07 §2.2 exam.manage/exam.result.publish/exam.recheck.review+decide all
@@ -659,5 +678,12 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["S", "T"],
     read: ["owner", "principal", "admin", "teacher"],
     write: ["owner", "principal", "admin", "teacher"],
+  },
+  // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
+  // admin only (07 §2.2); no DELETE policy (pause instead of delete).
+  scheduled_reports: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
   },
 };
