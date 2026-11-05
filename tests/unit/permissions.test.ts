@@ -83,6 +83,10 @@ const MATRIX: Row[] = [
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
   ["insight.read", true, true, true, true, true, true, true, false, false],
   ["insight.review", true, true, true, true, true, true, false, false, false],
+  ["forecast.read", true, true, true, false, true, true, true, false, false],
+  ["visitor.manage", true, true, true, false, false, false, false, false, false],
+  ["gatepass.manage", true, true, true, false, false, false, true, false, false],
+  ["pickup.manage", true, true, true, false, false, false, false, false, true],
   ["report.schedule", true, true, true, false, false, false, false, false, false],
 ];
 

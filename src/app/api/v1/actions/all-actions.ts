@@ -37,4 +37,7 @@ import "@/modules/reports/actions";
 import "@/modules/timetable/actions";
 import "@/modules/timetable/substitution.actions";
 import "@/modules/transport/actions";
+import "@/modules/visitors/actions";
+import "@/modules/visitors/gate-pass.actions";
+import "@/modules/visitors/pickup.actions";
 import "@/modules/website/actions";

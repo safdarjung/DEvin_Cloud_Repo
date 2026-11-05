@@ -52,6 +52,8 @@ const APP_AUTHENTICATED = [
   "app.lock_import_batch",
   "app.member_institutions",
   "app.my_class_teacher_section_ids",
+  "app.my_class_teacher_student_ids",
+  "app.my_guardian_student_ids",
   "app.my_institution_ids",
   "app.my_report_ids",
   "app.my_staff_ids",

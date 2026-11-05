@@ -19,6 +19,7 @@ import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
+import { run as runVisitors } from "./sections/visitors.ts";
 import { run as runWebsite } from "./sections/website.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
@@ -41,6 +42,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "library", run: runLibrary },
   // X02-T11: last — issues demo certificates for already-seeded students.
   { name: "certificates", run: runCertificates },
+  // X07-T9: registered last — reads students/guardians/staff ids every earlier section wrote.
+  { name: "visitors", run: runVisitors },
   // X05-T6: last — needs core.ts's user ids and people.ts's student rows.
   { name: "notifications", run: runNotifications },
 ];

@@ -101,6 +101,10 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | library.read (RLS: managers all loans; other staff own; guardian own children; student own) | ✓ | ✓ | ✓ | s | s | s | s | s | s |
 | insight.read | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | |
 | insight.review | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
+| forecast.read (s = own sections; accountant/exam_controller school-wide or role scoped) | ✓ | ✓ | ✓ | | ✓ | ✓ | s | | |
+| visitor.manage (check-in/out, list, retention purge) | ✓ | ✓ | ✓ | | | | | | |
+| gatepass.manage (approve/reject/cancel/exit, list) | ✓ | ✓ | ✓ | | | | s | | |
+| pickup.manage (add/remove pickup persons) | ✓ | ✓ | ✓ | | | | | | s |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 

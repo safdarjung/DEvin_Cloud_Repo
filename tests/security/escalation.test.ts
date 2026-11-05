@@ -305,6 +305,16 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   // but the handler's own `ai.generate` check (07 §2 — accountant/exam_controller
   // lack it) is what actually decides forbidden vs. past-the-gate here.
   "insight.explain": { permission: "ai.generate", input: () => ({ insightId: U() }) },
+  "visitors.checkIn": { permission: "visitor.manage", input: () => ({ fullName: "Probe Visitor", phone: "9876543210", purpose: "Probe", meetingWith: "Office" }) },
+  "visitors.checkOut": { permission: "visitor.manage", input: () => ({ id: U() }) },
+  "visitors.gatePass.create": { permission: "gatepass.manage", input: () => ({ studentId: U(), reason: "Probe reason.", guardianId: U() }) },
+  "visitors.gatePass.setStatus": { permission: "gatepass.manage", input: () => ({ id: U(), status: "approved" }) },
+  "visitors.pickup.add": {
+    permission: "pickup.manage",
+    input: () => ({ studentId: U(), fullName: "Probe Person", relation: "driver", phone: "9876543210" }),
+  },
+  "visitors.pickup.remove": { permission: "pickup.manage", input: () => ({ id: U() }) },
+  "visitors.purge": { permission: "visitor.manage", input: () => ({}) },
   "report.schedule.save": {
     permission: "report.schedule",
     input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
