@@ -3046,6 +3046,9 @@ isOneToOne: true
 "enqueue_fee_reminders":
 { Args: { "p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
+"enqueue_insight_detection":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "enqueue_term_invoices":
 { Args: { "p_grade_id"?: string,"p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
@@ -3099,9 +3102,19 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"insight_src_admissions":
+{ Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
+              "open_count": number,"over_14": number,"over_2": number,"over_7": number,"stage": string
+            }[]
+                           },
 "insight_src_attendance":
 { Args: { "p_as_of": string,"p_institution_id": string,"p_student_max_recent_pct": number }; Returns: {
               "base_days": number,"base_denominator": number,"base_present": number,"class_section_id": string,"level": string,"recent_days": number,"recent_denominator": number,"recent_present": number,"section_label": string,"student_id": string
+            }[]
+                           },
+"insight_src_fees":
+{ Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
+              "concessions_base": number,"concessions_flagged": number,"concessions_recent": number,"overdue_count_now": number,"overdue_count_then": number,"overdue_now": number,"overdue_then": number
             }[]
                            },
 "insight_src_marks":
@@ -3109,9 +3122,24 @@ isOneToOne: true
               "class_section_id": string,"last_exam_id": string,"last_pct": number,"last_published_on": string,"prev_exam_id": string,"prev_pct": number,"section_label": string,"student_id": string,"subject_id": string,"subject_name": string
             }[]
                            },
+"insight_src_room_capacity":
+{ Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
+              "class_section_id": string,"section_label": string,"slots_over": number,"smallest_capacity": number,"strength": number,"version_id": string
+            }[]
+                           },
+"insight_src_rooms":
+{ Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
+              "open_maintenance": number,"periods_total": number,"periods_used": number,"room_id": string,"room_name": string,"version_id": string
+            }[]
+                           },
 "insight_src_submissions":
 { Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
               "awaiting_count": number,"class_section_id": string,"due_count": number,"level": string,"missing_count": number,"oldest_awaiting_days": number,"section_label": string,"student_id": string
+            }[]
+                           },
+"insight_src_workload":
+{ Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
+              "periods_week": number,"staff_id": string,"version_id": string
             }[]
                            },
 "invite_member":

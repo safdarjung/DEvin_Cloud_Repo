@@ -1,8 +1,10 @@
-// M19-T4 — plant fixtures for insight_src_attendance/marks/submissions
-// (migration 0092 part 3). Admin-level direct DB connection (bypasses RLS,
-// same convention as tests/helpers/factories.ts); explicit timestamps are
-// set where a row's "as of" date must be backdated, since the
-// `set_updated_at` trigger only fires on UPDATE, not on INSERT.
+// M19-T4/T5/T6 — plant fixtures for insight_src_attendance/marks/submissions
+// (migration 0092 part 3), insight_src_fees/admissions (part 4), and
+// insight_src_workload/room_capacity/rooms (part 5).
+// Admin-level direct DB connection (bypasses RLS, same convention as
+// tests/helpers/factories.ts); explicit timestamps are set where a row's
+// "as of" date must be backdated, since the `set_updated_at` trigger only
+// fires on UPDATE, not on INSERT.
 import postgres from "postgres";
 
 type Sql = ReturnType<typeof postgres>;
@@ -237,4 +239,276 @@ export async function plantSubmissions(
     }
   }
   return { assignmentIds, submissionIds };
+}
+
+export interface InvoicePaymentSpec {
+  amount: number;
+  /** Days before `asOf` the payment's `received_at` falls on. */
+  receivedDaysAgo: number;
+  /** Set to reverse this payment; its `created_at` is `asOf - reversalDaysAgo`. */
+  reversalDaysAgo?: number;
+  reversalAmount?: number;
+}
+
+export interface InvoiceSpec {
+  /** `invoices_one_active_per_student_term_idx` allows only one active
+   * invoice per (student, term): each invoice needs its own student. */
+  studentId: string;
+  total: number;
+  /** `due_on = asOf - dueDaysAgo` (positive => overdue by that many days). */
+  dueDaysAgo: number;
+  /** Local `created_at` date; defaults to 60 days before `due_on`. */
+  createdDaysAgo?: number;
+  status?: "issued" | "part_paid" | "paid" | "cancelled";
+  payments?: InvoicePaymentSpec[];
+}
+
+export interface ConcessionSpec {
+  /** Days before `asOf` the concession's `created_at` falls on. */
+  daysAgo: number;
+  kind: "sibling" | "staff_ward" | "merit" | "ews_rte" | "hardship" | "other";
+  amount?: number;
+}
+
+export interface FeesPlantResult {
+  invoiceIds: string[];
+  paymentIds: string[];
+  reversalIds: string[];
+  concessionIds: string[];
+}
+
+/** Plants invoices (+ payments + reversals, each invoice its own student —
+ * see InvoiceSpec), and concessions against one fee assignment, per
+ * `insight_src_fees` (rulings "fees"). */
+export async function plantFees(
+  admin: Sql,
+  institutionId: string,
+  academicYearId: string,
+  termId: string,
+  asOf: string,
+  spec: {
+    invoices?: InvoiceSpec[];
+    concessions?: { feeAssignmentId: string; approvedBy: string; items: ConcessionSpec[] };
+  },
+): Promise<FeesPlantResult> {
+  const invoiceIds: string[] = [];
+  const paymentIds: string[] = [];
+  const reversalIds: string[] = [];
+  const concessionIds: string[] = [];
+
+  for (const invoice of spec.invoices ?? []) {
+    const dueOn = shiftDate(asOf, invoice.dueDaysAgo);
+    const createdAt = shiftTimestamp(asOf, invoice.createdDaysAgo ?? invoice.dueDaysAgo + 60);
+    const [row] = await admin`
+      insert into public.invoices (
+        institution_id, student_id, academic_year_id, term_id, invoice_no, status, total, due_on, created_at, updated_at
+      )
+      values (
+        ${institutionId}, ${invoice.studentId}, ${academicYearId}, ${termId},
+        ${`INV-${crypto.randomUUID().slice(0, 8)}`}, ${invoice.status ?? "issued"}, ${invoice.total}, ${dueOn}, ${createdAt}, ${createdAt}
+      )
+      returning id
+    `;
+    invoiceIds.push(row.id as string);
+
+    for (const payment of invoice.payments ?? []) {
+      const receivedAt = shiftTimestamp(asOf, payment.receivedDaysAgo);
+      const [paymentRow] = await admin`
+        insert into public.payments (
+          institution_id, invoice_id, amount, mode, received_at, idempotency_key, created_at
+        )
+        values (
+          ${institutionId}, ${row.id}, ${payment.amount}, 'cash', ${receivedAt},
+          ${crypto.randomUUID()}, ${receivedAt}
+        )
+        returning id
+      `;
+      paymentIds.push(paymentRow.id as string);
+
+      if (payment.reversalDaysAgo !== undefined) {
+        const reversedAt = shiftTimestamp(asOf, payment.reversalDaysAgo);
+        const [reversalRow] = await admin`
+          insert into public.payment_reversals (
+            institution_id, payment_id, invoice_id, kind, amount, reason, snapshot, idempotency_key, created_at, updated_at
+          )
+          values (
+            ${institutionId}, ${paymentRow.id}, ${row.id}, 'void',
+            ${payment.reversalAmount ?? payment.amount}, 'insight fixture reversal', '{}'::jsonb,
+            ${crypto.randomUUID()}, ${reversedAt}, ${reversedAt}
+          )
+          returning id
+        `;
+        reversalIds.push(reversalRow.id as string);
+      }
+    }
+  }
+
+  if (spec.concessions) {
+    const { feeAssignmentId, approvedBy, items } = spec.concessions;
+    for (const concession of items) {
+      const createdAt = shiftTimestamp(asOf, concession.daysAgo);
+      const [row] = await admin`
+        insert into public.concessions (
+          institution_id, fee_assignment_id, kind, amount, approved_by, reason, created_at, updated_at
+        )
+        values (
+          ${institutionId}, ${feeAssignmentId}, ${concession.kind}, ${concession.amount ?? 1000},
+          ${approvedBy}, 'insight fixture concession', ${createdAt}, ${createdAt}
+        )
+        returning id
+      `;
+      concessionIds.push(row.id as string);
+    }
+  }
+
+  return { invoiceIds, paymentIds, reversalIds, concessionIds };
+}
+
+export interface EnquirySpec {
+  status: "new" | "contacted" | "visit_scheduled" | "application_sent" | "converted" | "closed";
+  /** Local `created_at` date, as days before `asOf`. */
+  createdDaysAgo: number;
+  /** Local `updated_at` date, as days before `asOf` (dwell = asOf - this). */
+  updatedDaysAgo: number;
+}
+
+export interface ApplicationSpec {
+  status: "submitted" | "under_review" | "interaction_scheduled" | "offered" | "accepted" | "rejected" | "withdrawn" | "enrolled";
+  createdDaysAgo: number;
+  updatedDaysAgo: number;
+  gradeAppliedId: string;
+  academicYearId: string;
+}
+
+/** Plants enquiries and applications per `insight_src_admissions`
+ * (rulings "admissions"). */
+export async function plantAdmissions(
+  admin: Sql,
+  institutionId: string,
+  asOf: string,
+  spec: { enquiries?: EnquirySpec[]; applications?: ApplicationSpec[] },
+): Promise<{ enquiryIds: string[]; applicationIds: string[] }> {
+  const enquiryIds: string[] = [];
+  const applicationIds: string[] = [];
+
+  for (const enquiry of spec.enquiries ?? []) {
+    const createdAt = shiftTimestamp(asOf, enquiry.createdDaysAgo);
+    const updatedAt = shiftTimestamp(asOf, enquiry.updatedDaysAgo);
+    const [row] = await admin`
+      insert into public.enquiries (
+        institution_id, child_name, guardian_name, phone, status, created_at, updated_at
+      )
+      values (
+        ${institutionId}, 'Insight Fixture Child', 'Insight Fixture Guardian',
+        ${`98${String(Math.floor(Math.random() * 1e8)).padStart(8, "0")}`}, ${enquiry.status}, ${createdAt}, ${updatedAt}
+      )
+      returning id
+    `;
+    enquiryIds.push(row.id as string);
+  }
+
+  for (const application of spec.applications ?? []) {
+    const createdAt = shiftTimestamp(asOf, application.createdDaysAgo);
+    const updatedAt = shiftTimestamp(asOf, application.updatedDaysAgo);
+    const applicant = { firstName: "Insight", lastName: "Fixture", dob: "2015-01-01", gender: "other" };
+    const guardian = { fullName: "Insight Fixture Guardian", phone: "9800000900", relationship: "father" };
+    const [row] = await admin`
+      insert into public.applications (
+        institution_id, applicant, guardian, grade_applied_id, academic_year_id, status, created_at, updated_at
+      )
+      values (
+        ${institutionId}, ${admin.json(applicant)}, ${admin.json(guardian)},
+        ${application.gradeAppliedId}, ${application.academicYearId}, ${application.status}, ${createdAt}, ${updatedAt}
+      )
+      returning id
+    `;
+    applicationIds.push(row.id as string);
+  }
+
+  return { enquiryIds, applicationIds };
+}
+
+export interface TimetablePeriodSpec {
+  seq: number;
+  isBreak?: boolean;
+}
+
+export interface TimetableRoomSpec {
+  name: string;
+  capacity: number;
+}
+
+export interface TimetableSlotSpec {
+  weekday: number;
+  periodSeq: number;
+  teacherStaffId: string;
+  classSectionId: string;
+  subjectId: string;
+  /** Looked up against `rooms` by name (see `TimetableRoomSpec`); omitted => no room. */
+  roomName?: string;
+}
+
+export interface TimetablePlantResult {
+  periodIds: Record<number, string>;
+  roomIds: Record<string, string>;
+  versionId: string;
+}
+
+/** Plants periods, rooms, one timetable_versions row and its slots, per
+ * insight_src_workload/insight_src_room_capacity/insight_src_rooms
+ * (rulings "workload", "timetable-conflicts", "resource-shortage"). Status
+ * defaults to "published"; the guard trigger only blocks a status *update*,
+ * so this direct insert is unaffected by it. */
+export async function plantTimetable(
+  admin: Sql,
+  institutionId: string,
+  academicYearId: string,
+  createdBy: string,
+  spec: {
+    periods: TimetablePeriodSpec[];
+    rooms?: TimetableRoomSpec[];
+    status?: "draft" | "published";
+    slots: TimetableSlotSpec[];
+  },
+): Promise<TimetablePlantResult> {
+  const periodIds: Record<number, string> = {};
+  for (const period of spec.periods) {
+    const [row] = await admin`
+      insert into public.periods (institution_id, seq, name, starts_at, ends_at, is_break)
+      values (${institutionId}, ${period.seq}, ${`Period ${period.seq}`}, '09:00', '09:40', ${period.isBreak ?? false})
+      returning id
+    `;
+    periodIds[period.seq] = row.id as string;
+  }
+
+  const roomIds: Record<string, string> = {};
+  for (const room of spec.rooms ?? []) {
+    const [row] = await admin`
+      insert into public.rooms (institution_id, name, capacity)
+      values (${institutionId}, ${room.name}, ${room.capacity})
+      returning id
+    `;
+    roomIds[room.name] = row.id as string;
+  }
+
+  const [version] = await admin`
+    insert into public.timetable_versions (institution_id, academic_year_id, name, status, created_by)
+    values (${institutionId}, ${academicYearId}, 'Insight fixture timetable', ${spec.status ?? "published"}, ${createdBy})
+    returning id
+  `;
+
+  for (const slot of spec.slots) {
+    const roomId = slot.roomName ? roomIds[slot.roomName] : null;
+    await admin`
+      insert into public.timetable_slots (
+        institution_id, version_id, class_section_id, subject_id, teacher_id, room_id, weekday, period_id
+      )
+      values (
+        ${institutionId}, ${version.id}, ${slot.classSectionId}, ${slot.subjectId}, ${slot.teacherStaffId},
+        ${roomId}, ${slot.weekday}, ${periodIds[slot.periodSeq]}
+      )
+    `;
+  }
+
+  return { periodIds, roomIds, versionId: version.id as string };
 }

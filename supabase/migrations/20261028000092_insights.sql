@@ -876,3 +876,377 @@ $$;
 
 revoke execute on function public.insight_src_submissions(uuid, date) from public, anon, authenticated;
 grant execute on function public.insight_src_submissions(uuid, date) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- M19-T5: migration 0092 part 4 — sources fees, admissions. Same plpgsql
+-- stable security invoker, service_role only shape as part 3.
+-- ---------------------------------------------------------------------------
+
+-- insight_src_fees — a single-row summary (rulings "fees"). An invoice's
+-- outstanding amount at local date d = total minus payments received by d
+-- plus reversals (of those same payments) created by d; "now" is as_of,
+-- "then" is as_of-28. Both windows are computed from one `outstanding` CTE
+-- via a 2-row asof(label, d) values table, instead of duplicating the
+-- outstanding formula twice.
+create function public.insight_src_fees(p_institution_id uuid, p_as_of date)
+returns table (
+  overdue_now bigint,
+  overdue_then bigint,
+  overdue_count_now int,
+  overdue_count_then int,
+  concessions_recent int,
+  concessions_base int,
+  concessions_flagged int
+)
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+begin
+  return query
+  with inst as (
+    select coalesce(settings -> 'locale' ->> 'timezone', 'Asia/Kolkata') as tz
+    from public.institutions where id = p_institution_id
+  ),
+  asof (label, d) as (
+    values ('now', p_as_of), ('then', p_as_of - 28)
+  ),
+  invoices_base as (
+    select i.id, i.total, i.due_on, (i.created_at at time zone inst.tz)::date as created_date
+    from public.invoices i
+    cross join inst
+    where i.institution_id = p_institution_id
+      and i.status <> 'cancelled'
+  ),
+  payments_local as (
+    select p.id, p.invoice_id, p.amount, (p.received_at at time zone inst.tz)::date as paid_date
+    from public.payments p
+    cross join inst
+    where p.institution_id = p_institution_id
+  ),
+  reversals_local as (
+    select pr.payment_id, pr.amount, (pr.created_at at time zone inst.tz)::date as reversed_date
+    from public.payment_reversals pr
+    cross join inst
+    where pr.institution_id = p_institution_id
+  ),
+  outstanding as (
+    select
+      ib.id as invoice_id,
+      a.label,
+      ib.total
+        - coalesce((select sum(pl.amount) from payments_local pl where pl.invoice_id = ib.id and pl.paid_date <= a.d), 0)
+        + coalesce(
+            (select sum(rl.amount) from reversals_local rl
+             join payments_local pl2 on pl2.id = rl.payment_id
+             where pl2.invoice_id = ib.id and pl2.paid_date <= a.d and rl.reversed_date <= a.d),
+            0
+          ) as outstanding_amt
+    from invoices_base ib
+    cross join asof a
+  ),
+  overdue as (
+    select o.label, o.outstanding_amt
+    from outstanding o
+    join invoices_base ib on ib.id = o.invoice_id
+    join asof a on a.label = o.label
+    where ib.due_on < a.d and ib.created_date <= a.d and o.outstanding_amt > 0
+  )
+  select
+    (select round(coalesce(sum(outstanding_amt), 0)) from overdue where label = 'now')::bigint,
+    (select round(coalesce(sum(outstanding_amt), 0)) from overdue where label = 'then')::bigint,
+    (select count(*) from overdue where label = 'now')::int,
+    (select count(*) from overdue where label = 'then')::int,
+    (select count(*) from public.concessions c cross join inst
+     where c.institution_id = p_institution_id and (c.created_at at time zone inst.tz)::date between p_as_of - 27 and p_as_of)::int,
+    (select count(*) from public.concessions c cross join inst
+     where c.institution_id = p_institution_id and (c.created_at at time zone inst.tz)::date between p_as_of - 111 and p_as_of - 28)::int,
+    (select count(*) from public.concessions c cross join inst
+     where c.institution_id = p_institution_id and (c.created_at at time zone inst.tz)::date between p_as_of - 27 and p_as_of
+       and c.kind in ('hardship', 'other'))::int;
+end;
+$$;
+
+revoke execute on function public.insight_src_fees(uuid, date) from public, anon, authenticated;
+grant execute on function public.insight_src_fees(uuid, date) to service_role;
+
+-- insight_src_admissions — one row per stage with >=1 open row (rulings
+-- "admissions"). dwell is a proxy (as_of - local updated_at date, no stage
+-- history); each stage only has its own threshold's over_<t> column
+-- populated, the other two are 0.
+create function public.insight_src_admissions(p_institution_id uuid, p_as_of date)
+returns table (
+  stage text,
+  open_count int,
+  over_2 int,
+  over_7 int,
+  over_14 int
+)
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+begin
+  return query
+  with inst as (
+    select coalesce(settings -> 'locale' ->> 'timezone', 'Asia/Kolkata') as tz
+    from public.institutions where id = p_institution_id
+  ),
+  enquiry_agg as (
+    select
+      'enquiry.' || e.status as stage,
+      case e.status when 'new' then 2 when 'contacted' then 7 when 'visit_scheduled' then 14 when 'application_sent' then 14 end as threshold,
+      count(*) as open_count,
+      count(*) filter (
+        where p_as_of - (e.updated_at at time zone inst.tz)::date
+          >= case e.status when 'new' then 2 when 'contacted' then 7 when 'visit_scheduled' then 14 when 'application_sent' then 14 end
+      ) as stale_count
+    from public.enquiries e
+    cross join inst
+    where e.institution_id = p_institution_id
+      and e.status in ('new', 'contacted', 'visit_scheduled', 'application_sent')
+      and (e.created_at at time zone inst.tz)::date <= p_as_of
+    group by e.status
+  ),
+  application_agg as (
+    select
+      'application.' || ap.status as stage,
+      case ap.status when 'submitted' then 7 when 'under_review' then 7 when 'interaction_scheduled' then 14 end as threshold,
+      count(*) as open_count,
+      count(*) filter (
+        where p_as_of - (ap.updated_at at time zone inst.tz)::date
+          >= case ap.status when 'submitted' then 7 when 'under_review' then 7 when 'interaction_scheduled' then 14 end
+      ) as stale_count
+    from public.applications ap
+    cross join inst
+    where ap.institution_id = p_institution_id
+      and ap.status in ('submitted', 'under_review', 'interaction_scheduled')
+      and (ap.created_at at time zone inst.tz)::date <= p_as_of
+    group by ap.status
+  ),
+  combined as (
+    select * from enquiry_agg
+    union all
+    select * from application_agg
+  )
+  select
+    combined.stage,
+    combined.open_count::int,
+    (case when combined.threshold = 2 then combined.stale_count else 0 end)::int,
+    (case when combined.threshold = 7 then combined.stale_count else 0 end)::int,
+    (case when combined.threshold = 14 then combined.stale_count else 0 end)::int
+  from combined
+  where combined.open_count >= 1;
+end;
+$$;
+
+revoke execute on function public.insight_src_admissions(uuid, date) from public, anon, authenticated;
+grant execute on function public.insight_src_admissions(uuid, date) to service_role;
+
+-- ---------------------------------------------------------------------------
+-- M19-T6: migration 0092 part 5 — sources workload, room_capacity, rooms;
+-- enqueue_insight_detection sweep. Sources: same plpgsql stable security
+-- invoker, service_role only shape as parts 3/4. Sweep is plpgsql security
+-- definer (lesson 3): reads public.institutions directly (definer bypasses
+-- RLS as table owner) and builds the job payload entirely in SQL.
+-- ---------------------------------------------------------------------------
+
+-- insight_src_workload — slot count per teacher, published version of the
+-- academic year covering as_of (rulings "workload").
+create function public.insight_src_workload(p_institution_id uuid, p_as_of date)
+returns table (
+  version_id uuid,
+  staff_id uuid,
+  periods_week int
+)
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+begin
+  return query
+  select tv.id, ts.teacher_id, count(*)::int
+  from public.timetable_versions tv
+  join public.academic_years ay on ay.id = tv.academic_year_id and ay.institution_id = p_institution_id
+  join public.timetable_slots ts on ts.version_id = tv.id
+  where tv.institution_id = p_institution_id
+    and tv.status = 'published'
+    and p_as_of between ay.starts_on and ay.ends_on
+  group by tv.id, ts.teacher_id;
+end;
+$$;
+
+revoke execute on function public.insight_src_workload(uuid, date) from public, anon, authenticated;
+grant execute on function public.insight_src_workload(uuid, date) to service_role;
+
+-- insight_src_room_capacity — one row per section with >=1 slot whose room
+-- is smaller than the section's strength, same published version as
+-- workload (rulings "timetable-conflicts").
+create function public.insight_src_room_capacity(p_institution_id uuid, p_as_of date)
+returns table (
+  version_id uuid,
+  class_section_id uuid,
+  section_label text,
+  strength int,
+  smallest_capacity int,
+  slots_over int
+)
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+begin
+  return query
+  with ver as (
+    select tv.id as version_id
+    from public.timetable_versions tv
+    join public.academic_years ay on ay.id = tv.academic_year_id and ay.institution_id = p_institution_id
+    where tv.institution_id = p_institution_id
+      and tv.status = 'published'
+      and p_as_of between ay.starts_on and ay.ends_on
+  ),
+  section_strength as (
+    select cs.id as class_section_id, count(*) as n
+    from public.class_sections cs
+    join public.enrolments e on e.class_section_id = cs.id and e.institution_id = p_institution_id and e.status = 'active'
+    where cs.institution_id = p_institution_id
+    group by cs.id
+  )
+  select
+    ver.version_id,
+    ts.class_section_id,
+    g.code || '-' || cs.name,
+    ss.n::int,
+    min(r.capacity)::int,
+    count(*) filter (where r.capacity < ss.n)::int
+  from ver
+  join public.timetable_slots ts on ts.version_id = ver.version_id
+  join public.rooms r on r.id = ts.room_id and r.institution_id = p_institution_id
+  join section_strength ss on ss.class_section_id = ts.class_section_id
+  join public.class_sections cs on cs.id = ts.class_section_id and cs.institution_id = p_institution_id
+  join public.grades g on g.id = cs.grade_id
+  group by ver.version_id, ts.class_section_id, g.code, cs.name, ss.n
+  having count(*) filter (where r.capacity < ss.n) >= 1;
+end;
+$$;
+
+revoke execute on function public.insight_src_room_capacity(uuid, date) from public, anon, authenticated;
+grant execute on function public.insight_src_room_capacity(uuid, date) to service_role;
+
+-- insight_src_rooms — one row per room, empty when there is no published
+-- version covering as_of or the institution has no non-break periods
+-- (rulings "resource-shortage").
+create function public.insight_src_rooms(p_institution_id uuid, p_as_of date)
+returns table (
+  version_id uuid,
+  room_id uuid,
+  room_name text,
+  periods_used int,
+  periods_total int,
+  open_maintenance int
+)
+language plpgsql
+stable
+security invoker
+set search_path = ''
+as $$
+declare
+  v_version_id uuid;
+  v_total int;
+begin
+  select tv.id into v_version_id
+  from public.timetable_versions tv
+  join public.academic_years ay on ay.id = tv.academic_year_id and ay.institution_id = p_institution_id
+  where tv.institution_id = p_institution_id
+    and tv.status = 'published'
+    and p_as_of between ay.starts_on and ay.ends_on
+  limit 1;
+
+  if v_version_id is null then
+    return;
+  end if;
+
+  select 6 * count(*) into v_total
+  from public.periods p
+  where p.institution_id = p_institution_id and not p.is_break;
+
+  if coalesce(v_total, 0) = 0 then
+    return;
+  end if;
+
+  return query
+  select
+    v_version_id,
+    r.id,
+    r.name,
+    coalesce(slot_counts.n, 0)::int,
+    v_total,
+    coalesce(maint_counts.n, 0)::int
+  from public.rooms r
+  left join (
+    select ts.room_id, count(*) as n
+    from public.timetable_slots ts
+    where ts.version_id = v_version_id and ts.room_id is not null
+    group by ts.room_id
+  ) slot_counts on slot_counts.room_id = r.id
+  left join (
+    select a.room_id, count(*) as n
+    from public.maintenance_requests mr
+    join public.assets a on a.id = mr.asset_id and a.institution_id = p_institution_id
+    where mr.institution_id = p_institution_id
+      and mr.status in ('open', 'in_progress')
+      and a.room_id is not null
+    group by a.room_id
+  ) maint_counts on maint_counts.room_id = r.id
+  where r.institution_id = p_institution_id;
+end;
+$$;
+
+revoke execute on function public.insight_src_rooms(uuid, date) from public, anon, authenticated;
+grant execute on function public.insight_src_rooms(uuid, date) to service_role;
+
+-- enqueue_insight_detection — Sweep ruling: one insights.detect job per
+-- institution with the insights module on, keyed by local yesterday so a
+-- second sweep on the same local day is a no-op. "New" = no job existed yet
+-- under that idempotency key (app.enqueue_job itself is idempotent either
+-- way; this only drives the returned count).
+create function public.enqueue_insight_detection()
+returns int
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_row record;
+  v_as_of date;
+  v_key text;
+  v_existing boolean;
+  v_count int := 0;
+begin
+  for v_row in
+    select i.id, coalesce(i.settings -> 'locale' ->> 'timezone', 'Asia/Kolkata') as tz
+    from public.institutions i
+    where app.module_enabled(i.id, 'insights')
+  loop
+    v_as_of := ((now() at time zone v_row.tz)::date) - 1;
+    v_key := 'insights.detect:' || v_row.id::text || ':' || to_char(v_as_of, 'YYYYMMDD');
+
+    select exists (select 1 from public.jobs where idempotency_key = v_key) into v_existing;
+
+    perform app.enqueue_job(v_row.id, 'insights.detect', jsonb_build_object('as_of', v_as_of), v_key);
+
+    if not v_existing then
+      v_count := v_count + 1;
+    end if;
+  end loop;
+
+  return v_count;
+end;
+$$;
+
+revoke execute on function public.enqueue_insight_detection() from public, anon, authenticated;
+grant execute on function public.enqueue_insight_detection() to service_role;

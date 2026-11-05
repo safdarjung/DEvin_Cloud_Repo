@@ -1,13 +1,11 @@
 Packet: M19-T5 Migration 0092 part 4 — sources fees, admissions
-Files changed: none (blocked before any edit — root cause confirmed first)
-Behavior implemented: none.
-Tests run: none — blocked before TDD start.
-Tests not run and why: `insight-sources-office.test.ts` was never written; the fees source cannot be built or tested without its required table.
-Limitations / honesty label: n/a.
-Security / integration risks: none introduced.
-Root cause: `insight_src_fees` must read `payment_reversals` (ruling: "+ Σ payment_reversals.amount"), owned by M12 migration 0074 (`finance_plus`). That migration is **absent from lane-d**: no `supabase/migrations/*0074*` file on disk, and `to_regclass('public.payment_reversals')` on the lane's own running DB (`supabase_db_coolschool_d`) returns null. `assets`/`maintenance_requests` (M13, 0075) and `module_enabled` (0084, MOD) are present, so lane-d has M08–M11, M13, M14, M17, MOD but not M12 — even though docs/planning/coolskool/10-backlog-index.md (already synced into this lane) describes 0074 as claimed/built, and other branches (main, lane-b, lane-h) carry it. The packet's "Prereqs merged: M07–M18" does not hold for this specific worktree.
-Fixing this needs merging M12 into lane-d (a git state change) or hand-writing `payment_reversals` here (not my task's file, owned by `finance`/M12, would duplicate/conflict with the real 0074 on merge) — both are out of scope under "No git state changes" / "touch only your task FILES".
-`insight_src_admissions` has no such blocker (0007 admissions is present) but the task's FILES/ACCEPT bundle both sources in one test file and one migration part; shipping admissions alone would leave an unreviewable half-file for T6 to append after.
-Follow-ups: lead/orchestrator must merge M12 (0074 `finance_plus`) into lane-d before T5, and before T6/T10/T21 which also depend on it per M19-tasks.md. Add a debt row if the lane-assignment script should check prereq migrations before dispatching a packet.
+Files changed: supabase/migrations/20261028000092_insights.sql (append part 4); tests/helpers/insight-fixtures.ts (add InvoiceSpec/ConcessionSpec/EnquirySpec/ApplicationSpec + plantFees, plantAdmissions); tests/db/insight-sources-office.test.ts (new); src/lib/db/types.ts (regen, additions only).
+Behavior implemented: public.insight_src_fees/insight_src_admissions, plpgsql stable security invoker, search_path='', execute revoked public/anon/authenticated, granted service_role only. Fees: one-row summary; per-invoice outstanding at d = total - payments(received<=d) + reversals(created<=d, of those payments), via a 2-row asof(label,d) CTE to avoid duplicating the formula for now/then; overdue_* = rounded sum of invoice outstanding where due_on<d, created<=d, outstanding>0; concessions bucketed recent/base by local created_at, flagged = recent hardship/other. Admissions: one row per stage (enquiry.new/contacted/visit_scheduled/application_sent, application.submitted/under_review/interaction_scheduled) with open_count>=1; dwell=as_of-local updated_at; stale count lands in that stage's own over_<threshold> column, others 0.
+Note: T4's partial-run report (now stale) blocked on 0074 (payment_reversals) missing from lane-d; it is present now (file + live DB), so T5 proceeded with no blocker.
+Tests run: pnpm db:reset (clean, 0092 all 4 parts apply, seed OK); pnpm test:db tests/db/insight-sources-office.test.ts -> 4/4 passed; pnpm test:security tests/security/grants.test.ts -> 9/9 passed (unchanged); pnpm lint clean; pnpm typecheck clean.
+Tests not run and why: full test:db/test:security suites not run (BRIEF-COMMON single-file rule, own task scope only).
+Limitations / honesty label: n/a (no UI, no AI boundary here; T10 detector consumes these next).
+Security / integration risks: both SECURITY INVOKER relying on service_role's BYPASSRLS + table grants (same reasoning as parts 1/3); tested denied for an authenticated caller on both functions.
+Follow-ups: T6 appends part 5 to the same migration file; T10 detector calls insight_src_fees/insight_src_admissions.
 New dependencies: none.
-Assumptions made: none — root cause checked empirically (file listing + live DB query), not inferred from docs alone.
+Assumptions made: rupee rounding applies to the aggregate sum (ruling "the rounded sum in rupees"), not per invoice; application fixtures require institutions.settings.numbering.application_no (same pre-req as admissions-actions.test.ts) since app.assign_application_no always allocates when application_no is null.
