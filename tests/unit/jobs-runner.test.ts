@@ -39,6 +39,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     killUnknown: vi.fn(async () => {}),
     dispatch: vi.fn(async () => {}),
     enqueueDueReports: vi.fn(async () => 0),
+    enqueueDueWorkflows: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -162,6 +163,43 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
       throw new Error("sweep boom");
     });
     const ports = fakePorts({ claimJob, completeJob, enqueueDueReports });
+
+    const summary = await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(completeJob).toHaveBeenCalledWith(job.id, true);
+  });
+
+  it("sweeps for due workflows exactly once, after the report sweep and before the first claimJob", async () => {
+    const calls: string[] = [];
+    const claimJob = vi.fn(async () => {
+      calls.push("claimJob");
+      return null;
+    });
+    const enqueueDueReports = vi.fn(async () => {
+      calls.push("enqueueDueReports");
+      return 2;
+    });
+    const enqueueDueWorkflows = vi.fn(async () => {
+      calls.push("enqueueDueWorkflows");
+      return 3;
+    });
+    const ports = fakePorts({ claimJob, enqueueDueReports, enqueueDueWorkflows });
+
+    await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(enqueueDueWorkflows).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["enqueueDueReports", "enqueueDueWorkflows", "claimJob"]);
+  });
+
+  it("still claims jobs and leaves the summary unchanged when the workflows sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueDueWorkflows = vi.fn(async () => {
+      throw new Error("workflows sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueDueWorkflows });
 
     const summary = await runOnceCore({ workerId: "w1" }, ports);
 
@@ -316,6 +354,21 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     const ports = createRunnerPorts(admin);
 
     await expect(ports.enqueueDueReports()).rejects.toThrow("boom");
+  });
+
+  it("enqueueDueWorkflows calls the enqueue_due_workflows RPC and returns its count", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: 3, error: null } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueWorkflows()).resolves.toBe(3);
+    expect(rpc).toHaveBeenCalledWith("enqueue_due_workflows");
+  });
+
+  it("enqueueDueWorkflows throws on an RPC error", async () => {
+    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "boom" } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueWorkflows()).rejects.toThrow("boom");
   });
 });
 

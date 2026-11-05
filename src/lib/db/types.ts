@@ -131,6 +131,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agent_runs_workflow_run_fk"
+      columns: ["workflow_run_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "workflow_runs"
+      referencedColumns: ["id","institution_id"]
     }
                   ]
                 },"ai_usage_events": {
@@ -3055,6 +3061,70 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"workflow_runs": {
+                  Row: {
+                    "created_at": string,"cursor_node_id": string | null,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"engine_version": string | null,"entity_id": string | null,"finished_at": string | null,"graph": NonNullable<Json>,"id": string,"institution_id": string,"last_value": number | null,"pending_decision": string | null,"requested_by": string | null,"started_at": string,"status": string,"steps": NonNullable<Json>,"trigger_key": string,"trigger_kind": string,"updated_at": string,"workflow_id": string,"workflow_version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"cursor_node_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"engine_version"?: string | null,"entity_id"?: string | null,"finished_at"?: string | null,"graph": NonNullable<Json>,"id"?: string,"institution_id": string,"last_value"?: number | null,"pending_decision"?: string | null,"requested_by"?: string | null,"started_at"?: string,"status"?: string,"steps"?: NonNullable<Json>,"trigger_key": string,"trigger_kind": string,"updated_at"?: string,"workflow_id": string,"workflow_version": number
+                  }
+                  Update: {
+                    "created_at"?: string,"cursor_node_id"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"engine_version"?: string | null,"entity_id"?: string | null,"finished_at"?: string | null,"graph"?: NonNullable<Json>,"id"?: string,"institution_id"?: string,"last_value"?: number | null,"pending_decision"?: string | null,"requested_by"?: string | null,"started_at"?: string,"status"?: string,"steps"?: NonNullable<Json>,"trigger_key"?: string,"trigger_kind"?: string,"updated_at"?: string,"workflow_id"?: string,"workflow_version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "workflow_runs_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workflow_runs_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workflow_runs_requested_by_fkey"
+      columns: ["requested_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workflow_runs_workflow_fk"
+      columns: ["workflow_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "workflows"
+      referencedColumns: ["id","institution_id"]
+    }
+                  ]
+                },"workflows": {
+                  Row: {
+                    "created_at": string,"created_by": string,"edges": NonNullable<Json>,"id": string,"institution_id": string,"name": string,"next_run_at": string | null,"nodes": NonNullable<Json>,"status": string,"trigger_config": string,"trigger_type": string,"updated_at": string,"version": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"edges": NonNullable<Json>,"id"?: string,"institution_id": string,"name": string,"next_run_at"?: string | null,"nodes": NonNullable<Json>,"status"?: string,"trigger_config"?: string,"trigger_type": string,"updated_at"?: string,"version"?: number
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"edges"?: NonNullable<Json>,"id"?: string,"institution_id"?: string,"name"?: string,"next_run_at"?: string | null,"nodes"?: NonNullable<Json>,"status"?: string,"trigger_config"?: string,"trigger_type"?: string,"updated_at"?: string,"version"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "workflows_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "workflows_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -3179,7 +3249,44 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"decide_workflow_run":
+{ Args: { "p_decision": string,"p_note"?: string,"p_run_id": string }; Returns: {
+              "created_at": string,
+"cursor_node_id": string | null,
+"decided_at": string | null,
+"decided_by": string | null,
+"decision_note": string | null,
+"engine_version": string | null,
+"entity_id": string | null,
+"finished_at": string | null,
+"graph": NonNullable<Json>,
+"id": string,
+"institution_id": string,
+"last_value": number | null,
+"pending_decision": string | null,
+"requested_by": string | null,
+"started_at": string,
+"status": string,
+"steps": NonNullable<Json>,
+"trigger_key": string,
+"trigger_kind": string,
+"updated_at": string,
+"workflow_id": string,
+"workflow_version": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "workflow_runs"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"emit_workflow_event":
+{ Args: { "p_entity_id": string,"p_event": string,"p_institution_id": string }; Returns: number
+                           },
 "enqueue_due_reports":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"enqueue_due_workflows":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
 "enqueue_fee_reminders":
@@ -3469,6 +3576,9 @@ isOneToOne: true
 "start_recheck_review":
 { Args: { "p_institution_id": string,"p_request_id": string }; Returns: Json
                            },
+"start_workflow_run":
+{ Args: { "p_workflow_id": string }; Returns: string
+                           },
 "submit_assignment":
 { Args: { "p_answers"?: Json,"p_assignment_id": string,"p_text"?: string }; Returns: {
               "assignment_id": string,
@@ -3523,6 +3633,9 @@ isOneToOne: true
                            },
 "void_payment":
 { Args: { "p_idempotency_key": string,"p_kind": string,"p_payment_id": string,"p_reason": string }; Returns: Json
+                           },
+"workflow_metric":
+{ Args: { "p_as_of": string,"p_entity_id": string,"p_institution_id": string,"p_metric": string }; Returns: number
                            }
           }
           Enums: {

@@ -20,6 +20,7 @@ import { run as runPeople } from "./sections/people.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
 import { run as runWebsite } from "./sections/website.ts";
+import { run as runWorkflows } from "./sections/workflows.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "core", run: runCore },
@@ -33,6 +34,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "attendance", run: runAttendance },
   { name: "admissions", run: runAdmissions },
   { name: "finance", run: runFinance },
+  // M23-T20: after finance and admissions (both read by its templates' metrics).
+  { name: "workflows", run: runWorkflows },
   { name: "exams", run: runExams },
   // X06-T10: after exams (own exam/papers) and timetable (rooms) — both already earlier.
   { name: "exam_seating", run: runExamSeating },
