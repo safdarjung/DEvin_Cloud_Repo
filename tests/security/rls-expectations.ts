@@ -703,6 +703,93 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
   // admin only (07 §2.2); no DELETE policy (pause instead of delete).
   scheduled_reports: {
+
+  // 0085 part 1 (X01-T4) — student_leave_requests: owner/principal/admin
+  // see every row of the institution; a teacher sees only rows for
+  // sections they are the class teacher of (app.my_class_teacher_section_ids);
+  // guardian/student see their own/linked children's rows
+  // (app.my_student_ids); admissions/accountant/exam_controller see none.
+  // Explicit section/own-child scoping proved in
+  // tests/db/student-leave-rls.test.ts, not by the generated suite's plain
+  // own-institution probe. No UPDATE/DELETE policy: writes are
+  // decide_student_leave only (teacher-write here reflects INSERT by a
+  // guardian only — "write" is kept for the generated suite's shape, scoped
+  // by the explicit db test instead).
+  student_leave_requests: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["guardian"], // INSERT only (own children); decisions via decide_student_leave
+  },
+
+  // 0085 part 2 (X01-T5) — diary_entries: owner/principal/admin see every
+  // row of the institution; a teacher sees rows for sections they teach
+  // (app.my_taught_section_ids, class or subject teacher); guardian/student
+  // see rows for their own/linked children's sections
+  // (app.my_student_section_ids); admissions/accountant/exam_controller see
+  // none. INSERT is admin or a taught-section teacher only; DELETE is the
+  // author or admin; no UPDATE policy (delete + repost). Explicit scoping
+  // (another section's teacher, spoofed created_by) proved in
+  // tests/db/diary-rls.test.ts, not by the generated suite's plain
+  // own-institution probe.
+  diary_entries: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"], // INSERT (taught sections) + DELETE (author/admin)
+  },
+
+  // 0085 part 2 (X01-T5) — diary_acknowledgements: owner/principal/admin
+  // see every row; a teacher sees acks for entries of sections they teach
+  // (exists join on diary_entries.class_section_id = any(my_taught_section_ids));
+  // guardian/student see their own/linked children's acks
+  // (app.my_student_ids); admissions/accountant/exam_controller see none.
+  // INSERT is guardian only, scoped to their own child, an entry in the
+  // same institution with requires_ack, and active enrolment in the
+  // entry's section — proved explicitly in tests/db/diary-rls.test.ts, not
+  // by the generated suite's plain own-institution probe. No UPDATE/DELETE
+  // policy.
+  diary_acknowledgements: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["guardian"], // INSERT only (own children, requires_ack entries)
+  },
+
+  // 0099 part A (X08-T2) — ptm_events/ptm_event_sections/ptm_slots:
+  // staff-only read (7 staff roles via app.my_institution_ids). Guardians
+  // and students never read these directly; they use
+  // public.ptm_slots_for_student instead. ptm_slots write is owner/
+  // principal/admin for any staff, or a teacher for their own staff_id
+  // scoped to an event section they teach (explicit scoping proved in
+  // tests/db/ptm-rls.test.ts, not by the generated suite's plain
+  // own-institution probe).
+  ptm_events: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  ptm_event_sections: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  ptm_slots: {
+    classes: ["C", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin", "teacher"], // teacher: own staff_id + a section they teach only
+  },
+  // ptm_bookings: no INSERT/UPDATE/DELETE policy at all — writes only via
+  // book_ptm_slot/cancel_ptm_booking. Read is owner/principal/admin all;
+  // teacher own slots (app.my_staff_ids); guardian/student own/linked
+  // child (app.my_student_ids) — scoping proved in tests/db/ptm-rls.test.ts.
+  ptm_bookings: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: [],
+  },
+
+  // 0099 part B (X08-T3) — surveys/survey_audiences: admin-only, same shape
+  // as announcements/announcement_audiences (0068). Recipients never read
+  // these tables directly; they get public.my_open_surveys instead.
+  surveys: {
     classes: ["A"],
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
@@ -726,6 +813,15 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // suite's plain own-institution probe. No write policy: issue/renew/return
   // RPCs only.
   library_loans: {
+  survey_audiences: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"], // INSERT/UPDATE only while the parent survey is still draft
+  },
+  // survey_respondents: row-scoped (user_id = current user, same shape as
+  // notification_preferences) — writes only via submit_survey_response
+  // (SECURITY DEFINER), never direct PostgREST INSERT.
+  survey_respondents: {
     classes: ["O"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: [],
@@ -755,6 +851,17 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   exam_seats: {
     classes: ["C", "S+G"],
     read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"], // student/guardian: own seat in the current plan only
+    write: [],
+  },
+  // survey_responses: no INSERT/UPDATE/DELETE policy at all — writes only
+  // via submit_survey_response. SELECT is owner/principal/admin AND only
+  // non-anonymous rows (respondent_user_id is not null); an anonymous
+  // survey's responses are never selectable at all, even by admins —
+  // scoping proved in tests/db/surveys-rls.test.ts, not the generated
+  // suite's plain own-institution probe.
+  survey_responses: {
+    classes: ["A", "O"],
+    read: ["owner", "principal", "admin"],
     write: [],
   },
 };

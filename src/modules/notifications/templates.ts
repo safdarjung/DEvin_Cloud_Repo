@@ -20,6 +20,8 @@ export const NOTIFICATION_TYPES = [
   "gate_pass_approved",
   "report_ready",
   "fee_reminder",
+  "student_leave_decided",
+  "diary_entry",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -59,6 +61,14 @@ const GatePassApprovedVars = z
     class: z.string().min(1),
     collector: z.string().min(1),
     time: z.string().min(1),
+// X01-T10 — no `reason`/`decision_note` var (lesson 10: never notify the
+// leave's own reason, it may hold health details).
+const StudentLeaveDecidedVars = z
+  .object({
+    student: z.string().min(1),
+    from: z.string().min(1),
+    to: z.string().min(1),
+    decision: z.string().min(1),
     school: z.string().min(1),
   })
   .strict();
@@ -72,6 +82,8 @@ const FeeReminderVars = z
     due_on: z.string().min(1),
     school: z.string().min(1),
   })
+const DiaryEntryVars = z
+  .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
   .strict();
 
 export interface TemplateDef<V> {
@@ -177,6 +189,25 @@ export const NOTIFICATION_TEMPLATES = {
       lang === "hi"
         ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${v.due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
         : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${v.due_on}). Please pay at the school office. -${v.school}`,
+  student_leave_decided: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: StudentLeaveDecidedVars,
+    title: (lang) => (lang === "hi" ? "अवकाश निर्णय" : "Leave decision"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.student} का अवकाश (${v.from} से ${v.to}) ${v.decision} कर दिया गया है। -${v.school}`
+        : `${v.student}'s leave (${v.from} to ${v.to}) has been ${v.decision}. -${v.school}`,
+  }),
+  diary_entry: def({
+    channels: ["in_app"],
+    category: "academic",
+    varsSchema: DiaryEntryVars,
+    title: (lang) => (lang === "hi" ? "नई डायरी प्रविष्टि" : "New diary entry"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.section} (${v.subject}): ${v.excerpt}`
+        : `${v.section} (${v.subject}): ${v.excerpt}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

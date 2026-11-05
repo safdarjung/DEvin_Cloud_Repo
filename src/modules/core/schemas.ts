@@ -171,6 +171,9 @@ export const InstitutionSettingsSchema = z
         email: z.boolean().optional(),
         sms: z.boolean().optional(),
         whatsapp: z.boolean().optional(),
+        ptm: z.boolean().optional(),
+        student_leave: z.boolean().optional(),
+        diary: z.boolean().optional(),
         scheduled_reports: z.boolean().optional(),
         ai_teacher: z.boolean().optional(),
         ai_student: z.boolean().optional(),
@@ -336,6 +339,8 @@ export const SetModuleEnabledSchema = z
   .object({
     key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "whatsapp", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows", "library"]),
     key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "visitors", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
+    // ptm/student_leave/diary added alongside OPTIONAL_MODULE_KEYS (lib/modules/catalog.ts) — X01-T11 needed core.module.set({key:"diary"}) and found this enum hadn't grown with the catalog.
+    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "ptm", "student_leave", "diary", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
     enabled: z.boolean(),
   })
   .strict();

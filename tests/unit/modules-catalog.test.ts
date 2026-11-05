@@ -78,6 +78,17 @@ describe('modules-catalog', () => {
         expect(entry.description.length).toBeLessThanOrEqual(160);
       }
     });
+
+    it('includes student_leave and diary modules', () => {
+      expect(MODULES).toHaveProperty('student_leave');
+      expect(MODULES).toHaveProperty('diary');
+      expect(MODULES.student_leave.category).toBe('Communication');
+      expect(MODULES.diary.category).toBe('Communication');
+      expect(MODULES.student_leave.default).toBe(true);
+      expect(MODULES.diary.default).toBe(true);
+      expect((MODULES.student_leave as Record<string, unknown>).requires).toBeUndefined();
+      expect((MODULES.diary as Record<string, unknown>).requires).toBeUndefined();
+    });
   });
 
   describe('isModuleEnabled', () => {
@@ -187,6 +198,14 @@ describe('modules-catalog', () => {
     it('{modules: {exam_seating: true}} parses InstitutionSettingsSchema', () => {
       const settings = { ...DEFAULT_INSTITUTION_SETTINGS, modules: { exam_seating: true } };
       expect(InstitutionSettingsSchema.safeParse(settings).success).toBe(true);
+    it('parses {modules: {diary: false}} and returns false for diary', () => {
+      const ctx = { institution: { settings: { modules: { diary: false } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'diary')).toBe(false);
+    });
+
+    it('returns default true for student_leave when not in settings', () => {
+      const ctx = { institution: { settings: { modules: {} } } };
+      expect(isModuleEnabled(ctx as TestContext, 'student_leave')).toBe(true);
     });
   });
 

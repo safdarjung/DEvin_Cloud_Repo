@@ -16,6 +16,9 @@ export type JobType =
   | "finance.fee_reminder"
   | "insights.detect";
   | "forecast.run";
+  | "notify.student_leave_decided"
+  | "notify.diary_entry"
+  | "finance.generate_term_invoices";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 

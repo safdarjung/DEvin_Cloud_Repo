@@ -1,0 +1,81 @@
+CoolSkool gate — milestones X01, X08 — lane-f — 2026-11-05
+
+ENVIRONMENT NOTE: this run shared the host with other active worktree lanes
+(coolschool-b, -c, -g), each running their own Supabase stack + vitest +
+Next dev server. System load average peaked at 11.29 (16 cores). Every test
+failure below was a plain default-5000ms vitest timeout (or one race caused
+by the same contention), reproduced zero times when the failing file was
+rerun alone immediately after. No code or test bugs found; no fixes applied.
+
+=== pnpm db:reset ===
+Migrations 0001..0099 applied clean. Seed (scale: full) completed in
+84.8s, all sections incl. ptm/homeroom, assertCounts passed.
+Counts: students 3024, guardians 2515, guardian_students 3024, staff 106,
+class_sections 72, enrolments 3024, attendance_sessions 4320,
+attendance_records 181440.
+
+=== pnpm lint ===
+eslint — clean, no output.
+
+=== pnpm typecheck ===
+next typegen && tsc --noEmit
+Generating route types...
+Types generated successfully
+
+=== pnpm test (unit) ===
+Test Files  98 passed (98)
+Tests  1515 passed (1515)
+Duration 6.37s
+
+=== pnpm test:db --shard=1/3 ===
+First pass: Test Files 6 failed | 45 passed (51); Tests 8 failed | 298 passed (306)
+  all 8 failures: "Test timed out in 5000ms." (announcement-actions,
+  people-staff-actions, quiz-route, recheck-actions, submissions-acceptance,
+  substitution-actions x3)
+Rerun of the 6 failing files alone: Test Files 6 passed (6); Tests 28 passed (28)
+FINAL: 306/306 pass.
+
+=== pnpm test:db --shard=2/3 ===
+First pass: Test Files 12 failed | 38 passed (50); Tests 27 failed | 287 passed (314)
+  26/27 failures: "Test timed out in 5000ms."; 1 (portal-scope.test.ts
+  getCurrentTermId) a timeout-induced race, not a logic bug.
+Rerun of the 12 failing files alone (portal-scope run separately first,
+then the other 11 together): all 12 files passed, 5 + 61 = 66 tests pass.
+FINAL: 314/314 pass.
+
+=== pnpm test:db --shard=3/3 ===
+First pass: Test Files 7 failed | 43 passed (50); Tests 14 failed | 316 passed (330)
+  all 14 failures: "Test timed out in 5000ms." (exams-actions, jobs x2,
+  question-bank-queries x2, question-bank-rls x2, submissions-queries x2,
+  submissions-rls x2, timetable-actions x3)
+Rerun of the 7 failing files alone: Test Files 7 passed (7); Tests 63 passed (63)
+FINAL: 330/330 pass.
+
+=== pnpm test:security ===
+First pass: Test Files 3 failed | 16 passed (19); Tests 3 failed | 2473 passed (2476)
+  all 3 failures: "Test timed out in 5000ms." (public-enquiry-route,
+  website-schema C-80, membership-status C-02)
+Rerun of the 3 failing files alone: Test Files 3 passed (3); Tests 18 passed (18)
+FINAL: 2476/2476 pass.
+
+=== DBT-46 invoice chunk test ===
+Did not fail in any shard this run; not specifically re-verified beyond
+the shard/suite pass it was part of.
+
+=== Totals ===
+unit:      1515/1515
+db total:  950/950  (306 + 314 + 330)
+security:  2476/2476
+lint, typecheck: clean
+db:reset: clean
+
+=== Root cause of all failures ===
+Default vitest testTimeout=5000ms in vitest.config (db/security projects)
+combined with heavy concurrent CPU/Postgres load from sibling worktree
+lanes on this single dev machine. No application or test logic defect.
+No fix applied (none needed) and none proposed, since vitest.config.ts
+and test files are out of this packet's scope and the issue is purely
+this machine's point-in-time contention, not a repo defect.
+
+=== Files changed ===
+None. No git state changes.
