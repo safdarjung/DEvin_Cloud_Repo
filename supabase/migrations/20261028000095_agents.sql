@@ -100,7 +100,7 @@ create table public.agent_runs (
   constraint agent_runs_finished_at_check
     check ((status in ('done', 'failed', 'rejected')) = (finished_at is not null)),
   constraint agent_runs_rejected_decided_check
-    check (status <> 'rejected' or decided_by is not null)
+    check (status <> 'rejected' or (decided_by is not null and decided_at is not null))
 );
 
 create index agent_runs_institution_created_idx on public.agent_runs (institution_id, created_at desc);
