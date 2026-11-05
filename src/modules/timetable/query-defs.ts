@@ -6,7 +6,7 @@
 import { z } from "zod";
 import { defineQuery } from "@/lib/actions/define-query";
 import { uuid } from "@/lib/schemas/common";
-import { CoverNeededSchema, ForSectionSchema, ForStudentSchema, ForTeacherSchema, SubstitutionCandidatesSchema, SubstitutionsSchema, VersionQuerySchema } from "./schemas";
+import { CoverNeededSchema, ForSectionSchema, ForStudentSchema, ForTeacherSchema, SubstitutionCandidatesSchema, SubstitutionsSchema, SuggestFillSchema, VersionQuerySchema } from "./schemas";
 import {
   timetableConflicts,
   timetableForSection,
@@ -17,6 +17,7 @@ import {
   timetableTodayFor,
 } from "./queries";
 import { timetableCoverNeeded, timetableSubstitutionCandidates, timetableSubstitutions } from "./substitution.queries";
+import { suggestTimetableFill } from "./suggest.queries";
 
 export const timetableForSectionQuery = defineQuery({
   name: "timetable.forSection",
@@ -97,4 +98,13 @@ export const timetableSubstitutionsQuery = defineQuery({
   schema: SubstitutionsSchema,
   permission: "timetable.read",
   handler: (input, ctx) => timetableSubstitutions(ctx, input.date),
+});
+
+// M25-T8: timetable.suggest (read-only fill_v1 proposals for a draft version)
+export const timetableSuggestQuery = defineQuery({
+  name: "timetable.suggest",
+  module: "timetable",
+  schema: SuggestFillSchema,
+  permission: "timetable.manage",
+  handler: (input, ctx) => suggestTimetableFill(ctx, input),
 });

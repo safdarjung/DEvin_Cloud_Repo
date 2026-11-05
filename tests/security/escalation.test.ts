@@ -78,6 +78,20 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "exam.recheck.review": { permission: "exam.recheck.review", input: () => ({ requestId: U() }) },
   "exam.recheck.decide": { permission: "exam.recheck.decide", input: () => ({ requestId: U(), decision: "reject" }) },
   "exam.remark.save": { permission: "exam.marks.enter", input: () => ({ resultId: U(), remark: "Probe remark." }) },
+  "feePlans.lateFeeRule.upsert": {
+    permission: "finance.plan.manage",
+    input: () => ({ feeStructureId: U(), kind: "flat", amount: 100, cap: null }),
+  },
+  "feePlans.instalments.set": {
+    permission: "finance.plan.manage",
+    input: () => ({
+      invoiceId: U(),
+      parts: [
+        { dueOn: "2026-11-10", amount: 100 },
+        { dueOn: "2026-12-10", amount: 100 },
+      ],
+    }),
+  },
   "finance.structure.upsert": {
     permission: "finance.structure.manage",
     input: () => ({

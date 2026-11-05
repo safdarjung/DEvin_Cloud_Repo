@@ -56,6 +56,8 @@ export interface RunnerPorts {
   dispatch(job: JobRow): Promise<void>;
   /** M15-T8: enqueues due `report.generate` jobs (`public.enqueue_due_reports`). */
   enqueueDueReports(): Promise<number>;
+  /** X04-T8: enqueues due `fee_plans.late_fees` jobs (`public.enqueue_due_late_fees`). */
+  enqueueDueLateFees(): Promise<number>;
   now(): number;
 }
 
@@ -154,6 +156,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
       if (error) throw new Error(error.message);
       return Number(data);
     },
+    async enqueueDueLateFees() {
+      const { data, error } = await admin.rpc("enqueue_due_late_fees");
+      if (error) throw new Error(error.message);
+      return Number(data);
+    },
     now: () => Date.now(),
   };
 }
@@ -180,6 +187,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] report sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.enqueueDueLateFees();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] late-fee sweep failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

@@ -1343,6 +1343,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"invoice_instalments": {
+                  Row: {
+                    "amount": number,"created_at": string,"created_by": string | null,"due_on": string,"id": string,"institution_id": string,"invoice_id": string,"seq": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"created_by"?: string | null,"due_on": string,"id"?: string,"institution_id": string,"invoice_id": string,"seq": number,"updated_at"?: string
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"created_by"?: string | null,"due_on"?: string,"id"?: string,"institution_id"?: string,"invoice_id"?: string,"seq"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "invoice_instalments_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_instalments_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoice_instalments_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"invoice_lines": {
                   Row: {
                     "amount": number,"concession_amount": number,"created_at": string,"description": string,"head": string,"id": string,"institution_id": string,"invoice_id": string
@@ -1424,6 +1456,76 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"late_fee_charges": {
+                  Row: {
+                    "amount": number,"charge_date": string,"created_at": string,"days_late": number,"id": string,"institution_id": string,"invoice_id": string,"invoice_line_id": string,"rule_id": string,"unit_seq": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"charge_date": string,"created_at"?: string,"days_late": number,"id"?: string,"institution_id": string,"invoice_id": string,"invoice_line_id": string,"rule_id": string,"unit_seq": number
+                  }
+                  Update: {
+                    "amount"?: number,"charge_date"?: string,"created_at"?: string,"days_late"?: number,"id"?: string,"institution_id"?: string,"invoice_id"?: string,"invoice_line_id"?: string,"rule_id"?: string,"unit_seq"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "late_fee_charges_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "late_fee_charges_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "late_fee_charges_invoice_line_id_fkey"
+      columns: ["invoice_line_id"]
+isOneToOne: true
+      referencedRelation: "invoice_lines"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "late_fee_charges_rule_id_fkey"
+      columns: ["rule_id"]
+isOneToOne: false
+      referencedRelation: "late_fee_rules"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"late_fee_rules": {
+                  Row: {
+                    "amount": number,"cap": number | null,"created_at": string,"fee_structure_id": string,"grace_days": number,"id": string,"institution_id": string,"is_active": boolean,"kind": string,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"cap"?: number | null,"created_at"?: string,"fee_structure_id": string,"grace_days"?: number,"id"?: string,"institution_id": string,"is_active"?: boolean,"kind": string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "amount"?: number,"cap"?: number | null,"created_at"?: string,"fee_structure_id"?: string,"grace_days"?: number,"id"?: string,"institution_id"?: string,"is_active"?: boolean,"kind"?: string,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "late_fee_rules_fee_structure_id_fkey"
+      columns: ["fee_structure_id"]
+isOneToOne: true
+      referencedRelation: "fee_structures"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "late_fee_rules_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "late_fee_rules_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -2889,6 +2991,9 @@ isOneToOne: true
 "add_enquiry_note":
 { Args: { "p_enquiry_id": string,"p_institution_id": string,"p_text": string }; Returns: Json
                            },
+"apply_late_fees":
+{ Args: { "p_institution_id": string }; Returns: Json
+                           },
 "apply_recheck_decision":
 { Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
                            },
@@ -3001,6 +3106,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"enqueue_due_late_fees":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "enqueue_due_reports":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -3065,6 +3173,11 @@ isOneToOne: true
               "invitation_id": string,"token": string
             }[]
                            },
+"invoice_instalment_status":
+{ Args: { "p_institution_id": string,"p_invoice_id"?: string,"p_term_id"?: string }; Returns: {
+              "amount": number,"due_on": string,"invoice_id": string,"paid_amount": number,"seq": number,"status": string
+            }[]
+                           },
 "issue_library_loan":
 { Args: { "p_copy_id": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: Json
                            },
@@ -3120,6 +3233,11 @@ isOneToOne: true
 "ledger_totals":
 { Args: { "p_account"?: string,"p_from": string,"p_institution_id": string,"p_to": string }; Returns: {
               "total_credit": number,"total_debit": number
+            }[]
+                           },
+"ledger_voucher_lines":
+{ Args: { "p_from": string,"p_institution_id": string,"p_receipts_only"?: boolean,"p_to": string }; Returns: {
+              "account": string,"admission_no": string,"charge_head": string,"credit": number,"debit": number,"entry_date": string,"entry_id": string,"memo": string,"voucher_no": string,"voucher_type": string
             }[]
                            },
 "link_guardian":
@@ -3242,6 +3360,9 @@ isOneToOne: true
                            },
 "revoke_invitation":
 { Args: { "p_invitation_id": string }; Returns: undefined
+                           },
+"set_invoice_instalments":
+{ Args: { "p_invoice_id": string,"p_parts": Json }; Returns: number
                            },
 "staff_check_in":
 { Args: { "p_institution_id": string }; Returns: {

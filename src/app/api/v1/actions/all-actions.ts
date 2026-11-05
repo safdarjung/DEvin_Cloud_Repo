@@ -14,6 +14,7 @@ import "@/modules/core/actions";
 import "@/modules/documents/actions";
 import "@/modules/exams/actions";
 import "@/modules/facilities/actions";
+import "@/modules/fee-plans/actions";
 import "@/modules/finance/actions";
 import "@/modules/finance/online-payments.actions";
 import "@/modules/finance/reminders.actions";

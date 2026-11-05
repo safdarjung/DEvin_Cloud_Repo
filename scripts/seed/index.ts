@@ -10,6 +10,7 @@ import { run as runAttendance } from "./sections/attendance.ts";
 import { run as runCore } from "./sections/core.ts";
 import { run as runCurriculum } from "./sections/curriculum.ts";
 import { run as runExams } from "./sections/exams.ts";
+import { run as runFeePlans } from "./sections/fee-plans.ts";
 import { run as runFinance } from "./sections/finance.ts";
 import { run as runLibrary } from "./sections/library.ts";
 import { run as runNotifications } from "./sections/notifications.ts";
@@ -31,6 +32,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "attendance", run: runAttendance },
   { name: "admissions", run: runAdmissions },
   { name: "finance", run: runFinance },
+  // X04-T10: needs finance.ts's fee_structures/invoices.
+  { name: "fee-plans", run: runFeePlans },
   { name: "exams", run: runExams },
   { name: "website", run: runWebsite },
   // X03-T8: reads students/staff ids every earlier section produced.

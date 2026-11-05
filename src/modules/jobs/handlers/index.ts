@@ -1,3 +1,4 @@
+import { lateFees } from "./fee_plans.late_fees.ts";
 import { feeReminder } from "./finance.fee_reminder.ts";
 import { generateTermInvoices } from "./finance.generate_term_invoices.ts";
 import { notifyAnnouncement } from "./notify.announcement.ts";
@@ -10,6 +11,7 @@ import { generateReport } from "./report.generate.ts";
 
 export {
   generateReport,
+  lateFees,
   feeReminder,
   generateTermInvoices,
   notifyAnnouncement,

@@ -12,7 +12,8 @@ export type JobType =
   | "notify.announcement"
   | "finance.generate_term_invoices"
   | "report.generate"
-  | "finance.fee_reminder";
+  | "finance.fee_reminder"
+  | "fee_plans.late_fees";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 
