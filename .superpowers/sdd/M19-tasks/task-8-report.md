@@ -1,0 +1,11 @@
+Packet: M19-T8 Detector: attendance
+Files changed: src/modules/insights/detectors/attendance.ts (new); tests/unit/insights-detector-attendance.test.ts (new)
+Behavior implemented: `AttendanceSourceRow` (student_id `string | null`; generated types say `string` but section rows return null), pure `detectAttendance(rows, asOf)` with section_drop / student_drop rules, severities, confidences, titles, patterns and dates exactly per rulings; `attendanceDetector` (key/module `attendance`, version 1) calls `insight_src_attendance` with `p_student_max_recent_pct: 75`, paged with `.range()` in 1000s until a short page, with `.order(level, class_section_id, student_id)` for stable paging (the SQL has no ORDER BY). Relative `.ts` value import of `../signals.ts`.
+Tests run: `pnpm test tests/unit/insights-detector-attendance.test.ts` -> RED first (module missing), then 19/19 passed; `pnpm lint` -> clean; `pnpm typecheck` -> clean for my files.
+Tests not run and why: no DB tests (task says no DB commands; source SQL is T4's, already tested there).
+Limitations / honesty label: none (real detection, no badge per rulings). Rates use 1 dp `pct()`; drop = rounded(base - recent) so displayed numbers and thresholds agree.
+Security / integration risks: none new. No names read; student titles/patterns carry only the section label (test asserts no UUIDs in text). `entity_label` sliced to 60 so a long section label cannot break the whole `record_insights` batch (DB check <= 60). Source errors rethrown as-is (handler T14 logs only the key).
+Follow-ups: T14 registers `attendanceDetector` in DETECTORS.
+New dependencies (justification): none
+Assumptions made: student_drop evidence is not specified, so it reuses the section_drop four items (Last 7 days %, Previous 4 weeks %, Drop pts, School days (last 7)). Units: `%`, `pts`, none for days. Rows with a 0 denominator (pct null) are skipped. A `student` row without student_id is skipped. recommended_actions are 2 plain strings per signal, written by me. Extra test: run() paging + error rethrow via a fake client.
+Other agents' errors seen: `pnpm typecheck` fails only in tests/unit/insights-detector-academics.test.ts (T9 in progress: marks/submissions modules not yet written). Not touched.

@@ -40,6 +40,7 @@ Assumptions: one institution per demo; roles fixed for the demo; superadmin is a
 | F-STU-09 | Health, counselling, discipline records | Welfare | 3 | planned | P3 | F-STU-01 | people | conf | — |
 | F-STU-10 | Alumni | Community | 4 | planned | P3 | F-STU-07 | people | int | — |
 | F-STU-11 | Student portal (own attendance, results, assignments) | Older students | 2 | limited (role + RLS, no dedicated UI) | P1 | F-STU-01 | people | conf | C-14 |
+| F-STU-12 | Certificates (bonafide, character, TC) with serial numbers + bulk student ID cards | Official records | 2 | limited (API + HTML print; no logo, no digital signature, English only) | P2 | F-STU-07, F-STU-08 | certificates | conf | tests/db/certificates-acceptance.test.ts |
 
 Assumptions: phone is the guardian's primary identity; one guardian record per phone per institution.
 
@@ -62,10 +63,12 @@ Assumptions: phone is the guardian's primary identity; one guardian record per p
 | F-COM-01 | In-app notifications | Core channel | 1 | impl | P0 | F-IDN-03 | notifications | int | C-30 |
 | F-COM-02 | SMS and email delivery via adapters | Reach parents | 1 | impl (email live when `RESEND_API_KEY` set; SMS sim) | P0 | F-COM-01 | notifications | conf | C-31 |
 | F-COM-03 | Circulars/notices to classes, PTM scheduling, diary notes | Daily communication | 2 | planned | P2 | F-COM-01 | notifications | int | — |
-| F-COM-04 | WhatsApp channel, bilingual templates | Reach | 2 | planned | P2 | F-COM-02 | notifications | conf | — |
+| F-COM-04 | WhatsApp channel (MSG91 approved templates, en/hi; live when MSG91_AUTH_KEY + MSG91_WA_NUMBER set) | Reach | 2 | sim | P2 | F-COM-02 | notifications | conf | tests/db/whatsapp-acceptance.test.ts |
 | F-COM-05 | Message log with simulated/sent/failed badge per delivery row | Demo honesty | 1 | impl | P0 | F-COM-02 | notifications | conf | C-31 |
+| F-COM-06 | PTM slot booking and parent surveys (module `ptm`, off by default) | Parent engagement | 2 | limited | P2 | F-COM-01 | ptm | conf | tests/db/ptm-acceptance.test.ts |
+| F-COM-07 | Class diary: daily homework/notes per section, parent acknowledgement | Daily communication | 2 | impl (API; UI in Workstream D) | P1 | F-COM-01 | diary | int | tests/db/x01-acceptance.test.ts |
 
-Assumptions: website blocks are a fixed set of eight; one website per institution.
+Assumptions: website blocks are a fixed set of eight; one website per institution. PTM feature is `limited`: no reminders; aggregate results only; anonymous responses suppressed below 3.
 
 ### D. Academics, attendance, examinations
 
@@ -84,6 +87,7 @@ Assumptions: website blocks are a fixed set of eight; one website per institutio
 | F-ATT-03 | Absence → guardian notification | Parent value | 1 | impl (SMS sim) | P0 | F-ATT-01, F-COM-01 | attendance | conf | J-06 |
 | F-ATT-04 | Period-wise attendance, leave applications, biometric/RFID | Scale | 2 | planned | P2 | F-ATT-01 | attendance | conf | — |
 | F-ATT-05 | Attendance analytics, 75% rule alerts | Compliance | 1 | impl (summary) | P0 | F-ATT-01 | attendance | int | J-13 |
+| F-ATT-06 | Student leave requests: guardian applies, class teacher approves, attendance pre-marked `OL` | Daily operations | 2 | impl (API; UI in Workstream D) | P1 | F-ATT-01, F-COM-01 | student-leave | conf | tests/db/x01-acceptance.test.ts |
 | F-EXM-01 | Exam setup (type, term, papers per section/subject, max/pass marks) | Structure | 1 | impl | P0 | F-ACA-03 | exams | conf | J-09 |
 | F-EXM-02 | Marks entry (versioned), absent flag | Core | 1 | impl | P0 | F-EXM-01 | exams | conf | J-09 |
 | F-EXM-03 | Arithmetic verification before publish | Integrity | 1 | impl | P0 | F-EXM-02 | exams | conf | C-40 |
@@ -95,6 +99,7 @@ Assumptions: website blocks are a fixed set of eight; one website per institutio
 | F-EXM-09 | Printable report cards, board-format marksheets | Compliance | 2 | limited (HTML print view; no PDF/board format) | P2 | F-EXM-05 | exams | conf | — |
 | F-EXM-10 | Question bank (create, list, filter by grade/subject/difficulty) | Learning preparation | 2 | limited (API only) | P2 | F-ACA-04 | question-bank | int | — |
 | F-EXM-11 | Exam schedule and conflict detection (dates, times, rooms, overlaps) | Planning | 2 | limited (API only) | P2 | F-EXM-01, F-ACA-02 | exams | int | — |
+| F-EXM-12 | Exam seating plan (interleaved, versioned) + room seating charts + admit cards (HTML print) | Exam-day logistics, anti-copying | 2 | limited (API + HTML print; no UI; module exam_seating, default off) | P2 | F-EXM-11 | exam-seating | conf | — |
 
 Assumptions: daily single-mark attendance; one exam per term in the seed; CBSE 9-point grading default.
 
@@ -130,10 +135,12 @@ Assumptions: financial year April–March; receipts numbered per financial year.
 | F-AI-06 | Benchmark harness (local vs cloud; latency, tokens/s, JSON validity, cost) | Sizing methodology | 1 | impl (runs; no claims) | P1 | F-AI-02 | ai | int | C-66 |
 | F-AI-07 | Lesson plans, worksheets, remark drafting | Teacher tools | 2 | planned | P2 | F-AI-04 | ai | int | — |
 | F-AI-08 | Student tutoring with guardrails | Learning | 3 | planned | P3 | F-AI-01 | ai | conf | — |
+| F-INT-00 | Deterministic insights: attendance/marks/submissions/fees/admissions/workload/rooms | Early warning | 1 | limited (detection running; review UI M25) | P0 | F-ATT-01, F-EXM-02, F-ACA-05, F-FIN-02, F-ADM-01, F-ACA-02, F-ACA-07 | insights | int | tests/db/insights-acceptance.test.ts |
 | F-INT-01 | Principal dashboard (attendance, fees, admissions, exams) | Decision view | 1 | impl | P0 | F-ATT-05, F-FIN-07, F-ADM-06, F-EXM-04 | core | conf | J-13 |
 | F-INT-02 | School Intelligence Center: early warning, cohort analytics | Outcomes | 3 | planned | P3 | F-INT-01 | core | conf | — |
 | F-INT-03 | Natural-language questions over school data (policy-bounded) | Access | 3 | planned | P3 | F-AI-01, F-INT-01 | ai | conf | — |
 | F-INT-04 | Scheduled reports (attendance, finance defaulters) with cron and in-app delivery | Automation, export | 1 | impl | P1 | F-ATT-05, F-FIN-07 | reports | int | — |
+| F-INT-05 | Fee collection and attendance rate forecasting (baseline: moving average + seasonal naive, backtested MAPE shown) | Principal insight | 1 | limited | P1 | F-FIN-04, F-ATT-01 | forecasts | int | — |
 
 Assumptions: the only AI prompt in the demo is built from curriculum text, never from student records.
 
@@ -141,10 +148,11 @@ Assumptions: the only AI prompt in the demo is built from curriculum text, never
 
 | ID | Feature | Value | Phase | Demo | Pri | Deps | Owner | Sens | Accept |
 |---|---|---|---|---|---|---|---|---|---|
-| F-SVC-01 | Library | Operations | 2 | planned | P2 | F-STU-01 | library (reserved) | int | — |
+| F-SVC-01 | Library: catalogue with accession numbers, issue/renew/return, borrowing limits, overdue list, fines on the fee invoice | Operations | 2 | limited | P2 | F-STU-01, F-FIN-01 | library | int | tests/db/library-acceptance.test.ts |
 | F-SVC-02 | Transport routes, stops, assignments | Operations, safety | 2 | limited | P2 | F-STU-01 | transport | conf | — |
 | F-SVC-03 | Inventory and assets | Operations | 2 | planned | P3 | — | inventory (reserved) | int | — |
-| F-SVC-04 | Hostel, canteen, visitor management | Campus | 3 | planned | P3 | F-STU-01 | campus (reserved) | conf | — |
+| F-SVC-04 | Hostel, canteen | Campus | 3 | planned | P3 | F-STU-01 | campus (reserved) | conf | — |
+| F-SVC-06 | Visitor log, gate pass, authorized pickup | Safety, operations | 2 | limited | P2 | F-STU-01 | visitors | conf | tests/db/visitors-acceptance.test.ts |
 | F-SVC-05 | Device registry, IoT attendance | Automation | 5 | planned | P3 | F-ATT-04 | campus (reserved) | conf | — |
 
 ### H. Commercial platform and hosting

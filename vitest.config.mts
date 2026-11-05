@@ -23,6 +23,8 @@ function loadDotEnvLocal() {
 loadDotEnvLocal();
 // M17-T1: tests never send real mail — stub it back in per test with vi.stubEnv.
 delete process.env.RESEND_API_KEY;
+// X05-T2: tests never send real WhatsApp messages — stub it back in per test.
+delete process.env.MSG91_AUTH_KEY;
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],

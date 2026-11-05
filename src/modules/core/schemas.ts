@@ -4,6 +4,7 @@
 import { z } from "zod";
 // Relative + .ts: the seed scripts (plain node, no path alias) import this file.
 import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
+import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
 // checks live in create_institution (SQL); this only validates shape.
@@ -153,19 +154,27 @@ export const InstitutionSettingsSchema = z
         lesson_plans: z.boolean().optional(),
         question_bank: z.boolean().optional(),
         exams: z.boolean().optional(),
+        exam_seating: z.boolean().optional(),
         admissions: z.boolean().optional(),
         website: z.boolean().optional(),
         staff_attendance: z.boolean().optional(),
         substitution: z.boolean().optional(),
         student_lifecycle: z.boolean().optional(),
+        certificates: z.boolean().optional(),
         finance_plus: z.boolean().optional(),
         online_payments: z.boolean().optional(),
         facilities: z.boolean().optional(),
         transport: z.boolean().optional(),
         calendar: z.boolean().optional(),
+        library: z.boolean().optional(),
+        visitors: z.boolean().optional(),
         announcements: z.boolean().optional(),
         email: z.boolean().optional(),
         sms: z.boolean().optional(),
+        whatsapp: z.boolean().optional(),
+        ptm: z.boolean().optional(),
+        student_leave: z.boolean().optional(),
+        diary: z.boolean().optional(),
         scheduled_reports: z.boolean().optional(),
         ai_teacher: z.boolean().optional(),
         ai_student: z.boolean().optional(),
@@ -175,6 +184,15 @@ export const InstitutionSettingsSchema = z
         forecasts: z.boolean().optional(),
         agents: z.boolean().optional(),
         workflows: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    library: z
+      .object({
+        loan_days: z.number().int().min(1).max(90),
+        fine_per_day: z.number().min(0).max(100).multipleOf(0.01),
+        max_loans_student: z.number().int().min(1).max(10),
+        max_loans_staff: z.number().int().min(1).max(20),
       })
       .strict()
       .optional(),
@@ -320,7 +338,8 @@ export type SetMemberStatusInput = z.infer<typeof SetMemberStatusSchema>;
 // MOD-T4 — core.module.set action input.
 export const SetModuleEnabledSchema = z
   .object({
-    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
+    // Derived from the catalog so this enum can never drift from it again (it drifted in 3 lanes).
+    key: z.enum(MODULE_KEYS),
     enabled: z.boolean(),
   })
   .strict();

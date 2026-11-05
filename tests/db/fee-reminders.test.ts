@@ -149,7 +149,7 @@ describe("finance.fee_reminder handler", () => {
     expect(notifications[0].recipient_user_id).toBe(inst.users.guardian.id);
 
     const attempts = await sql`select channel from public.delivery_attempts where notification_id = ${notifications[0].id}::uuid`;
-    expect(attempts.map((a) => a.channel).sort()).toEqual(["email", "in_app", "sms"]);
+    expect(attempts.map((a) => a.channel).sort()).toEqual(["email", "in_app", "sms", "whatsapp"]); // X05: every sms template also sends whatsapp (module on in fixtures)
 
     const reminders = await sql`select * from public.fee_reminders where invoice_id = ${invoiceId}::uuid`;
     expect(reminders).toHaveLength(1);

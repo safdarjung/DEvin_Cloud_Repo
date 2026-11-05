@@ -3,7 +3,7 @@
 // a handler can never render free-form payload text into a message body.
 import { z } from "zod";
 
-export type NotificationChannel = "in_app" | "sms" | "email";
+export type NotificationChannel = "in_app" | "sms" | "email" | "whatsapp";
 export type Lang = "en" | "hi";
 
 // M06-T3 — `notification_preferences.category` check (0068). `createNotification`
@@ -17,8 +17,11 @@ export const NOTIFICATION_TYPES = [
   "enquiry_received",
   "enrolment_welcome",
   "announcement",
+  "gate_pass_approved",
   "report_ready",
   "fee_reminder",
+  "student_leave_decided",
+  "diary_entry",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -51,6 +54,29 @@ const EnrolmentWelcomeVars = z
 
 const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
 
+// X07-T7 — gate pass approval notice (rulings "Notification").
+const GatePassApprovedVars = z
+  .object({
+    student: z.string().min(1),
+    class: z.string().min(1),
+    collector: z.string().min(1),
+    time: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
+
+// X01-T10 — no `reason`/`decision_note` var (lesson 10: never notify the
+// leave's own reason, it may hold health details).
+const StudentLeaveDecidedVars = z
+  .object({
+    student: z.string().min(1),
+    from: z.string().min(1),
+    to: z.string().min(1),
+    decision: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
+
 const ReportReadyVars = z.object({ report: z.string().min(1).max(80), date: z.string().min(1).max(20) }).strict();
 const FeeReminderVars = z
   .object({
@@ -60,6 +86,10 @@ const FeeReminderVars = z
     due_on: z.string().min(1),
     school: z.string().min(1),
   })
+  .strict();
+
+const DiaryEntryVars = z
+  .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
   .strict();
 
 export interface TemplateDef<V> {
@@ -80,7 +110,7 @@ function def<V>(t: TemplateDef<V>): TemplateDef<V> {
 // asserts every `NOTIFICATION_TYPES` entry has a template at runtime instead.
 export const NOTIFICATION_TEMPLATES = {
   attendance_absence: def({
-    channels: ["in_app", "sms"],
+    channels: ["in_app", "sms", "whatsapp"],
     category: "attendance",
     varsSchema: AttendanceAbsenceVars,
     title: (lang) => (lang === "hi" ? "उपस्थिति: अनुपस्थित" : "Attendance: Absent"),
@@ -90,7 +120,7 @@ export const NOTIFICATION_TEMPLATES = {
         : `Dear Parent, ${v.student} (${v.class}) is marked absent today ${v.date}. Contact the class teacher if unplanned. -${v.school}`,
   }),
   results_published: def({
-    channels: ["in_app", "sms"],
+    channels: ["in_app", "sms", "whatsapp"],
     category: "academic",
     varsSchema: ResultsPublishedVars,
     title: (lang) => (lang === "hi" ? "रिपोर्ट कार्ड प्रकाशित" : "Report card published"),
@@ -100,7 +130,7 @@ export const NOTIFICATION_TEMPLATES = {
         : `Report card of ${v.student} for ${v.exam} is now available in the parent portal. -${v.school}`,
   }),
   recheck_decided: def({
-    channels: ["in_app", "sms"],
+    channels: ["in_app", "sms", "whatsapp"],
     category: "academic",
     varsSchema: RecheckDecidedVars,
     title: (lang) => (lang === "hi" ? "रीचेक निर्णय" : "Recheck decision"),
@@ -130,11 +160,21 @@ export const NOTIFICATION_TEMPLATES = {
         : `Welcome! ${v.student} is enrolled in ${v.class}. Admission no ${v.admission_no}.`,
   }),
   announcement: def({
-    channels: ["in_app", "sms", "email"],
+    channels: ["in_app", "sms", "whatsapp", "email"],
     category: "announcement",
     varsSchema: AnnouncementVars,
     title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
     body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
+  }),
+  gate_pass_approved: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: GatePassApprovedVars,
+    title: (lang) => (lang === "hi" ? "गेट पास स्वीकृत" : "Gate pass approved"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `गेट पास: ${v.student} (${v.class}) आज स्कूल से जल्दी जा सकते हैं ${v.collector} के साथ, स्वीकृत ${v.time}। अप्रत्याशित है? अभी स्कूल को कॉल करें। -${v.school}`
+        : `Gate pass: ${v.student} (${v.class}) may leave school early today with ${v.collector}, approved ${v.time}. Not expected? Call the school now. -${v.school}`,
   }),
   report_ready: def({
     channels: ["in_app"],
@@ -147,7 +187,7 @@ export const NOTIFICATION_TEMPLATES = {
         : `${v.report} for ${v.date} is ready to download.`,
   }),
   fee_reminder: def({
-    channels: ["in_app", "sms", "email"],
+    channels: ["in_app", "sms", "whatsapp", "email"],
     category: "finance",
     varsSchema: FeeReminderVars,
     title: (lang) => (lang === "hi" ? "शुल्क अनुस्मारक" : "Fee reminder"),
@@ -156,8 +196,80 @@ export const NOTIFICATION_TEMPLATES = {
         ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${v.due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
         : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${v.due_on}). Please pay at the school office. -${v.school}`,
   }),
+  student_leave_decided: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: StudentLeaveDecidedVars,
+    title: (lang) => (lang === "hi" ? "अवकाश निर्णय" : "Leave decision"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.student} का अवकाश (${v.from} से ${v.to}) ${v.decision} कर दिया गया है। -${v.school}`
+        : `${v.student}'s leave (${v.from} to ${v.to}) has been ${v.decision}. -${v.school}`,
+  }),
+  diary_entry: def({
+    channels: ["in_app"],
+    category: "academic",
+    varsSchema: DiaryEntryVars,
+    title: (lang) => (lang === "hi" ? "नई डायरी प्रविष्टि" : "New diary entry"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.section} (${v.subject}): ${v.excerpt}`
+        : `${v.section} (${v.subject}): ${v.excerpt}`,
+  }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 
 export type VarsFor<T extends NotificationType> = (typeof NOTIFICATION_TEMPLATES)[T] extends TemplateDef<infer V>
   ? V
   : never;
+
+// X05-T2 (D42) — WhatsApp (MSG91 approved templates). Only the sms-channel
+// types get an approved WhatsApp template; `enquiry_received` (staff, in_app
+// only) and `enrolment_welcome` (handler passes only an email) do not.
+export type WhatsAppType = "attendance_absence" | "results_published" | "recheck_decided" | "announcement" | "fee_reminder";
+
+export const WHATSAPP_PARAMS: { readonly [T in WhatsAppType]: readonly (keyof VarsFor<T> & string)[] } = {
+  attendance_absence: ["student", "class", "date", "school"],
+  results_published: ["student", "exam", "school"],
+  recheck_decided: ["student", "subject", "decision", "marks", "school"],
+  announcement: ["title", "excerpt"],
+  fee_reminder: ["student", "invoice_no", "amount", "due_on", "school"],
+};
+
+const WHATSAPP_HEADING: Record<Lang, string> = { en: "School update", hi: "स्कूल अपडेट" };
+const WHATSAPP_CLOSING: Record<Lang, string> = {
+  en: "Details are in the CoolSkool app.",
+  hi: "विवरण CoolSkool ऐप में देखें।",
+};
+
+// Meta rejects a param with a newline, a tab, more than one run of spaces or
+// an empty value — collapse whitespace and fall back to "-" (rulings "Params").
+function sanitizeWhatsAppParam(value: unknown): string {
+  const cleaned = String(value).replace(/\s+/g, " ").trim().slice(0, 300);
+  return cleaned || "-";
+}
+
+function wrapWhatsAppBody(body: string, lang: Lang): string {
+  return `${WHATSAPP_HEADING[lang]}\n${body}\n\n${WHATSAPP_CLOSING[lang]}`;
+}
+
+export function whatsappMessage<T extends WhatsAppType>(
+  type: T,
+  vars: VarsFor<T>,
+  lang: Lang,
+): { template: { name: string; lang: Lang; params: string[] }; text: string } {
+  const def = NOTIFICATION_TEMPLATES[type] as TemplateDef<VarsFor<T>>;
+  const params = WHATSAPP_PARAMS[type].map((key) => sanitizeWhatsAppParam((vars as Record<string, unknown>)[key]));
+  return {
+    template: { name: `coolskool_${type}`, lang, params },
+    text: wrapWhatsAppBody(def.body(vars, lang), lang),
+  };
+}
+
+// Same wrapper, with each param key replaced by its `{{n}}` placeholder —
+// this is the text ops submits to Meta for template approval (rulings
+// "Template text"). Never starts/ends with `{{`: the heading/closing wrap.
+export function whatsappApprovalText(type: WhatsAppType, lang: Lang): string {
+  const def = NOTIFICATION_TEMPLATES[type] as TemplateDef<Record<string, unknown>>;
+  const placeholderVars = Object.fromEntries(WHATSAPP_PARAMS[type].map((key, i) => [key, `{{${i + 1}}}`]));
+  return wrapWhatsAppBody(def.body(placeholderVars, lang), lang);
+}

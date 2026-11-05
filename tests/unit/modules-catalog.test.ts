@@ -8,7 +8,7 @@ import {
   allModulesOn,
   MODULE_DISABLED_MESSAGE,
 } from '@/lib/modules/catalog';
-import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS } from '@/modules/core/schemas';
+import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS, SetModuleEnabledSchema } from '@/modules/core/schemas';
 
 type TestContext = {
   institution: {
@@ -77,6 +77,17 @@ describe('modules-catalog', () => {
         expect(entry.label.length).toBeLessThanOrEqual(40);
         expect(entry.description.length).toBeLessThanOrEqual(160);
       }
+    });
+
+    it('includes student_leave and diary modules', () => {
+      expect(MODULES).toHaveProperty('student_leave');
+      expect(MODULES).toHaveProperty('diary');
+      expect(MODULES.student_leave.category).toBe('Communication');
+      expect(MODULES.diary.category).toBe('Communication');
+      expect(MODULES.student_leave.default).toBe(true);
+      expect(MODULES.diary.default).toBe(true);
+      expect((MODULES.student_leave as Record<string, unknown>).requires).toBeUndefined();
+      expect((MODULES.diary as Record<string, unknown>).requires).toBeUndefined();
     });
   });
 
@@ -158,6 +169,46 @@ describe('modules-catalog', () => {
       const ctx = { institution: { settings: { modules: null } } };
       expect(isModuleEnabled(ctx as TestContext, 'exams')).toBe(true);
     });
+
+    it('certificates defaults to true', () => {
+      const ctx = { institution: { settings: {} } };
+      expect(isModuleEnabled(ctx as TestContext, 'certificates')).toBe(true);
+    });
+
+    it('certificates can be disabled', () => {
+      const ctx = { institution: { settings: { modules: { certificates: false } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'certificates')).toBe(false);
+    });
+
+    it('exam_seating is off by default', () => {
+      const ctx = { institution: { settings: {} } };
+      expect(isModuleEnabled(ctx as TestContext, 'exam_seating')).toBe(false);
+    });
+
+    it('exam_seating turns on when stored true', () => {
+      const ctx = { institution: { settings: { modules: { exam_seating: true } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'exam_seating')).toBe(true);
+    });
+
+    it('exam_seating is off when exams is off although stored true', () => {
+      const ctx = { institution: { settings: { modules: { exam_seating: true, exams: false } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'exam_seating')).toBe(false);
+    });
+
+    it('{modules: {exam_seating: true}} parses InstitutionSettingsSchema', () => {
+      const settings = { ...DEFAULT_INSTITUTION_SETTINGS, modules: { exam_seating: true } };
+      expect(InstitutionSettingsSchema.safeParse(settings).success).toBe(true);
+    });
+
+    it('parses {modules: {diary: false}} and returns false for diary', () => {
+      const ctx = { institution: { settings: { modules: { diary: false } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'diary')).toBe(false);
+    });
+
+    it('returns default true for student_leave when not in settings', () => {
+      const ctx = { institution: { settings: { modules: {} } } };
+      expect(isModuleEnabled(ctx as TestContext, 'student_leave')).toBe(true);
+    });
   });
 
   describe('allModulesOn', () => {
@@ -166,6 +217,10 @@ describe('modules-catalog', () => {
       for (const key of OPTIONAL_MODULE_KEYS) {
         expect(all[key]).toBe(true);
       }
+    });
+
+    it('includes certificates', () => {
+      expect(allModulesOn().certificates).toBe(true);
     });
 
     it('parses as valid InstitutionSettingsSchema.modules', () => {
@@ -192,6 +247,13 @@ describe('modules-catalog', () => {
       const settings = { ...DEFAULT_INSTITUTION_SETTINGS, modules: { exams: false } };
       const result = InstitutionSettingsSchema.safeParse(settings);
       expect(result.success).toBe(true);
+    });
+
+    it('parses { modules: { certificates: false } } and turns it off', () => {
+      const settings = { ...DEFAULT_INSTITUTION_SETTINGS, modules: { certificates: false } };
+      const result = InstitutionSettingsSchema.safeParse(settings);
+      expect(result.success).toBe(true);
+      expect(result.success && result.data.modules?.certificates).toBe(false);
     });
 
     it('rejects modules with core key', () => {
@@ -234,6 +296,15 @@ describe('modules-catalog', () => {
       };
       const result = UpdateInstitutionSettingsSchema.safeParse(update);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('SetModuleEnabledSchema', () => {
+    it('accepts every optional module key (core.module.set must cover the full catalog)', () => {
+      for (const key of OPTIONAL_MODULE_KEYS) {
+        const result = SetModuleEnabledSchema.safeParse({ key, enabled: true });
+        expect(result.success).toBe(true);
+      }
     });
   });
 

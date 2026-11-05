@@ -7,14 +7,21 @@ import { mulberry32, SEED_PRNG_SEED } from "./lib/prng.ts";
 import { run as runAcademics } from "./sections/academics.ts";
 import { run as runAdmissions } from "./sections/admissions.ts";
 import { run as runAttendance } from "./sections/attendance.ts";
+import { run as runCertificates } from "./sections/certificates.ts";
 import { run as runCore } from "./sections/core.ts";
 import { run as runCurriculum } from "./sections/curriculum.ts";
+import { run as runExamSeating } from "./sections/exam-seating.ts";
 import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
+import { run as runLibrary } from "./sections/library.ts";
+import { run as runNotifications } from "./sections/notifications.ts";
+import { run as runHomeroom } from "./sections/homeroom.ts";
 import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
+import { run as runPtm } from "./sections/ptm.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
+import { run as runVisitors } from "./sections/visitors.ts";
 import { run as runWebsite } from "./sections/website.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
@@ -30,7 +37,22 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "admissions", run: runAdmissions },
   { name: "finance", run: runFinance },
   { name: "exams", run: runExams },
+  // X06-T10: after exams (own exam/papers) and timetable (rooms) — both already earlier.
+  { name: "exam_seating", run: runExamSeating },
   { name: "website", run: runWebsite },
+  // X03-T8: reads students/staff ids every earlier section produced.
+  { name: "library", run: runLibrary },
+  // X02-T11: last — issues demo certificates for already-seeded students.
+  { name: "certificates", run: runCertificates },
+  // X07-T9: registered last — reads students/guardians/staff ids every earlier section wrote.
+  { name: "visitors", run: runVisitors },
+  // X08-T10: needs class_sections (academics), studentsBySection (people).
+  { name: "ptm", run: runPtm },
+  // X01-T12: last — needs class_sections/subject_assignments (academics),
+  // studentsBySection (people), demo logins (core).
+  { name: "homeroom", run: runHomeroom },
+  // X05-T6: last — needs core.ts's user ids and people.ts's student rows.
+  { name: "notifications", run: runNotifications },
 ];
 
 async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {

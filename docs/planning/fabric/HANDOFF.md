@@ -21,7 +21,10 @@ State on 2026-11-03 (updated after M08–M14 + M17). Read this, then root `CLAUD
 | M14 Student lifecycle (0076) | done, hosted push pending | `7e4e1cb` | `M14-tasks.md` |
 | M17 Resend email channel (no migration) | done | `3c9a7e0` | `M17-tasks.md` |
 | **MOD plug-in modules (0084, D45)** | **next** | — | `MOD-tasks.md` (planned; retrofit all of M01–M17) |
-| M12, M15, M16, M18 | planned | — | `M12/M15/M16/M18-tasks.md` |
+| M12 Finance+ (0074, 0082, 0083) | built, hosted push pending | `2162d32` | `06-backend-packets/M12-tasks.md` |
+| M15 Scheduled reports (0077) | built, hosted push pending | `b6da3ea` | `06-backend-packets/M15-tasks.md` |
+| M16 Dashboards + approvals (0078) | built, hosted push pending | `ba6e266` | `06-backend-packets/M16-tasks.md` |
+| M18 Backup/restore drill (no migration) | built | `1f83537` | `06-backend-packets/M18-tasks.md` |
 | M19–M25 (V2, renumbered 0092–0096) | planned | — | `M19..M25-tasks.md` |
 | X01–X08 extension modules (0085–0091, 0099) | planned | — | `X01..X08-tasks.md` |
 

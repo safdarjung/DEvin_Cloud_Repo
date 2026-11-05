@@ -52,6 +52,8 @@ const APP_AUTHENTICATED = [
   "app.lock_import_batch",
   "app.member_institutions",
   "app.my_class_teacher_section_ids",
+  "app.my_class_teacher_student_ids",
+  "app.my_guardian_student_ids",
   "app.my_institution_ids",
   "app.my_report_ids",
   "app.my_staff_ids",
@@ -77,6 +79,8 @@ const PUBLIC_AUTHENTICATED = [
   "public.add_enquiry_note",
   "public.apply_recheck_decision",
   "public.assign_substitution",
+  "public.book_ptm_slot",
+  "public.cancel_ptm_booking",
   "public.cancel_substitution",
   "public.close_marks_entry",
   "public.convert_enquiry",
@@ -84,7 +88,9 @@ const PUBLIC_AUTHENTICATED = [
   "public.create_institution",
   "public.create_payment_intent",
   "public.decide_application",
+  "public.decide_insight",
   "public.decide_leave",
+  "public.decide_student_leave",
   "public.enqueue_fee_reminders",
   "public.enqueue_term_invoices",
   "public.enrol_applicant",
@@ -92,27 +98,38 @@ const PUBLIC_AUTHENTICATED = [
   "public.exam_verification",
   "public.exit_student",
   "public.generate_invoice",
+  "public.generate_seating_plan",
   "public.get_public_site",
   "public.grade_submission",
   "public.invite_member",
+  "public.issue_certificate",
+  "public.issue_library_loan",
   "public.jobs_requeue",
   "public.link_guardian",
   "public.mark_period_attendance",
+  "public.my_open_surveys",
   "public.open_marks_entry",
   "public.promote_students",
+  "public.ptm_slots_for_student",
   "public.publish_announcement",
   "public.publish_exam_results",
   "public.publish_page",
   "public.publish_timetable",
   "public.record_audit_event",
+  "public.record_insight_action",
   "public.record_payment",
+  "public.renew_library_loan",
   "public.reopen_marks_entry",
   "public.request_recheck",
+  "public.return_library_loan",
   "public.revoke_invitation",
+  "public.set_insight_explanation",
   "public.staff_check_in",
   "public.start_recheck_review",
   "public.submit_assignment",
   "public.submit_attendance",
+  "public.submit_survey_response",
+  "public.survey_results",
   "public.void_payment",
 ];
 
@@ -172,7 +189,17 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
   });
 
   it("service-role-only RPCs are not callable by anon/authenticated", () => {
-    const serviceOnly = ["jobs_claim", "jobs_complete", "submit_public_enquiry", "record_online_payment"];
+    const serviceOnly = [
+      "jobs_claim",
+      "jobs_complete",
+      "submit_public_enquiry",
+      "record_online_payment",
+      // M21-T3: service-role-only series sources + sweep (rulings "Series sources").
+      "assert_forecast_window",
+      "forecast_fee_series",
+      "forecast_attendance_series",
+      "enqueue_due_forecasts",
+    ];
     for (const name of serviceOnly) {
       const row = rows.find((r) => r.schema === "public" && r.name === name)!;
       expect({ name, anon: row.anon, authenticated: row.authenticated, service_role: row.service_role }).toEqual({

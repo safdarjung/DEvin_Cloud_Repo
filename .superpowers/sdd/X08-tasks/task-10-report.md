@@ -1,0 +1,10 @@
+Packet: X08-T10 Seed section `ptm`
+Files changed: scripts/seed/sections/ptm.ts (new); scripts/seed/index.ts (+import, registered last); tests/db/seed-ptm.test.ts (new); src/lib/db/types.ts (raw db:types regen, additions only)
+Behavior implemented: One published "Term 2 PTM" event (2026-11-21, 09:00-13:00, 10-min slots, seq 0-23) covering every grade VI-X section (30 at full scale); 24 slots per section's class teacher; ~40% booked per teacher. Aarav booked seq 6 (10:00) with teacher.vi-a via guardian.one; Ananya/Ishaan left unbooked. Open anonymous "Term 1 parent feedback" survey (school audience, 4 questions), 60 respondents/responses stamped 2026-11-01. Shortcut: 60 pre-existing generic guardians (excl. guardian.one/two) are given real logins and reused, round-robin, as both survey respondents and PTM booking actors — avoids creating ~300+ new auth users per reseed; upgrade if the demo script needs per-booking guardian realism.
+Tests run: `pnpm lint` clean; `pnpm typecheck` clean; `DEMO_RESET_ALLOWED=true pnpm db:reset` → full reseed clean (ptm: 8.6s, counts assertion passed); `pnpm test:db tests/db/seed-ptm.test.ts` → 1 file, 5 passed (incl. its own reseed+determinism check); `pnpm test:db tests/db/seed-determinism.test.ts` → 1 file, 1 passed (unaffected).
+Tests not run and why: full `pnpm test:security` — not touched by this packet's files, skipped for time; other lanes' concurrent edits make a full run noisy.
+Limitations / honesty label: none new (X08 honesty label is T11's job).
+Security / integration risks: none identified — all inserts are service-role direct writes of final (published/open) state; no guard bypassed improperly (guard_ptm_events_update is UPDATE-only; guard_surveys_write's INSERT branch only validates `questions` shape).
+Follow-ups: T11 docs/honesty label; if demo script later wants real per-booking guardian identity, expand the actor pool.
+New dependencies (justification): none
+Assumptions made: BOOKING_FRACTION rounds to 10/24 (~41.7%) per section, matching "~40%"; PUBLISHED_AT/SURVEY_OPENED_AT are fixed literals (05 §8 determinism, not wall-clock).
