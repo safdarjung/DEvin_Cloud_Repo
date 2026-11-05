@@ -7,6 +7,7 @@ import "@/modules/academics/curriculum.actions";
 import "@/modules/academics/setup.actions";
 import "@/modules/academics/submissions.actions";
 import "@/modules/admissions/actions";
+import "@/modules/agents/actions";
 import "@/modules/ai/student-study.actions";
 import "@/modules/attendance/actions";
 import "@/modules/calendar/actions";

@@ -77,7 +77,10 @@ export type Permission =
   | "maintenance.request"
   | "report.schedule"
   | "library.manage"
-  | "library.read";
+  | "library.read"
+  | "agent.run"
+  | "agent.approve"
+  | "report.schedule";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -136,6 +139,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -197,6 +202,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -245,6 +252,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
     "data.export",
     "report.schedule",
     "library.manage",

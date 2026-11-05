@@ -99,6 +99,8 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | question.manage (teacher: taught grade + subject; staff-only table) | ✓ | ✓ | | | | ✓ | s | | |
 | library.manage (catalogue, issue/renew/return, waive fines) | ✓ | ✓ | ✓ | | | | | | |
 | library.read (RLS: managers all loans; other staff own; guardian own children; student own) | ✓ | ✓ | ✓ | s | s | s | s | s | s |
+| agent.run (run agents, read definitions/runs, decide own user_confirmed runs) | ✓ | ✓ | ✓ | | | | | | |
+| agent.approve (decide human_approved runs, enable/disable definitions) | ✓ | ✓ | | | | | | | |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 
