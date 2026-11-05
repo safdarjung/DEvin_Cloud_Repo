@@ -42,7 +42,8 @@ describe("Action names (C-03)", () => {
     expect(duplicates).toEqual([]);
   });
 
-  it("every defineAction name is registered after importing the dispatcher manifest", async () => {
+  // importing every module manifest exceeds the 5 s default under parallel lane load
+  it("every defineAction name is registered after importing the dispatcher manifest", { timeout: 30_000 }, async () => {
     const names = new Set<string>();
     for (const file of walk(SRC_DIR)) {
       if (file.endsWith(path.join("lib", "actions", "define-action.ts"))) continue;
@@ -75,7 +76,8 @@ describe("Query names (M02)", () => {
     expect(duplicates).toEqual([]);
   });
 
-  it("every defineQuery name is registered after importing the query manifest", async () => {
+  // importing every module manifest exceeds the 5 s default under parallel lane load
+  it("every defineQuery name is registered after importing the query manifest", { timeout: 30_000 }, async () => {
     const names = new Set<string>();
     for (const file of walk(SRC_DIR)) {
       if (file.endsWith(path.join("lib", "actions", "define-query.ts"))) continue;
@@ -91,7 +93,8 @@ describe("Query names (M02)", () => {
 });
 
 describe("Module declared on every registered action/query (MOD-T13)", () => {
-  it("every action meta has a module in MODULE_KEYS", async () => {
+  // importing every module manifest exceeds the 5 s default under parallel lane load
+  it("every action meta has a module in MODULE_KEYS", { timeout: 30_000 }, async () => {
     await import("@/app/api/v1/actions/all-actions");
     const { getActionMeta } = await import("@/lib/actions/registry");
 
@@ -100,7 +103,8 @@ describe("Module declared on every registered action/query (MOD-T13)", () => {
     }
   });
 
-  it("every query meta has a module in MODULE_KEYS", async () => {
+  // importing every module manifest exceeds the 5 s default under parallel lane load
+  it("every query meta has a module in MODULE_KEYS", { timeout: 30_000 }, async () => {
     await import("@/app/api/v1/query/all-queries");
     const { getQueryMeta } = await import("@/lib/actions/define-query");
 

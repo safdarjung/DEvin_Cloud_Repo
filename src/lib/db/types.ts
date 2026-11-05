@@ -549,6 +549,44 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"certificates": {
+                  Row: {
+                    "created_at": string,"id": string,"institution_id": string,"issued_at": string,"issued_by": string,"kind": string,"lifecycle_event_id": string | null,"serial_no": string,"snapshot": NonNullable<Json>,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"id"?: string,"institution_id": string,"issued_at"?: string,"issued_by": string,"kind": string,"lifecycle_event_id"?: string | null,"serial_no": string,"snapshot": NonNullable<Json>,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"id"?: string,"institution_id"?: string,"issued_at"?: string,"issued_by"?: string,"kind"?: string,"lifecycle_event_id"?: string | null,"serial_no"?: string,"snapshot"?: NonNullable<Json>,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "certificates_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "certificates_issued_by_fkey"
+      columns: ["issued_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "certificates_lifecycle_event_id_fkey"
+      columns: ["lifecycle_event_id"]
+isOneToOne: false
+      referencedRelation: "student_lifecycle_events"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "certificates_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"class_sections": {
                   Row: {
                     "academic_year_id": string,"capacity": number | null,"class_teacher_id": string | null,"created_at": string,"grade_id": string,"id": string,"institution_id": string,"name": string,"updated_at": string
@@ -942,6 +980,88 @@ isOneToOne: false
       columns: ["subject_id"]
 isOneToOne: false
       referencedRelation: "subjects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"exam_seating_plans": {
+                  Row: {
+                    "created_at": string,"exam_id": string,"exam_name": string,"generated_by": string | null,"id": string,"institution_id": string,"rooms": NonNullable<Json>,"seat_count": number,"section_ids": (string)[],"slot_start": string,"superseded_by": string | null,"updated_at": string,"version_no": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"exam_id": string,"exam_name": string,"generated_by"?: string | null,"id"?: string,"institution_id": string,"rooms": NonNullable<Json>,"seat_count": number,"section_ids": (string)[],"slot_start": string,"superseded_by"?: string | null,"updated_at"?: string,"version_no": number
+                  }
+                  Update: {
+                    "created_at"?: string,"exam_id"?: string,"exam_name"?: string,"generated_by"?: string | null,"id"?: string,"institution_id"?: string,"rooms"?: NonNullable<Json>,"seat_count"?: number,"section_ids"?: (string)[],"slot_start"?: string,"superseded_by"?: string | null,"updated_at"?: string,"version_no"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "exam_seating_plans_exam_id_fkey"
+      columns: ["exam_id"]
+isOneToOne: false
+      referencedRelation: "exams"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seating_plans_generated_by_fkey"
+      columns: ["generated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seating_plans_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seating_plans_superseded_by_fkey"
+      columns: ["superseded_by"]
+isOneToOne: false
+      referencedRelation: "exam_seating_plans"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"exam_seats": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"id": string,"institution_id": string,"plan_id": string,"room_id": string,"seat_no": number,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"id"?: string,"institution_id": string,"plan_id": string,"room_id": string,"seat_no": number,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"plan_id"?: string,"room_id"?: string,"seat_no"?: number,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "exam_seats_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seats_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seats_plan_id_fkey"
+      columns: ["plan_id"]
+isOneToOne: false
+      referencedRelation: "exam_seating_plans"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seats_room_id_fkey"
+      columns: ["room_id"]
+isOneToOne: false
+      referencedRelation: "rooms"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exam_seats_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
       referencedColumns: ["id"]
     }
                   ]
@@ -3030,6 +3150,28 @@ isOneToOne: true
 "generate_invoice":
 { Args: { "p_student_id": string,"p_term_id": string }; Returns: string
                            },
+"generate_seating_plan":
+{ Args: { "p_exam_id": string,"p_institution_id": string,"p_rooms": Json,"p_slot_start": string }; Returns: {
+              "created_at": string,
+"exam_id": string,
+"exam_name": string,
+"generated_by": string | null,
+"id": string,
+"institution_id": string,
+"rooms": NonNullable<Json>,
+"seat_count": number,
+"section_ids": (string)[],
+"slot_start": string,
+"superseded_by": string | null,
+"updated_at": string,
+"version_no": number
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "exam_seating_plans"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "get_public_site":
 { Args: { "p_slug": string }; Returns: {
               "institution_id": string,"institution_name": string,"nav": Json,"theme": Json,"website_id": string
@@ -3064,6 +3206,9 @@ isOneToOne: true
 { Args: { "p_email": string,"p_guardian_id"?: string,"p_institution_id": string,"p_role": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: {
               "invitation_id": string,"token": string
             }[]
+                           },
+"issue_certificate":
+{ Args: { "p_conduct"?: string,"p_kind": string,"p_purpose"?: string,"p_student_id": string }; Returns: Json
                            },
 "issue_library_loan":
 { Args: { "p_copy_id": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: Json

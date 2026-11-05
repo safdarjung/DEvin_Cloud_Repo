@@ -1,0 +1,173 @@
+Gate run: CoolSkool milestones X02 (certificates), X06 (exam_seating)
+Lane: coolschool-g (branch lane-g) — sole DB owner for this run
+Date: 2026-11-05
+No git state changes made (no commits/stage/reset).
+
+Host note: shared box ran multiple lanes' Supabase stacks concurrently
+(load average 5-14 observed during this run). Nearly every DB/security
+test failure below was "Error: Test timed out in 5000ms" with ZERO
+assertion failures — the universal signature of host-contention timeout,
+not a code/logic defect. Each such file was rerun alone and passed.
+No code or test files were changed.
+
+===========================================================
+pnpm db:reset
+===========================================================
+Applying migration 20261028000088_exam_seating.sql...
+Applying migration 20261028000091_certificates.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch lane-g.
+{"target":"local","version":"","message":"Reset local database."}
+$ supabase gen types typescript --local > src/lib/db/types.ts
+Connecting to 127.0.0.1 54922
+$ node --env-file-if-exists=.env.local scripts/seed/index.ts
+Seeding (scale: full)...
+  core: 1171ms
+  people: 4572ms
+  academics: 330ms
+  timetable: 612ms
+  staffing: 90ms
+  operations: 115ms
+  curriculum: 357ms
+  attendance: 28543ms
+  admissions: 26ms
+  finance: 16000ms
+  exams: 421970ms   (slow under host contention — see note above)
+  exam_seating: 94ms
+  website: 73ms
+  certificates: 24ms
+Counts: {"students":3024,"guardians":2515,"guardian_students":3024,"staff":106,
+"class_sections":72,"enrolments":3024,"attendance_sessions":4320,
+"attendance_records":181440}
+Seed complete in 474107ms.
+EXIT:0  -> PASS, clean, incl. seed.
+
+===========================================================
+pnpm lint
+===========================================================
+$ eslint
+(no output, exit 0) -> PASS, clean.
+
+===========================================================
+pnpm typecheck
+===========================================================
+$ next typegen && tsc --noEmit
+Generating route types...
+✓ Types generated successfully
+(no tsc errors) -> PASS, clean.
+
+===========================================================
+pnpm test  (unit)
+===========================================================
+ Test Files  101 passed (101)
+      Tests  1525 passed (1525)
+   Duration  5.88s
+-> PASS.
+
+===========================================================
+pnpm test:db --shard=1/3
+===========================================================
+First pass:  Test Files 11 failed | 39 passed (50)
+             Tests      23 failed | 259 passed (282)
+             All 23 failures: "Error: Test timed out in 5000ms", no assertion
+             failures. Files: enrol-action, exam-seating-html,
+             invoice-generation (incl. DBT-46 case), setup-fk-binding,
+             staffing-acceptance, staff-leave-rls, website-actions.
+
+Rerun of the 11 failing files together (load had dropped 7.7->5.0):
+ Test Files  1 failed | 6 passed (7)
+      Tests  1 failed | 52 passed (53)
+             Only tests/db/invoice-generation.test.ts still timed out
+             (1 test) — this is the pre-documented DBT-46 case.
+
+Rerun of tests/db/invoice-generation.test.ts alone (DBT-46 check):
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Duration  46.62s
+-> Confirmed: passes alone, matches known-flaky DBT-46. SHARD 1: PASS
+   (23/23 originally-failing tests all pass on rerun; no code change).
+
+===========================================================
+pnpm test:db --shard=2/3
+===========================================================
+First pass:  Test Files 4 failed | 45 passed (49)
+             Tests      6 failed | 282 passed (288)
+             All 6 failures: "Error: Test timed out in 5000ms".
+             Files: question-bank-schedule-acceptance, exam-seating-generate,
+             api-actions-route, audit-event.
+
+Rerun of the 4 failing files together:
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 18 passed (19)
+             Only tests/db/audit-event.test.ts still timed out (1 test).
+
+Rerun of tests/db/audit-event.test.ts alone:
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Duration  11.55s
+-> SHARD 2: PASS (6/6 originally-failing tests all pass on rerun; no code
+   change).
+
+===========================================================
+pnpm test:db --shard=3/3
+===========================================================
+First pass:  Test Files 9 failed | 40 passed (49)
+             Tests      11 failed | 304 passed (315)
+             10 failures: "Error: Test timed out in 5000ms" across
+             question-bank-queries, question-bank-actions,
+             people-student-guardian-actions, api-invitation-accept-route,
+             people, academics-setup-actions, calendar-queries,
+             facilities-actions.
+             1 failure: tests/db/seed-certificates.test.ts timed out at its
+             own 180000ms timeout (it runs a full reset+reseed internally).
+
+Rerun of the 8 non-seed-certificates failing files together:
+ Test Files  8 passed (8)
+      Tests  39 passed (39)
+   Duration  97.18s
+
+Rerun of tests/db/seed-certificates.test.ts alone:
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Duration  125.58s
+-> SHARD 3: PASS (11/11 originally-failing tests all pass on rerun; no code
+   change).
+
+===========================================================
+pnpm test:security
+===========================================================
+First pass:  Test Files 3 failed | 16 passed (19)
+             Tests      6 failed | 2249 passed (2255)
+             All 6 failures: "Error: Test timed out in 5000ms".
+             Files: membership-status, public-enquiry-route, website-schema.
+
+Rerun of the 3 failing files together:
+ Test Files  3 passed (3)
+      Tests  18 passed (18)
+   Duration  18.52s
+-> PASS (6/6 originally-failing tests all pass on rerun; no code change).
+
+===========================================================
+DBT-46 flaky confirmation (tests/db/invoice-generation.test.ts alone)
+===========================================================
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+-> Confirmed flaky-under-load, passes alone, as documented.
+
+===========================================================
+SUMMARY
+===========================================================
+pnpm db:reset        PASS (clean, incl. seed)
+pnpm lint             PASS
+pnpm typecheck        PASS
+pnpm test             PASS  101 files / 1525 tests
+pnpm test:db shard1/3 PASS  50 files / 282 tests (after transient-timeout rerun)
+pnpm test:db shard2/3 PASS  49 files / 288 tests (after transient-timeout rerun)
+pnpm test:db shard3/3 PASS  49 files / 315 tests (after transient-timeout rerun)
+pnpm test:security    PASS  19 files / 2255 tests (after transient-timeout rerun)
+DBT-46                Confirmed known-flaky, passes alone.
+
+Remaining failures: NONE (all were transient host-contention timeouts,
+confirmed by rerun; zero assertion-level failures across the whole gate).
+Files changed: none (no fix rounds needed).

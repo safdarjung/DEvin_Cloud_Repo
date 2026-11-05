@@ -40,6 +40,7 @@ Assumptions: one institution per demo; roles fixed for the demo; superadmin is a
 | F-STU-09 | Health, counselling, discipline records | Welfare | 3 | planned | P3 | F-STU-01 | people | conf | — |
 | F-STU-10 | Alumni | Community | 4 | planned | P3 | F-STU-07 | people | int | — |
 | F-STU-11 | Student portal (own attendance, results, assignments) | Older students | 2 | limited (role + RLS, no dedicated UI) | P1 | F-STU-01 | people | conf | C-14 |
+| F-STU-12 | Certificates (bonafide, character, TC) with serial numbers + bulk student ID cards | Official records | 2 | limited (API + HTML print; no logo, no digital signature, English only) | P2 | F-STU-07, F-STU-08 | certificates | conf | tests/db/certificates-acceptance.test.ts |
 
 Assumptions: phone is the guardian's primary identity; one guardian record per phone per institution.
 
@@ -95,6 +96,7 @@ Assumptions: website blocks are a fixed set of eight; one website per institutio
 | F-EXM-09 | Printable report cards, board-format marksheets | Compliance | 2 | limited (HTML print view; no PDF/board format) | P2 | F-EXM-05 | exams | conf | — |
 | F-EXM-10 | Question bank (create, list, filter by grade/subject/difficulty) | Learning preparation | 2 | limited (API only) | P2 | F-ACA-04 | question-bank | int | — |
 | F-EXM-11 | Exam schedule and conflict detection (dates, times, rooms, overlaps) | Planning | 2 | limited (API only) | P2 | F-EXM-01, F-ACA-02 | exams | int | — |
+| F-EXM-12 | Exam seating plan (interleaved, versioned) + room seating charts + admit cards (HTML print) | Exam-day logistics, anti-copying | 2 | limited (API + HTML print; no UI; module exam_seating, default off) | P2 | F-EXM-11 | exam-seating | conf | — |
 
 Assumptions: daily single-mark attendance; one exam per term in the seed; CBSE 9-point grading default.
 

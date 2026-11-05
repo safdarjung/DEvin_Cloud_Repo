@@ -78,6 +78,10 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "exam.recheck.review": { permission: "exam.recheck.review", input: () => ({ requestId: U() }) },
   "exam.recheck.decide": { permission: "exam.recheck.decide", input: () => ({ requestId: U(), decision: "reject" }) },
   "exam.remark.save": { permission: "exam.marks.enter", input: () => ({ resultId: U(), remark: "Probe remark." }) },
+  "examSeating.generate": {
+    permission: "exam.manage",
+    input: () => ({ examId: U(), slotStart: "2026-11-16T04:00:00.000Z", rooms: [{ roomId: U() }] }),
+  },
   "finance.structure.upsert": {
     permission: "finance.structure.manage",
     input: () => ({
@@ -295,6 +299,10 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
   },
   "report.schedule.setStatus": { permission: "report.schedule", input: () => ({ id: U(), status: "paused" }) },
+  "certificate.issue": {
+    permission: "certificate.manage",
+    input: () => ({ studentId: U(), kind: "bonafide", purpose: "Passport application" }),
+  },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;
