@@ -66,11 +66,14 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | finance.payment.void | ✓ | ✓ | | | | | | | |
 | finance.payment.online | ✓ | ✓ | | | ✓ | | | | s |
 | finance.reminder.send | ✓ | ✓ | | | ✓ | | | | |
+| finance.plan.manage | ✓ | ✓ | | | ✓ | | | | |
 | finance.read | ✓ | ✓ | ✓ | | ✓ | | | s | s |
 | exam.manage | ✓ | ✓ | | | | ✓ | | | |
 | exam.marks.enter | ✓ | ✓ | | | | ✓ | s | | |
 | exam.result.publish | ✓ | ✓ | | | | ✓ | | | |
 | exam.result.read | ✓ | ✓ | ✓ | | | ✓ | s | s | s |
+| mastery.read | ✓ | ✓ | ✓ | | | ✓ | s | s | s |
+| mastery.review (plans: RLS owner/principal/class teacher) | ✓ | ✓ | ✓ | | | ✓ | s | | |
 | exam.recheck.request | | | | | | | | s | s |
 | exam.recheck.review / decide | ✓ | ✓ | | | | ✓ | | | |
 | assignment.manage | ✓ | ✓ | | | | | s | | |
@@ -94,6 +97,8 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | leave.request (s = own leave) | ✓ | ✓ | ✓ | s | s | s | s | | |
 | leave.approve (never own) | ✓ | ✓ | ✓ | | | | | | |
 | question.manage (teacher: taught grade + subject; staff-only table) | ✓ | ✓ | | | | ✓ | s | | |
+| workflow.read (queries) | ✓ | ✓ | ✓ | | | | | | |
+| workflow.manage (save, status, run now, approvals) | ✓ | ✓ | | | | | | | |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 

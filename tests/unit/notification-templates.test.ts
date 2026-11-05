@@ -136,3 +136,20 @@ describe("simulated channels never touch the network", () => {
     expect(channels).toEqual(["in_app"]);
     expect(category).toBe("report");
   });
+
+  it("workflow_alert renders EN with workflow and message, shows HI title, and validates vars (M23-T6)", () => {
+    const { varsSchema, body, title, channels, category } = NOTIFICATION_TEMPLATES.workflow_alert;
+    const vars = { workflow: "Absence follow-up", message: "2 absent" };
+    expect(varsSchema.safeParse(vars).success).toBe(true);
+    expect(varsSchema.safeParse({ ...vars, extra: "x" }).success).toBe(false);
+    expect(varsSchema.safeParse({ workflow: "Absence follow-up" }).success).toBe(false);
+    const en = body(vars, "en");
+    expect(en).toBe("Absence follow-up: 2 absent");
+    expect(title("hi")).toBe("वर्कफ़्लो अलर्ट");
+    expect(title("en")).toBe("Workflow alert");
+    expect(channels).toEqual(["in_app"]);
+    expect(category).toBe("announcement");
+    // Reject 301-char message
+    const longMessage = "x".repeat(301);
+    expect(varsSchema.safeParse({ workflow: "Test", message: longMessage }).success).toBe(false);
+  });

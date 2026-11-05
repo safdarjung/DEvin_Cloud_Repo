@@ -160,6 +160,7 @@ export const InstitutionSettingsSchema = z
         student_lifecycle: z.boolean().optional(),
         finance_plus: z.boolean().optional(),
         online_payments: z.boolean().optional(),
+        fee_plans: z.boolean().optional(),
         facilities: z.boolean().optional(),
         transport: z.boolean().optional(),
         calendar: z.boolean().optional(),
