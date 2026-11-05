@@ -66,9 +66,17 @@ export type Permission =
   | "staff.attendance.mark"
   | "leave.request"
   | "leave.approve"
+  | "student_leave.request"
+  | "student_leave.approve"
+  | "diary.write"
   | "facilities.manage"
   | "transport.manage"
-  | "maintenance.request";
+  | "maintenance.request"
+  | "ptm.manage"
+  | "ptm.slot.manage"
+  | "ptm.book"
+  | "survey.manage"
+  | "survey.respond";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -119,9 +127,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "student_leave.approve",
+    "diary.write",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   principal: [
     "institution.settings.manage",
@@ -171,9 +186,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "student_leave.approve",
+    "diary.write",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   admin: [
     "institution.settings.manage",
@@ -213,9 +235,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "student_leave.approve",
+    "diary.write",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   admissions: [
     "dashboard.view",
@@ -239,6 +268,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "survey.respond",
   ],
   accountant: [
     "dashboard.view",
@@ -256,6 +286,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "survey.respond",
   ],
   exam_controller: [
     "dashboard.view",
@@ -276,6 +307,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "survey.respond",
   ],
   teacher: [
     "student.read",
@@ -295,7 +327,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "staff.attendance.mark",
     "leave.request",
+    "student_leave.approve",
+    "diary.write",
     "maintenance.request",
+    "ptm.slot.manage",
+    "survey.respond",
   ],
   student: [
     "student.read",
@@ -325,6 +361,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "document.read",
     "timetable.read",
+    "ptm.book",
+    "survey.respond",
+    "student_leave.request",
   ],
 };
 

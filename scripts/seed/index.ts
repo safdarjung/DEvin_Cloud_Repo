@@ -11,8 +11,10 @@ import { run as runCore } from "./sections/core.ts";
 import { run as runCurriculum } from "./sections/curriculum.ts";
 import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
+import { run as runHomeroom } from "./sections/homeroom.ts";
 import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
+import { run as runPtm } from "./sections/ptm.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
 import { run as runWebsite } from "./sections/website.ts";
@@ -31,6 +33,11 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "finance", run: runFinance },
   { name: "exams", run: runExams },
   { name: "website", run: runWebsite },
+  // X08-T10: needs class_sections (academics), studentsBySection (people).
+  { name: "ptm", run: runPtm },
+  // X01-T12: last — needs class_sections/subject_assignments (academics),
+  // studentsBySection (people), demo logins (core).
+  { name: "homeroom", run: runHomeroom },
 ];
 
 async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {

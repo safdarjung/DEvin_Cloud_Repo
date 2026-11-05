@@ -75,6 +75,8 @@ const PUBLIC_AUTHENTICATED = [
   "public.add_enquiry_note",
   "public.apply_recheck_decision",
   "public.assign_substitution",
+  "public.book_ptm_slot",
+  "public.cancel_ptm_booking",
   "public.cancel_substitution",
   "public.close_marks_entry",
   "public.convert_enquiry",
@@ -82,6 +84,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.create_institution",
   "public.decide_application",
   "public.decide_leave",
+  "public.decide_student_leave",
   "public.enqueue_term_invoices",
   "public.enrol_applicant",
   "public.enter_marks",
@@ -94,8 +97,10 @@ const PUBLIC_AUTHENTICATED = [
   "public.jobs_requeue",
   "public.link_guardian",
   "public.mark_period_attendance",
+  "public.my_open_surveys",
   "public.open_marks_entry",
   "public.promote_students",
+  "public.ptm_slots_for_student",
   "public.publish_announcement",
   "public.publish_exam_results",
   "public.publish_page",
@@ -109,6 +114,8 @@ const PUBLIC_AUTHENTICATED = [
   "public.start_recheck_review",
   "public.submit_assignment",
   "public.submit_attendance",
+  "public.submit_survey_response",
+  "public.survey_results",
 ];
 
 describe("grants audit (07 §4, T-042 AC3)", () => {

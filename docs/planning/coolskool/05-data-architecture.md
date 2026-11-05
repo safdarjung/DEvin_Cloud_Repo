@@ -201,6 +201,7 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | transport | transport_vehicles, transport_routes, transport_stops, transport_assignments | people |
 | calendar | academic_calendar_events | academics |
 | lifecycle | student_lifecycle_events | people, academics |
+| ptm | ptm_events, ptm_event_sections, ptm_slots, ptm_bookings, surveys, survey_audiences, survey_respondents, survey_responses | academics (via calendar event date), people |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |
 
 Reserved names, not created: `payroll_*`, `library_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.

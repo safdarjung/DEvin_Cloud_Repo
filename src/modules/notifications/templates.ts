@@ -17,6 +17,8 @@ export const NOTIFICATION_TYPES = [
   "enquiry_received",
   "enrolment_welcome",
   "announcement",
+  "student_leave_decided",
+  "diary_entry",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -48,6 +50,22 @@ const EnrolmentWelcomeVars = z
   .strict();
 
 const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
+
+// X01-T10 — no `reason`/`decision_note` var (lesson 10: never notify the
+// leave's own reason, it may hold health details).
+const StudentLeaveDecidedVars = z
+  .object({
+    student: z.string().min(1),
+    from: z.string().min(1),
+    to: z.string().min(1),
+    decision: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
+
+const DiaryEntryVars = z
+  .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
+  .strict();
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -122,6 +140,26 @@ export const NOTIFICATION_TEMPLATES = {
     varsSchema: AnnouncementVars,
     title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
     body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
+  }),
+  student_leave_decided: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: StudentLeaveDecidedVars,
+    title: (lang) => (lang === "hi" ? "अवकाश निर्णय" : "Leave decision"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.student} का अवकाश (${v.from} से ${v.to}) ${v.decision} कर दिया गया है। -${v.school}`
+        : `${v.student}'s leave (${v.from} to ${v.to}) has been ${v.decision}. -${v.school}`,
+  }),
+  diary_entry: def({
+    channels: ["in_app"],
+    category: "academic",
+    varsSchema: DiaryEntryVars,
+    title: (lang) => (lang === "hi" ? "नई डायरी प्रविष्टि" : "New diary entry"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.section} (${v.subject}): ${v.excerpt}`
+        : `${v.section} (${v.subject}): ${v.excerpt}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

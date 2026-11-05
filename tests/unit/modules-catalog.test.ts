@@ -78,6 +78,17 @@ describe('modules-catalog', () => {
         expect(entry.description.length).toBeLessThanOrEqual(160);
       }
     });
+
+    it('includes student_leave and diary modules', () => {
+      expect(MODULES).toHaveProperty('student_leave');
+      expect(MODULES).toHaveProperty('diary');
+      expect(MODULES.student_leave.category).toBe('Communication');
+      expect(MODULES.diary.category).toBe('Communication');
+      expect(MODULES.student_leave.default).toBe(true);
+      expect(MODULES.diary.default).toBe(true);
+      expect((MODULES.student_leave as Record<string, unknown>).requires).toBeUndefined();
+      expect((MODULES.diary as Record<string, unknown>).requires).toBeUndefined();
+    });
   });
 
   describe('isModuleEnabled', () => {
@@ -157,6 +168,16 @@ describe('modules-catalog', () => {
     it('handles missing settings gracefully (defensive read)', () => {
       const ctx = { institution: { settings: { modules: null } } };
       expect(isModuleEnabled(ctx as TestContext, 'exams')).toBe(true);
+    });
+
+    it('parses {modules: {diary: false}} and returns false for diary', () => {
+      const ctx = { institution: { settings: { modules: { diary: false } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'diary')).toBe(false);
+    });
+
+    it('returns default true for student_leave when not in settings', () => {
+      const ctx = { institution: { settings: { modules: {} } } };
+      expect(isModuleEnabled(ctx as TestContext, 'student_leave')).toBe(true);
     });
   });
 

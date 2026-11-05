@@ -64,8 +64,10 @@ Assumptions: phone is the guardian's primary identity; one guardian record per p
 | F-COM-03 | Circulars/notices to classes, PTM scheduling, diary notes | Daily communication | 2 | planned | P2 | F-COM-01 | notifications | int | — |
 | F-COM-04 | WhatsApp channel, bilingual templates | Reach | 2 | planned | P2 | F-COM-02 | notifications | conf | — |
 | F-COM-05 | Message log with simulated/sent/failed badge per delivery row | Demo honesty | 1 | impl | P0 | F-COM-02 | notifications | conf | C-31 |
+| F-COM-06 | PTM slot booking and parent surveys (module `ptm`, off by default) | Parent engagement | 2 | limited | P2 | F-COM-01 | ptm | conf | tests/db/ptm-acceptance.test.ts |
+| F-COM-07 | Class diary: daily homework/notes per section, parent acknowledgement | Daily communication | 2 | impl (API; UI in Workstream D) | P1 | F-COM-01 | diary | int | tests/db/x01-acceptance.test.ts |
 
-Assumptions: website blocks are a fixed set of eight; one website per institution.
+Assumptions: website blocks are a fixed set of eight; one website per institution. PTM feature is `limited`: no reminders; aggregate results only; anonymous responses suppressed below 3.
 
 ### D. Academics, attendance, examinations
 
@@ -84,6 +86,7 @@ Assumptions: website blocks are a fixed set of eight; one website per institutio
 | F-ATT-03 | Absence → guardian notification | Parent value | 1 | impl (SMS sim) | P0 | F-ATT-01, F-COM-01 | attendance | conf | J-06 |
 | F-ATT-04 | Period-wise attendance, leave applications, biometric/RFID | Scale | 2 | planned | P2 | F-ATT-01 | attendance | conf | — |
 | F-ATT-05 | Attendance analytics, 75% rule alerts | Compliance | 1 | impl (summary) | P0 | F-ATT-01 | attendance | int | J-13 |
+| F-ATT-06 | Student leave requests: guardian applies, class teacher approves, attendance pre-marked `OL` | Daily operations | 2 | impl (API; UI in Workstream D) | P1 | F-ATT-01, F-COM-01 | student-leave | conf | tests/db/x01-acceptance.test.ts |
 | F-EXM-01 | Exam setup (type, term, papers per section/subject, max/pass marks) | Structure | 1 | impl | P0 | F-ACA-03 | exams | conf | J-09 |
 | F-EXM-02 | Marks entry (versioned), absent flag | Core | 1 | impl | P0 | F-EXM-01 | exams | conf | J-09 |
 | F-EXM-03 | Arithmetic verification before publish | Integrity | 1 | impl | P0 | F-EXM-02 | exams | conf | C-40 |
