@@ -666,6 +666,8 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // student's section (read-only), plus the linked guardian (read/write
   // their own child's rows, no update — remove + add).
   pickup_persons: {
+    // 0090 security review MED-1: raw `phone` is column-revoked; select the granted columns.
+    selectColumns: ["id", "institution_id", "student_id", "full_name", "relation", "phone_masked"],
     classes: ["S", "T", "O"],
     read: ["owner", "principal", "admin", "teacher", "guardian"],
     write: ["owner", "principal", "admin", "guardian"],

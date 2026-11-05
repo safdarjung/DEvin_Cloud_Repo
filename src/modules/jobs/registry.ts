@@ -4,6 +4,7 @@ import {
   generateReport,
   feeReminder,
   generateTermInvoices,
+  forecastRun,
   notifyAnnouncement,
   notifyAttendanceAbsence,
   notifyEnquiryReceived,
@@ -25,6 +26,7 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "notify.gate_pass": "visitors",
   "finance.fee_reminder": "finance_plus",
   "report.generate": "scheduled_reports",
+  "forecast.run": "forecasts",
 };
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
@@ -41,6 +43,7 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "finance.generate_term_invoices": generateTermInvoices,
   "report.generate": generateReport,
   "finance.fee_reminder": feeReminder,
+  "forecast.run": forecastRun,
 };
 
 export function resolveHandler(type: string): JobHandler | undefined {

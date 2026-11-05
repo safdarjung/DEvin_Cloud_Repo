@@ -207,7 +207,11 @@ create table public.pickup_persons (
   created_by uuid not null references public.profiles (id) default app.current_user_id(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint pickup_persons_student_phone_key unique (student_id, phone)
+  constraint pickup_persons_student_phone_key unique (student_id, phone),
+  -- Security review MED-1: the masked form (`******1234`) is computed once
+  -- here so the DB itself enforces the DPDP masking guarantee, rather than
+  -- relying on every caller to mask client-side (see column grant below).
+  phone_masked text generated always as (repeat('*', greatest(length(phone) - 4, 0)) || right(phone, 4)) stored
 );
 
 create trigger set_updated_at
@@ -242,6 +246,18 @@ create policy pickup_persons_delete on public.pickup_persons
     institution_id = any((select app.my_institution_ids(array['owner', 'principal', 'admin'])))
     or student_id = any((select app.my_guardian_student_ids()))
   );
+
+-- Security review MED-1: RLS controls *which rows* are visible, not which
+-- columns — every role pickup_persons_select admits (M, class teacher,
+-- guardian) would otherwise read the raw `phone` column straight off
+-- PostgREST, bypassing the masking the rulings require. Mirrors 0045's
+-- profiles column-grant pattern (T-042 MED-1): revoke table-level SELECT,
+-- then grant it back on every column except the raw phone. INSERT/DELETE
+-- privileges (and the unique constraint, which sees the raw value) are
+-- untouched; `phone_masked` (generated above) is what callers read instead.
+revoke select on public.pickup_persons from authenticated;
+grant select (id, institution_id, student_id, full_name, relation, phone_masked, created_by, created_at, updated_at)
+  on public.pickup_persons to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- gate_passes — student early-leave gate pass. No delete; no phone stored
@@ -359,13 +375,23 @@ for each row execute function app.gate_pass_before_insert();
 -- the FK's own `on delete set null` when a guardian removes a person used
 -- by a past pass — recognised and allowed before the immutability check
 -- runs, with no status change and no decided_*/exited_* stamping.
+--
+-- Security review LOW: the shape check alone also matched a same-shape
+-- UPDATE issued directly by a client, not only the FK's own cascade —
+-- narrower immutability than documented, not a privilege escalation.
+-- `pg_trigger_depth() > 1` tells the two apart: a top-level client UPDATE
+-- runs this trigger at depth 1; the FK's `on delete set null` action is
+-- itself fired from inside pickup_persons' own delete-cascade trigger, so
+-- this trigger runs nested at depth 2+ (verified locally: direct UPDATE ->
+-- depth 1, DELETE-cascaded UPDATE -> depth 2).
 create function app.guard_gate_passes_update()
 returns trigger
 language plpgsql
 set search_path = ''
 as $$
 begin
-  if new.pickup_person_id is null and old.pickup_person_id is not null
+  if pg_trigger_depth() > 1
+    and new.pickup_person_id is null and old.pickup_person_id is not null
     and new.status = old.status
     and new.institution_id = old.institution_id
     and new.student_id = old.student_id

@@ -11,7 +11,9 @@
 Added `forecast.read` permission to the six roles: owner, principal, admin, accountant, exam_controller, teacher. Removed from admissions, student, guardian. Snapshot test verifies matrix consistency with documentation.
 
 **Tests run:**
-- `pnpm test tests/unit/permissions.test.ts` → 18 passed
+- `pnpm test tests/unit/permissions.test.ts` → 21 passed (1 file)
+- `pnpm lint` → 0 errors
+- `pnpm typecheck` → ✓ types generated
 
 **Tests not run and why:**
 None; this is a unit-only change with no DB or integration surface yet.
@@ -33,4 +35,4 @@ Role column order in permission matrix matches `ROLE_ORDER` in test (owner, prin
 
 ---
 
-**Acceptance:** `pnpm test tests/unit/permissions.test.ts` ✓ (18 passed); `pnpm lint` ✓; `pnpm typecheck` ✓ (no errors).
+**Acceptance:** `pnpm test tests/unit/permissions.test.ts` ✓ (21 passed); `pnpm lint` ✓; `pnpm typecheck` ✓.

@@ -13,7 +13,8 @@ export type JobType =
   | "notify.gate_pass"
   | "finance.generate_term_invoices"
   | "report.generate"
-  | "finance.fee_reminder";
+  | "finance.fee_reminder"
+  | "forecast.run";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 

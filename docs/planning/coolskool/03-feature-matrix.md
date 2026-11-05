@@ -134,6 +134,7 @@ Assumptions: financial year April–March; receipts numbered per financial year.
 | F-INT-02 | School Intelligence Center: early warning, cohort analytics | Outcomes | 3 | planned | P3 | F-INT-01 | core | conf | — |
 | F-INT-03 | Natural-language questions over school data (policy-bounded) | Access | 3 | planned | P3 | F-AI-01, F-INT-01 | ai | conf | — |
 | F-INT-04 | Scheduled reports (attendance, finance defaulters) with cron and in-app delivery | Automation, export | 1 | impl | P1 | F-ATT-05, F-FIN-07 | reports | int | — |
+| F-INT-05 | Fee collection and attendance rate forecasting (baseline: moving average + seasonal naive, backtested MAPE shown) | Principal insight | 1 | limited | P1 | F-FIN-04, F-ATT-01 | forecasts | int | — |
 
 Assumptions: the only AI prompt in the demo is built from curriculum text, never from student records.
 
@@ -144,7 +145,8 @@ Assumptions: the only AI prompt in the demo is built from curriculum text, never
 | F-SVC-01 | Library | Operations | 2 | planned | P2 | F-STU-01 | library (reserved) | int | — |
 | F-SVC-02 | Transport routes, stops, assignments | Operations, safety | 2 | limited | P2 | F-STU-01 | transport | conf | — |
 | F-SVC-03 | Inventory and assets | Operations | 2 | planned | P3 | — | inventory (reserved) | int | — |
-| F-SVC-04 | Hostel, canteen, visitor management | Campus | 3 | planned | P3 | F-STU-01 | campus (reserved) | conf | — |
+| F-SVC-04 | Hostel, canteen | Campus | 3 | planned | P3 | F-STU-01 | campus (reserved) | conf | — |
+| F-SVC-06 | Visitor log, gate pass, authorized pickup | Safety, operations | 2 | limited | P2 | F-STU-01 | visitors | conf | tests/db/visitors-acceptance.test.ts |
 | F-SVC-05 | Device registry, IoT attendance | Automation | 5 | planned | P3 | F-ATT-04 | campus (reserved) | conf | — |
 
 ### H. Commercial platform and hosting

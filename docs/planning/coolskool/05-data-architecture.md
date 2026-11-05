@@ -191,6 +191,14 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 |---|---|---|---|---|---|
 | `scheduled_reports` | Batch report configurations and schedules | `name text` (1–80, unique per institution) · `source text check in (attendance.daily, finance.defaulters)` · `params jsonb not null default '{}'` (validated against source's schema; ≤ 1000 bytes) · `cron text` (≤ 100, cron subset parser: `^([0-9]\|[1-5][0-9]) ([0-9]\|1[0-9]\|2[0-3]) (\*\|L) (\*\|L) (\*\|L)$` with `L` = list/range in 1–31/1–12/0–6; DOM+DOW restriction check) · `recipient_roles text[]` (1–5, subset of source's allowed roles; distinct) · `status text check in (active, paused)` default `active` · `next_run_at timestamptz?` (computed by `app.cron_next_fire` on INSERT/cron/status change; active with no fire → trigger error) · `created_by → profiles` not null · `created_at`/`updated_at` + `set_updated_at` trigger | unique(institution_id, name); partial index on next_run_at where status='active'; check `jsonb_typeof(params)='object'` | op (pause instead of delete; no UPDATE on identity columns) | int |
 
+### 2.12 visitors (migration 0090)
+
+| Table | Purpose | Essential columns | Constraints / indexes | Hist | Sens |
+|---|---|---|---|---|---|
+| `visitor_entries` | Front-desk visitor log (DPDP-compliant: no full ID, type + last 4 only; 180-day retention) | `full_name 1–80` · `phone 1–10 (6-9......)` · `purpose 1–120` · `host_staff_id?→ staff` · `meeting_with? 1–80` · `id_type? check in (aadhaar, driving_licence, voter_id, pan, passport, other)` · `id_last4? (4 chars, [0-9A-Z])` · `checked_in_at timestamptz` (forced to now()) · `checked_in_by → profiles` (forced to current user) · `checked_out_at?` · `checked_out_by?→ profiles` | check (host_staff_id or meeting_with); check ((id_type is null) = (id_last4 is null)); check (checked_out_at is null or checked_out_at >= checked_in_at); index(institution_id, checked_in_at desc) | imm (check-out stamps only; delete allowed 180 days after check-in for DPDP retention) | conf |
+| `pickup_persons` | Authorized persons to collect a student (removed hard-delete) | `student_id →` · `full_name 1–80` · `relation check in (father, mother, grandparent, uncle, aunt, sibling, driver, other)` · `phone 1–10 (6-9......)` · `created_by → profiles` | unique(student_id, phone); no UPDATE policy (remove + add instead) | op (hard delete only) | conf |
+| `gate_passes` | Student early-leave permission slips (immutable collection; one open per student) | `student_id →` · `reason 1–200` · `guardian_id?→ guardians` · `pickup_person_id?→ pickup_persons` (on delete set null) · `collector_name 1–80` (snapshot) · `collector_relation text` (snapshot) · `status check in (pending, approved, rejected, cancelled, exited)` default pending · `requested_by → profiles` (forced to current user for non-admin) · `requested_at timestamptz` (forced to now()) · `decided_by?→ profiles` (stamped on status change) · `decided_at?` (stamped) · `exited_at?` · `exit_marked_by?→ profiles` | unique(student_id) where status in (pending, approved); index(institution_id, requested_at desc); check exactly one of guardian_id/pickup_person_id; no DELETE policy | imm (status transitions: pending→{approved,rejected,cancelled}, approved→{cancelled,exited}, others terminal) | conf |
+
 ## 3. Ownership matrix
 
 | Module | Owns | Reads from |
@@ -208,6 +216,7 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | calendar | academic_calendar_events | academics |
 | lifecycle | student_lifecycle_events | people, academics |
 | reports | scheduled_reports, documents (report entity) | attendance (for `attendance.daily` source), finance (for `finance.defaulters` source); via RPC invokers only, no TS query registration |
+| visitors | visitor_entries, pickup_persons, gate_passes | people, academics |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |
 
 Reserved names, not created: `payroll_*`, `library_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.

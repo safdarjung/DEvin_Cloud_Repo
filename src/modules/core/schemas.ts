@@ -321,7 +321,7 @@ export type SetMemberStatusInput = z.infer<typeof SetMemberStatusSchema>;
 // MOD-T4 — core.module.set action input.
 export const SetModuleEnabledSchema = z
   .object({
-    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
+    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "visitors", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
     enabled: z.boolean(),
   })
   .strict();

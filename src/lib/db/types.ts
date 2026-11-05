@@ -2047,14 +2047,14 @@ isOneToOne: false
                   ]
                 },"pickup_persons": {
                   Row: {
-                    "created_at": string,"created_by": string,"full_name": string,"id": string,"institution_id": string,"phone": string,"relation": string,"student_id": string,"updated_at": string
+                    "created_at": string,"created_by": string,"full_name": string,"id": string,"institution_id": string,"phone": string,"phone_masked": string | null,"relation": string,"student_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string,"full_name": string,"id"?: string,"institution_id": string,"phone": string,"relation": string,"student_id": string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string,"full_name": string,"id"?: string,"institution_id": string,"phone": string,"phone_masked"?: never,"relation": string,"student_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string,"full_name"?: string,"id"?: string,"institution_id"?: string,"phone"?: string,"relation"?: string,"student_id"?: string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string,"full_name"?: string,"id"?: string,"institution_id"?: string,"phone"?: string,"phone_masked"?: never,"relation"?: string,"student_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2974,6 +2974,9 @@ isOneToOne: true
 "apply_recheck_decision":
 { Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
                            },
+"assert_forecast_window":
+{ Args: { "p_from": string,"p_to": string }; Returns: undefined
+                           },
 "assign_substitution":
 { Args: { "p_date": string,"p_leave_request_id"?: string,"p_note"?: string,"p_slot_id": string,"p_substitute_id": string }; Returns: {
               "cancelled_at": string | null,
@@ -3078,6 +3081,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"enqueue_due_forecasts":
+{ Args: { "p_now"?: string }; Returns: undefined
+                           },
 "enqueue_due_reports":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -3102,6 +3108,16 @@ isOneToOne: true
 "finance_collection_report":
 { Args: { "p_academic_year_id": string,"p_group_by"?: string,"p_institution_id": string,"p_term_id"?: string }; Returns: {
               "billed": number,"collected": number,"group_key": string,"group_label": string,"invoice_count": number,"outstanding": number,"payment_count": number,"reversed": number,"sort_order": number
+            }[]
+                           },
+"forecast_attendance_series":
+{ Args: { "p_from": string,"p_institution_id": string,"p_to": string }; Returns: {
+              "class_section_id": string,"points": Json
+            }[]
+                           },
+"forecast_fee_series":
+{ Args: { "p_institution_id": string }; Returns: {
+              "billed_paise": number,"collected_paise": number,"name": string,"sequence": number,"starts_on": string,"term_id": string,"window_end": string
             }[]
                            },
 "generate_invoice":

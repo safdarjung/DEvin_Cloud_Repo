@@ -185,7 +185,9 @@ export async function visitorsPickupList(ctx: TenantContext, studentId: string):
       .order("is_primary", { ascending: false }),
     supabase
       .from("pickup_persons")
-      .select("id, full_name, relation, phone, created_at")
+      // phone_masked (DB-generated column, security review MED-1) — the raw
+      // phone column is not grantable to authenticated, see migration 0090.
+      .select("id, full_name, relation, phone_masked, created_at")
       .eq("institution_id", ctx.institution.id)
       .eq("student_id", studentId)
       .order("created_at", { ascending: true }),
@@ -209,7 +211,7 @@ export async function visitorsPickupList(ctx: TenantContext, studentId: string):
     id: row.id,
     fullName: row.full_name,
     relation: row.relation,
-    phoneMasked: maskPhone(row.phone),
+    phoneMasked: row.phone_masked ?? "",
   }));
 
   return [...guardianRows, ...pickupRows];

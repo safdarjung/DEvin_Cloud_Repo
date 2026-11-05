@@ -424,6 +424,42 @@ describe("visitors migration (0090) RLS + guards", () => {
     }
   });
 
+  it("a direct UPDATE that only nulls pickup_person_id on an approved pass is rejected (not mistaken for the FK cascade)", async () => {
+    // Security review LOW: the early-return branch of guard_gate_passes_update
+    // must only admit the FK's own on-delete-set-null cascade (nested inside
+    // the RI trigger, pg_trigger_depth() > 1), not a same-shape UPDATE issued
+    // directly — a top-level statement runs the trigger at depth 1.
+    const inst = await createTestInstitution("vis-gatepass-direct-null");
+    try {
+      const studentId = await fixtureStudentId(inst.institutionId, "student");
+      const pickup = await inst
+        .clientAs("admin")
+        .from("pickup_persons")
+        .insert({ institution_id: inst.institutionId, student_id: studentId, full_name: "Driver Ramesh", relation: "driver", phone: randomPhone() })
+        .select("id")
+        .single();
+      expect(pickup.error).toBeNull();
+      const pickupId = pickup.data?.id as string;
+
+      const [pass] = await sql`
+        insert into public.gate_passes (institution_id, student_id, reason, pickup_person_id, requested_by)
+        values (${inst.institutionId}, ${studentId}, 'Driver pickup', ${pickupId}, ${inst.users.admin.id})
+        returning id
+      `;
+      await sql`update public.gate_passes set status = 'approved' where id = ${pass.id}`;
+
+      await expect(
+        sql`update public.gate_passes set pickup_person_id = null where id = ${pass.id}`,
+      ).rejects.toThrow(/invalid_state/);
+
+      const [after] = await sql`select pickup_person_id, status from public.gate_passes where id = ${pass.id}`;
+      expect(after.pickup_person_id).toBe(pickupId);
+      expect(after.status).toBe("approved");
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
   it("admin of institution A cannot reference institution B's staff, student, guardian or pickup person", async () => {
     await withTwoInstitutions(async (instA, instB) => {
       const staffB = await fixtureStaffId(instB.institutionId, "admin");
