@@ -1,0 +1,11 @@
+Packet: X02-T10 Acceptance over HTTP
+Files changed: tests/db/certificates-acceptance.test.ts (new)
+Behavior implemented: real route handlers (`actionsPost`/`queryGet`) + bearer tokens, mirrors lifecycle-acceptance.test.ts. Admissions issues 2 bonafide certs over HTTP -> gap-free `BON/<YYYY>/0000{1,2}`; `certificates.printHtml?format=html` -> 200 text/html, CSP has `img-src data:`, body has student name + serial; `certificates.list{serialNo}` -> exact 1-row verify. Admin `lifecycle.withdraw` (with destinationSchool) -> `certificate.issue` transfer -> serial = tcNo; repeat -> `created:false`; its printHtml renders (TC no, "Transfer Certificate"). `certificates.idCardsHtml?format=html` -> 200, contains admission no. Teacher issue -> 403; guardian list -> 403; `modules.certificates=false` -> 403 on action + query; unknown certificate id -> 404.
+No partial run found for T10 (file didn't exist); started clean.
+Tests run: `pnpm test:db tests/db/certificates-acceptance.test.ts` -> 1 file, 1/1 passed. `pnpm lint` clean. `pnpm typecheck` clean (no pre-existing errors seen this run; T9/T11's earlier-reported 2 errors in certificates/actions.ts are gone).
+Tests not run and why: full `test:security`/`test:db` — not DB owner, brief restricts to single-file runs.
+Limitations / honesty label: none new (T12 scope).
+Security / integration risks: none new; exercises real RLS + permission guard + module gate over the real HTTP route, no mocks beyond next/headers and next/cache (route-handler precedent).
+Follow-ups: certificate-html.ts's `renderTransferCertificateHtml` only prints "School Transferred To" when `tc.kind === "transferred_out"`; `lifecycle.withdraw` always writes kind `"withdrawn"`, so destinationSchool never renders on that path even though WithdrawSchema accepts it — test asserts tcNo + "Transfer Certificate" instead of the destination-school text on this path (out of this packet's FILES; file not touched). File a debt row if the destination school should render on withdraw-issued TCs too.
+New dependencies (justification): none
+Assumptions made: used `lifecycle.withdraw` (not `.transfer`) per the T10 bullet literally; passed `destinationSchool` to withdraw to exercise the field, though the renderer gap above means it isn't visible in this path's HTML.

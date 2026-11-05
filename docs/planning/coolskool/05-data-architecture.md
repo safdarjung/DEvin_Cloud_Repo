@@ -197,6 +197,8 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | admissions | enquiries, applications, application_decisions | people, academics, finance (via `finance.generate_invoice`) |
 | finance | fee_structures, fee_components, fee_assignments, concessions, invoices, invoice_lines, payments, receipts, ledger_entries | people, academics |
 | exams | exams, exam_papers, marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
+| exam-seating | exam_seating_plans, exam_seats | exams, academics, people, timetable |
+| certificates | certificates | people, academics, documents, lifecycle |
 | facilities | assets, maintenance_requests | people |
 | transport | transport_vehicles, transport_routes, transport_stops, transport_assignments | people |
 | calendar | academic_calendar_events | academics |
@@ -307,6 +309,7 @@ Rule: a merged migration is never edited. Fixes go in a new file numbered from `
 | `UNIT-X-MATH-3` | curriculum unit | Grade X Mathematics unit 3 "Quadratic Equations" → AI quiz source in step 8 (teacher `teacher.x-a` also teaches X-A Mathematics) |
 | X-A Mathematics | curriculum coverage | Units 1–2 covered, unit 3 planned, not covered (M10 seed) |
 | attendance | | Aarav 92%, Ananya 96%, Ishaan 88% over the 60 seeded days; today's VI-A session is marked live with Aarav absent so `guardian.one` receives the absence notification |
+| `CERT-*` | certificates | 3 seeded: bonafide for Aarav, character for Ananya, transfer certificate for Ishaan (HTML print, serial numbers assigned); student photo = `documents` kind `photo`, 20–50 KB JPEG/PNG |
 
 ### 8.2 Count assertions after seed
 

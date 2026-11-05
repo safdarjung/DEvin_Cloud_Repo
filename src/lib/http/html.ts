@@ -21,7 +21,7 @@ export function toHtmlResponse(result: ActionResult<unknown>): Response {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "private, no-store",
       "x-content-type-options": "nosniff",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+      "content-security-policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'",
       "referrer-policy": "no-referrer",
     },
   });

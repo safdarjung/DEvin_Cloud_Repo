@@ -14,7 +14,7 @@ describe("toHtmlResponse (M11-T10)", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-security-policy")).toBe(
-      "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+      "default-src 'none'; img-src data:; style-src 'unsafe-inline'; frame-ancestors 'none'",
     );
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
     await expect(res.text()).resolves.toBe("<!doctype html><p>hi</p>");

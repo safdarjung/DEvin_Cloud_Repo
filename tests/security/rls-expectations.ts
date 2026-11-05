@@ -618,4 +618,31 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "exam_controller", "teacher"],
     write: ["owner", "principal", "exam_controller", "teacher"],
   },
+  // 0091 (X02-T2) — certificates: staff-only (certificate.manage role set),
+  // narrower than student_lifecycle_events (no teacher/student/guardian —
+  // they hold the paper copy). No write policy: rows come only from T3's
+  // app.issue_certificate (SECURITY DEFINER).
+  certificates: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions"],
+    write: [],
+  },
+
+  // 0088 (X06-T2) — exam seating. Headers (exam_seating_plans) hold no
+  // student data, so guardian/student see every current header institution-
+  // wide; exam_seats additionally scopes guardian/student to their own
+  // child's/own seat in a current plan only — explicit own-row/version
+  // scoping proved in tests/db/exam-seating-rls.test.ts, not by the
+  // generated suite's plain own-institution probe. No write policy on
+  // either table: rows come only from T3's app.generate_seating_plan.
+  exam_seating_plans: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"],
+    write: [],
+  },
+  exam_seats: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"], // student/guardian: own seat in the current plan only
+    write: [],
+  },
 };

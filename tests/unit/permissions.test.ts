@@ -48,6 +48,7 @@ const MATRIX: Row[] = [
   ["exam.recheck.request", false, false, false, false, false, false, false, true, true],
   ["exam.recheck.review", true, true, false, false, false, true, false, false, false],
   ["exam.recheck.decide", true, true, false, false, false, true, false, false, false],
+  ["exam.seating.read", true, true, true, false, false, true, false, true, true],
   ["assignment.manage", true, true, false, false, false, false, true, false, false],
   ["assignment.read", true, true, true, false, false, false, true, true, true],
   ["assignment.submit", false, false, false, false, false, false, false, true, false],
@@ -70,6 +71,7 @@ const MATRIX: Row[] = [
   ["staff.attendance.mark", true, true, true, true, true, true, true, false, false],
   ["leave.request", true, true, true, true, true, true, true, false, false],
   ["leave.approve", true, true, true, false, false, false, false, false, false],
+  ["certificate.manage", true, true, true, true, false, false, false, false, false],
   ["facilities.manage", true, true, true, false, false, false, false, false, false],
   ["transport.manage", true, true, true, false, false, false, false, false, false],
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
@@ -110,6 +112,11 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
   it("transport.manage is held by exactly owner, principal, admin", () => {
     const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("transport.manage"));
     expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("certificate.manage is held by exactly owner, principal, admin, admissions", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("certificate.manage"));
+    expect(holders.sort()).toEqual(["admin", "admissions", "owner", "principal"].sort());
   });
 
   it("maintenance.request is held by all 7 staff roles", () => {

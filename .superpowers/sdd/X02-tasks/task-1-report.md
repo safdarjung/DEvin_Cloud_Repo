@@ -1,0 +1,11 @@
+Packet: X02-T1 Permission `certificate.manage` + module key `certificates`
+Files changed: src/lib/auth/permissions.ts; src/lib/modules/catalog.ts; docs/planning/coolskool/07-security-and-ai-governance.md (§2.2 row after leave.approve); tests/unit/permissions.test.ts; tests/unit/modules-catalog.test.ts
+Behavior implemented: `"certificate.manage"` added to `Permission` union and to owner/principal/admin/admissions in `ROLE_PERMISSIONS`. `MODULES.certificates` (label "Certificates & ID cards", People & HR, default true, no requires) + key appended after `student_lifecycle` in `MODULE_KEYS`/`OPTIONAL_MODULE_KEYS`; settings schema picks it up via `OPTIONAL_MODULE_KEYS`. 07 §2.2 row: own ✓ pri ✓ adm ✓ ads ✓.
+Continued from an interrupted run: catalog entry, ROLE_PERMISSIONS grants, MATRIX row, isModuleEnabled tests were already in the tree; this run added the union member, the 07 row, and the allModulesOn / settings-parse tests.
+Tests run: `pnpm test tests/unit/permissions.test.ts tests/unit/permission-literals.test.ts tests/unit/modules-catalog.test.ts tests/unit/institution-settings.test.ts` → 4 files, 56 passed, 0 failed. `pnpm lint` → clean. `pnpm typecheck` → 1 error, not mine: tests/unit/exam-seating-html.test.ts(5,8) TS2307 missing `src/modules/exam-seating/html` (X06 lane, in progress).
+Tests not run and why: none of this packet's. No DB commands (not DB owner); `tests/db/module-enabled-sql.test.ts` stays red until T2 inserts `certificates` into `app.module_catalog` (expected, per packet).
+Limitations / honesty label: none for T1 (no UI).
+Security / integration risks: none new; same role set as `student.write`. Permission exists before any action uses it (T7).
+Follow-ups: T2 (0091 catalog insert) must be committed together with T1. Other-lane edits present in the same shared files (`exam.seating.read` in permissions.ts + duplicated MATRIX row in permissions.test.ts lines 51/59, `exam_seating` in catalog.ts, `src/modules/core/schemas.ts` diff) — untouched, X06's.
+New dependencies (justification): none
+Assumptions made: no key-count assertion exists in the 4 test files, so none bumped. 07 table column order own·pri·adm·ads·acc·exc·tea·stu·gua verified against `website.edit` row.

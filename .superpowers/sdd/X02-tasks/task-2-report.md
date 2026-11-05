@@ -1,0 +1,11 @@
+Packet: X02-T2 Migration 0091 part 1 — `certificates` table, RLS, guards, module key
+Files changed: supabase/migrations/20261028000091_certificates.sql (new); tests/db/certificates-rls.test.ts (new); src/lib/db/types.ts (regen); tests/security/rls-expectations.ts (certificates entry)
+Behavior implemented: `app.module_catalog` insert for `certificates` (default_enabled true); table `certificates` (append-only, checks for kind/serial_no/transfer+lifecycle_event_id, unique (institution_id, serial_no), partial unique on lifecycle_event_id, index); `set_updated_at` + `block_mutation` triggers; RLS select-only for owner/principal/admin/admissions via `app.my_institution_ids`.
+Continued from interrupted run: migration, RLS test, types.ts regen and rls-expectations entry were already in the tree, matching rulings exactly. This run verified by actually executing `pnpm db:reset` (0091 applied cleanly after 0084) and the full test/lint/typecheck chain; no code changes were needed.
+Tests run: `pnpm db:reset` → clean (0091 applied, types regenerated, seed ok). `pnpm test:db tests/db/certificates-rls.test.ts` → 1 file, 6 passed, 0 failed. `pnpm test:security` → 19 files, 2201 passed, 0 failed (rls-expectations entry holds). `pnpm lint` → clean. `pnpm typecheck` → clean.
+Tests not run and why: none of this packet's.
+Limitations / honesty label: none for T2 (no UI, no RPC yet — T3 appends app.issue_certificate in the same file).
+Security / integration risks: none new; RLS matches 0076 shape narrowed to 4 roles; no insert/update/delete policy, rows only via T3's SECURITY DEFINER.
+Follow-ups: `pnpm test:db tests/db/module-enabled-sql.test.ts` fails (5/8) — NOT this packet: X06 lane added `exam_seating` to shared `src/lib/modules/catalog.ts` (MODULE_KEYS/OPTIONAL_MODULE_KEYS) but its own migration inserting that key into `app.module_catalog` is not yet in this tree, so `app.module_enabled('exam_seating', …)` raises `code:internal` ("unknown module key") and the drift test's dbSet/tsSet diff is short exactly one row (`exam_seating`); `certificates` matches correctly in both. Did not touch catalog.ts — shared file, X06's root cause to fix.
+New dependencies (justification): none
+Assumptions made: none beyond rulings; grants rely on 0045's `alter default privileges for role postgres` (same pattern as 0076, no explicit grant statement needed).

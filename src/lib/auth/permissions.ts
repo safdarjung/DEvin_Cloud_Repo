@@ -45,6 +45,7 @@ export type Permission =
   | "exam.recheck.request"
   | "exam.recheck.review"
   | "exam.recheck.decide"
+  | "exam.seating.read"
   | "assignment.manage"
   | "assignment.read"
   | "assignment.submit"
@@ -66,6 +67,7 @@ export type Permission =
   | "staff.attendance.mark"
   | "leave.request"
   | "leave.approve"
+  | "certificate.manage"
   | "facilities.manage"
   | "transport.manage"
   | "maintenance.request";
@@ -100,6 +102,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.result.read",
     "exam.recheck.review",
     "exam.recheck.decide",
+    "exam.seating.read",
     "assignment.manage",
     "assignment.read",
     "ai.generate",
@@ -119,6 +122,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "certificate.manage",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
@@ -152,6 +156,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.result.read",
     "exam.recheck.review",
     "exam.recheck.decide",
+    "exam.seating.read",
     "assignment.manage",
     "assignment.read",
     "ai.generate",
@@ -171,6 +176,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "certificate.manage",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
@@ -196,6 +202,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.structure.manage",
     "finance.read",
     "exam.result.read",
+    "exam.seating.read",
     "assignment.read",
     "ai.generate",
     "ai.usage.read",
@@ -213,6 +220,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "certificate.manage",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
@@ -238,6 +246,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "staff.attendance.mark",
     "leave.request",
+    "certificate.manage",
     "maintenance.request",
   ],
   accountant: [
@@ -269,6 +278,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.result.read",
     "exam.recheck.review",
     "exam.recheck.decide",
+    "exam.seating.read",
     "notification.read",
     "question.manage",
     "document.read",
@@ -304,6 +314,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.read",
     "exam.result.read",
     "exam.recheck.request",
+    "exam.seating.read",
     "assignment.read",
     "assignment.submit",
     "notification.read",
@@ -321,6 +332,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "finance.read",
     "exam.result.read",
     "exam.recheck.request",
+    "exam.seating.read",
     "assignment.read",
     "notification.read",
     "document.read",
