@@ -76,6 +76,8 @@ const MATRIX: Row[] = [
   ["facilities.manage", true, true, true, false, false, false, false, false, false],
   ["transport.manage", true, true, true, false, false, false, false, false, false],
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["agent.run", true, true, true, false, false, false, false, false, false],
+  ["agent.approve", true, true, false, false, false, false, false, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
@@ -155,5 +157,26 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
   it("finance.payment.void is held by owner and principal only", () => {
     const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("finance.payment.void"));
     expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("agent.run is held by owner, principal, and admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("agent.run"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("agent.approve is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("agent.approve"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("agent.run and agent.approve are not held by teacher, accountant, guardian, or student", () => {
+    expect(permissionsFor("teacher").includes("agent.run")).toBe(false);
+    expect(permissionsFor("teacher").includes("agent.approve")).toBe(false);
+    expect(permissionsFor("accountant").includes("agent.run")).toBe(false);
+    expect(permissionsFor("accountant").includes("agent.approve")).toBe(false);
+    expect(permissionsFor("guardian").includes("agent.run")).toBe(false);
+    expect(permissionsFor("guardian").includes("agent.approve")).toBe(false);
+    expect(permissionsFor("student").includes("agent.run")).toBe(false);
+    expect(permissionsFor("student").includes("agent.approve")).toBe(false);
   });
 });

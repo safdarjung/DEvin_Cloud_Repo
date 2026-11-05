@@ -349,4 +349,28 @@ describe("streamAgent (D31/D32/GU-05)", () => {
     if (result.ok) expect(result.provider).toBe("local");
     expect(providers.getCloudModel).not.toHaveBeenCalled();
   });
+
+  it("M22-T4: threads agentRunId into the success logUsage call", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult());
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput, agentRunId: "run-1" });
+    expect(result.ok).toBe(true);
+    await vi.waitFor(() => expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ agentRunId: "run-1" })));
+  });
+
+  it("M22-T4: threads agentRunId into the quota-failure logUsage call", async () => {
+    vi.mocked(usage.checkLimits).mockResolvedValueOnce({ ok: false, code: "quota_exceeded" });
+
+    await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput, agentRunId: "run-1" });
+
+    expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ agentRunId: "run-1" }));
+  });
+
+  it("M22-T4: defaults agentRunId to null when not given", async () => {
+    streamTextMock.mockReturnValueOnce(streamResult());
+
+    const result = await streamAgent({ ctx: fakeCtx("local_only"), ...baseStreamInput });
+    expect(result.ok).toBe(true);
+    await vi.waitFor(() => expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ agentRunId: null })));
+  });
 });

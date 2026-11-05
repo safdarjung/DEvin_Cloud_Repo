@@ -71,7 +71,9 @@ export type Permission =
   | "leave.approve"
   | "facilities.manage"
   | "transport.manage"
-  | "maintenance.request";
+  | "maintenance.request"
+  | "agent.run"
+  | "agent.approve";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -128,6 +130,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
   ],
   principal: [
     "institution.settings.manage",
@@ -183,6 +187,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
   ],
   admin: [
     "institution.settings.manage",
@@ -225,6 +231,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
   ],
   admissions: [
     "dashboard.view",

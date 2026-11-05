@@ -94,6 +94,8 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | leave.request (s = own leave) | ✓ | ✓ | ✓ | s | s | s | s | | |
 | leave.approve (never own) | ✓ | ✓ | ✓ | | | | | | |
 | question.manage (teacher: taught grade + subject; staff-only table) | ✓ | ✓ | | | | ✓ | s | | |
+| agent.run (run agents, read definitions/runs, decide own user_confirmed runs) | ✓ | ✓ | ✓ | | | | | | |
+| agent.approve (decide human_approved runs, enable/disable definitions) | ✓ | ✓ | | | | | | | |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 
