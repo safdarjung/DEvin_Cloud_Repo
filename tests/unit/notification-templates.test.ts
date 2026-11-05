@@ -63,6 +63,26 @@ describe("NOTIFICATION_TEMPLATES (06 §3)", () => {
     expect(body(vars, "en")).toContain("Holiday");
     expect(body(vars, "en")).toContain(vars.excerpt);
   });
+
+  it("fee_reminder renders EN and HI with all vars and rejects missing fields", () => {
+    const { varsSchema, body } = NOTIFICATION_TEMPLATES.fee_reminder;
+    const vars = { student: "Aarav Sharma", invoice_no: "INV-001", amount: "₹12,345.00", due_on: "2026-11-30", school: "St. Joseph" };
+    expect(varsSchema.safeParse(vars).success).toBe(true);
+    expect(varsSchema.safeParse({ ...vars, extra: "x" }).success).toBe(false);
+    expect(varsSchema.safeParse({ student: "Aarav", invoice_no: "INV-001", amount: "₹1,000", due_on: "2026-11-30" }).success).toBe(false);
+    const en = body(vars, "en");
+    const hi = body(vars, "hi");
+    expect(en).not.toBe(hi);
+    expect(en).toContain(vars.amount);
+    expect(en).toContain(vars.student);
+    expect(hi).toContain(vars.amount);
+    expect(hi).toContain(vars.student);
+  });
+
+  it("fee_reminder has category 'finance' and channels ['in_app', 'sms', 'email']", () => {
+    expect(NOTIFICATION_TEMPLATES.fee_reminder.category).toBe("finance");
+    expect(NOTIFICATION_TEMPLATES.fee_reminder.channels).toEqual(["in_app", "sms", "email"]);
+  });
 });
 
 describe("simulated channels never touch the network", () => {
@@ -98,3 +118,21 @@ describe("simulated channels never touch the network", () => {
     vi.unstubAllGlobals();
   });
 });
+
+  it("report_ready renders EN and HI with both vars and rejects missing date", () => {
+    const { varsSchema, body, channels, category } = NOTIFICATION_TEMPLATES.report_ready;
+    const vars = { report: "Daily Attendance", date: "2026-11-04" };
+    expect(varsSchema.safeParse(vars).success).toBe(true);
+    expect(varsSchema.safeParse({ ...vars, extra: "x" }).success).toBe(false);
+    expect(varsSchema.safeParse({ report: "Daily Attendance" }).success).toBe(false);
+    expect(varsSchema.safeParse({ ...vars, date: "" }).success).toBe(false);
+    const en = body(vars, "en");
+    const hi = body(vars, "hi");
+    expect(en).not.toBe(hi);
+    expect(en).toContain(vars.report);
+    expect(en).toContain(vars.date);
+    expect(hi).toContain(vars.report);
+    expect(hi).toContain(vars.date);
+    expect(channels).toEqual(["in_app"]);
+    expect(category).toBe("report");
+  });

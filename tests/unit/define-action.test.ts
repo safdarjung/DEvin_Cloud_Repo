@@ -345,6 +345,18 @@ describe("mapSqlError (C-03 criterion 3)", () => {
     expect(result).toEqual({ ok: false, error: { code: "conflict", message: "duplicate" } });
   });
 
+  it("maps SQLSTATE 42501 (RLS / grant violation) to forbidden", () => {
+    const result = mapSqlError({ code: "42501", message: "new row violates row-level security policy" });
+    expect(result).toMatchObject({ ok: false, error: { code: "forbidden" } });
+    if (!result.ok) expect(result.error.message).not.toMatch(/row-level/);
+  });
+
+  it("maps SQLSTATE 23505 (unique violation) to conflict", () => {
+    const result = mapSqlError({ code: "23505", message: "duplicate key value violates unique constraint \"x_key\"" });
+    expect(result).toMatchObject({ ok: false, error: { code: "conflict" } });
+    if (!result.ok) expect(result.error.message).not.toMatch(/x_key/);
+  });
+
   it("maps an unknown error to internal", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = mapSqlError(new Error("relation does not exist"));

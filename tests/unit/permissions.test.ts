@@ -40,6 +40,9 @@ const MATRIX: Row[] = [
   ["finance.structure.manage", true, true, true, false, true, false, false, false, false],
   ["finance.invoice.generate", true, true, false, false, true, false, false, false, false],
   ["finance.payment.record", true, true, false, false, true, false, false, false, false],
+  ["finance.payment.void", true, true, false, false, false, false, false, false, false],
+  ["finance.payment.online", true, true, false, false, true, false, false, false, true],
+  ["finance.reminder.send", true, true, false, false, true, false, false, false, false],
   ["finance.read", true, true, true, false, true, false, false, true, true],
   ["exam.manage", true, true, false, false, false, true, false, false, false],
   ["exam.marks.enter", true, true, false, false, false, true, true, false, false],
@@ -62,6 +65,7 @@ const MATRIX: Row[] = [
   ["question.manage", true, true, false, false, false, true, true, false, false],
   ["job.manage", true, true, true, false, false, false, false, false, false],
   ["data.import", true, true, true, false, false, false, false, false, false],
+  ["data.export", true, true, true, false, true, false, false, false, false],
   ["document.read", true, true, true, true, true, true, true, true, true],
   ["document.write", true, true, true, true, false, false, false, true, false],
   ["announcement.manage", true, true, true, false, false, false, false, false, false],
@@ -75,6 +79,7 @@ const MATRIX: Row[] = [
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
   ["insight.read", true, true, true, true, true, true, true, false, false],
   ["insight.review", true, true, true, true, true, true, false, false, false],
+  ["report.schedule", true, true, true, false, false, false, false, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
@@ -170,5 +175,20 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
     expect(holders.sort()).toEqual(
       ["accountant", "admin", "admissions", "exam_controller", "owner", "principal"].sort()
     );
+  });
+
+  it("guardian holds finance.payment.online, not finance.payment.void", () => {
+    expect(permissionsFor("guardian").includes("finance.payment.online")).toBe(true);
+    expect(permissionsFor("guardian").includes("finance.payment.void")).toBe(false);
+  });
+
+  it("accountant holds finance.reminder.send, not finance.payment.void", () => {
+    expect(permissionsFor("accountant").includes("finance.reminder.send")).toBe(true);
+    expect(permissionsFor("accountant").includes("finance.payment.void")).toBe(false);
+  });
+
+  it("finance.payment.void is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("finance.payment.void"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
   });
 });

@@ -185,6 +185,12 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 |---|---|---|---|---|---|
 | `student_lifecycle_events` | Year transitions and exits (append-only) | `student_id →` · `kind text check in (promoted, graduated, transferred_out, withdrawn)` · `batch_id uuid?` (shared per promote call) · `from_enrolment_id?→ enrolments` · `to_enrolment_id?→ enrolments` · `effective_on date` · `reason text?` (≤ 500) · `tc_no text?` (transfer certificate) · `tc_snapshot jsonb?` (student/grade/section/year/guardian/dues/conduct snapshot) · `created_by → profiles` · `created_at`/`updated_at` | partial unique(institution_id, tc_no) where tc_no is not null; index(student_id, created_at); checks: `(kind in ('transferred_out','withdrawn')) = (tc_no is not null and tc_snapshot is not null)`, `(kind = 'promoted') = (to_enrolment_id is not null)` | app (imm rows) | conf |
 
+### 2.11 reports (migration 0077)
+
+| Table | Purpose | Essential columns | Constraints / indexes | Hist | Sens |
+|---|---|---|---|---|---|
+| `scheduled_reports` | Batch report configurations and schedules | `name text` (1–80, unique per institution) · `source text check in (attendance.daily, finance.defaulters)` · `params jsonb not null default '{}'` (validated against source's schema; ≤ 1000 bytes) · `cron text` (≤ 100, cron subset parser: `^([0-9]\|[1-5][0-9]) ([0-9]\|1[0-9]\|2[0-3]) (\*\|L) (\*\|L) (\*\|L)$` with `L` = list/range in 1–31/1–12/0–6; DOM+DOW restriction check) · `recipient_roles text[]` (1–5, subset of source's allowed roles; distinct) · `status text check in (active, paused)` default `active` · `next_run_at timestamptz?` (computed by `app.cron_next_fire` on INSERT/cron/status change; active with no fire → trigger error) · `created_by → profiles` not null · `created_at`/`updated_at` + `set_updated_at` trigger | unique(institution_id, name); partial index on next_run_at where status='active'; check `jsonb_typeof(params)='object'` | op (pause instead of delete; no UPDATE on identity columns) | int |
+
 ## 3. Ownership matrix
 
 | Module | Owns | Reads from |
@@ -201,6 +207,7 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | transport | transport_vehicles, transport_routes, transport_stops, transport_assignments | people |
 | calendar | academic_calendar_events | academics |
 | lifecycle | student_lifecycle_events | people, academics |
+| reports | scheduled_reports, documents (report entity) | attendance (for `attendance.daily` source), finance (for `finance.defaulters` source); via RPC invokers only, no TS query registration |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |
 
 Reserved names, not created: `payroll_*`, `library_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.

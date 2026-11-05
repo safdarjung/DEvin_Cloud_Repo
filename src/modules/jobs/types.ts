@@ -10,7 +10,9 @@ export type JobType =
   | "notify.enquiry_received"
   | "notify.enrolment_welcome"
   | "notify.announcement"
-  | "finance.generate_term_invoices";
+  | "finance.generate_term_invoices"
+  | "report.generate"
+  | "finance.fee_reminder";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 

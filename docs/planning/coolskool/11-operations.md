@@ -12,13 +12,18 @@
 | `CRON_SECRET` | server | Bearer token for `/api/jobs/run` |
 | `DEMO_RESET_ALLOWED` | server, scripts | `true` enables `demo:reset` |
 | `SEED_DEMO_PASSWORD` | scripts | Password for seeded demo users (default documented in §3, demo tenant only) |
+| `RESTORE_DB_URL` | scripts | Target Postgres URL for `db:restore` (fresh DB only; protects the shared local stack); never set without a fresh target |
+| `RESTORE_ALLOW_REMOTE_HOST` | scripts | Exact hostname (e.g. `pooler.ap-south-1.example.com`) to allow a non-loopback restore target; missing blocks remote hosts |
 | `OLLAMA_BASE_URL` | server | Default `http://127.0.0.1:11434` |
 | `OLLAMA_MODEL` | server | Default `qwen3:4b-instruct-2507-q4_K_M`; fallback `qwen2.5:3b` |
 | `AI_CLOUD_ENABLED` | server | Global cloud switch, default `false` |
 | `ANTHROPIC_API_KEY` | server | Optional; absent in the demo |
 | `AI_CLOUD_MODEL_QUALITY` / `AI_CLOUD_MODEL_CHEAP` | server | Defaults `claude-sonnet-5` / `claude-haiku-4-5` |
 | `NEXT_PUBLIC_DEMO_LOGIN_HINTS` | all | `true` shows the demo account list on the login page (demo deployments only; DBT-11) |
-| `SERVICE_ROLE_CALLER` | scripts, jobs | Set by entrypoints to `seed`, `reset`, or `jobs`; the admin client refuses otherwise |
+| `SERVICE_ROLE_CALLER` | scripts, jobs | Set by entrypoints to `seed`, `reset`, `jobs`, `public_enquiry`, or `payments_webhook` (route-scoped, `07 §4`); the admin client refuses otherwise |
+| `RAZORPAY_KEY_ID` | server | Razorpay key id; **test mode only** — `onlinePaymentsMode()` is `test` iff it starts `rzp_test_` and the secret is set, anything else (including `rzp_live_`) is `simulated` (M12) |
+| `RAZORPAY_KEY_SECRET` | server | Razorpay key secret (Basic auth for `POST /v1/orders`); never logged |
+| `RAZORPAY_WEBHOOK_SECRET` | server | HMAC secret for `POST /api/public/payments/razorpay`; unset → the route answers 503 `dependency_failed` |
 | `BENCH_KWH_USD`, `BENCH_HW_USD_PER_HOUR` | bench | Cost assumptions for local inference (flagged in output) |
 
 `.env.example` lists all names with comments; `.env.local` is git-ignored. CI uses repository secrets only for the deploy job.
@@ -60,7 +65,38 @@ Dev/demo separation: the demo institution is the only `is_demo = true` tenant; r
 
 ## 6. Backup and restore
 
-Backup: `pnpm supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/<date>-schema.sql` and `--data-only -f backups/<date>-data.sql` (backups directory git-ignored). Restore drill: create a Supabase branch or a second local instance, `psql < schema.sql`, `psql < data.sql`, run J-00. Hosted project daily backups (Supabase default on paid tiers) are noted as the production path; the demo relies on `demo:reset` for recovery.
+**Scope.** A backup holds `roles.sql` (Supabase roles, reserved ones commented), `schema.sql` (public + app schemas, grants, RLS, functions, triggers), `data.sql` (public/app/auth/storage tables as INSERTs with immutability guards suspended during load), and `managed.sql` (auth/storage policies, regenerated each dump). **Not in a dump:** storage bucket bytes (metadata only; manual experimental `storage cp`), platform state (cron jobs, net queues, vaulted secrets), migration history (recorded in manifest, restored via `migration repair`). A new custom schema must be added to `DATA_SCHEMAS` in `scripts/lib/backup.ts`.
+
+**RPO/RTO.**  Hosted demo (free tier, no platform backups): RPO ≤ 24 h (owner runs `pnpm db:backup --label hosted` daily and before every push). RTO ≤ 2 h (new project → restore → migration repair → cron jobs → Vercel env swap → smoke). Drill bar: backup + stack start + restore + parity ≤ 30 min at seed scale. First real school: Supabase Pro daily backups + PITR become primary; these dumps are the off-platform copy (weekly). Retention: newest 14 backup directories (pruned by hand).
+
+**Local.** Commands:
+- `pnpm db:backup [--label local]` — dumps shared local DB into `backups/<UTC-timestamp>-<label>/`. Default label `local`.
+- `pnpm db:restore <dir>` — load `backups/<dir>` into `$RESTORE_DB_URL` (refuses shared 54322 and non-loopback hosts). Aborts if target public schema has tables (fresh only).
+- `pnpm db:drill [--from <backupDir>] [--skip-tests] [--keep]` — backup (unless `--from`), spin up a throwaway drill stack (project_id `coolschool-drill`, ports 553xx), restore into it, run `pnpm test:db` with drill env, stop + cleanup.
+
+**Hosted drill (owner-run, once per backup or before major push).** Steps:
+1. `docker ps` + `.env.production.local` holds `SUPABASE_DB_URL` (Session pooler URI from dashboard, port 5432, password percent-encoded). Never paste it in chat.
+2. `node --env-file=.env.production.local scripts/db-backup.ts --label hosted` → `backups/<UTC>-hosted/`.
+3. Optional: `pnpm exec supabase storage cp -r ss:///tenant-docs backups/<UTC>-hosted/storage --linked --experimental`.
+4. `pnpm db:drill --from backups/<UTC>-hosted --skip-tests` (restores into local drill stack only; hosted DB read-only).
+5. Record timings in the log below. Keep the dir (encrypt any off-laptop copy) or delete.
+
+**Hosted disaster restore (owner-run, not drilled).** Steps:
+1. New Supabase project in ap-south-1. Set `RESTORE_DB_URL` (new Session pooler URI) and `RESTORE_ALLOW_REMOTE_HOST` (its hostname) in `.env.restore.local` (gitignored). Never set inline.
+2. `node --env-file=.env.restore.local scripts/db-restore.ts backups/<UTC>-*`.
+3. `pnpm exec supabase link --project-ref <new-ref>` → `pnpm exec supabase migration repair --status applied <appliedMigrations from manifest.json>` → `pnpm exec supabase migration list --linked`.
+4. `node --env-file=.env.production.local scripts/hosted-schedule-jobs.ts` (new project env).
+5. Storage bytes: `pnpm exec supabase storage cp -r backups/<UTC>-*/storage ss:///tenant-docs --linked --experimental`.
+6. Auth site URL, confirmations per §4 step 3.
+7. Vercel env vars swap (new project keys) + redeploy.
+8. Smoke J-00/J-01.
+
+**Drill log.** Keep timings for each hosted drill; update the manifest row after running one.
+
+| Date | Operator | Source | data.sql MB | Backup min | Stack start min | Restore+parity min | test:db pass/fail | Total min | Within bar (≤30 min)? | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-05 | (controller) | local seed | 94 | 0.27 | 0.83 | 0.19 | 887/894 (5 timeouts under load, pass alone; 2 stale `internal` expectations, fixed to `forbidden`) | 28.9 | Yes | 7 failures all pass alone on shared DB or are known DBT-46 |
+| — | (owner) | hosted | — | — | — | — | — | — | — | Fill after hosted drill |
 
 ## 7. Google sign-in (documented, not configured)
 
@@ -106,7 +142,7 @@ Reset between runs: `pnpm demo:reset` (≈ seed time). If the venue has no conne
 
 ## 11. Production-readiness gaps (after the demo)
 
-Real SMS/email providers (DLT registration), payment gateway, CSV import, backups policy and retention, consent records (DPDP), rate limiting at the edge (WAF/CAPTCHA), observability (APM, alerts), custom domains, storage policies for documents, multi-campus UI, table-driven permissions, void/refund flows, pen test by a third party.
+Real SMS/email providers (DLT registration), payment gateway, CSV import, consent records (DPDP), rate limiting at the edge (WAF/CAPTCHA), observability (APM, alerts), custom domains, storage policies for documents, multi-campus UI, table-driven permissions, void/refund flows, pen test by a third party. **Platform backups** (Supabase Pro daily + PITR): owner decision before the first real school is hosted.
 
 ## 12. Environment matrix
 
@@ -140,6 +176,16 @@ Real SMS/email providers (DLT registration), payment gateway, CSV import, backup
 3. Set `RESEND_FROM` to the verified sender domain (optional; default `onboarding@resend.dev` works for testing).
 4. Test: invite your own email address as a member; check that `/invitations/accept` sends an email (visible in Resend dashboard) or simulated (shown as failed status if the key is not set or the domain is unverified).
 5. Emails are sent for invitations and notifications (enrolment welcome, announcements) when the key is set. Reserved test domains (`.test`, `example.com`) remain simulated. Check the delivery attempt status in the message log (`notifications.listDeliveryLog`).
+
+## 13.6. Onboarding M12 online payments (Razorpay test mode) on hosted
+
+Scope: Razorpay **test mode** only. Live keys are refused by design (`onlinePaymentsMode()` treats `rzp_live_` as `simulated`); live mode needs DBT-67/DBT-68 closed first.
+
+1. Razorpay dashboard → switch to Test Mode → Settings → API Keys → generate a test key pair. Set `RAZORPAY_KEY_ID` (starts `rzp_test_`) and `RAZORPAY_KEY_SECRET` in Vercel environment (server only). Without both, intents are created as `simulated` (`sim_order_` id, no checkout, nothing captured) and the UI shows `<SimulatedBadge />`; with both, `<LimitedBadge />` "test mode".
+2. Settings → Webhooks → add `https://<app-host>/api/public/payments/razorpay`, choose a secret, set the same value as `RAZORPAY_WEBHOOK_SECRET` in Vercel. Subscribe to events `payment.captured` and `order.paid` only (anything else is answered 200 `ignored: "event"`). Redeploy after setting env.
+3. Enable the module for the school: `online_payments` (requires `finance_plus`) in `institutions.settings.modules` via the MOD toggle. While disabled, the webhook acknowledges with 200 `ignored: "module_disabled"` and writes nothing — Razorpay will not retry, so enable the module before the first test payment.
+4. Test: log in as a guardian, open an `issued`/`part_paid` invoice, call `finance.payment.createIntent` (amount between ₹1.00 and the outstanding) → use the returned `orderId`/`keyId` with Razorpay Checkout test cards/UPI → the webhook records the payment through `record_online_payment` (receipt visible on the invoice; `finance.payment.recorded` audit with no actor). Replaying the same event returns 200 `duplicate: true`; the Razorpay dashboard "resend webhook" is safe.
+5. Troubleshooting: 503 → `RAZORPAY_WEBHOOK_SECRET` missing on the deployment; 400 `validation_failed` → signature mismatch (secret differs between dashboard and env) or body over 64 KB; 404 `not_found` → order id unknown (intent created against another environment/database); 409 → paid under a different payment id, or invoice no longer `issued`/`part_paid`; 500 carries a correlation id — search Vercel logs for it (the request body is never logged). Refunds: `finance.payment.void` kind `refund` reverses the books only; refund the money in the Razorpay dashboard (DBT-67).
 
 ## 14. Onboarding a real school in 3 days (M03–M04 APIs)
 

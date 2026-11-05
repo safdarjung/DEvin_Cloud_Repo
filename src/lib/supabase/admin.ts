@@ -9,13 +9,16 @@ import type { Database } from "@/lib/db/types";
 // "public_enquiry" (T-024): public.submit_public_enquiry is granted to
 // service_role only (07 §4, 20261028000007) — neither anon nor authenticated
 // may call it directly, so the public enquiry route is its sole caller.
-const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test", "ai", "public_enquiry"]);
+// "payments_webhook" (M12-T12): public.record_online_payment is granted to
+// service_role only (07 §4, 20261028000083) — the Razorpay webhook route is
+// its sole caller, after its own HMAC signature verification.
+const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test", "ai", "public_enquiry", "payments_webhook"]);
 
 export function createAdminClient() {
   const caller = process.env.SERVICE_ROLE_CALLER;
   if (!caller || !ALLOWED_CALLERS.has(caller)) {
     throw new Error(
-      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/test",
+      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/test",
     );
   }
 
