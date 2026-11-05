@@ -4,6 +4,7 @@
 import { z } from "zod";
 // Relative + .ts: the seed scripts (plain node, no path alias) import this file.
 import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
+import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
 // checks live in create_institution (SQL); this only validates shape.
@@ -337,10 +338,8 @@ export type SetMemberStatusInput = z.infer<typeof SetMemberStatusSchema>;
 // MOD-T4 — core.module.set action input.
 export const SetModuleEnabledSchema = z
   .object({
-    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "whatsapp", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows", "library"]),
-    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "visitors", "announcements", "email", "sms", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
-    // ptm/student_leave/diary added alongside OPTIONAL_MODULE_KEYS (lib/modules/catalog.ts) — X01-T11 needed core.module.set({key:"diary"}) and found this enum hadn't grown with the catalog.
-    key: z.enum(["core", "people", "academic_structure", "attendance", "fees", "notifications", "timetable", "assignments", "lesson_plans", "question_bank", "exams", "admissions", "website", "staff_attendance", "substitution", "student_lifecycle", "finance_plus", "online_payments", "facilities", "transport", "calendar", "announcements", "email", "sms", "ptm", "student_leave", "diary", "scheduled_reports", "ai_teacher", "ai_student", "ai_briefings", "insights", "mastery", "forecasts", "agents", "workflows"]),
+    // Derived from the catalog so this enum can never drift from it again (it drifted in 3 lanes).
+    key: z.enum(MODULE_KEYS),
     enabled: z.boolean(),
   })
   .strict();

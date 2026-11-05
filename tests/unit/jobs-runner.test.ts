@@ -177,8 +177,6 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
       calls.push("claimJob");
       return null;
     });
-  it("sweeps for due forecasts exactly once, after the report sweep and before the first claimJob", async () => {
-    const calls: string[] = [];
     const enqueueDueReports = vi.fn(async () => {
       calls.push("enqueueDueReports");
       return 0;
@@ -195,15 +193,12 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
     expect(calls).toEqual(["enqueueDueReports", "enqueueDueInsights", "claimJob"]);
   });
 
-  it("still claims jobs and still runs the reports sweep when the insights sweep rejects", async () => {
-    const job = makeJob();
-    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
-    const completeJob = vi.fn(async () => {});
-    const enqueueDueReports = vi.fn(async () => 1);
-    const enqueueDueInsights = vi.fn(async () => {
-      throw new Error("insights sweep boom");
+  it("sweeps for due forecasts exactly once, after the report sweep and before the first claimJob", async () => {
+    const calls: string[] = [];
+    const enqueueDueReports = vi.fn(async () => {
+      calls.push("enqueueDueReports");
+      return 0;
     });
-    const ports = fakePorts({ claimJob, completeJob, enqueueDueReports, enqueueDueInsights });
     const enqueueDueForecasts = vi.fn(async () => {
       calls.push("enqueueDueForecasts");
     });
@@ -219,6 +214,23 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
     expect(calls).toEqual(["enqueueDueReports", "enqueueDueForecasts", "claimJob"]);
   });
 
+  it("still claims jobs and still runs the reports sweep when the insights sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueDueReports = vi.fn(async () => 1);
+    const enqueueDueInsights = vi.fn(async () => {
+      throw new Error("insights sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueDueReports, enqueueDueInsights });
+
+    const summary = await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(enqueueDueReports).toHaveBeenCalledTimes(1);
+    expect(completeJob).toHaveBeenCalledWith(job.id, true);
+  });
+
   it("still claims jobs and leaves the summary unchanged when the forecast sweep rejects", async () => {
     const job = makeJob();
     const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
@@ -231,7 +243,6 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
     const summary = await runOnceCore({ workerId: "w1" }, ports);
 
     expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
-    expect(enqueueDueReports).toHaveBeenCalledTimes(1);
     expect(completeJob).toHaveBeenCalledWith(job.id, true);
   });
 });
@@ -392,17 +403,19 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     expect(rpc).toHaveBeenCalledWith("enqueue_insight_detection");
   });
 
-  it("enqueueDueInsights throws on an RPC error", async () => {
-    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "boom" } } });
-    const ports = createRunnerPorts(admin);
-
-    await expect(ports.enqueueDueInsights()).rejects.toThrow("boom");
   it("enqueueDueForecasts calls the enqueue_due_forecasts RPC", async () => {
     const { admin, rpc } = fakeAdmin({ rpcResult: { data: null, error: null } });
     const ports = createRunnerPorts(admin);
 
     await expect(ports.enqueueDueForecasts()).resolves.toBeUndefined();
     expect(rpc).toHaveBeenCalledWith("enqueue_due_forecasts");
+  });
+
+  it("enqueueDueInsights throws on an RPC error", async () => {
+    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "boom" } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueInsights()).rejects.toThrow("boom");
   });
 
   it("enqueueDueForecasts throws on an RPC error", async () => {

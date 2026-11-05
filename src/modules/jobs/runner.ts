@@ -162,6 +162,7 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
       const { data, error } = await admin.rpc("enqueue_insight_detection");
       if (error) throw new Error(error.message);
       return Number(data);
+    },
     async enqueueDueForecasts() {
       const { error } = await admin.rpc("enqueue_due_forecasts");
       if (error) throw new Error(error.message);
@@ -201,6 +202,11 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] insights sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
     await ports.enqueueDueForecasts();
   } catch (err) {
     const correlationId = crypto.randomUUID();

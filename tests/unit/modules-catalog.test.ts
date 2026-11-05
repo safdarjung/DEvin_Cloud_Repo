@@ -198,6 +198,8 @@ describe('modules-catalog', () => {
     it('{modules: {exam_seating: true}} parses InstitutionSettingsSchema', () => {
       const settings = { ...DEFAULT_INSTITUTION_SETTINGS, modules: { exam_seating: true } };
       expect(InstitutionSettingsSchema.safeParse(settings).success).toBe(true);
+    });
+
     it('parses {modules: {diary: false}} and returns false for diary', () => {
       const ctx = { institution: { settings: { modules: { diary: false } } } };
       expect(isModuleEnabled(ctx as TestContext, 'diary')).toBe(false);

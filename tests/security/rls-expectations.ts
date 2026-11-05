@@ -637,6 +637,63 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "exam_controller", "teacher"],
     write: ["owner", "principal", "exam_controller", "teacher"],
   },
+  // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
+  // admin only (07 §2.2); no DELETE policy (pause instead of delete).
+  scheduled_reports: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0086 (X03-T2) — library_books/library_copies: every active member
+  // reads (titles aren't sensitive); owner/principal/admin write.
+  library_books: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  library_copies: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  // library_loans: owner/principal/admin see every row; other staff roles
+  // see only rows where its own staff_id is the borrower (app.my_staff_ids);
+  // student/guardian see own/linked student's loans only — explicit own-row
+  // scoping proved in tests/db/library-rls.test.ts, not by the generated
+  // suite's plain own-institution probe. No write policy: issue/renew/return
+  // RPCs only.
+  library_loans: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // 0091 (X02-T2) — certificates: staff-only (certificate.manage role set),
+  // narrower than student_lifecycle_events (no teacher/student/guardian —
+  // they hold the paper copy). No write policy: rows come only from T3's
+  // app.issue_certificate (SECURITY DEFINER).
+  certificates: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions"],
+    write: [],
+  },
+
+  // 0088 (X06-T2) — exam seating. Headers (exam_seating_plans) hold no
+  // student data, so guardian/student see every current header institution-
+  // wide; exam_seats additionally scopes guardian/student to their own
+  // child's/own seat in a current plan only — explicit own-row/version
+  // scoping proved in tests/db/exam-seating-rls.test.ts, not by the
+  // generated suite's plain own-institution probe. No write policy on
+  // either table: rows come only from T3's app.generate_seating_plan.
+  exam_seating_plans: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"],
+    write: [],
+  },
+  exam_seats: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"], // student/guardian: own seat in the current plan only
+    write: [],
+  },
   // 0092 (M19-T2) — insights: owner/principal/admin read every domain;
   // admissions/accountant/exam_controller read only their matching domain;
   // teacher reads attendance/academics rows of taught sections only.
@@ -700,9 +757,6 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "teacher"],
     write: ["owner", "principal", "admin", "teacher"],
   },
-  // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
-  // admin only (07 §2.2); no DELETE policy (pause instead of delete).
-  scheduled_reports: {
 
   // 0085 part 1 (X01-T4) — student_leave_requests: owner/principal/admin
   // see every row of the institution; a teacher sees only rows for
@@ -794,25 +848,6 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
   },
-  // 0086 (X03-T2) — library_books/library_copies: every active member
-  // reads (titles aren't sensitive); owner/principal/admin write.
-  library_books: {
-    classes: ["S"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
-    write: ["owner", "principal", "admin"],
-  },
-  library_copies: {
-    classes: ["S"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
-    write: ["owner", "principal", "admin"],
-  },
-  // library_loans: owner/principal/admin see every row; other staff roles
-  // see only rows where its own staff_id is the borrower (app.my_staff_ids);
-  // student/guardian see own/linked student's loans only — explicit own-row
-  // scoping proved in tests/db/library-rls.test.ts, not by the generated
-  // suite's plain own-institution probe. No write policy: issue/renew/return
-  // RPCs only.
-  library_loans: {
   survey_audiences: {
     classes: ["A"],
     read: ["owner", "principal", "admin"],
@@ -824,33 +859,6 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   survey_respondents: {
     classes: ["O"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
-    write: [],
-  },
-  // 0091 (X02-T2) — certificates: staff-only (certificate.manage role set),
-  // narrower than student_lifecycle_events (no teacher/student/guardian —
-  // they hold the paper copy). No write policy: rows come only from T3's
-  // app.issue_certificate (SECURITY DEFINER).
-  certificates: {
-    classes: ["S"],
-    read: ["owner", "principal", "admin", "admissions"],
-    write: [],
-  },
-
-  // 0088 (X06-T2) — exam seating. Headers (exam_seating_plans) hold no
-  // student data, so guardian/student see every current header institution-
-  // wide; exam_seats additionally scopes guardian/student to their own
-  // child's/own seat in a current plan only — explicit own-row/version
-  // scoping proved in tests/db/exam-seating-rls.test.ts, not by the
-  // generated suite's plain own-institution probe. No write policy on
-  // either table: rows come only from T3's app.generate_seating_plan.
-  exam_seating_plans: {
-    classes: ["C"],
-    read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"],
-    write: [],
-  },
-  exam_seats: {
-    classes: ["C", "S+G"],
-    read: ["owner", "principal", "admin", "exam_controller", "student", "guardian"], // student/guardian: own seat in the current plan only
     write: [],
   },
   // survey_responses: no INSERT/UPDATE/DELETE policy at all — writes only

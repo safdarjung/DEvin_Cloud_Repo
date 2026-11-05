@@ -61,6 +61,10 @@ const GatePassApprovedVars = z
     class: z.string().min(1),
     collector: z.string().min(1),
     time: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
+
 // X01-T10 — no `reason`/`decision_note` var (lesson 10: never notify the
 // leave's own reason, it may hold health details).
 const StudentLeaveDecidedVars = z
@@ -82,6 +86,8 @@ const FeeReminderVars = z
     due_on: z.string().min(1),
     school: z.string().min(1),
   })
+  .strict();
+
 const DiaryEntryVars = z
   .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
   .strict();
@@ -189,6 +195,7 @@ export const NOTIFICATION_TEMPLATES = {
       lang === "hi"
         ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${v.due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
         : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${v.due_on}). Please pay at the school office. -${v.school}`,
+  }),
   student_leave_decided: def({
     channels: ["in_app", "sms"],
     category: "attendance",
