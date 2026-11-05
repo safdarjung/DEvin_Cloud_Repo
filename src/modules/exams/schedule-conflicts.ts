@@ -2,10 +2,41 @@
 // access (unlike queries.ts): callers pass already-fetched rows so this can
 // run in a server action/query or a unit test. tz pattern mirrors
 // timetable/queries.ts's nowPartsInInstitutionTimezone.
+import { AppError, mapSqlError } from "@/lib/actions/result";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MINUTES_PER_DAY = 24 * 60;
+
+// M16 security review (MEDIUM): these two lived in actions.ts, a "use server"
+// file, which breaks every "use server" action in the app, because
+// throwMappedSchedule was exported but not async (Next.js requires every
+// exported binding in a "use server" file to be an async Server Action).
+// This file has no "use server" directive, so plain helper exports are fine.
+export function throwMapped(error: unknown): never {
+  const mapped = mapSqlError(error);
+  if (mapped.ok) throw new AppError("internal", "Unexpected error.");
+  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
+
+// M11 security review fix round 1: mapSqlError only maps `code:<ErrorCode>`
+// exception messages, not raw PostgREST error codes — a real RLS violation
+// or check-constraint hit on schedulePapers's exam_papers select/update
+// calls (e.g. a row deleted between the pre-check and the write) fell
+// through to a generic "internal" error instead of the mapping the M11
+// rulings specify (42501 -> forbidden, 23514/23503/22P02 -> validation_failed),
+// matching the question-bank/actions.ts isRlsViolation precedent.
+const PG_FORBIDDEN_CODE = "42501";
+const PG_VALIDATION_CODES = new Set(["23514", "23503", "22P02"]);
+
+export function throwMappedSchedule(error: unknown): never {
+  const code = error && typeof error === "object" ? (error as { code?: unknown }).code : undefined;
+  if (code === PG_FORBIDDEN_CODE) throw new AppError("forbidden", "Outside your teaching scope.");
+  if (typeof code === "string" && PG_VALIDATION_CODES.has(code)) {
+    throw new AppError("validation_failed", "Invalid schedule data.");
+  }
+  throwMapped(error);
+}
 
 /** `settings.locale.timezone`, same fallback as timetable/attendance queries.ts. */
 export function institutionTimeZone(settings: Record<string, unknown>): string {

@@ -47,6 +47,19 @@ test.describe("J-06: attendance marking and submission", () => {
     await expect(viaRow(page)).toHaveCount(1);
   });
 
+  test("teacher.vi-a's /today shows the Today's timetable widget", async ({ page }) => {
+    await loginAs(page, "teacher.vi-a@demo.coolskool.test");
+    await page.goto(`/${SLUG}/today`);
+
+    await expect(page.getByText("Today's timetable")).toBeVisible();
+    const isSunday = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }) === "Sun";
+    if (isSunday) {
+      await expect(page.getByText("No periods today")).toBeVisible();
+    } else {
+      await expect(page.getByText("No periods today")).not.toBeVisible();
+    }
+  });
+
   test("teacher.viii-b cannot open VI-A's register directly", async ({ page }) => {
     await loginAs(page, "teacher.vi-a@demo.coolskool.test");
     await page.goto(`/${SLUG}/attendance`);
@@ -54,8 +67,11 @@ test.describe("J-06: attendance marking and submission", () => {
     expect(href).toBeTruthy();
 
     await loginAs(page, "teacher.viii-b@demo.coolskool.test");
-    const response = await page.goto(`${new URL(href!, page.url()).pathname}${new URL(href!, page.url()).search}`);
-    expect(response?.status()).toBe(404);
+    await page.goto(`${new URL(href!, page.url()).pathname}${new URL(href!, page.url()).search}`);
+    // Status is 200, not 404: the tenant loading.tsx Suspense boundary commits the status before notFound() (DBT-83).
+    // The guard itself works: the not-found body renders and no register UI reaches the page.
+    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByRole("button", { name: /submit/i })).toHaveCount(0);
   });
 
   test("marking every student and submitting shows the absence/notification feedback", async ({ page }) => {

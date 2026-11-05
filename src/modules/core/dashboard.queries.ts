@@ -39,7 +39,7 @@ export function formatINR(paise: number): string {
   return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(paise / 100);
 }
 
-async function currentTermCollections(ctx: TenantContext): Promise<TermCollectionSummary | null> {
+export async function currentTermCollections(ctx: TenantContext): Promise<TermCollectionSummary | null> {
   const years = await listAcademicYears(ctx);
   const currentYear = years[0];
   if (!currentYear) return null;

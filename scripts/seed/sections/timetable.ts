@@ -4,17 +4,16 @@ import { GRADES, sectionKey, sectionNames } from "../lib/grades.ts";
 import { uuidV5 } from "../lib/ids.ts";
 
 // M07-T6 (M07-tasks.md Task 6) — one dedicated room per section (capacity
-// 45) + a hall, the bell schedule from src/modules/core/demo/fixtures.ts's
-// SLOTS (7 teaching periods, one short break, one lunch break — times must
-// match that fixture exactly, this seed replaces it), and one published
-// timetable version filling Mon-Sat for every section from its
-// subject_assignments (academics.ts), greedy round-robin that skips a cell
-// rather than ever double-book a teacher or room.
+// 45) + a hall, the bell schedule (7 teaching periods, one short break, one
+// lunch break, 08:00–14:10 IST, 45-min periods, 15-min short break, 40-min
+// lunch), and one published timetable version filling Mon-Sat for every
+// section from its subject_assignments (academics.ts), greedy round-robin
+// that skips a cell rather than ever double-book a teacher or room.
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6];
 
-// src/modules/core/demo/fixtures.ts SLOTS: 08:00-14:10 IST, 45-min periods,
-// 15-min short break, 40-min lunch.
+// Bell schedule: 08:00–14:10 IST, 45-min periods, 15-min short break,
+// 40-min lunch.
 const SLOT_DEFS: { seq: number; name: string; start: string; end: string; isBreak: boolean }[] = [
   { seq: 1, name: "Period 1", start: "08:00", end: "08:45", isBreak: false },
   { seq: 2, name: "Period 2", start: "08:45", end: "09:30", isBreak: false },
