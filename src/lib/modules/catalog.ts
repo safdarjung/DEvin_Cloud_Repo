@@ -158,6 +158,12 @@ export const MODULES = {
     description: 'Academic calendar, holidays, and attendance blocking.',
     default: true,
   },
+  visitors: {
+    label: 'Visitors & gate pass',
+    category: 'Operations',
+    description: 'Front-desk visitor log, student early-leave gate passes and guardian-maintained pickup lists.',
+    default: false,
+  },
   announcements: {
     label: 'Announcements',
     category: 'Communication',
@@ -259,6 +265,7 @@ export const MODULE_KEYS: [ModuleKey, ...ModuleKey[]] = [
   'facilities',
   'transport',
   'calendar',
+  'visitors',
   'announcements',
   'email',
   'sms',
@@ -289,6 +296,7 @@ export const OPTIONAL_MODULE_KEYS: [OptionalModuleKey, ...OptionalModuleKey[]] =
   'facilities',
   'transport',
   'calendar',
+  'visitors',
   'announcements',
   'email',
   'sms',

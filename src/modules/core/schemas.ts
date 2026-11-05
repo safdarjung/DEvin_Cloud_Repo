@@ -163,6 +163,7 @@ export const InstitutionSettingsSchema = z
         facilities: z.boolean().optional(),
         transport: z.boolean().optional(),
         calendar: z.boolean().optional(),
+        visitors: z.boolean().optional(),
         announcements: z.boolean().optional(),
         email: z.boolean().optional(),
         sms: z.boolean().optional(),

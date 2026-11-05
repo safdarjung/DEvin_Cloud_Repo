@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPES = [
   "enquiry_received",
   "enrolment_welcome",
   "announcement",
+  "gate_pass_approved",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -48,6 +49,17 @@ const EnrolmentWelcomeVars = z
   .strict();
 
 const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
+
+// X07-T7 — gate pass approval notice (rulings "Notification").
+const GatePassApprovedVars = z
+  .object({
+    student: z.string().min(1),
+    class: z.string().min(1),
+    collector: z.string().min(1),
+    time: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -122,6 +134,16 @@ export const NOTIFICATION_TEMPLATES = {
     varsSchema: AnnouncementVars,
     title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
     body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
+  }),
+  gate_pass_approved: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: GatePassApprovedVars,
+    title: (lang) => (lang === "hi" ? "गेट पास स्वीकृत" : "Gate pass approved"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `गेट पास: ${v.student} (${v.class}) आज स्कूल से जल्दी जा सकते हैं ${v.collector} के साथ, स्वीकृत ${v.time}। अप्रत्याशित है? अभी स्कूल को कॉल करें। -${v.school}`
+        : `Gate pass: ${v.student} (${v.class}) may leave school early today with ${v.collector}, approved ${v.time}. Not expected? Call the school now. -${v.school}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

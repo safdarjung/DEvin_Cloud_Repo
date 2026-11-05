@@ -15,6 +15,7 @@ import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
+import { run as runVisitors } from "./sections/visitors.ts";
 import { run as runWebsite } from "./sections/website.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
@@ -31,6 +32,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "finance", run: runFinance },
   { name: "exams", run: runExams },
   { name: "website", run: runWebsite },
+  // X07-T9: registered last — reads students/guardians/staff ids every earlier section wrote.
+  { name: "visitors", run: runVisitors },
 ];
 
 async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {

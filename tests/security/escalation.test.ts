@@ -275,6 +275,16 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "transport.assign": { permission: "transport.manage", input: () => ({ studentId: U(), stopId: U() }) },
   "transport.unassign": { permission: "transport.manage", input: () => ({ studentId: U() }) },
+  "visitors.checkIn": { permission: "visitor.manage", input: () => ({ fullName: "Probe Visitor", phone: "9876543210", purpose: "Probe", meetingWith: "Office" }) },
+  "visitors.checkOut": { permission: "visitor.manage", input: () => ({ id: U() }) },
+  "visitors.gatePass.create": { permission: "gatepass.manage", input: () => ({ studentId: U(), reason: "Probe reason.", guardianId: U() }) },
+  "visitors.gatePass.setStatus": { permission: "gatepass.manage", input: () => ({ id: U(), status: "approved" }) },
+  "visitors.pickup.add": {
+    permission: "pickup.manage",
+    input: () => ({ studentId: U(), fullName: "Probe Person", relation: "driver", phone: "9876543210" }),
+  },
+  "visitors.pickup.remove": { permission: "pickup.manage", input: () => ({ id: U() }) },
+  "visitors.purge": { permission: "visitor.manage", input: () => ({}) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

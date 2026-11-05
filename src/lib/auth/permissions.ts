@@ -68,7 +68,11 @@ export type Permission =
   | "leave.approve"
   | "facilities.manage"
   | "transport.manage"
-  | "maintenance.request";
+  | "maintenance.request"
+  | "visitor.manage"
+  | "gatepass.manage"
+  | "pickup.manage"
+  | "forecast.read";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -122,6 +126,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
   ],
   principal: [
     "institution.settings.manage",
@@ -174,6 +182,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
   ],
   admin: [
     "institution.settings.manage",
@@ -216,6 +228,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
   ],
   admissions: [
     "dashboard.view",
@@ -256,6 +272,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "forecast.read",
   ],
   exam_controller: [
     "dashboard.view",
@@ -276,6 +293,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "forecast.read",
   ],
   teacher: [
     "student.read",
@@ -296,6 +314,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "gatepass.manage",
+    "forecast.read",
   ],
   student: [
     "student.read",
@@ -325,6 +345,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "document.read",
     "timetable.read",
+    "pickup.manage",
   ],
 };
 

@@ -73,6 +73,10 @@ const MATRIX: Row[] = [
   ["facilities.manage", true, true, true, false, false, false, false, false, false],
   ["transport.manage", true, true, true, false, false, false, false, false, false],
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["forecast.read", true, true, true, false, true, true, true, false, false],
+  ["visitor.manage", true, true, true, false, false, false, false, false, false],
+  ["gatepass.manage", true, true, true, false, false, false, true, false, false],
+  ["pickup.manage", true, true, true, false, false, false, false, false, true],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
