@@ -198,7 +198,8 @@ describe("timetable queries (M07-T5)", () => {
         vi.setSystemTime(new Date("2026-11-02T03:45:00Z"));
         const duringPeriod1 = await timetableTodayFor(ctx);
         expect(duringPeriod1).toEqual([
-          { start: "09:00", end: "09:40", title: "Science", subtitle: expect.any(String), room: undefined, isCurrent: true },
+          // M16-T6: a teacher's own row gets subtitle = the section name ("A"), not their own name.
+          { start: "09:00", end: "09:40", title: "Science", subtitle: "A", room: undefined, isCurrent: true },
           { start: "09:40", end: "09:50", title: "Short break" },
           { start: "09:50", end: "10:30", title: "Period 2" },
         ]);
@@ -206,7 +207,118 @@ describe("timetable queries (M07-T5)", () => {
         // 2026-11-02T03:20:00Z = Mon 08:50 IST — before period 1 starts.
         vi.setSystemTime(new Date("2026-11-02T03:20:00Z"));
         const beforePeriod1 = await timetableTodayFor(ctx);
-        expect(beforePeriod1[0]).toEqual({ start: "09:00", end: "09:40", title: "Science", subtitle: expect.any(String), room: undefined, isNext: true });
+        expect(beforePeriod1[0]).toEqual({ start: "09:00", end: "09:40", title: "Science", subtitle: "A", room: undefined, isNext: true });
+      } finally {
+        vi.useRealTimers();
+        setActingClient(null);
+      }
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  it("todayFor: studentId selects a guardian's second child's own section, not the first child's", async () => {
+    const inst = await createTestInstitution("tt-q-todayfor-child");
+    try {
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const sectionA = await createClassSection(inst.institutionId, gradeId, yearId, { name: "A" });
+      const sectionB = await createClassSection(inst.institutionId, gradeId, yearId, { name: "B" });
+      const teacherId = await teacherStaffId(inst.institutionId);
+      // A second teacher: the unique (version, teacher, weekday, period) constraint forbids
+      // the same teacher in both sections at the same slot.
+      const [teacher2] = await sql`
+        insert into public.staff (institution_id, employee_no, full_name, designation)
+        values (${inst.institutionId}, ${`EMP-${crypto.randomUUID().slice(0, 8)}`}, 'Second Teacher', 'Teacher')
+        returning id
+      `;
+      const subjectMaths = await createSubject(inst.institutionId, { name: "Mathematics" });
+      const subjectScience = await createSubject(inst.institutionId, { name: "Science" });
+      await createSubjectAssignment(inst.institutionId, sectionA, subjectMaths, teacherId);
+      await createSubjectAssignment(inst.institutionId, sectionB, subjectScience, teacher2.id);
+      const period1 = await createPeriod(inst.institutionId, { seq: 1, name: "Period 1", startsAt: "09:00", endsAt: "09:40" });
+
+      const version = await createDraftVersion(inst.institutionId, yearId, inst.users.admin.id);
+      await createSlot(inst.institutionId, version, sectionA, teacherId, subjectMaths, 1, period1);
+      await createSlot(inst.institutionId, version, sectionB, teacher2.id, subjectScience, 1, period1);
+      const publish = await inst.clientAs("admin").rpc("publish_timetable", { p_version_id: version });
+      expect(publish.error).toBeNull();
+
+      const [firstChild] = await sql`
+        insert into public.students (institution_id, admission_no, first_name, dob, gender)
+        values (${inst.institutionId}, ${`ADM-${crypto.randomUUID().slice(0, 8)}`}, 'First', '2015-01-01', 'other')
+        returning id
+      `;
+      const [secondChild] = await sql`
+        insert into public.students (institution_id, admission_no, first_name, dob, gender)
+        values (${inst.institutionId}, ${`ADM-${crypto.randomUUID().slice(0, 8)}`}, 'Second', '2015-01-01', 'other')
+        returning id
+      `;
+      await createEnrolment(inst.institutionId, firstChild.id, sectionA, yearId, { rollNo: 1 });
+      await createEnrolment(inst.institutionId, secondChild.id, sectionB, yearId, { rollNo: 1 });
+
+      const [guardianMembership] = await sql`
+        select guardian_id from public.memberships where institution_id = ${inst.institutionId} and user_id = ${inst.users.guardian.id}
+      `;
+      await sql`
+        insert into public.guardian_students (institution_id, guardian_id, student_id, relationship, is_primary, portal_access)
+        values
+          (${inst.institutionId}, ${guardianMembership.guardian_id}, ${firstChild.id}, 'father', true, true),
+          (${inst.institutionId}, ${guardianMembership.guardian_id}, ${secondChild.id}, 'father', false, true)
+      `;
+
+      const ctx = await buildContext(inst, "guardian");
+      setActingClient(inst.clientAs("guardian"));
+      try {
+        // 2026-11-02T03:45:00Z = Mon 09:15 IST — inside period 1.
+        vi.setSystemTime(new Date("2026-11-02T03:45:00Z"));
+        const secondChildGrid = await timetableTodayFor(ctx, secondChild.id);
+        expect(secondChildGrid[0].title).toBe("Science");
+
+        const firstChildGrid = await timetableTodayFor(ctx, firstChild.id);
+        expect(firstChildGrid[0].title).toBe("Mathematics");
+      } finally {
+        vi.useRealTimers();
+        setActingClient(null);
+      }
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  it("todayFor: studentId for another family's child — periods present, titles are bare period names, no subtitle (RLS blocks the enrolment read)", async () => {
+    const inst = await createTestInstitution("tt-q-todayfor-outside");
+    try {
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const sectionId = await createClassSection(inst.institutionId, gradeId, yearId, { name: "A" });
+      const teacherId = await teacherStaffId(inst.institutionId);
+      const subjectId = await createSubject(inst.institutionId, { name: "Mathematics" });
+      await createSubjectAssignment(inst.institutionId, sectionId, subjectId, teacherId);
+      const period1 = await createPeriod(inst.institutionId, { seq: 1, name: "Period 1", startsAt: "09:00", endsAt: "09:40" });
+      await createPeriod(inst.institutionId, { seq: 2, name: "Short break", startsAt: "09:40", endsAt: "09:50", isBreak: true });
+
+      const version = await createDraftVersion(inst.institutionId, yearId, inst.users.admin.id);
+      await createSlot(inst.institutionId, version, sectionId, teacherId, subjectId, 1, period1);
+      const publish = await inst.clientAs("admin").rpc("publish_timetable", { p_version_id: version });
+      expect(publish.error).toBeNull();
+
+      const [otherStudent] = await sql`
+        insert into public.students (institution_id, admission_no, first_name, dob, gender)
+        values (${inst.institutionId}, ${`ADM-${crypto.randomUUID().slice(0, 8)}`}, 'Other', '2015-01-01', 'other')
+        returning id
+      `;
+      await createEnrolment(inst.institutionId, otherStudent.id, sectionId, yearId, { rollNo: 1 });
+
+      const ctx = await buildContext(inst, "guardian");
+      setActingClient(inst.clientAs("guardian"));
+      try {
+        vi.setSystemTime(new Date("2026-11-02T03:45:00Z"));
+        const grid = await timetableTodayFor(ctx, otherStudent.id);
+        const nonBreak = grid.filter((p) => p.title !== "Short break");
+        expect(nonBreak).toHaveLength(1);
+        expect(nonBreak[0].title).toBe("Period 1");
+        expect(nonBreak[0].subtitle).toBeUndefined();
       } finally {
         vi.useRealTimers();
         setActingClient(null);

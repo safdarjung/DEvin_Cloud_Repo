@@ -58,6 +58,14 @@ export default defineConfig({
           // time so no other file reads it mid-reseed (Vitest's documented
           // fix for suites that share a live resource).
           fileParallelism: false,
+          // M16 gate: fixtures that call admin.auth.admin.createUser (bcrypt
+          // hashing, e.g. createTestInstitution/withTwoInstitutions) are
+          // consistently ~5s under full sequential suite load, flaking past
+          // Vitest's 5s default. Raise the db project's floor instead of
+          // patching each test file as it turns up (rls-performance.test.ts
+          // already sets its own higher per-test override for a different,
+          // query-latency reason).
+          testTimeout: 15_000,
         },
       },
       {

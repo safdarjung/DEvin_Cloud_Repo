@@ -12,7 +12,7 @@ Limitations / honesty label: none new; documentation reflects exactly what T1-T6
 
 Security / integration risks: none new; threat row (T16) and definer line (X05) are non-code documentation entries reflecting existing implementation. No API/DB changes documented here.
 
-Follow-ups: Debt entries (DBT-81..86) are known limitations for Phase 2; no immediate action needed for Phase 1 demo.
+Follow-ups: Debt entries (DBT-91..96) are known limitations for Phase 2; no immediate action needed for Phase 1 demo.
 
 New dependencies (justification): none
 

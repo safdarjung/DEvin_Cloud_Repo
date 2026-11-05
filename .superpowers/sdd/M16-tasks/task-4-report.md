@@ -1,0 +1,10 @@
+Packet: M16-T4 Attendance aggregate reads + `dashboard.attendanceTrend`
+Files changed: src/modules/attendance/queries.ts; src/modules/core/query-defs.ts; tests/db/attendance-trend.test.ts (interrupted-run test existed, unimplemented; fixed one assertion — see below); tests/db/api-query-route.test.ts (smoke sample)
+Behavior implemented: `attendanceDailyCounts(ctx, {from,to,classSectionId?,studentId?,bySection?})` — RPC wrapper over 0078. `percentageFromCounts(rows, statuses)`; `computeAttendancePercentage` now delegates to it. `attendanceTodaySummary`/`sectionsBelowThreshold` read through the aggregate (one `class_sections`+`grades` read for section labels, per ruling). `TrendPoint`, `attendanceTrend(ctx,{days,classSectionId?,studentId?})` — days ending today, 1 point per date with ≥1 in-denominator record, 1-decimal value; running % when `studentId` set. Def `dashboard.attendanceTrend` (`AttendanceTrendSchema`, `attendance.read`, `module:"core"`).
+Tests run: `pnpm test:db tests/db/attendance-trend.test.ts tests/db/dashboard-queries.test.ts tests/db/api-query-route.test.ts` → 20/20 pass. `pnpm test tests/unit/attendance-summary.test.ts` → 9/9 pass (computeAttendancePercentage delegation unaffected). `pnpm exec eslint` on 4 touched files → clean. `pnpm typecheck` → clean.
+Tests not run and why: full test:db/lint/security — lane rule (own files only).
+Limitations / honesty label: none; no UI/badge change.
+Security / integration risks: none new; RPC is security-invoker (0078), RLS unchanged.
+Follow-ups: none.
+New dependencies: none.
+Assumptions made: trend value rounds to 1 decimal (ruling), distinct from `percentageFromCounts`' 2-decimal default used elsewhere. Fixed the interrupted run's test "teacher.vi-a unscoped == classSectionId=VI-A": seed's teacher.vi-a actually holds `subject_assignments` across 6 sections (not just VI-A class-teacher), so unscoped RLS is a real superset — rewrote that one assertion against SQL ground truth for the scoped section instead of the unscoped call (same file, same intent: classSectionId narrows correctly); all other assertions/tests in the file are unchanged.
