@@ -35,6 +35,12 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "ai.study.item.update": { permission: "ai.study", input: () => ({ itemId: U(), pinned: true }) },
   "ai.study.item.delete": { permission: "ai.study", input: () => ({ itemId: U() }) },
   "job.requeue": { permission: "job.manage", input: () => ({ jobId: U() }) },
+  "library.book.upsert": { permission: "library.manage", input: () => ({ title: "Probe", author: "Probe" }) },
+  "library.copies.add": { permission: "library.manage", input: () => ({ bookId: U(), accessionNos: ["LIB-PROBE"] }) },
+  "library.copy.setStatus": { permission: "library.manage", input: () => ({ copyId: U(), status: "withdrawn" }) },
+  "library.loan.issue": { permission: "library.manage", input: () => ({ accessionNo: "LIB-0001", studentId: U() }) },
+  "library.loan.renew": { permission: "library.manage", input: () => ({ accessionNo: "LIB-0001" }) },
+  "library.loan.return": { permission: "library.manage", input: () => ({ accessionNo: "LIB-0001" }) },
   "lifecycle.promote": {
     permission: "academics.manage",
     input: () => ({ fromYearId: U(), toYearId: U(), mappings: [{ fromSectionId: U(), toSectionId: U() }] }),

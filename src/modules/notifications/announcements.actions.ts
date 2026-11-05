@@ -10,6 +10,7 @@
 import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
+import { isModuleEnabled, MODULE_DISABLED_MESSAGE } from "@/lib/modules/catalog";
 import { createClient } from "@/lib/supabase/server";
 import {
   CreateAnnouncementSchema,
@@ -100,6 +101,10 @@ export const setNotificationPreference = defineAction({
   schema: SetNotificationPreferenceSchema,
   permission: "notification.read",
   handler: async (input: SetNotificationPreferenceInput, ctx) => {
+    if (input.channel === "whatsapp" && !isModuleEnabled(ctx, "whatsapp")) {
+      throw new AppError("forbidden", MODULE_DISABLED_MESSAGE);
+    }
+
     const supabase = await createClient();
 
     const { data, error } = await supabase

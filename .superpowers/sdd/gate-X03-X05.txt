@@ -1,0 +1,38 @@
+Gate run: CoolSkool X03, X05 (lane coolschool-b) — INCOMPLETE, forced stop
+Date: 2026-11-05
+
+== pnpm db:reset ==
+PASS (clean). Migrations through 20261028000089 applied. Seed complete:
+students=3024 guardians=2515 staff=106 class_sections=72 enrolments=3024
+attendance_sessions=4320 attendance_records=181440
+
+== pnpm lint ==
+PASS (no output, no errors)
+
+== pnpm typecheck ==
+PASS: "next typegen && tsc --noEmit" -> "Types generated successfully", 0 tsc errors
+
+== pnpm test (unit) ==
+PASS: Test Files 103 passed (103); Tests 1624 passed (1624); Duration 7.60s
+
+== pnpm test:db --shard=1/3 ==
+INCOMPLETE: process still running (pid 1064435, started 20:04) when gate was
+force-terminated at ~20:18. Host under heavy parallel load from other
+worktree lanes (coolschool-c, coolschool-g also running vitest db suites
+concurrently against their own Supabase stacks) — load avg ~6, swap in use.
+No output captured yet (vitest buffers until completion/flush).
+
+== pnpm test:db --shard=2/3 ==
+NOT RUN
+
+== pnpm test:db --shard=3/3 ==
+NOT RUN
+
+== pnpm test:security ==
+NOT RUN
+
+== DBT-46 known-flaky check ==
+NOT RUN
+
+No fixes applied — no failures observed yet (db shard suites did not finish).
+No git state changes made.

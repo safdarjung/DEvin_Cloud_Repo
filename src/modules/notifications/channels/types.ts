@@ -1,7 +1,7 @@
 // T-038 — channel adapters. `send` never calls the network for the two
 // simulated channels (security requirement: a unit test asserts no `fetch`);
 // `in_app` never needs a network call either since it is the DB row itself.
-import type { NotificationChannel } from "../templates.ts";
+import type { Lang, NotificationChannel } from "../templates.ts";
 
 export interface DeliveryAttemptDraft {
   toAddress: string | null;
@@ -9,6 +9,8 @@ export interface DeliveryAttemptDraft {
   // M17-T1 — Resend-only; simulated/in-app adapters ignore both.
   subject?: string;
   idempotencyKey?: string;
+  // X05-T2 — WhatsApp-only; the approved template name/lang/positional params.
+  template?: { name: string; lang: Lang; params: string[] };
 }
 
 export interface DeliveryResult {

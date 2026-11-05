@@ -20,6 +20,8 @@ import "@/modules/finance/reminders.actions";
 import "@/modules/finance/reversals.actions";
 import "@/modules/imports/actions";
 import "@/modules/jobs/actions";
+import "@/modules/library/actions";
+import "@/modules/library/circulation.actions";
 import "@/modules/lifecycle/actions";
 import "@/modules/notifications/actions";
 import "@/modules/notifications/announcements.actions";

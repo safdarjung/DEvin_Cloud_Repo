@@ -113,7 +113,9 @@ describe("notify.attendance_absence handler (06 §W5)", () => {
       where notification_id = ${notifications[0].id}::uuid
       order by channel
     `;
-    expect(attempts.map((a) => a.channel).sort()).toEqual(["in_app", "sms"]);
+    // X05-T3 — this fixture is is_demo true (createTestInstitution), so
+    // whatsapp is always simulatedWhatsApp here too.
+    expect(attempts.map((a) => a.channel).sort()).toEqual(["in_app", "sms", "whatsapp"]);
     const sms = attempts.find((a) => a.channel === "sms");
     expect(sms?.status).toBe("simulated");
     expect(sms?.rendered_body).toContain("absent");
@@ -127,7 +129,7 @@ describe("notify.attendance_absence handler (06 §W5)", () => {
     `;
     expect(notificationsAfter).toHaveLength(1);
     const attemptsAfter = await sql`select id from public.delivery_attempts where notification_id = ${notifications[0].id}::uuid`;
-    expect(attemptsAfter).toHaveLength(2);
+    expect(attemptsAfter).toHaveLength(3);
   });
 
   it("C-30: another guardian cannot read this guardian's notification", async () => {
@@ -302,9 +304,9 @@ describe("createNotification idempotency (unique key)", () => {
     expect(retry.notificationId).toBe(notification.id);
 
     const attempts = await sql`select channel from public.delivery_attempts where notification_id = ${notification.id}::uuid order by channel`;
-    expect(attempts.map((a) => a.channel)).toEqual(["in_app", "sms"]);
+    expect(attempts.map((a) => a.channel)).toEqual(["in_app", "sms", "whatsapp"]);
 
-    // Idempotent: a second retry does not add a third attempt.
+    // Idempotent: a second retry does not add a fourth attempt.
     await createNotification(admin, {
       institutionId: inst.institutionId,
       recipientUserId: recipient,
@@ -314,6 +316,6 @@ describe("createNotification idempotency (unique key)", () => {
       contacts: { sms: "9876543210" },
     });
     const attemptsAfter = await sql`select id from public.delivery_attempts where notification_id = ${notification.id}::uuid`;
-    expect(attemptsAfter).toHaveLength(2);
+    expect(attemptsAfter).toHaveLength(3);
   });
 });

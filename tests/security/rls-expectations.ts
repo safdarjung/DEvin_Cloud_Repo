@@ -644,4 +644,27 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
   },
+  // 0086 (X03-T2) — library_books/library_copies: every active member
+  // reads (titles aren't sensitive); owner/principal/admin write.
+  library_books: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  library_copies: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  // library_loans: owner/principal/admin see every row; other staff roles
+  // see only rows where its own staff_id is the borrower (app.my_staff_ids);
+  // student/guardian see own/linked student's loans only — explicit own-row
+  // scoping proved in tests/db/library-rls.test.ts, not by the generated
+  // suite's plain own-institution probe. No write policy: issue/renew/return
+  // RPCs only.
+  library_loans: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
 };
