@@ -153,7 +153,7 @@ export interface AgentRun extends BaseRow {
 }
 
 // ---------------------------------------------------------------- 0056 workflows
-export type WorkflowNodeType = "trigger" | "condition" | "agent" | "tool" | "approval" | "notify" | "end";
+export type WorkflowNodeType = "trigger" | "condition" | "agent" | "tool" | "approval" | "notify" | "report" | "end";
 export interface WorkflowNode {
   id: Id;
   type: WorkflowNodeType;
@@ -331,12 +331,18 @@ export interface DashboardLayout {
 }
 
 // ---------------------------------------------------------------- derived: command centre
+export interface BriefingSource {
+  query: string;
+  params: Record<string, unknown>;
+}
+
 export interface DailyBrief {
   role: string;
   date: ISODate;
   headline: string;
   items: { text: string; insight_id?: Id; href?: string }[];
-  generated_by: "fixture" | "local_model";
+  sources?: BriefingSource[];
+  generated_by: "fixture" | "local_model" | "rules" | "cloud_model";
 }
 export interface PriorityAction {
   id: Id;

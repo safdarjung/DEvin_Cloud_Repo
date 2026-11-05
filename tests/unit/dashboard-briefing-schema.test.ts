@@ -4,7 +4,11 @@
 // client only echoed back (CLAUDE.md rule 6); the output schema caps the
 // summary at 500 chars (BRIEF-COMMON.md lesson 9).
 import { describe, expect, test } from "vitest";
-import { DashboardBriefingOutputSchema, DashboardBriefingRequestSchema } from "@/modules/ai/dashboard-briefing.schemas";
+import {
+  DashboardBriefingOutputSchema,
+  DashboardBriefingRequestSchema,
+  BriefingHeadlineSchema,
+} from "@/modules/ai/dashboard-briefing.schemas";
 
 const validRequest = {
   institutionSlug: "demo",
@@ -71,5 +75,40 @@ describe("DashboardBriefingOutputSchema", () => {
   test("accepts a summary at exactly 500 chars", () => {
     const result = DashboardBriefingOutputSchema.safeParse({ summary: "a".repeat(500) });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("BriefingHeadlineSchema", () => {
+  test("accepts a valid headline at 1 char", () => {
+    const result = BriefingHeadlineSchema.safeParse({ headline: "A" });
+    expect(result.success).toBe(true);
+  });
+
+  test("accepts a headline at exactly 200 chars", () => {
+    const result = BriefingHeadlineSchema.safeParse({ headline: "a".repeat(200) });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects a headline at 201 chars", () => {
+    const result = BriefingHeadlineSchema.safeParse({ headline: "a".repeat(201) });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects an empty headline after trim", () => {
+    const result = BriefingHeadlineSchema.safeParse({ headline: "   " });
+    expect(result.success).toBe(false);
+  });
+
+  test("trims whitespace from headline", () => {
+    const result = BriefingHeadlineSchema.safeParse({ headline: "  Principal briefing · Mon 1 Jan  " });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.headline).toBe("Principal briefing · Mon 1 Jan");
+    }
+  });
+
+  test("rejects extra keys (strict schema)", () => {
+    const result = BriefingHeadlineSchema.safeParse({ headline: "Valid", extra: "nope" });
+    expect(result.success).toBe(false);
   });
 });

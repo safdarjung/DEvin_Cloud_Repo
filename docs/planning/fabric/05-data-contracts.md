@@ -115,7 +115,9 @@ Listed by migration header. Compact field listing per interface.
 **DashboardLayout**: `id: Id`, `user_id: Id`, `institution_id: Id`, `role: string`, `widget_order: string[]`, `hidden: string[]`, `updated_at: ISODate`.
 
 ### Derived: Command Centre
-**DailyBrief**: `role: string`, `date: ISODate`, `headline: string`, `items: {text: string, insight_id?: Id, href?: string}[]`, `generated_by: "fixture"|"local_model"`.
+**BriefingSource** (M25 CONTRACT): `query: string`, `params: Record<string, unknown>`.
+
+**DailyBrief** (M25 CONTRACT): `role: string`, `date: ISODate`, `headline: string`, `items: {text: string, insight_id?: Id, href?: string}[]`, `sources?: BriefingSource[]`, `generated_by: "fixture"|"local_model"|"rules"|"cloud_model"`.
 
 **PriorityAction**: `id: Id`, `title: string`, `why: string`, `href: string`, `owner: string`, `due: ISODate`, `severity: InsightSeverity`.
 
