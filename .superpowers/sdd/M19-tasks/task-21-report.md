@@ -1,0 +1,11 @@
+Packet: M19-T21 Acceptance over HTTP + seeded tenant
+Files changed: tests/db/insights-acceptance.test.ts (new)
+Behavior implemented: Test 1 — fixture institution with every plant* helper (attendance student-drop, marks decline, fees overdue-growth via reversal, 6 stale admission enquiries, one teacher at 48 periods/week in a 30-seat room with 43 enrolled students) at asOf=local yesterday; real `runOnceCore`+`createRunnerPorts` fires once -> >=1 insight in attendance/academics/finance/admissions/operations/staff, every row has evidence/confidence 0-1/detector_version 1/status new; rerun adds zero rows. Over HTTP: principal insight.review->reviewing then insight.dismiss(note)->dismissed on a finance row; teacher (made class_teacher_id of the fixture section) insights.list returns only attendance/academics rows; guardian insights.list->403. Institution B (insights off): enqueue_insight_detection writes no job, insights.list->403 MODULE_DISABLED_MESSAGE. Test 2 — every DETECTORS[].run() called directly against st-josephs-demo (asOf 2026-10-28), read-only (row count before/after insights table unchanged), printed per-domain counts.
+Tests run: `pnpm test:db tests/db/insights-acceptance.test.ts` -> 2/2 passed; `pnpm lint` clean; `pnpm typecheck` clean.
+Tests not run and why: full test:db (DB-owner rule, single-file only this lane).
+Limitations / honesty label: n/a, no UI.
+Security / integration risks: none new; HTTP calls hit real routes under real RLS/permission gates; no state-changing git; demo tenant touched only by the real sweep's own job (same as every other acceptance test against a live stack), never by T21's own code.
+Seeded-tenant per-domain candidate counts (verbose run): attendance 125, staff 15, operations 1. academics, finance, admissions = 0 -> M27 seed-planting debt rows (never tuned thresholds to force them).
+Follow-ups: T22 should add 3 debt rows (academics/finance/admissions have 0 seeded-tenant candidates -> M27 seed planting).
+New dependencies: none.
+Assumptions made: operations fixture reused the staff.workload timetable (same version) for room_capacity too (periods.seq capped at 1-12, so 4 weekdays x 12 periods = 48/week, one 30-seat room for all slots) — satisfies both domains from one fixture, smallest diff.
