@@ -1541,6 +1541,108 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"library_books": {
+                  Row: {
+                    "author": string,"created_at": string,"id": string,"institution_id": string,"isbn": string | null,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "author": string,"created_at"?: string,"id"?: string,"institution_id": string,"isbn"?: string | null,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "author"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"isbn"?: string | null,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "library_books_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"library_copies": {
+                  Row: {
+                    "accession_no": string,"book_id": string,"created_at": string,"id": string,"institution_id": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accession_no": string,"book_id": string,"created_at"?: string,"id"?: string,"institution_id": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "accession_no"?: string,"book_id"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "library_copies_book_id_fkey"
+      columns: ["book_id"]
+isOneToOne: false
+      referencedRelation: "library_books"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_copies_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"library_loans": {
+                  Row: {
+                    "copy_id": string,"created_at": string,"due_on": string,"fine_amount": number,"fine_invoice_line_id": string | null,"fine_waived": boolean,"id": string,"institution_id": string,"issued_by": string | null,"issued_on": string,"renew_count": number,"returned_by": string | null,"returned_on": string | null,"staff_id": string | null,"student_id": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "copy_id": string,"created_at"?: string,"due_on": string,"fine_amount"?: number,"fine_invoice_line_id"?: string | null,"fine_waived"?: boolean,"id"?: string,"institution_id": string,"issued_by"?: string | null,"issued_on": string,"renew_count"?: number,"returned_by"?: string | null,"returned_on"?: string | null,"staff_id"?: string | null,"student_id"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "copy_id"?: string,"created_at"?: string,"due_on"?: string,"fine_amount"?: number,"fine_invoice_line_id"?: string | null,"fine_waived"?: boolean,"id"?: string,"institution_id"?: string,"issued_by"?: string | null,"issued_on"?: string,"renew_count"?: number,"returned_by"?: string | null,"returned_on"?: string | null,"staff_id"?: string | null,"student_id"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "library_loans_copy_id_fkey"
+      columns: ["copy_id"]
+isOneToOne: false
+      referencedRelation: "library_copies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_loans_fine_invoice_line_id_fkey"
+      columns: ["fine_invoice_line_id"]
+isOneToOne: false
+      referencedRelation: "invoice_lines"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_loans_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_loans_issued_by_fkey"
+      columns: ["issued_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_loans_returned_by_fkey"
+      columns: ["returned_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_loans_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "library_loans_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"maintenance_requests": {
                   Row: {
                     "asset_id": string | null,"assigned_at": string | null,"assignee_staff_id": string | null,"closed_at": string | null,"closed_by": string | null,"created_at": string,"id": string,"institution_id": string,"issue": string,"location": string | null,"priority": string,"raised_at": string,"raised_by": string,"resolution_note": string | null,"status": string,"updated_at": string
@@ -2958,6 +3060,9 @@ isOneToOne: true
               "invitation_id": string,"token": string
             }[]
                            },
+"issue_library_loan":
+{ Args: { "p_copy_id": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: Json
+                           },
 "jobs_claim":
 { Args: { "p_worker_id": string }; Returns: {
               "attempts": number,
@@ -3108,6 +3213,9 @@ isOneToOne: true
 "record_payment":
 { Args: { "p_amount": number,"p_idempotency_key": string,"p_invoice_id": string,"p_mode": string,"p_received_at": string,"p_reference": string }; Returns: Json
                            },
+"renew_library_loan":
+{ Args: { "p_loan_id": string }; Returns: Json
+                           },
 "reopen_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },
@@ -3123,6 +3231,9 @@ isOneToOne: true
                            },
 "request_recheck":
 { Args: { "p_exam_paper_id": string,"p_institution_id": string,"p_reason": string,"p_result_id": string }; Returns: Json
+                           },
+"return_library_loan":
+{ Args: { "p_loan_id": string,"p_waive_fine"?: boolean }; Returns: Json
                            },
 "revoke_invitation":
 { Args: { "p_invitation_id": string }; Returns: undefined

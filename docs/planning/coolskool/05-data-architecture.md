@@ -191,6 +191,14 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 |---|---|---|---|---|---|
 | `scheduled_reports` | Batch report configurations and schedules | `name text` (1–80, unique per institution) · `source text check in (attendance.daily, finance.defaulters)` · `params jsonb not null default '{}'` (validated against source's schema; ≤ 1000 bytes) · `cron text` (≤ 100, cron subset parser: `^([0-9]\|[1-5][0-9]) ([0-9]\|1[0-9]\|2[0-3]) (\*\|L) (\*\|L) (\*\|L)$` with `L` = list/range in 1–31/1–12/0–6; DOM+DOW restriction check) · `recipient_roles text[]` (1–5, subset of source's allowed roles; distinct) · `status text check in (active, paused)` default `active` · `next_run_at timestamptz?` (computed by `app.cron_next_fire` on INSERT/cron/status change; active with no fire → trigger error) · `created_by → profiles` not null · `created_at`/`updated_at` + `set_updated_at` trigger | unique(institution_id, name); partial index on next_run_at where status='active'; check `jsonb_typeof(params)='object'` | op (pause instead of delete; no UPDATE on identity columns) | int |
 
+### 2.12 library (migration 0086)
+
+| Table | Purpose | Essential columns | Constraints / indexes | Hist | Sens |
+|---|---|---|---|---|---|
+| `library_books` | Book catalogue entries | `title text` (1–200, Unicode) · `author text` (1–120) · `isbn text?` normalized (10/13 digits, no hyphens/spaces, X upper-case); `check (isbn ~ '^([0-9]{9}[0-9X]\|[0-9]{13})$')` | unique(institution_id, isbn) where isbn is not null; no hard delete | op | int |
+| `library_copies` | Physical copies with accession numbers | `book_id →` · `accession_no text` (1–30, upper-case, `check (accession_no ~ '^[A-Z0-9/-]+$')`) · `status text check in (active, withdrawn)` default `active` | unique(institution_id, accession_no); index(book_id); no hard delete (withdraw instead) | op | int |
+| `library_loans` | Issue-renew-return state machine | `copy_id →` · `student_id → students?` · `staff_id → staff?` · `check (num_nonnulls(student_id, staff_id) = 1)` · `issued_on date` · `due_on date ≥ issued_on` · `renew_count smallint 0–2 default 0` · `returned_on? date ≥ issued_on` · `fine_amount numeric(12,2) ≥ 0 default 0` · `fine_waived bool default false` · `fine_invoice_line_id?→ invoice_lines` · `issued_by?→ profiles` · `returned_by?→ profiles` | partial unique(copy_id) where returned_on is null (one open loan per copy); index(institution_id, due_on) where returned_on is null; (student_id) where student_id is not null; (staff_id) where staff_id is not null; written only by RPCs (no write policies) | imm (versioning not used; fine values settled at return) | conf |
+
 ## 3. Ownership matrix
 
 | Module | Owns | Reads from |
@@ -209,8 +217,9 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | lifecycle | student_lifecycle_events | people, academics |
 | reports | scheduled_reports, documents (report entity) | attendance (for `attendance.daily` source), finance (for `finance.defaulters` source); via RPC invokers only, no TS query registration |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |
+| library | library_books, library_copies, library_loans | finance (writes via `app.add_invoice_charge`); people (borrows via students/staff) |
 
-Reserved names, not created: `payroll_*`, `library_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.
+Reserved names, not created: `payroll_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.
 
 ## 4. Configurable data points
 
@@ -314,6 +323,8 @@ Rule: a merged migration is never edited. Fixes go in a new file numbered from `
 | `UNIT-X-MATH-3` | curriculum unit | Grade X Mathematics unit 3 "Quadratic Equations" → AI quiz source in step 8 (teacher `teacher.x-a` also teaches X-A Mathematics) |
 | X-A Mathematics | curriculum coverage | Units 1–2 covered, unit 3 planned, not covered (M10 seed) |
 | attendance | | Aarav 92%, Ananya 96%, Ishaan 88% over the 60 seeded days; today's VI-A session is marked live with Aarav absent so `guardian.one` receives the absence notification |
+| notifications (X05 seed) | announcement | Section announcement "Annual Day on 21 November" → `guardian.one` and `guardian.two`; `guardian.two` has opted out of WhatsApp/announcement (preference row created) |
+| notifications (X05 seed) | attendance_absence | Aarav's absence for 2026-08-08 in Hindi → `guardian.one` |
 
 ### 8.2 Count assertions after seed
 

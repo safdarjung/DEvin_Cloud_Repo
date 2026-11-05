@@ -4,14 +4,14 @@
 import { z } from "zod";
 import { uuid } from "../../lib/schemas/common.ts";
 
-// Mirrors migration 0068's check constraints exactly.
+// Mirrors migration 0068's check constraints exactly (PREFERENCE_CHANNELS: 0068 + 0089 — X05 added "whatsapp").
 export const ANNOUNCEMENT_CATEGORIES = ["general", "academic", "event", "holiday", "fees", "emergency"] as const;
 export const AUDIENCE_ROLES = [
   "owner", "principal", "admin", "admissions", "accountant",
   "exam_controller", "teacher", "student", "guardian",
 ] as const;
 export const PREFERENCE_CATEGORIES = ["attendance", "academic", "admissions", "announcement", "finance"] as const;
-export const PREFERENCE_CHANNELS = ["sms", "email"] as const;
+export const PREFERENCE_CHANNELS = ["sms", "email", "whatsapp"] as const;
 
 export const AudienceSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("school") }).strict(),

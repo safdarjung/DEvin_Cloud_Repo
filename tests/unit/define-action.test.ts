@@ -357,6 +357,12 @@ describe("mapSqlError (C-03 criterion 3)", () => {
     if (!result.ok) expect(result.error.message).not.toMatch(/x_key/);
   });
 
+  it("maps SQLSTATE 23503 (FK violation) to not_found", () => {
+    const result = mapSqlError({ code: "23503", message: "insert or update on table \"x\" violates foreign key constraint \"x_fkey\"" });
+    expect(result).toMatchObject({ ok: false, error: { code: "not_found" } });
+    if (!result.ok) expect(result.error.message).not.toMatch(/x_fkey/);
+  });
+
   it("maps an unknown error to internal", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = mapSqlError(new Error("relation does not exist"));
