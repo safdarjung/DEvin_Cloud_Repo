@@ -390,6 +390,16 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"], // teacher scoped to the student's current section; student/guardian own-scope
     write: [], // app.publish_exam_results / app.apply_recheck_decision only
   },
+  // 0093 (M20-T4) — mastery_snapshots: derived cache, mirrors results_select.
+  // teacher scoped to taught/class-teacher sections; student/guardian
+  // own/linked-child scope — proved by tests/db/mastery-rls.test.ts, not by
+  // the generated suite's plain own-institution probe. No write policy:
+  // only public.compute_mastery (service_role, T5) writes it.
+  mastery_snapshots: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
   recheck_requests: {
     classes: ["C", "O"],
     read: ["owner", "principal", "exam_controller", "student", "guardian"], // student/guardian own-scope via the result they requested against

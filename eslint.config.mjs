@@ -59,6 +59,15 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  {
+    // M25-T4: briefings has no authenticated insert/update path (07 §4,
+    // `briefings` caller) — this factory is its only caller, from
+    // src/modules/insights/briefings.ts.
+    files: ["src/modules/insights/briefings.service-role.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

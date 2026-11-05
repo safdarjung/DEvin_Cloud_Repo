@@ -1019,14 +1019,14 @@ isOneToOne: false
                   ]
                 },"exam_papers": {
                   Row: {
-                    "class_section_id": string,"created_at": string,"duration_minutes": number | null,"exam_id": string,"held_on": string | null,"id": string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id": string | null,"scheduled_at": string | null,"subject_id": string,"updated_at": string
+                    "class_section_id": string,"created_at": string,"duration_minutes": number | null,"exam_id": string,"held_on": string | null,"id": string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id": string | null,"scheduled_at": string | null,"subject_id": string,"unit_ids": (string)[],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_section_id": string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id": string,"held_on"?: string | null,"id"?: string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id": string,"updated_at"?: string
+                    "class_section_id": string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id": string,"held_on"?: string | null,"id"?: string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id": string,"unit_ids"?: (string)[],"updated_at"?: string
                   }
                   Update: {
-                    "class_section_id"?: string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id"?: string,"held_on"?: string | null,"id"?: string,"institution_id"?: string,"max_marks"?: number,"pass_marks"?: number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id"?: string,"updated_at"?: string
+                    "class_section_id"?: string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id"?: string,"held_on"?: string | null,"id"?: string,"institution_id"?: string,"max_marks"?: number,"pass_marks"?: number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id"?: string,"unit_ids"?: (string)[],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2122,6 +2122,56 @@ isOneToOne: false
       columns: ["superseded_by"]
 isOneToOne: false
       referencedRelation: "marks"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"mastery_snapshots": {
+                  Row: {
+                    "academic_year_id": string,"class_section_id": string,"computed_at": string,"confidence": number,"created_at": string,"curriculum_unit_id": string,"detector_version": string,"evidence": NonNullable<Json>,"id": string,"institution_id": string,"mark_count": number,"score": number,"student_id": string,"subject_id": string,"submission_count": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"class_section_id": string,"computed_at": string,"confidence": number,"created_at"?: string,"curriculum_unit_id": string,"detector_version": string,"evidence": NonNullable<Json>,"id"?: string,"institution_id": string,"mark_count"?: number,"score": number,"student_id": string,"subject_id": string,"submission_count"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"class_section_id"?: string,"computed_at"?: string,"confidence"?: number,"created_at"?: string,"curriculum_unit_id"?: string,"detector_version"?: string,"evidence"?: NonNullable<Json>,"id"?: string,"institution_id"?: string,"mark_count"?: number,"score"?: number,"student_id"?: string,"subject_id"?: string,"submission_count"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "mastery_snapshots_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
       referencedColumns: ["id"]
     }
                   ]
