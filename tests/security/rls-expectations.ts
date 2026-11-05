@@ -698,6 +698,24 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "teacher"],
     write: ["owner", "principal", "admin", "teacher"],
   },
+
+  // 0095 (M22-T2) — agent_definitions/agent_runs: owner/principal/admin
+  // read every row of the institution (same shape as audit_events/jobs).
+  // agent_definitions write is UPDATE of `is_enabled` only, owner/principal
+  // (admin excluded — tests/db/agents-rls.test.ts); agent_runs has no
+  // authenticated write at all, every write is server-only after the
+  // calling action's own permission check (rulings "Writes are
+  // server-only").
+  agent_definitions: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal"],
+  },
+  agent_runs: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: [], // server-only (service-role caller `agents`, T7)
+  },
   // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
   // admin only (07 §2.2); no DELETE policy (pause instead of delete).
   scheduled_reports: {

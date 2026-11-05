@@ -246,6 +246,8 @@ export interface StreamAgentInput<TOOLS extends ToolSet> {
    * this shared function instead of being re-invented per caller.
    */
   concurrencyKey?: string;
+  /** M22-T4 — links usage rows to the agent run that caused them. */
+  agentRunId?: string;
 }
 
 export type StreamAgentResult<TOOLS extends ToolSet> =
@@ -267,6 +269,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
   const { ctx, feature, permission, dataClass, system, messages, tools, stopWhen, toolCallConcurrency, abortSignal } = input;
   const maxOutputTokens = input.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS;
   const concurrencyKey = input.concurrencyKey ?? ctx.institution.id;
+  const agentRunId = input.agentRunId ?? null;
 
   if (!hasPermission(ctx, permission)) {
     return { ok: false, error: { code: "forbidden", message: "You do not have permission to use AI features." } };
@@ -309,6 +312,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
       ok: false,
       errorCode: limits.code,
       redactions: 0,
+      agentRunId,
     });
     const message =
       limits.code === "quota_exceeded"
@@ -384,6 +388,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
             ok: true,
             errorCode: null,
             redactions: redacted.count,
+            agentRunId,
           }),
         )
         .catch(() =>
@@ -399,6 +404,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
             ok: false,
             errorCode: "ai_unavailable",
             redactions: redacted.count,
+            agentRunId,
           }),
         )
         .finally(() => releaseConcurrencySlot(concurrencyKey, step));

@@ -75,16 +75,74 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"ai_usage_events": {
+                },"agent_definitions": {
                   Row: {
-                    "cost_estimate_usd": number,"created_at": string,"error_code": string | null,"feature": string,"id": string,"input_tokens": number,"institution_id": string,"latency_ms": number,"model": string,"ok": boolean,"output_tokens": number,"provider": string,"redactions": number,"user_id": string | null
+                    "created_at": string,"id": string,"institution_id": string,"is_enabled": boolean,"slug": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "cost_estimate_usd": number,"created_at"?: string,"error_code"?: string | null,"feature": string,"id"?: string,"input_tokens": number,"institution_id": string,"latency_ms": number,"model": string,"ok": boolean,"output_tokens": number,"provider": string,"redactions"?: number,"user_id"?: string | null
+                    "created_at"?: string,"id"?: string,"institution_id": string,"is_enabled"?: boolean,"slug": string,"updated_at"?: string
                   }
                   Update: {
-                    "cost_estimate_usd"?: number,"created_at"?: string,"error_code"?: string | null,"feature"?: string,"id"?: string,"input_tokens"?: number,"institution_id"?: string,"latency_ms"?: number,"model"?: string,"ok"?: boolean,"output_tokens"?: number,"provider"?: string,"redactions"?: number,"user_id"?: string | null
+                    "created_at"?: string,"id"?: string,"institution_id"?: string,"is_enabled"?: boolean,"slug"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agent_definitions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"agent_runs": {
+                  Row: {
+                    "agent_id": string,"catalog_version": string,"created_at": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"finished_at": string | null,"id": string,"institution_id": string,"log": NonNullable<Json>,"proposals": NonNullable<Json>,"requested_by": string,"risk_class": string,"started_at": string | null,"status": string,"summary": string,"task": string,"updated_at": string,"workflow_run_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agent_id": string,"catalog_version": string,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"finished_at"?: string | null,"id"?: string,"institution_id": string,"log"?: NonNullable<Json>,"proposals"?: NonNullable<Json>,"requested_by": string,"risk_class"?: string,"started_at"?: string | null,"status"?: string,"summary"?: string,"task": string,"updated_at"?: string,"workflow_run_id"?: string | null
+                  }
+                  Update: {
+                    "agent_id"?: string,"catalog_version"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"finished_at"?: string | null,"id"?: string,"institution_id"?: string,"log"?: NonNullable<Json>,"proposals"?: NonNullable<Json>,"requested_by"?: string,"risk_class"?: string,"started_at"?: string | null,"status"?: string,"summary"?: string,"task"?: string,"updated_at"?: string,"workflow_run_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agent_runs_agent_institution_fk"
+      columns: ["agent_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "agent_definitions"
+      referencedColumns: ["id","institution_id"]
+    },{
+      foreignKeyName: "agent_runs_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agent_runs_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "agent_runs_requested_by_fkey"
+      columns: ["requested_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"ai_usage_events": {
+                  Row: {
+                    "agent_run_id": string | null,"cost_estimate_usd": number,"created_at": string,"error_code": string | null,"feature": string,"id": string,"input_tokens": number,"institution_id": string,"latency_ms": number,"model": string,"ok": boolean,"output_tokens": number,"provider": string,"redactions": number,"user_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agent_run_id"?: string | null,"cost_estimate_usd": number,"created_at"?: string,"error_code"?: string | null,"feature": string,"id"?: string,"input_tokens": number,"institution_id": string,"latency_ms": number,"model": string,"ok": boolean,"output_tokens": number,"provider": string,"redactions"?: number,"user_id"?: string | null
+                  }
+                  Update: {
+                    "agent_run_id"?: string | null,"cost_estimate_usd"?: number,"created_at"?: string,"error_code"?: string | null,"feature"?: string,"id"?: string,"input_tokens"?: number,"institution_id"?: string,"latency_ms"?: number,"model"?: string,"ok"?: boolean,"output_tokens"?: number,"provider"?: string,"redactions"?: number,"user_id"?: string | null
                   }
                   Relationships: [
                     {

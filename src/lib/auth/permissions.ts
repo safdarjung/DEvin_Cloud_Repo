@@ -84,6 +84,8 @@ export type Permission =
   | "gatepass.manage"
   | "pickup.manage"
   | "forecast.read"
+  | "agent.run"
+  | "agent.approve"
   | "report.schedule";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
@@ -149,6 +151,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "gatepass.manage",
     "pickup.manage",
     "forecast.read",
+    "agent.run",
+    "agent.approve",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -216,6 +220,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "gatepass.manage",
     "pickup.manage",
     "forecast.read",
+    "agent.run",
+    "agent.approve",
     "data.export",
     "report.schedule",
     "library.manage",
@@ -270,6 +276,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "gatepass.manage",
     "pickup.manage",
     "forecast.read",
+    "agent.run",
     "data.export",
     "report.schedule",
     "library.manage",

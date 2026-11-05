@@ -145,6 +145,7 @@ export interface UsageEvent {
   ok: boolean;
   errorCode: string | null;
   redactions: number;
+  agentRunId?: string | null;
 }
 
 /**
@@ -168,6 +169,7 @@ export async function logUsage(event: UsageEvent): Promise<void> {
       ok: event.ok,
       error_code: event.errorCode,
       redactions: event.redactions,
+      agent_run_id: event.agentRunId ?? null,
     });
     if (error) throw error;
   } catch (err) {

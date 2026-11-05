@@ -6,6 +6,7 @@
 import "@/modules/academics/curriculum.query-defs";
 import "@/modules/academics/query-defs";
 import "@/modules/admissions/query-defs";
+import "@/modules/agents/query-defs";
 import "@/modules/ai/query-defs";
 import "@/modules/ai/student-study-query-defs";
 import "@/modules/attendance/query-defs";
