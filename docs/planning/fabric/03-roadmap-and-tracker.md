@@ -50,8 +50,8 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-AI-01 | platform admin | P2 | FB-CORE-02 | planned | F-BE-24+ | — | single gateway entry point (rule 6) | 3 |
 | FB-AI-02 | owner, admin | P1 | FB-AI-01 | simulated | F-BE-19 | tests/unit/fabric-router.test.ts | localhost-only bridge, any failure → null, never 5xx | 3 |
 | FB-AI-03 | owner, admin | P2 | FB-AI-02 | planned | F-BE-24+ | — | tests/security/* verifies restricted data never reaches cloud | 3 |
-| FB-AI-04 | all | P2 | FB-AI-01 | planned | F-BE-24+ | — | ai gateway redaction + quota (rule 6) | 3 |
-| FB-AI-05 | owner, principal, admin | P2 | FB-AGT-01, FB-AGT-02 | planned | F-BE-24+ | — | tool call checked against caller permission | 3 |
+| FB-AI-04 | all | P2 | FB-AI-01 | planned | F-BE-24+ | `tests/unit/assistant-tools.test.ts`, `tests/db/assistant-acceptance.test.ts` | ai gateway redaction + quota (rule 6); staff assistant M24: tool offered only when the permission is held and the module is on; the query re-checks | 3 |
+| FB-AI-05 | owner, principal, admin | P2 | FB-AGT-01, FB-AGT-02 | planned | F-BE-24+ | `tests/unit/assistant-tools.test.ts`, `tests/db/assistant-acceptance.test.ts` | tool call checked against caller permission; every async query in the tool calls `guardedCall` for re-check | 3 |
 
 ## MEM
 
