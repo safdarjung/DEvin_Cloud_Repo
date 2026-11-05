@@ -1,0 +1,5 @@
+M15 gate 2026-11-04
+lint 0 errors; typecheck clean
+unit 98 files 1480 passed
+db 141 files 862/863 (student-study-actions timeout under load; 16/16 alone)
+security 19 files 2225 passed

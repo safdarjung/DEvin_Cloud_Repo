@@ -54,6 +54,8 @@ export interface RunnerPorts {
   completeJob(id: string, ok: boolean, error?: string | null): Promise<void>;
   killUnknown(id: string, error: string): Promise<void>;
   dispatch(job: JobRow): Promise<void>;
+  /** M15-T8: enqueues due `report.generate` jobs (`public.enqueue_due_reports`). */
+  enqueueDueReports(): Promise<number>;
   now(): number;
 }
 
@@ -147,6 +149,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
       if (!handler) throw new UnknownJobTypeError(job.type);
       await handler(job, { admin });
     },
+    async enqueueDueReports() {
+      const { data, error } = await admin.rpc("enqueue_due_reports");
+      if (error) throw new Error(error.message);
+      return Number(data);
+    },
     now: () => Date.now(),
   };
 }
@@ -167,6 +174,15 @@ export async function runOnceCore(
 ): Promise<RunOnceSummary> {
   const summary: RunOnceSummary = { claimed: 0, succeeded: 0, requeued: 0, dead: 0 };
   const deadline = ports.now() + budgetMs;
+
+  try {
+    await ports.enqueueDueReports();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] report sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
 
   while (summary.claimed < max && ports.now() < deadline) {
     const job = await ports.claimJob(workerId);

@@ -1,6 +1,7 @@
 import type { ModuleKey } from "@/lib/modules/catalog";
 import type { JobHandler } from "./types.ts";
 import {
+  generateReport,
   feeReminder,
   generateTermInvoices,
   notifyAnnouncement,
@@ -21,6 +22,7 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "notify.enrolment_welcome": "admissions",
   "notify.announcement": "announcements",
   "finance.fee_reminder": "finance_plus",
+  "report.generate": "scheduled_reports",
 };
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
@@ -34,6 +36,7 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "notify.enrolment_welcome": notifyEnrolmentWelcome,
   "notify.announcement": notifyAnnouncement,
   "finance.generate_term_invoices": generateTermInvoices,
+  "report.generate": generateReport,
   "finance.fee_reminder": feeReminder,
 };
 

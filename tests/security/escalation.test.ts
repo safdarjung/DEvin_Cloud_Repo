@@ -284,6 +284,11 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "transport.assign": { permission: "transport.manage", input: () => ({ studentId: U(), stopId: U() }) },
   "transport.unassign": { permission: "transport.manage", input: () => ({ studentId: U() }) },
+  "report.schedule.save": {
+    permission: "report.schedule",
+    input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
+  },
+  "report.schedule.setStatus": { permission: "report.schedule", input: () => ({ id: U(), status: "paused" }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

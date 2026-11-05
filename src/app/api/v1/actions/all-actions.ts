@@ -27,6 +27,7 @@ import "@/modules/people/actions";
 import "@/modules/people/leave.actions";
 import "@/modules/people/staff-attendance.actions";
 import "@/modules/question-bank/actions";
+import "@/modules/reports/actions";
 import "@/modules/timetable/actions";
 import "@/modules/timetable/substitution.actions";
 import "@/modules/transport/actions";

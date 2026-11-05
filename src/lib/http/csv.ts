@@ -7,19 +7,7 @@ import Papa from "papaparse";
 import type { ActionResult } from "@/lib/actions/result";
 import { fail } from "@/lib/actions/result";
 import { apiResponse } from "@/lib/http/api-envelope";
-
-const FORMULA_PREFIX = /^[=+\-@\t\r]/;
-
-function sanitizeCell(value: unknown): unknown {
-  if (value === null || value === undefined) return value;
-  if (typeof value === "object") return escapeFormula(JSON.stringify(value));
-  if (typeof value === "string") return escapeFormula(value);
-  return value;
-}
-
-function escapeFormula(value: string): string {
-  return FORMULA_PREFIX.test(value) ? `'${value}` : value;
-}
+import { sanitizeCell } from "@/lib/http/csv-text";
 
 // A bare array exports directly; an object (e.g. { rows: [...] }, or a
 // paginated page object like { students, total, page, pageSize }) exports
