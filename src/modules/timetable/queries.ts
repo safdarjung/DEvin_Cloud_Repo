@@ -161,8 +161,8 @@ export async function timetableForTeacher(
   return fetchSlots(ctx, version, { teacherId });
 }
 
-/** A student's weekly grid, resolved via their own active enrolment section; RLS decides visibility (a guardian outside that student's family reads no enrolment row at all, so this returns empty rather than leaking). */
-export async function timetableForStudent(ctx: TenantContext, studentId: string): Promise<SectionTimetableSlot[]> {
+/** `studentId`'s active-enrolment section, or null; RLS decides visibility (a guardian outside that student's family reads no enrolment row at all). Shared by timetableForStudent and timetableTodayFor's studentId path. */
+async function activeSectionIdForStudent(ctx: TenantContext, studentId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data: enrolment, error } = await supabase
     .from("enrolments")
@@ -172,8 +172,14 @@ export async function timetableForStudent(ctx: TenantContext, studentId: string)
     .eq("status", "active")
     .maybeSingle();
   if (error) throw error;
-  if (!enrolment) return [];
-  return timetableForSection(ctx, enrolment.class_section_id);
+  return enrolment?.class_section_id ?? null;
+}
+
+/** A student's weekly grid, resolved via their own active enrolment section; RLS decides visibility (a guardian outside that student's family reads no enrolment row at all, so this returns empty rather than leaking). */
+export async function timetableForStudent(ctx: TenantContext, studentId: string): Promise<SectionTimetableSlot[]> {
+  const classSectionId = await activeSectionIdForStudent(ctx, studentId);
+  if (!classSectionId) return [];
+  return timetableForSection(ctx, classSectionId);
 }
 
 /** The guardian's first child (listMyChildren's own admission_no ordering) or the student's own active enrolment section; null for every other role. */
@@ -212,12 +218,14 @@ async function firstOwnSectionId(ctx: TenantContext): Promise<string | null> {
 }
 
 /**
- * Today's grid for the caller (teacher: own slots; guardian/student: first
- * child/own section; every other role: the bare bell schedule), breaks
- * included, with isCurrent/isNext set — the demoTimetable
- * (timetable-widget.tsx) replacement. Sunday (weekday 0) returns [].
+ * Today's grid for the caller (studentId given: that student's section,
+ * RLS-scoped; teacher: own slots, subtitle = section name; guardian/student:
+ * first child/own section, subtitle = teacher name; every other role: the
+ * bare bell schedule), breaks included, with isCurrent/isNext set — the
+ * demoTimetable (timetable-widget.tsx) replacement. Sunday (weekday 0)
+ * returns [].
  */
-export async function timetableTodayFor(ctx: TenantContext): Promise<TimetablePeriod[]> {
+export async function timetableTodayFor(ctx: TenantContext, studentId?: string): Promise<TimetablePeriod[]> {
   const { weekday, hhmm } = nowPartsInInstitutionTimezone(ctx);
   if (weekday < 1 || weekday > 6) return [];
 
@@ -232,10 +240,19 @@ export async function timetableTodayFor(ctx: TenantContext): Promise<TimetablePe
   if (periods.length === 0) return [];
 
   const version = await defaultPublishedVersionId(ctx);
-  const slotsBySeq = new Map<number, SectionTimetableSlot>();
+  const slotsBySeq = new Map<number, TeacherTimetableSlot>();
+  let isTeacherGrid = false;
   if (version) {
-    const teacherId = ctx.membership.role === "teacher" ? ctx.membership.staffId : null;
-    const classSectionId = teacherId ? null : await firstOwnSectionId(ctx);
+    let teacherId: string | null = null;
+    let classSectionId: string | null = null;
+    if (studentId) {
+      classSectionId = await activeSectionIdForStudent(ctx, studentId);
+    } else if (ctx.membership.role === "teacher") {
+      teacherId = ctx.membership.staffId ?? null;
+      isTeacherGrid = teacherId != null;
+    } else {
+      classSectionId = await firstOwnSectionId(ctx);
+    }
     if (teacherId || classSectionId) {
       const rows = await fetchSlots(ctx, version, {
         weekday,
@@ -255,7 +272,7 @@ export async function timetableTodayFor(ctx: TenantContext): Promise<TimetablePe
     const timing = { start: startsAt[i], end: endsAt[i] };
     const base: TimetablePeriod = p.is_break
       ? { ...timing, title: p.name }
-      : { ...timing, title: slot?.subject?.name ?? p.name, subtitle: slot?.teacher.name, room: slot?.room?.name };
+      : { ...timing, title: slot?.subject?.name ?? p.name, subtitle: isTeacherGrid ? slot?.section.name : slot?.teacher.name, room: slot?.room?.name };
     if (i === currentIdx) return { ...base, isCurrent: true };
     if (i === nextIdx) return { ...base, isNext: true };
     return base;

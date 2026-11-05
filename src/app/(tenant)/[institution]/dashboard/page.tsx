@@ -18,13 +18,15 @@ import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { humanize, inr } from "@/lib/format";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listEnquiriesByStage } from "@/modules/admissions/queries";
+import { attendanceTrend } from "@/modules/attendance/queries";
+import { pendingApprovals } from "@/modules/core/approvals.queries";
 import { AttendanceChart } from "@/modules/core/components/dashboard/AttendanceChart";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
-import { demoApprovals, demoAttendanceTrend, demoFixturesEnabled, demoInsights, demoStaffAvailability, type InsightRole } from "@/modules/core/demo/fixtures";
+import { demoFixturesEnabled, demoInsights, type InsightRole } from "@/modules/core/demo/fixtures";
 import { listExams, listRecheckQueue } from "@/modules/exams/queries";
 import { CommandGrid, type GridCard } from "@/modules/fabric/components/command/command-grid";
 import { DailyBriefWidget } from "@/modules/fabric/components/command/daily-brief";
@@ -37,6 +39,7 @@ import { dailyBrief, forecastCards, priorityActions, riskIndicators } from "@/mo
 import { insights as fabricInsights } from "@/modules/fabric/demo/insights";
 import { examStatusVariant, recheckStatusVariant } from "@/modules/exams/status";
 import { listDefaulters } from "@/modules/finance/queries";
+import { staffAvailabilityToday } from "@/modules/people/hr.queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 import { cn } from "cn";
 
@@ -148,12 +151,15 @@ export default async function DashboardPage({
     (isLeader || role === "exam_controller") && canRechecks && isModuleEnabled(ctx, "exams") ? listRecheckQueue(ctx, "submitted") : skip,
     role === "exam_controller" && canResults && isModuleEnabled(ctx, "exams") ? listExams(ctx) : skip,
     role === "admissions" && canEnquiries && isModuleEnabled(ctx, "admissions") ? listEnquiriesByStage(ctx) : skip,
+    isLeader && canAttendance ? attendanceTrend(ctx, { days: 42 }) : skip,
+    isLeader ? pendingApprovals(ctx) : skip,
+    isLeader && hasPermission(ctx, "staff.read") && isModuleEnabled(ctx, "staff_attendance") ? staffAvailabilityToday(ctx) : skip,
   ]);
   const data = await getDashboardData(ctx);
   const termId = data.collections?.termId;
   const [defaultersR] = await Promise.allSettled([(isLeader || role === "accountant") && termId ? listDefaulters(ctx, { termId }) : skip]);
-  const [noticesR, eventsR, rechecksR, examsR, enquiriesR] = await extrasP;
-  for (const r of [noticesR, eventsR, rechecksR, examsR, enquiriesR, defaultersR]) {
+  const [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR] = await extrasP;
+  for (const r of [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, defaultersR]) {
     if (r.status === "rejected") console.error("dashboard widget fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
   }
 
@@ -161,7 +167,6 @@ export default async function DashboardPage({
   const basePath = `/${institutionSlug}`;
   const todayIso = now.toLocaleDateString("en-CA", { timeZone: TZ });
   const demo = demoFixturesEnabled(ctx);
-  const demoKey = ctx.institution.id;
 
   const hour = Number(hourFmt.format(now));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -466,12 +471,9 @@ export default async function DashboardPage({
     const fOpts = { now: startOfToday(), institutionId: ctx.institution.id };
     showHeader = false;
 
-    const trend = (key: string, base: number) => (demo ? demoAttendanceTrend({ key: `${demoKey}:${key}`, days: 24, endDate: now, base }).map((p) => p.value) : undefined);
-    const deltaOf = (s?: number[]) => (s && s.length > 1 ? ((s[s.length - 1] - s[0]) / s[0]) * 100 : undefined);
-    const sparkAtt = trend("att", 93);
-    const sparkEnq = trend("enq", 91);
-    const sparkFee = trend("fee", 92);
-    const sparkRes = trend("res", 94);
+    const trendPts = value(trendR) ?? [];
+    const deltaOf = (s?: number[]) => (s && s.length > 1 && s[0] !== 0 ? ((s[s.length - 1] - s[0]) / s[0]) * 100 : undefined);
+    const sparkAtt = trendPts.length ? trendPts.slice(-20).map((p) => p.value) : undefined;
 
     const chips: HeroChip[] = [];
     if (canAttendance) chips.push({ key: "att", icon: <Users />, tone: "info", label: `Today's attendance: ${data.attendanceToday.percentage}%` });
@@ -492,22 +494,21 @@ export default async function DashboardPage({
         <HomeKpi key="att" icon={<CalendarCheck />} tone="info" label="Attendance today" value={`${data.attendanceToday.percentage}%`} animateTo={data.attendanceToday.percentage} format="percent" delta={deltaOf(sparkAtt)} spark={sparkAtt} footLeft={`${data.attendanceToday.totalInDenominator} students marked`} footRight={data.sectionsAtRisk.length ? `${data.sectionsAtRisk.length} sections at risk` : "All sections on track"} href={`${basePath}/attendance`} />
       ),
       canEnquiries && isModuleEnabled(ctx, "admissions") && (
-        <HomeKpi key="enq" icon={<UserPlus />} tone="primary" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} delta={deltaOf(sparkEnq)} spark={sparkEnq} footLeft={`${enrolledCount} enrolled this year`} footRight="Pipeline" href={`${basePath}/admissions`} />
+        <HomeKpi key="enq" icon={<UserPlus />} tone="primary" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} footLeft={`${enrolledCount} enrolled this year`} footRight="Pipeline" href={`${basePath}/admissions`} />
       ),
       collections && (
-        <HomeKpi key="fee" icon={<Banknote />} tone="success" label="Collected this term" value={formatINR(collections.collectedPaise)} animateTo={collections.collectedPaise / 100} format="inr" delta={deltaOf(sparkFee)} spark={sparkFee} footLeft={`of ${formatINR(collections.duePaise)} due`} footRight={collectionPct === null ? undefined : `${collectionPct}% collected`} href={`${basePath}/finance`} />
+        <HomeKpi key="fee" icon={<Banknote />} tone="success" label="Collected this term" value={formatINR(collections.collectedPaise)} animateTo={collections.collectedPaise / 100} format="inr" footLeft={`of ${formatINR(collections.duePaise)} due`} footRight={collectionPct === null ? undefined : `${collectionPct}% collected`} href={`${basePath}/finance`} />
       ),
       canResults && isModuleEnabled(ctx, "exams") && (
-        <HomeKpi key="res" icon={<GraduationCap />} tone="warning" label="Published results" value={String(gd?.total ?? 0)} animateTo={gd?.total ?? 0} delta={deltaOf(sparkRes)} spark={sparkRes} footLeft={gd ? gd.examName : "No published exam yet"} footRight="Exams" href={`${basePath}/exams`} />
+        <HomeKpi key="res" icon={<GraduationCap />} tone="warning" label="Published results" value={String(gd?.total ?? 0)} animateTo={gd?.total ?? 0} footLeft={gd ? gd.examName : "No published exam yet"} footRight="Exams" href={`${basePath}/exams`} />
       ),
     ].filter(Boolean);
 
     // Six weekly averages of the school-wide attendance trend; the last bar is "now".
     let bars: { label: string; value: number }[] | undefined;
-    if (demo && canAttendance) {
-      const pts = demoAttendanceTrend({ key: demoKey, days: 42, endDate: now });
-      const size = Math.ceil(pts.length / 6);
-      bars = Array.from({ length: 6 }, (_, i) => pts.slice(i * size, (i + 1) * size)).filter((c) => c.length).map((c) => ({ label: c[c.length - 1].label, value: Math.round((c.reduce((t, p) => t + p.value, 0) / c.length) * 10) / 10 }));
+    if (trendPts.length) {
+      const size = Math.ceil(trendPts.length / 6);
+      bars = Array.from({ length: 6 }, (_, i) => trendPts.slice(i * size, (i + 1) * size)).filter((c) => c.length).map((c) => ({ label: c[c.length - 1].label, value: Math.round((c.reduce((t, p) => t + p.value, 0) / c.length) * 10) / 10 }));
     }
 
     const activityItems: ActivityItem[] = (data.recentActivity ?? []).slice(0, 8).map((e) => ({
@@ -540,10 +541,19 @@ export default async function DashboardPage({
     add("atRisk", "Sections at risk", NARROW, atRisk);
     add("funnel", "Admissions funnel", WIDE, funnel(""));
     add("collections", "Fee collection", NARROW, collectionsChart(""));
-    if (demo) {
-      add("approvals", "Approvals", WIDE, <ApprovalsWidget title="Pending approvals" rows={demoApprovals(demoKey, now)} />);
-      add("staff", "Staff today", NARROW, <StaffAvailabilityWidget title="Staff today" {...demoStaffAvailability(demoKey)} />);
-    }
+    const approvalRows = value(approvalsR);
+    add("approvals", "Approvals", WIDE, failed(approvalsR) ? <FailedWidget title="Pending approvals" /> : approvalRows && <ApprovalsWidget title="Pending approvals" rows={approvalRows} />);
+    const staffToday = value(staffR);
+    add(
+      "staff",
+      "Staff today",
+      NARROW,
+      failed(staffR) ? (
+        <FailedWidget title="Staff today" />
+      ) : (
+        staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />
+      ),
+    );
     add("grades", "Grades", NARROW, grades(""));
     add("assistant", "AI briefing", NARROW, briefing);
     add(

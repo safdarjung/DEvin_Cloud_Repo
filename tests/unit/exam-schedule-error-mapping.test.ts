@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AppError } from "@/lib/actions/result";
-import { throwMappedSchedule } from "@/modules/exams/actions";
+import { throwMappedSchedule } from "@/modules/exams/schedule-conflicts";
 
 // M11 security review fix round 1 — schedulePapers's exam_papers
 // select/update calls must map raw PostgREST codes (42501, 23514, 23503,

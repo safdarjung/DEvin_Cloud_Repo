@@ -127,6 +127,8 @@ Exam marks are confidential at all times; pre-publication they are additionally 
 
 | SQL `security definer` — module catalog (MOD, `20261028000084`) | `app.module_catalog(key, default_enabled)` — one row per `src/lib/modules/catalog.ts` `MODULES` key, `execute`/`select` revoked from public/anon/authenticated (not PostgREST-exposed; read only by `app.module_enabled`). `app.module_enabled(p_institution_id, p_key)`: core keys always `true`; optional keys = `institutions.settings.modules.<key>` falling back to the catalog default, AND every `requires` key (hardcoded in the function body: `substitution`→staff_attendance+timetable, `online_payments`→finance_plus, `mastery`→exams, `agents`→ai_teacher), recursively; an unknown key raises `code:internal`. Defined once here — later milestones only add/update an `app.module_catalog` row, never re-create this function. `app.block_attendance_on_holiday` (0075, M13) is `create or replace`d to call `app.module_enabled(new.institution_id, 'calendar')` in place of the Lane B inline `settings->'modules'->>'calendar'` predicate; body otherwise unchanged. | `execute` revoked from public/anon/authenticated on both the table and the function — internal only, called from other `security definer`/trigger function bodies (which run as their owner, not the invoking role, so no grant is needed for that call path). |
 
+M16: no new definer; `public.attendance_daily_counts` (0078) is security invoker (RLS applies) and granted to authenticated only.
+
 M17: no new definer; outbound email to Resend only when `RESEND_API_KEY` set, plain text only, reserved test domains never sent over the wire.
 
 Any new service-role or `security definer` usage must be added to this table in the same PR.

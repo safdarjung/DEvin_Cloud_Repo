@@ -128,4 +128,26 @@ test.describe("J-07: guardian portal", () => {
 
     expect(errors).toEqual([]);
   });
+
+  test("guardian.one's portal shows the selected child's timetable and attendance trend (M16-T12)", async ({ page }) => {
+    await loginAs(page, "guardian.one@demo.coolskool.test");
+    const portal = new GuardianPortalPage(page);
+    await portal.goto();
+
+    // The day heading is "<first name>'s day" (page.tsx) for the same
+    // child the timetable/trend widgets are titled for — read it instead
+    // of hardcoding a name, since the default-selected child isn't fixed.
+    const headingText = await page.getByRole("heading", { level: 2 }).textContent();
+    const firstName = headingText?.replace(/'s day$/, "");
+    expect(firstName).toBeTruthy();
+
+    await expect(page.getByText(`${firstName}'s timetable today`)).toBeVisible();
+    const isSunday = new Date().toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "short" }) === "Sun";
+    if (!isSunday) {
+      await expect(page.getByText("No periods today")).not.toBeVisible();
+    }
+    // exact: true — the trend chart's sr-only <figcaption> starts with the
+    // same title text plus its data summary, so a substring match is ambiguous.
+    await expect(page.getByText("Attendance, last 30 days", { exact: true })).toBeVisible();
+  });
 });

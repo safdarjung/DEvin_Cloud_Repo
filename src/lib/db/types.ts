@@ -2667,6 +2667,11 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"attendance_daily_counts":
+{ Args: { "p_by_section"?: boolean,"p_class_section_id"?: string,"p_from": string,"p_institution_id": string,"p_student_id"?: string,"p_to": string }; Returns: {
+              "class_section_id": string,"date": string,"n": number,"status": string
+            }[]
+                           },
 "cancel_substitution":
 { Args: { "p_substitution_id": string }; Returns: {
               "cancelled_at": string | null,

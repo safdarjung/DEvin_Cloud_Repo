@@ -163,24 +163,34 @@ export async function getSession(ctx: TenantContext, classSectionId: string, dat
   };
 }
 
-/** Pure percentage math (AC5) — isolated so it can be unit-tested without a DB. */
-export function computeAttendancePercentage(
-  statusCodes: string[],
+/** Pure percentage math (AC5) over pre-counted rows — the aggregate shape `attendance_daily_counts` (M16-T3) returns. Isolated so it can be unit-tested without a DB. */
+export function percentageFromCounts(
+  rows: { status: string; n: number }[],
   statuses: Pick<AttendanceStatusOption, "code" | "countsPresent" | "inDenominator">[],
 ): { percentage: number; presentWeighted: number; totalInDenominator: number } {
   const byCode = new Map(statuses.map((s) => [s.code, s]));
   let presentWeighted = 0;
   let totalInDenominator = 0;
 
-  for (const code of statusCodes) {
-    const status = byCode.get(code);
+  for (const row of rows) {
+    const status = byCode.get(row.status);
     if (!status || !status.inDenominator) continue;
-    totalInDenominator += 1;
-    presentWeighted += status.countsPresent;
+    totalInDenominator += row.n;
+    presentWeighted += status.countsPresent * row.n;
   }
 
   const percentage = totalInDenominator === 0 ? 0 : Math.round((presentWeighted / totalInDenominator) * 10000) / 100;
   return { percentage, presentWeighted, totalInDenominator };
+}
+
+/** Pure percentage math (AC5) over one record per status code — delegates to percentageFromCounts (M16-T4). */
+export function computeAttendancePercentage(
+  statusCodes: string[],
+  statuses: Pick<AttendanceStatusOption, "code" | "countsPresent" | "inDenominator">[],
+): { percentage: number; presentWeighted: number; totalInDenominator: number } {
+  const counts = new Map<string, number>();
+  for (const code of statusCodes) counts.set(code, (counts.get(code) ?? 0) + 1);
+  return percentageFromCounts(Array.from(counts, ([status, n]) => ({ status, n })), statuses);
 }
 
 export interface StudentAttendanceSummary {
@@ -245,12 +255,41 @@ export async function getStudentAttendanceSummary(
   };
 }
 
-// dashboard — T-039. Both queries below scope to today's date only, not the
-// full attendance_records history (~181k rows): the row count is bounded to
-// however many students were marked today, the same shape as
-// getStudentAttendanceSummary's per-student fetch above, just institution-
-// wide. They reuse computeAttendancePercentage rather than re-deriving the
-// present/denominator weighting.
+// dashboard — T-039 / M16-T4. All three queries below read through
+// `attendanceDailyCounts` (RPC to M16-T3's `public.attendance_daily_counts`)
+// rather than selecting raw `attendance_records` rows: `supabase/config.toml`
+// `max_rows = 1000` silently truncates a row-level read once the seeded
+// tenant's daily mark count passes it (06 M16 rulings, "0078").
+
+export interface AttendanceDailyCountRow {
+  date: string;
+  classSectionId: string | null;
+  status: string;
+  n: number;
+}
+
+/** RPC wrapper over `public.attendance_daily_counts` (security invoker — RLS on attendance_records/attendance_sessions is the only filter, M16-T3). */
+export async function attendanceDailyCounts(
+  ctx: TenantContext,
+  params: { from: string; to: string; classSectionId?: string; studentId?: string; bySection?: boolean },
+): Promise<AttendanceDailyCountRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("attendance_daily_counts", {
+    p_institution_id: ctx.institution.id,
+    p_from: params.from,
+    p_to: params.to,
+    p_class_section_id: params.classSectionId,
+    p_student_id: params.studentId,
+    p_by_section: params.bySection,
+  });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    date: r.date,
+    classSectionId: r.class_section_id,
+    status: r.status,
+    n: r.n,
+  }));
+}
 
 export interface AttendanceTodaySummary {
   date: string;
@@ -261,22 +300,11 @@ export interface AttendanceTodaySummary {
 
 /** Institution-wide attendance % for today, across all sections. */
 export async function attendanceTodaySummary(ctx: TenantContext): Promise<AttendanceTodaySummary> {
-  const supabase = await createClient();
   const settings = getAttendanceSettings(ctx);
   const date = todayInInstitutionTimezone(ctx);
 
-  const { data, error } = await supabase
-    .from("attendance_records")
-    .select("status, attendance_sessions!inner(date)")
-    .eq("institution_id", ctx.institution.id)
-    .is("attendance_sessions.period_id", null)
-    .eq("attendance_sessions.date", date);
-  if (error) throw error;
-
-  const { percentage, presentWeighted, totalInDenominator } = computeAttendancePercentage(
-    (data ?? []).map((r) => r.status),
-    settings.statuses,
-  );
+  const rows = await attendanceDailyCounts(ctx, { from: date, to: date });
+  const { percentage, presentWeighted, totalInDenominator } = percentageFromCounts(rows, settings.statuses);
 
   return { date, percentage, presentWeighted, totalInDenominator };
 }
@@ -293,34 +321,100 @@ export async function sectionsBelowThreshold(ctx: TenantContext): Promise<Sectio
   const settings = getAttendanceSettings(ctx);
   const date = todayInInstitutionTimezone(ctx);
 
-  const { data, error } = await supabase
-    .from("attendance_records")
-    .select("status, attendance_sessions!inner(date, class_sections(id, name, grades(code)))")
-    .eq("institution_id", ctx.institution.id)
-    .is("attendance_sessions.period_id", null)
-    .eq("attendance_sessions.date", date);
-  if (error) throw error;
+  const rows = await attendanceDailyCounts(ctx, { from: date, to: date, bySection: true });
 
-  const bySection = new Map<string, { label: string; codes: string[] }>();
-  for (const row of data ?? []) {
-    const session = row.attendance_sessions as unknown as {
-      class_sections: { id: string; name: string; grades: { code: string } | null } | null;
-    };
-    const section = session.class_sections;
-    if (!section) continue;
-    const entry = bySection.get(section.id) ?? { label: `${section.grades?.code ?? "?"}-${section.name}`, codes: [] as string[] };
-    entry.codes.push(row.status);
-    bySection.set(section.id, entry);
+  const bySection = new Map<string, { status: string; n: number }[]>();
+  for (const row of rows) {
+    if (!row.classSectionId) continue;
+    const entry = bySection.get(row.classSectionId) ?? [];
+    entry.push({ status: row.status, n: row.n });
+    bySection.set(row.classSectionId, entry);
   }
+  if (bySection.size === 0) return [];
+
+  const { data: sections, error } = await supabase
+    .from("class_sections")
+    .select("id, name, grades(code)")
+    .eq("institution_id", ctx.institution.id)
+    .in("id", Array.from(bySection.keys()));
+  if (error) throw error;
+  const labelById = new Map(
+    (sections ?? []).map((s) => [s.id, `${(s.grades as { code: string } | null)?.code ?? "?"}-${s.name}`]),
+  );
 
   return Array.from(bySection.entries())
-    .map(([classSectionId, entry]) => ({
+    .map(([classSectionId, counts]) => ({
       classSectionId,
-      label: entry.label,
-      percentage: computeAttendancePercentage(entry.codes, settings.statuses).percentage,
+      label: labelById.get(classSectionId) ?? "?",
+      percentage: percentageFromCounts(counts, settings.statuses).percentage,
     }))
     .filter((s) => s.percentage < settings.thresholds.critical)
     .sort((a, b) => a.percentage - b.percentage);
+}
+
+export interface TrendPoint {
+  label: string;
+  value: number;
+}
+
+/** UTC-safe calendar-date arithmetic — dates are plain "YYYY-MM-DD", never institution-local wall-clock time, so a UTC offset can't shift the day. */
+function addDaysUTC(date: string, delta: number): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
+/** "d MMM" en-IN, e.g. "28 Oct" (06 M16 rulings, "Trend"). */
+function trendLabel(date: string): string {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(`${date}T00:00:00Z`),
+  );
+}
+
+/**
+ * `days` calendar days ending today (institution-local), one point per date
+ * with at least one in-denominator record — holidays/Sundays/unmarked days
+ * are skipped. With `studentId`, each point is the running % from the
+ * window start to that date (06 M16 rulings, "Trend"); otherwise each point
+ * is that date's own %. Scope: `classSectionId`/`studentId` narrow the RPC
+ * call, same as `attendanceDailyCounts`; with neither, RLS alone decides
+ * what the caller sees.
+ */
+export async function attendanceTrend(
+  ctx: TenantContext,
+  params: { days?: number; classSectionId?: string; studentId?: string },
+): Promise<TrendPoint[]> {
+  const settings = getAttendanceSettings(ctx);
+  const days = params.days ?? 30;
+  const to = todayInInstitutionTimezone(ctx);
+  const from = addDaysUTC(to, -(days - 1));
+
+  const rows = await attendanceDailyCounts(ctx, {
+    from,
+    to,
+    classSectionId: params.classSectionId,
+    studentId: params.studentId,
+  });
+
+  const byDate = new Map<string, { status: string; n: number }[]>();
+  for (const row of rows) {
+    const entry = byDate.get(row.date) ?? [];
+    entry.push({ status: row.status, n: row.n });
+    byDate.set(row.date, entry);
+  }
+  const dates = Array.from(byDate.keys()).sort();
+
+  const points: TrendPoint[] = [];
+  let running: { status: string; n: number }[] = [];
+  for (const date of dates) {
+    const dayRows = byDate.get(date) ?? [];
+    if (params.studentId) running = running.concat(dayRows);
+    const { percentage, totalInDenominator } = percentageFromCounts(params.studentId ? running : dayRows, settings.statuses);
+    if (totalInDenominator === 0) continue;
+    // 06 M16 rulings, "Trend" — 1 decimal (not percentageFromCounts' 2, used elsewhere for finer rollups).
+    points.push({ label: trendLabel(date), value: Math.round(percentage * 10) / 10 });
+  }
+  return points;
 }
 
 // New — attendance-pattern-insight AI feature (sits beside

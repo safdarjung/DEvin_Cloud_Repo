@@ -1,0 +1,10 @@
+Packet: M16-T10 `/dashboard` swap — trend, approvals, staff today
+Files changed: src/app/(tenant)/[institution]/dashboard/page.tsx; e2e/j13-dashboard.spec.ts
+Behavior implemented: leader branch extrasP gained `attendanceTrend(ctx,{days:42})` (canAttendance), `pendingApprovals(ctx)`, `staffAvailabilityToday(ctx)` (staff.read + staff_attendance), each allSettled/logged/FailedWidget on reject. `sparkAtt`/`bars` now derive from real `trendR` (last 20 / 6-chunk), not demo fixtures; `sparkEnq/Fee/Res` + their delta/spark props deleted; `deltaOf` guards `s[0]===0`. Approvals/staff cards moved out of `if(demo)`, gated on their own result (staff card only when non-null, description "Self check-ins are self-reported"). Dropped `demoApprovals`/`demoAttendanceTrend`/`demoStaffAvailability` imports + unused `demoKey`.
+Tests run: `pnpm test:e2e e2e/j13-dashboard.spec.ts` (PLAYWRIGHT_BASE_URL=http://localhost:3105, own dev server on this lane's port, DEMO_AUTO_LOGIN=false) → 1/1 pass. `pnpm exec eslint` + `tsc --noEmit` on both files → clean.
+Tests not run and why: full lint/typecheck/test:e2e — lane rule, own files only.
+Limitations / honesty label: staff description badge text per ruling; no new honesty badge.
+Security / integration risks: none new; reused RLS-scoped M16 queries, no new SQL.
+Follow-ups: fixed pre-existing `kpiValue()` locator in this spec (`p.text-2xl`→`p.font-bold`; HomeKpi no longer uses `text-2xl`) — blocked the whole file, in scope since file is mine. Also found this lane's `.env.local` `NEXT_PUBLIC_DEMO_LOGIN_HINTS=true` auto-logs in any `/login` hit as principal (`demo-session.ts`); shared `e2e/fixtures.ts loginAs` needs `DEMO_AUTO_LOGIN=false` in the test env to work — flag for T11/T12/T14 (same fixture).
+New dependencies (justification): none.
+Assumptions made: ran dev server manually on this lane's APP_URL port (3105) with PLAYWRIGHT_BASE_URL set, since default playwright webServer target (3000) is another lane's server; stopped it after the run; Supabase stack untouched.
