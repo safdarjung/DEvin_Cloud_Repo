@@ -12,6 +12,8 @@
 | `CRON_SECRET` | server | Bearer token for `/api/jobs/run` |
 | `DEMO_RESET_ALLOWED` | server, scripts | `true` enables `demo:reset` |
 | `SEED_DEMO_PASSWORD` | scripts | Password for seeded demo users (default documented in §3, demo tenant only) |
+| `RESTORE_DB_URL` | scripts | Target Postgres URL for `db:restore` (fresh DB only; protects the shared local stack); never set without a fresh target |
+| `RESTORE_ALLOW_REMOTE_HOST` | scripts | Exact hostname (e.g. `pooler.ap-south-1.example.com`) to allow a non-loopback restore target; missing blocks remote hosts |
 | `OLLAMA_BASE_URL` | server | Default `http://127.0.0.1:11434` |
 | `OLLAMA_MODEL` | server | Default `qwen3:4b-instruct-2507-q4_K_M`; fallback `qwen2.5:3b` |
 | `AI_CLOUD_ENABLED` | server | Global cloud switch, default `false` |
@@ -63,7 +65,38 @@ Dev/demo separation: the demo institution is the only `is_demo = true` tenant; r
 
 ## 6. Backup and restore
 
-Backup: `pnpm supabase db dump --db-url "$SUPABASE_DB_URL" -f backups/<date>-schema.sql` and `--data-only -f backups/<date>-data.sql` (backups directory git-ignored). Restore drill: create a Supabase branch or a second local instance, `psql < schema.sql`, `psql < data.sql`, run J-00. Hosted project daily backups (Supabase default on paid tiers) are noted as the production path; the demo relies on `demo:reset` for recovery.
+**Scope.** A backup holds `roles.sql` (Supabase roles, reserved ones commented), `schema.sql` (public + app schemas, grants, RLS, functions, triggers), `data.sql` (public/app/auth/storage tables as INSERTs with immutability guards suspended during load), and `managed.sql` (auth/storage policies, regenerated each dump). **Not in a dump:** storage bucket bytes (metadata only; manual experimental `storage cp`), platform state (cron jobs, net queues, vaulted secrets), migration history (recorded in manifest, restored via `migration repair`). A new custom schema must be added to `DATA_SCHEMAS` in `scripts/lib/backup.ts`.
+
+**RPO/RTO.**  Hosted demo (free tier, no platform backups): RPO ≤ 24 h (owner runs `pnpm db:backup --label hosted` daily and before every push). RTO ≤ 2 h (new project → restore → migration repair → cron jobs → Vercel env swap → smoke). Drill bar: backup + stack start + restore + parity ≤ 30 min at seed scale. First real school: Supabase Pro daily backups + PITR become primary; these dumps are the off-platform copy (weekly). Retention: newest 14 backup directories (pruned by hand).
+
+**Local.** Commands:
+- `pnpm db:backup [--label local]` — dumps shared local DB into `backups/<UTC-timestamp>-<label>/`. Default label `local`.
+- `pnpm db:restore <dir>` — load `backups/<dir>` into `$RESTORE_DB_URL` (refuses shared 54322 and non-loopback hosts). Aborts if target public schema has tables (fresh only).
+- `pnpm db:drill [--from <backupDir>] [--skip-tests] [--keep]` — backup (unless `--from`), spin up a throwaway drill stack (project_id `coolschool-drill`, ports 553xx), restore into it, run `pnpm test:db` with drill env, stop + cleanup.
+
+**Hosted drill (owner-run, once per backup or before major push).** Steps:
+1. `docker ps` + `.env.production.local` holds `SUPABASE_DB_URL` (Session pooler URI from dashboard, port 5432, password percent-encoded). Never paste it in chat.
+2. `node --env-file=.env.production.local scripts/db-backup.ts --label hosted` → `backups/<UTC>-hosted/`.
+3. Optional: `pnpm exec supabase storage cp -r ss:///tenant-docs backups/<UTC>-hosted/storage --linked --experimental`.
+4. `pnpm db:drill --from backups/<UTC>-hosted --skip-tests` (restores into local drill stack only; hosted DB read-only).
+5. Record timings in the log below. Keep the dir (encrypt any off-laptop copy) or delete.
+
+**Hosted disaster restore (owner-run, not drilled).** Steps:
+1. New Supabase project in ap-south-1. Set `RESTORE_DB_URL` (new Session pooler URI) and `RESTORE_ALLOW_REMOTE_HOST` (its hostname) in `.env.restore.local` (gitignored). Never set inline.
+2. `node --env-file=.env.restore.local scripts/db-restore.ts backups/<UTC>-*`.
+3. `pnpm exec supabase link --project-ref <new-ref>` → `pnpm exec supabase migration repair --status applied <appliedMigrations from manifest.json>` → `pnpm exec supabase migration list --linked`.
+4. `node --env-file=.env.production.local scripts/hosted-schedule-jobs.ts` (new project env).
+5. Storage bytes: `pnpm exec supabase storage cp -r backups/<UTC>-*/storage ss:///tenant-docs --linked --experimental`.
+6. Auth site URL, confirmations per §4 step 3.
+7. Vercel env vars swap (new project keys) + redeploy.
+8. Smoke J-00/J-01.
+
+**Drill log.** Keep timings for each hosted drill; update the manifest row after running one.
+
+| Date | Operator | Source | data.sql MB | Backup min | Stack start min | Restore+parity min | test:db pass/fail | Total min | Within bar (≤30 min)? | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-11-05 | (controller) | local seed | 94 | 0.27 | 0.83 | 0.19 | 887/894 (5 timeouts under load, pass alone; 2 stale `internal` expectations, fixed to `forbidden`) | 28.9 | Yes | 7 failures all pass alone on shared DB or are known DBT-46 |
+| — | (owner) | hosted | — | — | — | — | — | — | — | Fill after hosted drill |
 
 ## 7. Google sign-in (documented, not configured)
 
@@ -109,7 +142,7 @@ Reset between runs: `pnpm demo:reset` (≈ seed time). If the venue has no conne
 
 ## 11. Production-readiness gaps (after the demo)
 
-Real SMS/email providers (DLT registration), payment gateway, CSV import, backups policy and retention, consent records (DPDP), rate limiting at the edge (WAF/CAPTCHA), observability (APM, alerts), custom domains, storage policies for documents, multi-campus UI, table-driven permissions, void/refund flows, pen test by a third party.
+Real SMS/email providers (DLT registration), payment gateway, CSV import, consent records (DPDP), rate limiting at the edge (WAF/CAPTCHA), observability (APM, alerts), custom domains, storage policies for documents, multi-campus UI, table-driven permissions, void/refund flows, pen test by a third party. **Platform backups** (Supabase Pro daily + PITR): owner decision before the first real school is hosted.
 
 ## 12. Environment matrix
 

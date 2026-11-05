@@ -106,11 +106,8 @@ describe("academics setup actions (M03-T9)", () => {
       expect(result.ok).toBe(false);
       if (result.ok) return;
       // 0065's class_sections_insert `with check` rejects this at the RLS
-      // layer, not via a `code:`-prefixed SQL exception — mapSqlError has no
-      // prefix to match, so this surfaces as `internal`, not `forbidden`.
-      // Asserting what the envelope actually returns (brief instruction),
-      // not what the ideal taxonomy would be.
-      expect(result.error.code).toBe("internal");
+      // layer (SQLSTATE 42501); mapSqlError maps 42501 to `forbidden` since M12.
+      expect(result.error.code).toBe("forbidden");
     });
   });
 

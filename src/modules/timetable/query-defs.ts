@@ -5,6 +5,7 @@
 // timetable.manage (M07-tasks.md header rulings).
 import { z } from "zod";
 import { defineQuery } from "@/lib/actions/define-query";
+import { uuid } from "@/lib/schemas/common";
 import { CoverNeededSchema, ForSectionSchema, ForStudentSchema, ForTeacherSchema, SubstitutionCandidatesSchema, SubstitutionsSchema, VersionQuerySchema } from "./schemas";
 import {
   timetableConflicts,
@@ -44,9 +45,9 @@ export const timetableForStudentQuery = defineQuery({
 export const timetableTodayForQuery = defineQuery({
   name: "timetable.todayFor",
   module: "timetable",
-  schema: z.object({}).strict(),
+  schema: z.object({ studentId: uuid.optional() }).strict(),
   permission: "timetable.read",
-  handler: (_input, ctx) => timetableTodayFor(ctx),
+  handler: (input, ctx) => timetableTodayFor(ctx, input.studentId),
 });
 
 export const timetableConflictsQuery = defineQuery({
