@@ -197,6 +197,9 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
   // for ids that won't resolve to a row, so most handlers see an RLS-empty
   // read). not_found/validation_failed/forbidden/ok all pass — only
   // `internal` (an unhandled exception reaching the envelope) fails.
+  // One sequential HTTP round-trip per registered query; the registry has
+  // grown past the 5s default as M19 adds queries (M19-T19), so this one
+  // test gets a longer budget rather than a flaky timeout.
   it("owner smoke: every registered query runs, none returns internal", async () => {
     const inst = await createTestInstitution("api-query-smoke");
     try {
@@ -207,6 +210,11 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "people.listStudents": { page: 1 },
         "people.getStudentProfile": { studentId: UUID },
         "imports.getBatch": { batchId: UUID },
+        "insights.list": {},
+        "insights.actions": { insightId: UUID },
+        "insights.priorityActions": {},
+        "insights.riskIndicators": {},
+        "insights.cards": {},
         "people.getCurrentTermId": { academicYearId: UUID },
         "people.listMyChildren": {},
         "people.getMyStudent": {},
@@ -355,5 +363,5 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
     } finally {
       await inst.cleanup();
     }
-  });
+  }, 30000);
 });

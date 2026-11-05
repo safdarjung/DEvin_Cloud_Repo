@@ -637,6 +637,25 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "exam_controller", "teacher"],
     write: ["owner", "principal", "exam_controller", "teacher"],
   },
+  // 0092 (M19-T2) — insights: owner/principal/admin read every domain;
+  // admissions/accountant/exam_controller read only their matching domain;
+  // teacher reads attendance/academics rows of taught sections only.
+  // Writes only via record_insights (service role, T2) and the T3 definers.
+  insights: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: [],
+  },
+  insight_actions: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"], // inherits the parent insight's visibility
+    write: [], // append-only via record_insight_action (T3 definer)
+  },
+  briefings: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"], // non-admin-tier roles see only role = their own role
+    write: [], // M25 writes it (service role)
+  },
   // 0077 (M15-T3) — scheduled_reports: report.schedule is owner/principal/
   // admin only (07 §2.2); no DELETE policy (pause instead of delete).
   scheduled_reports: {

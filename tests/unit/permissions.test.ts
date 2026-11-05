@@ -81,6 +81,8 @@ const MATRIX: Row[] = [
   ["facilities.manage", true, true, true, false, false, false, false, false, false],
   ["transport.manage", true, true, true, false, false, false, false, false, false],
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["insight.read", true, true, true, true, true, true, true, false, false],
+  ["insight.review", true, true, true, true, true, true, false, false, false],
   ["report.schedule", true, true, true, false, false, false, false, false, false],
 ];
 
@@ -151,6 +153,37 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
     expect(permissionsFor("admin").includes("facilities.manage")).toBe(true);
     expect(permissionsFor("admin").includes("transport.manage")).toBe(true);
     expect(permissionsFor("admin").includes("maintenance.request")).toBe(true);
+  });
+
+  it("teacher has insight.read but not insight.review", () => {
+    expect(permissionsFor("teacher").includes("insight.read")).toBe(true);
+    expect(permissionsFor("teacher").includes("insight.review")).toBe(false);
+  });
+
+  it("accountant has both insight.read and insight.review", () => {
+    expect(permissionsFor("accountant").includes("insight.read")).toBe(true);
+    expect(permissionsFor("accountant").includes("insight.review")).toBe(true);
+  });
+
+  it("guardian and student have neither insight.read nor insight.review", () => {
+    expect(permissionsFor("guardian").includes("insight.read")).toBe(false);
+    expect(permissionsFor("guardian").includes("insight.review")).toBe(false);
+    expect(permissionsFor("student").includes("insight.read")).toBe(false);
+    expect(permissionsFor("student").includes("insight.review")).toBe(false);
+  });
+
+  it("insight.read is held by owner, principal, admin, admissions, accountant, exam_controller, teacher", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("insight.read"));
+    expect(holders.sort()).toEqual(
+      ["accountant", "admin", "admissions", "exam_controller", "owner", "principal", "teacher"].sort()
+    );
+  });
+
+  it("insight.review is held by owner, principal, admin, admissions, accountant, exam_controller", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("insight.review"));
+    expect(holders.sort()).toEqual(
+      ["accountant", "admin", "admissions", "exam_controller", "owner", "principal"].sort()
+    );
   });
 
   it("guardian holds finance.payment.online, not finance.payment.void", () => {

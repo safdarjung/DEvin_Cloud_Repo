@@ -99,6 +99,8 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | question.manage (teacher: taught grade + subject; staff-only table) | ✓ | ✓ | | | | ✓ | s | | |
 | library.manage (catalogue, issue/renew/return, waive fines) | ✓ | ✓ | ✓ | | | | | | |
 | library.read (RLS: managers all loans; other staff own; guardian own children; student own) | ✓ | ✓ | ✓ | s | s | s | s | s | s |
+| insight.read | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | |
+| insight.review | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | | | |
 
 The matrix is implemented once in `src/lib/auth/permissions.ts` as `ROLE_PERMISSIONS: Record<Role, Permission[]>`; a unit test snapshots it against this table (C-03). RLS role sets (`app.staff_roles()` etc.) mirror the read columns; `tests/security/rls-expectations.ts` declares per-table expectations and the generated suite asserts them.
 
@@ -147,6 +149,7 @@ M16: no new definer; `public.attendance_daily_counts` (0078) is security invoker
 M17: no new definer; outbound email to Resend only when `RESEND_API_KEY` set, plain text only, reserved test domains never sent over the wire.
 
 X05: no new definer; `app.module_catalog` insert for `whatsapp` (0089); outbound WhatsApp to MSG91 only when `MSG91_AUTH_KEY` + `MSG91_WA_NUMBER` both set, plain text only, demo institutions never sent over the wire.
+| SQL `security definer` — insights review (M19-T3, `20261028000092` part 2) | `app.can_review_insight(institution_id, domain)` / `app.user_can_review_insight(user_id, institution_id, domain)`: owner/principal/admin review any domain; admissions/accountant/exam_controller review only their matching domain. `app.insight_visible(institution_id, domain, class_section_id)`: review rights OR the teacher branch of `insights_select` (attendance/academics, taught section). All three are internal helpers only — never used in a policy, `execute` revoked from public/anon/authenticated. `public.decide_insight`: `review` new/reviewing→reviewing (reassigning while reviewing needs owner/principal/admin; named reviewer re-checked via `user_can_review_insight`); `resolve` new/reviewing/actioned→resolved; `dismiss` new/reviewing→dismissed; an `approval_required` row's resolve/dismiss is owner/principal only; audits `insight.reviewing`/`.resolved`/`.dismissed` with `{status}` before/after only, never the note. `public.record_insight_action`: append-only; the first action on new/reviewing moves the insight to actioned; a correction supersedes the current un-superseded row, status only planned→done→measured or unchanged, never back; one exception lets a superseding `measured` action land on a `resolved` insight; audits `insight.action_recorded` with ids only. `public.set_insight_explanation`: gated on visibility only (`insight.read`, not review rights — debt: provenance not bound to the AI gateway); writes only the five explanation columns, never `status`; audits `insight.explained` with `{provider}` only, never the explanation text. All three `public.*` functions: `search_path = ''`, `execute` revoked from public/anon, granted to `authenticated`. | Role/visibility and state re-checked inside each function; no caller-supplied `institution_id`; audit rows never carry note/explanation text. |
 
 Any new service-role or `security definer` usage must be added to this table in the same PR.
 

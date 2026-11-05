@@ -39,6 +39,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     killUnknown: vi.fn(async () => {}),
     dispatch: vi.fn(async () => {}),
     enqueueDueReports: vi.fn(async () => 0),
+    enqueueDueInsights: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -166,6 +167,45 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
     const summary = await runOnceCore({ workerId: "w1" }, ports);
 
     expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(completeJob).toHaveBeenCalledWith(job.id, true);
+  });
+
+  it("sweeps for due insights exactly once, right after the reports sweep, before the first claimJob", async () => {
+    const calls: string[] = [];
+    const claimJob = vi.fn(async () => {
+      calls.push("claimJob");
+      return null;
+    });
+    const enqueueDueReports = vi.fn(async () => {
+      calls.push("enqueueDueReports");
+      return 0;
+    });
+    const enqueueDueInsights = vi.fn(async () => {
+      calls.push("enqueueDueInsights");
+      return 3;
+    });
+    const ports = fakePorts({ claimJob, enqueueDueReports, enqueueDueInsights });
+
+    await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(enqueueDueInsights).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["enqueueDueReports", "enqueueDueInsights", "claimJob"]);
+  });
+
+  it("still claims jobs and still runs the reports sweep when the insights sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueDueReports = vi.fn(async () => 1);
+    const enqueueDueInsights = vi.fn(async () => {
+      throw new Error("insights sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueDueReports, enqueueDueInsights });
+
+    const summary = await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(enqueueDueReports).toHaveBeenCalledTimes(1);
     expect(completeJob).toHaveBeenCalledWith(job.id, true);
   });
 });
@@ -316,6 +356,21 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     const ports = createRunnerPorts(admin);
 
     await expect(ports.enqueueDueReports()).rejects.toThrow("boom");
+  });
+
+  it("enqueueDueInsights calls the enqueue_insight_detection RPC and returns its count", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: 3, error: null } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueInsights()).resolves.toBe(3);
+    expect(rpc).toHaveBeenCalledWith("enqueue_insight_detection");
+  });
+
+  it("enqueueDueInsights throws on an RPC error", async () => {
+    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "boom" } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueInsights()).rejects.toThrow("boom");
   });
 });
 

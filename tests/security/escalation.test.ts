@@ -294,6 +294,17 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "transport.assign": { permission: "transport.manage", input: () => ({ studentId: U(), stopId: U() }) },
   "transport.unassign": { permission: "transport.manage", input: () => ({ studentId: U() }) },
+  "insight.review": { permission: "insight.review", input: () => ({ insightId: U() }) },
+  "insight.action": {
+    permission: "insight.review",
+    input: () => ({ insightId: U(), action: "Probe action", owner: "Probe owner", rationale: "Probe rationale.", expectedOutcome: "Probe outcome." }),
+  },
+  "insight.resolve": { permission: "insight.review", input: () => ({ insightId: U(), note: "Probe resolution note." }) },
+  "insight.dismiss": { permission: "insight.review", input: () => ({ insightId: U(), note: "Probe dismissal note." }) },
+  // Gate is `insight.read` (every role here passes it except student/guardian),
+  // but the handler's own `ai.generate` check (07 §2 — accountant/exam_controller
+  // lack it) is what actually decides forbidden vs. past-the-gate here.
+  "insight.explain": { permission: "ai.generate", input: () => ({ insightId: U() }) },
   "report.schedule.save": {
     permission: "report.schedule",
     input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
