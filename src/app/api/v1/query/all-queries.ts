@@ -16,6 +16,7 @@ import "@/modules/exams/query-defs";
 import "@/modules/facilities/query-defs";
 import "@/modules/finance/query-defs";
 import "@/modules/imports/query-defs";
+import "@/modules/insights/query-defs";
 import "@/modules/jobs/query-defs";
 import "@/modules/lifecycle/query-defs";
 import "@/modules/notifications/query-defs";

@@ -529,6 +529,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"briefings": {
+                  Row: {
+                    "brief_date": string,"created_at": string,"headline": string,"id": string,"institution_id": string,"items": NonNullable<Json>,"provider": string | null,"role": string,"sources": NonNullable<Json>,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "brief_date": string,"created_at"?: string,"headline": string,"id"?: string,"institution_id": string,"items": NonNullable<Json>,"provider"?: string | null,"role": string,"sources": NonNullable<Json>,"updated_at"?: string
+                  }
+                  Update: {
+                    "brief_date"?: string,"created_at"?: string,"headline"?: string,"id"?: string,"institution_id"?: string,"items"?: NonNullable<Json>,"provider"?: string | null,"role"?: string,"sources"?: NonNullable<Json>,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "briefings_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"campuses": {
                   Row: {
                     "created_at": string,"id": string,"institution_id": string,"is_default": boolean,"name": string,"updated_at": string
@@ -1212,6 +1232,88 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"insight_actions": {
+                  Row: {
+                    "action": string,"actual_outcome": string | null,"created_at": string,"created_by": string,"decided_at": string,"expected_outcome": string,"id": string,"insight_id": string,"institution_id": string,"measured_at": string | null,"owner": string,"rationale": string,"status": string,"supersedes_id": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"actual_outcome"?: string | null,"created_at"?: string,"created_by": string,"decided_at"?: string,"expected_outcome": string,"id"?: string,"insight_id": string,"institution_id": string,"measured_at"?: string | null,"owner": string,"rationale": string,"status": string,"supersedes_id"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "action"?: string,"actual_outcome"?: string | null,"created_at"?: string,"created_by"?: string,"decided_at"?: string,"expected_outcome"?: string,"id"?: string,"insight_id"?: string,"institution_id"?: string,"measured_at"?: string | null,"owner"?: string,"rationale"?: string,"status"?: string,"supersedes_id"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "insight_actions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_insight_id_fkey"
+      columns: ["insight_id"]
+isOneToOne: false
+      referencedRelation: "insights"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_supersedes_id_fkey"
+      columns: ["supersedes_id"]
+isOneToOne: false
+      referencedRelation: "insight_actions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"insights": {
+                  Row: {
+                    "approval_required": boolean,"class_section_id": string | null,"confidence": number,"created_at": string,"date_from": string,"date_to": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"dedupe_key": string,"detector_version": number,"domain": string,"entity_id": string | null,"entity_label": string | null,"entity_type": string | null,"evidence": NonNullable<Json>,"explained_at": string | null,"explained_by": string | null,"explanation": Json | null,"explanation_model": string | null,"explanation_provider": string | null,"factors": NonNullable<Json>,"id": string,"institution_id": string,"kind": string,"pattern": string,"recommended_actions": (string)[],"reviewer_id": string | null,"reviewer_role": string,"severity": string,"signal": string,"sources": (string)[],"status": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "approval_required"?: boolean,"class_section_id"?: string | null,"confidence": number,"created_at"?: string,"date_from": string,"date_to": string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"dedupe_key": string,"detector_version": number,"domain": string,"entity_id"?: string | null,"entity_label"?: string | null,"entity_type"?: string | null,"evidence": NonNullable<Json>,"explained_at"?: string | null,"explained_by"?: string | null,"explanation"?: Json | null,"explanation_model"?: string | null,"explanation_provider"?: string | null,"factors"?: NonNullable<Json>,"id"?: string,"institution_id": string,"kind": string,"pattern": string,"recommended_actions"?: (string)[],"reviewer_id"?: string | null,"reviewer_role": string,"severity": string,"signal": string,"sources"?: (string)[],"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "approval_required"?: boolean,"class_section_id"?: string | null,"confidence"?: number,"created_at"?: string,"date_from"?: string,"date_to"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"dedupe_key"?: string,"detector_version"?: number,"domain"?: string,"entity_id"?: string | null,"entity_label"?: string | null,"entity_type"?: string | null,"evidence"?: NonNullable<Json>,"explained_at"?: string | null,"explained_by"?: string | null,"explanation"?: Json | null,"explanation_model"?: string | null,"explanation_provider"?: string | null,"factors"?: NonNullable<Json>,"id"?: string,"institution_id"?: string,"kind"?: string,"pattern"?: string,"recommended_actions"?: (string)[],"reviewer_id"?: string | null,"reviewer_role"?: string,"severity"?: string,"signal"?: string,"sources"?: (string)[],"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "insights_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insights_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insights_explained_by_fkey"
+      columns: ["explained_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insights_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insights_reviewer_id_fkey"
+      columns: ["reviewer_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -2722,6 +2824,50 @@ isOneToOne: true
 "decide_application":
 { Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
                            },
+"decide_insight":
+{ Args: { "p_action": string,"p_insight_id": string,"p_note"?: string,"p_reviewer_id"?: string }; Returns: {
+              "approval_required": boolean,
+"class_section_id": string | null,
+"confidence": number,
+"created_at": string,
+"date_from": string,
+"date_to": string,
+"decided_at": string | null,
+"decided_by": string | null,
+"decision_note": string | null,
+"dedupe_key": string,
+"detector_version": number,
+"domain": string,
+"entity_id": string | null,
+"entity_label": string | null,
+"entity_type": string | null,
+"evidence": NonNullable<Json>,
+"explained_at": string | null,
+"explained_by": string | null,
+"explanation": Json | null,
+"explanation_model": string | null,
+"explanation_provider": string | null,
+"factors": NonNullable<Json>,
+"id": string,
+"institution_id": string,
+"kind": string,
+"pattern": string,
+"recommended_actions": (string)[],
+"reviewer_id": string | null,
+"reviewer_role": string,
+"severity": string,
+"signal": string,
+"sources": (string)[],
+"status": string,
+"title": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "insights"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "decide_leave":
 { Args: { "p_decision": string,"p_leave_id": string,"p_note"?: string }; Returns: {
               "created_at": string,
@@ -2793,6 +2939,21 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"insight_src_attendance":
+{ Args: { "p_as_of": string,"p_institution_id": string,"p_student_max_recent_pct": number }; Returns: {
+              "base_days": number,"base_denominator": number,"base_present": number,"class_section_id": string,"level": string,"recent_days": number,"recent_denominator": number,"recent_present": number,"section_label": string,"student_id": string
+            }[]
+                           },
+"insight_src_marks":
+{ Args: { "p_as_of": string,"p_institution_id": string,"p_min_drop_pts": number }; Returns: {
+              "class_section_id": string,"last_exam_id": string,"last_pct": number,"last_published_on": string,"prev_exam_id": string,"prev_pct": number,"section_label": string,"student_id": string,"subject_id": string,"subject_name": string
+            }[]
+                           },
+"insight_src_submissions":
+{ Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
+              "awaiting_count": number,"class_section_id": string,"due_count": number,"level": string,"missing_count": number,"oldest_awaiting_days": number,"section_label": string,"student_id": string
+            }[]
+                           },
 "invite_member":
 { Args: { "p_email": string,"p_guardian_id"?: string,"p_institution_id": string,"p_role": string,"p_staff_id"?: string,"p_student_id"?: string }; Returns: {
               "invitation_id": string,"token": string
@@ -2937,6 +3098,33 @@ isOneToOne: true
 "record_audit_event":
 { Args: { "p_action": string,"p_after"?: Json,"p_before"?: Json,"p_entity_id"?: string,"p_entity_type": string,"p_institution_id": string,"p_metadata"?: Json }; Returns: string
                            },
+"record_insight_action":
+{ Args: { "p_action": string,"p_actual_outcome"?: string,"p_expected_outcome": string,"p_insight_id": string,"p_owner": string,"p_rationale": string,"p_status"?: string,"p_supersedes_id"?: string }; Returns: {
+              "action": string,
+"actual_outcome": string | null,
+"created_at": string,
+"created_by": string,
+"decided_at": string,
+"expected_outcome": string,
+"id": string,
+"insight_id": string,
+"institution_id": string,
+"measured_at": string | null,
+"owner": string,
+"rationale": string,
+"status": string,
+"supersedes_id": string | null,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "insight_actions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"record_insights":
+{ Args: { "p_institution_id": string,"p_rows": Json }; Returns: number
+                           },
 "record_payment":
 { Args: { "p_amount": number,"p_idempotency_key": string,"p_invoice_id": string,"p_mode": string,"p_received_at": string,"p_reference": string }; Returns: Json
                            },
@@ -2949,6 +3137,50 @@ isOneToOne: true
 "revoke_invitation":
 { Args: { "p_invitation_id": string }; Returns: undefined
                            },
+"set_insight_explanation":
+{ Args: { "p_explanation": Json,"p_insight_id": string,"p_model": string,"p_provider": string }; Returns: {
+              "approval_required": boolean,
+"class_section_id": string | null,
+"confidence": number,
+"created_at": string,
+"date_from": string,
+"date_to": string,
+"decided_at": string | null,
+"decided_by": string | null,
+"decision_note": string | null,
+"dedupe_key": string,
+"detector_version": number,
+"domain": string,
+"entity_id": string | null,
+"entity_label": string | null,
+"entity_type": string | null,
+"evidence": NonNullable<Json>,
+"explained_at": string | null,
+"explained_by": string | null,
+"explanation": Json | null,
+"explanation_model": string | null,
+"explanation_provider": string | null,
+"factors": NonNullable<Json>,
+"id": string,
+"institution_id": string,
+"kind": string,
+"pattern": string,
+"recommended_actions": (string)[],
+"reviewer_id": string | null,
+"reviewer_role": string,
+"severity": string,
+"signal": string,
+"sources": (string)[],
+"status": string,
+"title": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "insights"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "staff_check_in":
 { Args: { "p_institution_id": string }; Returns: {
               "check_in_at": string | null,

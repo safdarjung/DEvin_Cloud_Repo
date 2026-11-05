@@ -31,4 +31,5 @@ T14 (handler + registry), T16 (actions).
 None.
 
 **Assumptions made:**
-Default status values, limit defaults, and enum literals match 07 §2.2 permission matrix and detector spec.
+- actualOutcome min length 1 when present (spec: 1–500)
+- Default status `planned`, limit defaults `50`/`3`, and enum literals match 07 §2.2 permission matrix and detector spec

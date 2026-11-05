@@ -16,6 +16,8 @@ import "@/modules/exams/actions";
 import "@/modules/facilities/actions";
 import "@/modules/finance/actions";
 import "@/modules/imports/actions";
+import "@/modules/insights/actions";
+import "@/modules/insights/explain.actions";
 import "@/modules/jobs/actions";
 import "@/modules/lifecycle/actions";
 import "@/modules/notifications/actions";

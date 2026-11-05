@@ -153,7 +153,8 @@ export function makeCandidate(
     window: string;
   },
 ): InsightCandidate {
-  const def = SIGNALS[signal];
+  const def: { domain: InsightDomain; kind: InsightKind; reviewerRole: ReviewerRole; approvalRequired?: true; why: string } =
+    SIGNALS[signal];
   const entityKey = fields.entity_type ?? "school";
   const idKey = fields.entity_id ?? "-";
   return {
