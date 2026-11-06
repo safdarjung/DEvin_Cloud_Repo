@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { ptmForStudent, type PtmBookableRow } from "@/modules/ptm/queries";
@@ -35,6 +35,7 @@ export default async function PortalMeetingsPage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/meetings"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
       {events.size === 0 ? (
         <p className="text-sm text-muted-foreground">No parent-teacher meetings are open for booking.</p>

@@ -1,5 +1,5 @@
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { Inbox } from "@/modules/notifications/components/Inbox";
 import { listMyNotifications } from "@/modules/notifications/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -31,6 +31,7 @@ export default async function PortalNotificationsPage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/notifications"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
       <Inbox institutionSlug={institutionSlug} notifications={notifications} />
     </>

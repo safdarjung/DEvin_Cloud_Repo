@@ -2,7 +2,7 @@ import { inr } from "@/lib/format";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { StudentInvoices } from "@/modules/finance/components/StudentInvoices";
 import { listReceiptsForStudent } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -31,6 +31,7 @@ export default async function PortalFeesPage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/fees"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
 
       <div className="space-y-4">
