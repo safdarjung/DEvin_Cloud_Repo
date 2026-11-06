@@ -32,12 +32,21 @@ describe("jobs runner (T-037) against the real public.jobs_claim/public.jobs_com
     const key = "jobs-runner-test-c70";
     await sql`select app.enqueue_job(null, 'notify.attendance_absence', '{}'::jsonb, ${key})`;
 
-    const [summaryA, summaryB] = await Promise.all([
-      runOnceCore({ workerId: "test-worker-a" }, createRunnerPorts(admin)),
-      runOnceCore({ workerId: "test-worker-b" }, createRunnerPorts(admin)),
+    // Sweeps (reports/insights/forecasts) would enqueue real jobs for seeded tenants; this test is about claim races only.
+    const ports = () => ({
+      ...createRunnerPorts(admin),
+      enqueueDueReports: async () => 0,
+      enqueueDueInsights: async () => 0,
+      enqueueDueForecasts: async () => {},
+    });
+    await Promise.all([
+      runOnceCore({ workerId: "test-worker-a" }, ports()),
+      runOnceCore({ workerId: "test-worker-b" }, ports()),
     ]);
 
-    expect(summaryA.claimed + summaryB.claimed).toBe(1);
+    // Other tenants' queued jobs may be claimed too; the claim race is about this single job.
+    const [row] = await sql`select attempts from public.jobs where idempotency_key = ${key}`;
+    expect(row.attempts).toBe(1);
   });
 
   it("C-71: a handler that fails is requeued with backoff, then dies at max_attempts", async () => {

@@ -1,7 +1,8 @@
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { demoFixturesEnabled } from "@/modules/core/demo/fixtures";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
-import { WorkspaceSkeleton } from "@/modules/fabric/components/workspace-skeleton";
+import { PlannedWorkspace } from "@/modules/fabric/components/planned-workspace";
 
 export default async function SimulatorPage({
   params,
@@ -14,7 +15,7 @@ export default async function SimulatorPage({
 
   return (
     <FabricPage title="Simulator" ws="simulator">
-      <WorkspaceSkeleton packet="F-UI-08" />
+      <PlannedWorkspace demo={demoFixturesEnabled(ctx)} packet="F-UI-08" name="Simulator" base={`/${institutionSlug}`} />
     </FabricPage>
   );
 }

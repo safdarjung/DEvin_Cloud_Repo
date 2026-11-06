@@ -4484,6 +4484,9 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"submit_platform_lead":
+{ Args: { "p_ip_hash": string,"p_payload": Json }; Returns: Json
+                           },
 "submit_public_enquiry":
 { Args: { "p_ip_hash": string,"p_payload": Json,"p_slug": string }; Returns: Json
                            },
