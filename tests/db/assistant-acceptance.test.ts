@@ -23,7 +23,7 @@
 // not exercise M20's real SQL (there is none in this lane to exercise).
 import postgres from "postgres";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/lib/db/types";
 import { ok } from "@/lib/actions/result";
 import type { ActionMeta, AnyAction } from "@/lib/actions/registry";
@@ -65,6 +65,17 @@ afterAll(async () => {
   await closeFactoriesHelper();
   await closeActionsHelper();
   await closeRolesHelper();
+});
+
+// The route goes cloud whenever a Gemini/Groq key is set (owner decision 2026-11-02); these
+// acceptance cases drive the mocked local model, so run them keyless.
+const savedCloudKeys = { GEMINI_API_KEY: process.env.GEMINI_API_KEY, GROQ_API_KEY: process.env.GROQ_API_KEY };
+beforeAll(() => {
+  delete process.env.GEMINI_API_KEY;
+  delete process.env.GROQ_API_KEY;
+});
+afterAll(() => {
+  Object.assign(process.env, Object.fromEntries(Object.entries(savedCloudKeys).filter(([, v]) => v !== undefined)));
 });
 
 afterEach(() => {

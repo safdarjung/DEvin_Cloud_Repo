@@ -135,8 +135,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const provider = pickAssistantProvider(
-    ctx.institution.ai_policy,
-    process.env.AI_CLOUD_ENABLED === "true",
+    Boolean(process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY),
     latestUserText(input.messages),
   );
 

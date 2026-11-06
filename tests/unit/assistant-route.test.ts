@@ -5,7 +5,7 @@
 // mapping. Same mocking style as tests/unit/teacher-agent-route.test.ts;
 // `buildAssistantTools`, `streamAgent` and `streamCloudAgent` are mocked so
 // each path is exercised without a real tool/model round-trip.
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/lib/auth/types";
 
 const getTenantContextMock = vi.fn();
@@ -56,9 +56,21 @@ async function json(res: Response) {
   return res.json();
 }
 
+const CLOUD_KEYS = ["GEMINI_API_KEY", "GROQ_API_KEY"] as const;
+const savedCloudKeys = Object.fromEntries(CLOUD_KEYS.map((k) => [k, process.env[k]]));
+
+// Each test starts keyless (local path); cloud tests set GROQ_API_KEY themselves.
+beforeEach(() => {
+  for (const k of CLOUD_KEYS) delete process.env[k];
+});
+
 afterEach(() => {
   vi.clearAllMocks();
   buildAssistantToolsMock.mockResolvedValue({ tools: {}, sources: { list: () => [] } });
+  for (const k of CLOUD_KEYS) {
+    if (savedCloudKeys[k] === undefined) delete process.env[k];
+    else process.env[k] = savedCloudKeys[k];
+  }
 });
 
 describe("POST /api/ai/agent/assistant", () => {
@@ -104,7 +116,7 @@ describe("POST /api/ai/agent/assistant", () => {
     expect(streamCloudAgentMock).not.toHaveBeenCalled();
   });
 
-  it("local_only: streams through streamAgent with the loop bounds, never touching the cloud stream", async () => {
+  it("no Gemini/Groq key: streams through streamAgent with the loop bounds, never touching the cloud stream", async () => {
     getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
     const streamResponse = new Response("stream");
     streamAgentMock.mockResolvedValueOnce({
@@ -133,11 +145,10 @@ describe("POST /api/ai/agent/assistant", () => {
     );
   });
 
-  it("cloud_allowed + AI_CLOUD_ENABLED=true + short text: routes to groq, redacts a phone number in the messages", async () => {
-    const previous = process.env.AI_CLOUD_ENABLED;
-    process.env.AI_CLOUD_ENABLED = "true";
-    try {
-      getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "cloud_allowed"));
+  it("local_only school + a cloud key + short text: routes to groq regardless of ai_policy, redacts a phone number", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    {
+      getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
       const streamResponse = new Response("stream");
       streamCloudAgentMock.mockResolvedValueOnce({
         ok: true,
@@ -153,15 +164,12 @@ describe("POST /api/ai/agent/assistant", () => {
       expect(call.redactions).toBeGreaterThanOrEqual(1);
       expect(JSON.stringify(call.messages)).toContain("[REDACTED_PHONE]");
       expect(JSON.stringify(call.messages)).not.toContain("9876543210");
-    } finally {
-      process.env.AI_CLOUD_ENABLED = previous;
     }
   });
 
-  it("cloud_allowed + AI_CLOUD_ENABLED=true: redacts a prior assistant-role text part too (L2-02, not just the latest user turn)", async () => {
-    const previous = process.env.AI_CLOUD_ENABLED;
-    process.env.AI_CLOUD_ENABLED = "true";
-    try {
+  it("cloud: redacts a prior assistant-role text part too (L2-02, not just the latest user turn)", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    {
       getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "cloud_allowed"));
       const streamResponse = new Response("stream");
       streamCloudAgentMock.mockResolvedValueOnce({
@@ -187,15 +195,11 @@ describe("POST /api/ai/agent/assistant", () => {
       expect(call.redactions).toBeGreaterThanOrEqual(1);
       expect(JSON.stringify(call.messages)).toContain("[REDACTED_PHONE]");
       expect(JSON.stringify(call.messages)).not.toContain("9876543210");
-    } finally {
-      process.env.AI_CLOUD_ENABLED = previous;
     }
   });
 
-  it("cloud_allowed without AI_CLOUD_ENABLED: falls back to local", async () => {
-    const previous = process.env.AI_CLOUD_ENABLED;
-    delete process.env.AI_CLOUD_ENABLED;
-    try {
+  it("cloud_allowed school without a Gemini/Groq key: falls back to local", async () => {
+    {
       getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "cloud_allowed"));
       const streamResponse = new Response("stream");
       streamAgentMock.mockResolvedValueOnce({
@@ -207,8 +211,6 @@ describe("POST /api/ai/agent/assistant", () => {
       const res = await POST(request(validBody()));
       expect(res).toBe(streamResponse);
       expect(streamCloudAgentMock).not.toHaveBeenCalled();
-    } finally {
-      process.env.AI_CLOUD_ENABLED = previous;
     }
   });
 

@@ -8,7 +8,6 @@ import {
   queriesFor,
   createSourceLog,
 } from "@/modules/ai/assistant/catalog";
-import type { AiPolicy } from "@/lib/ai/policy";
 
 describe("assistant catalog", () => {
   describe("ASSISTANT_CATALOG_VERSION", () => {
@@ -187,23 +186,20 @@ describe("assistant catalog", () => {
   });
 
   describe("pickAssistantProvider", () => {
-    const test_cases: Array<[AiPolicy, boolean, string | undefined, "local" | "groq" | "gemini"]> = [
-      ["local_only", true, "any text", "local"],
-      ["local_only", false, "any text", "local"],
-      ["local_with_cloud_fallback", true, "any text", "local"],
-      ["local_with_cloud_fallback", false, "any text", "local"],
-      ["cloud_allowed", false, "any text", "local"],
-      ["cloud_allowed", true, undefined, "local"],
-      ["cloud_allowed", true, "", "local"],
-      ["cloud_allowed", true, "short", "groq"],
-      ["cloud_allowed", true, "This is a medium length question about attendance patterns", "groq"],
-      ["cloud_allowed", true, "I need you to compare the attendance trends across both classes as well as analyze the performance metrics for each section, and also provide insights into the student retention rates and staff availability schedules.", "gemini"],
+    const longText =
+      "I need you to compare the attendance trends across both classes as well as analyze the performance metrics for each section, and also provide insights into the student retention rates and staff availability schedules.";
+    const test_cases: Array<[boolean, string | undefined, "local" | "groq" | "gemini"]> = [
+      [false, "any text", "local"],
+      [false, undefined, "local"],
+      [true, "short", "groq"],
+      [true, "This is a medium length question about attendance patterns", "groq"],
+      [true, longText, "gemini"],
+      [true, undefined, "gemini"],
     ];
 
-    test_cases.forEach(([policy, cloudEnabled, text, expected]) => {
-      it(`(${policy}, ${cloudEnabled}, "${text?.substring(0, 30)}...") returns ${expected}`, () => {
-        const result = pickAssistantProvider(policy, cloudEnabled, text);
-        expect(result).toBe(expected);
+    test_cases.forEach(([cloudConfigured, text, expected]) => {
+      it(`(cloudConfigured=${cloudConfigured}, "${text?.substring(0, 30)}...") returns ${expected}`, () => {
+        expect(pickAssistantProvider(cloudConfigured, text)).toBe(expected);
       });
     });
   });

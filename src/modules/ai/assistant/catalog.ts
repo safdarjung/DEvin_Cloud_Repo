@@ -1,5 +1,4 @@
 import { pickAgentProvider, type AgentProvider } from "@/modules/ai/agent/provider-routing";
-import type { AiPolicy } from "@/lib/ai/policy";
 
 export const ASSISTANT_CATALOG_VERSION = "assistant_v1" as const;
 
@@ -189,33 +188,13 @@ export function queriesFor(provider: AssistantProvider): Readonly<Record<string,
 }
 
 /**
- * D29-style provider picker for the assistant.
- * - `local_only` and `local_with_cloud_fallback` → always `"local"`
- * - `cloud_allowed` + `cloudEnabled` + non-empty text → `pickAgentProvider` logic
- * - otherwise → `"local"`
+ * Owner decision 2026-11-02 (M24-tasks.md): the assistant extends the D28/D29
+ * teacher-agent cloud exception — Gemini/Groq via `pickAgentProvider`,
+ * regardless of the institution's `ai_policy`. Local only when no cloud key is
+ * configured (a keyless self-hosted install).
  */
-export function pickAssistantProvider(
-  aiPolicy: AiPolicy,
-  cloudEnabled: boolean,
-  latestUserText: string | undefined
-): AssistantProvider {
-  // Never cloud for local_only or local_with_cloud_fallback
-  if (aiPolicy !== "cloud_allowed") {
-    return "local";
-  }
-
-  // cloud_allowed: cloud only if enabled and we have text
-  if (!cloudEnabled) {
-    return "local";
-  }
-
-  // Delegate to D29 logic if we have text
-  const text = latestUserText?.trim();
-  if (!text) {
-    return "local";
-  }
-
-  return pickAgentProvider(text);
+export function pickAssistantProvider(cloudConfigured: boolean, latestUserText: string | undefined): AssistantProvider {
+  return cloudConfigured ? pickAgentProvider(latestUserText) : "local";
 }
 
 /**
