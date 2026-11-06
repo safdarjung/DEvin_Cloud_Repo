@@ -465,6 +465,9 @@ async function seedAgentRuns(ctx: SeedContext): Promise<void> {
 }
 
 export async function run(ctx: SeedContext): Promise<void> {
+  // Tables loaded moments ago may have no planner stats yet; the detector/forecast RPCs below run
+  // under PostgREST's 8s statement_timeout, and a stats-less plan can blow past it.
+  await ctx.sql`analyze`;
   const asOf = await fabricAsOf(ctx);
 
   const job = buildInsightsDetectJob(ctx, asOf);

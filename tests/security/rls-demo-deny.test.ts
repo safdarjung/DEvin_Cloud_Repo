@@ -39,9 +39,12 @@ const EMPTY_IN_DEMO = new Set<string>([
   "import_batches", // no bulk import run in the demo tenant
   "import_rows", // no bulk import run in the demo tenant
   "invitations", // no pending staff/guardian invite in the demo tenant
+  "message_threads", // 0102: no parent-teacher thread started in the demo tenant
+  "messages", // 0102: no parent-teacher thread started in the demo tenant
   "late_fee_charges", // X04: no overdue instalment charged in the demo tenant
   "online_payment_intents", // M12: no online payment started in the demo tenant
   "payment_reversals", // M12: no payment reversed in the demo tenant
+  "practice_attempts", // 0103: no practice quiz taken in the demo tenant
   "question_bank", // not used by the demo exam flow
   "result_remarks", // no result remark added in the demo tenant
   "scheduled_reports", // M15: none scheduled in the demo tenant
