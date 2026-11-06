@@ -13,6 +13,7 @@ const TABS = [
   { href: "/assignments", label: "Assignments" },
   { href: "/subjects", label: "Subjects" },
   { href: "/study", label: "Study" },
+  { href: "/practice", label: "Practice" },
   { href: "/meetings", label: "Meetings" },
   { href: "/updates", label: "Updates" },
   { href: "/messages", label: "Messages" },
@@ -59,7 +60,7 @@ export function PortalNav({
         {TABS.filter((tab) => {
           if (GUARDIAN_ONLY.has(tab.href)) return role === "guardian";
           if (tab.href === "/subjects") return role === "student";
-          if (tab.href === "/study") return role === "student" && canStudy;
+          if (tab.href === "/study" || tab.href === "/practice") return role === "student" && canStudy;
           return true;
         }).map((tab) => (
           <Link

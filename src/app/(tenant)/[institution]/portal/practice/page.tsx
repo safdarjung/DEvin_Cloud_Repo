@@ -37,7 +37,7 @@ export default async function PortalPracticePage({
 
   return (
     <>
-      <PortalNav institutionSlug={institutionSlug} role="student" selection={selection} activeHref="" canStudy />
+      <PortalNav institutionSlug={institutionSlug} role="student" selection={selection} activeHref="/practice" canStudy />
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-tight">Practice</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">Quizzes generated from your curriculum units. Questions are AI-made and can contain mistakes.</p>
