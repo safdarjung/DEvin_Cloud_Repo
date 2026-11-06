@@ -184,6 +184,8 @@ export const InstitutionSettingsSchema = z
         ptm: z.boolean().optional(),
         student_leave: z.boolean().optional(),
         diary: z.boolean().optional(),
+        messaging: z.boolean().optional(),
+        practice: z.boolean().optional(),
         scheduled_reports: z.boolean().optional(),
         ai_teacher: z.boolean().optional(),
         ai_student: z.boolean().optional(),

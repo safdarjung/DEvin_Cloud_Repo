@@ -98,7 +98,10 @@ export type Permission =
   | "ptm.slot.manage"
   | "ptm.book"
   | "survey.manage"
-  | "survey.respond";
+  | "survey.respond"
+  | "message.read"
+  | "message.send"
+  | "practice.attempt";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -181,6 +184,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "ptm.book",
     "survey.manage",
     "survey.respond",
+    "message.read",
+    "message.send",
   ],
   principal: [
     "institution.settings.manage",
@@ -262,6 +267,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "ptm.book",
     "survey.manage",
     "survey.respond",
+    "message.read",
+    "message.send",
   ],
   admin: [
     "institution.settings.manage",
@@ -327,6 +334,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "ptm.book",
     "survey.manage",
     "survey.respond",
+    "message.read",
+    "message.send",
   ],
   admissions: [
     "dashboard.view",
@@ -439,6 +448,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "forecast.read",
     "ptm.slot.manage",
     "survey.respond",
+    "message.read",
+    "message.send",
   ],
   student: [
     "student.read",
@@ -458,6 +469,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "document.write",
     "timetable.read",
     "library.read",
+    "practice.attempt",
   ],
   guardian: [
     "student.read",
@@ -479,6 +491,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "ptm.book",
     "survey.respond",
     "student_leave.request",
+    "message.read",
+    "message.send",
   ],
 };
 

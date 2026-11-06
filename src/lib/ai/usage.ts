@@ -82,7 +82,7 @@ export type LimitsResult = { ok: true } | { ok: false; code: "quota_exceeded" | 
 // exhaust `daily_token_quota` (institution-wide) and lock teachers out of
 // local AI for the rest of the day. Checked in addition to, never instead
 // of, the institution-wide quota above.
-const STUDENT_QUOTA_FEATURES = new Set(["student_study"]);
+const STUDENT_QUOTA_FEATURES = new Set(["student_study", "practice_quiz"]);
 
 export async function checkLimits(ctx: TenantContext, feature: string): Promise<LimitsResult> {
   const settings = aiSettingsFor(ctx);
