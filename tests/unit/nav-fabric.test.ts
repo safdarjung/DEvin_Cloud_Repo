@@ -28,7 +28,7 @@ describe("Fabric navigation", () => {
     expect(navItemsFor(teacher, ENABLED, true).filter((i) => i.group === "Fabric")).toHaveLength(0);
   });
 
-  it("includes all 13 fabric and personal hrefs for dashboard.view + ai.generate", () => {
+  it("includes the non-demo fabric and personal hrefs for dashboard.view + ai.generate (+ finance.read for finance intel)", () => {
     const principal = new Set([
       "dashboard.view",
       "insight.read",
@@ -37,6 +37,7 @@ describe("Fabric navigation", () => {
       "ai.generate",
       "student.read",
       "exam.result.read",
+      "finance.read",
     ] as const);
 
     const items = navItemsFor(principal, ENABLED, true);
@@ -45,16 +46,12 @@ describe("Fabric navigation", () => {
     );
 
     const fabricHrefs = [
+      // demoOnly fixture pages (students, simulator, twin, marketplace, studio) never appear in the nav (9bb75b9).
       "/fabric/learning",
-      "/fabric/students",
       "/fabric/operations",
       "/fabric/finance-intel",
       "/fabric/insights",
-      "/fabric/simulator",
-      "/fabric/twin",
       "/fabric/agents",
-      "/fabric/marketplace",
-      "/fabric/studio",
       "/fabric/data",
       "/fabric/trust",
     ];

@@ -4,10 +4,10 @@ import { homePathFor, navItemsFor } from "@/lib/nav";
 
 // Independently re-derived from 07 §2.2 (not just re-running navItemsFor's own
 // logic back at itself) so a wrong permission on a NAV_ITEMS entry is caught.
+// Fixture-only pages (students, simulator, twin, marketplace, studio) are `demoOnly` and never in the nav (9bb75b9).
 const FABRIC_HREFS = [
-  "/fabric/learning", "/fabric/students", "/fabric/operations", "/fabric/finance-intel", "/fabric/insights",
-  "/fabric/simulator", "/fabric/twin", "/fabric/agents", "/fabric/marketplace", "/fabric/studio",
-  "/fabric/data", "/fabric/trust",
+  "/fabric/learning", "/fabric/operations", "/fabric/finance-intel", "/fabric/insights",
+  "/fabric/agents", "/fabric/data", "/fabric/trust",
 ];
 // Permission-gated links (insight.read / forecast.read / agent.run): staff roles
 // without them don't get dead pages. Demo tenant, no module settings.
@@ -66,7 +66,8 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   ],
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/me"],
   accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT],
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_AGENT],
+  // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT],
   teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/me"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
