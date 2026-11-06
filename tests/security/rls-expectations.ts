@@ -777,7 +777,9 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   insight_actions: {
     classes: ["C"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"], // inherits the parent insight's visibility
-    write: [], // append-only via record_insight_action (T3 definer)
+    // append-only via record_insight_action (T3 definer); 0093 (M20) adds a
+    // permissive UPDATE on kind = 'intervention' rows for owner/principal/class teacher.
+    write: ["owner", "principal", "teacher"],
   },
   briefings: {
     classes: ["S"],
