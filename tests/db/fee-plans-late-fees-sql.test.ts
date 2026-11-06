@@ -290,14 +290,20 @@ describe("fee_plans migration (0087 part 2) — enqueue_due_late_fees sweep", ()
       await setDueOn(invoiceId, 5);
 
       await sql`select public.enqueue_due_late_fees()`;
+      // The sweep is global: drop the jobs it queued for other tenants (the seeded demo) so no later runner applies them.
+      await sql`delete from public.jobs where type = 'fee_plans.late_fees' and status = 'queued' and institution_id <> ${inst.institutionId}`;
       expect(await jobCount(inst.institutionId)).toBe(1);
 
       await sql`select public.enqueue_due_late_fees()`;
+      // The sweep is global: drop the jobs it queued for other tenants (the seeded demo) so no later runner applies them.
+      await sql`delete from public.jobs where type = 'fee_plans.late_fees' and status = 'queued' and institution_id <> ${inst.institutionId}`;
       expect(await jobCount(inst.institutionId)).toBe(1); // idempotency key collapses the rerun
 
       await sql`update public.institutions set settings = settings || '{"modules": {"finance_plus": false}}'::jsonb where id = ${inst.institutionId}`;
       await sql`delete from public.jobs where institution_id = ${inst.institutionId} and type = 'fee_plans.late_fees'`;
       await sql`select public.enqueue_due_late_fees()`;
+      // The sweep is global: drop the jobs it queued for other tenants (the seeded demo) so no later runner applies them.
+      await sql`delete from public.jobs where type = 'fee_plans.late_fees' and status = 'queued' and institution_id <> ${inst.institutionId}`;
       expect(await jobCount(inst.institutionId)).toBe(0);
     } finally {
       await inst.cleanup();

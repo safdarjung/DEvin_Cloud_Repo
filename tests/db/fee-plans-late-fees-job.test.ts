@@ -141,6 +141,8 @@ describe("enqueue_due_late_fees sweep -> fee_plans.late_fees job -> handler (end
     const { invoiceId } = await setupOverdueInvoice(inst.institutionId, "ADM-JOB-SWEEP");
 
     await sql`select public.enqueue_due_late_fees()`;
+    // The sweep is global: drop the jobs it queued for other tenants (the seeded demo) so no later runner applies them.
+    await sql`delete from public.jobs where type = 'fee_plans.late_fees' and status = 'queued' and institution_id <> ${inst.institutionId}`;
     const jobs = await jobsFor(inst.institutionId);
     expect(jobs).toHaveLength(1);
 
@@ -151,6 +153,8 @@ describe("enqueue_due_late_fees sweep -> fee_plans.late_fees job -> handler (end
     await sql`update public.institutions set settings = settings || '{"modules": {"finance_plus": false}}'::jsonb where id = ${inst.institutionId}`;
     await sql`delete from public.jobs where institution_id = ${inst.institutionId} and type = 'fee_plans.late_fees'`;
     await sql`select public.enqueue_due_late_fees()`;
+    // The sweep is global: drop the jobs it queued for other tenants (the seeded demo) so no later runner applies them.
+    await sql`delete from public.jobs where type = 'fee_plans.late_fees' and status = 'queued' and institution_id <> ${inst.institutionId}`;
     expect(await jobsFor(inst.institutionId)).toHaveLength(0);
   }, 20_000);
 });

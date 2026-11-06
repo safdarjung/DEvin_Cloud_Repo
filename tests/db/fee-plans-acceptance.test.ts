@@ -250,6 +250,8 @@ describe("X04 fee-plans acceptance over HTTP", () => {
 
       // --- nightly sweep enqueues the job; the real handler charges it ---
       await sql`select public.enqueue_due_late_fees()`;
+      // The sweep is global: drop the jobs it queued for other tenants (the seeded demo) so no later runner applies them.
+      await sql`delete from public.jobs where type = 'fee_plans.late_fees' and status = 'queued' and institution_id <> ${inst.institutionId}`;
       const jobs = (await sql`
         select id, institution_id, type, payload, idempotency_key, status, attempts, max_attempts,
                run_after, locked_at, locked_by, last_error, created_at, updated_at
