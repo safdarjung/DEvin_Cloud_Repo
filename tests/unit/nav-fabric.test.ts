@@ -2,15 +2,23 @@ import { describe, it, expect } from "vitest";
 import { NAV_ITEMS, navItemsFor } from "@/lib/nav";
 
 const ENABLED = { modules: { insights: true, forecasts: true, agents: true } };
-const DEMO_ONLY = ["/fabric/students", "/fabric/simulator", "/fabric/twin", "/fabric/marketplace", "/fabric/studio"];
+// Live workspaces (2026-11-06), each gated by its page's own permission.
+const OWN_PERMISSION: Record<string, string> = {
+  "/fabric/students": "mastery.review",
+  "/fabric/simulator": "scenario.manage",
+  "/fabric/studio": "studio.request",
+};
 const hrefs = (items: { href: string }[]) => items.map((i) => i.href);
 
 describe("Fabric navigation", () => {
-  it("hides planned (no-backend) fabric pages on non-demo tenants", () => {
-    const perms = new Set(["dashboard.view", "insight.read", "forecast.read", "agent.run"] as const);
-    const live = hrefs(navItemsFor(perms, ENABLED, false));
-    for (const h of DEMO_ONLY) expect(live).not.toContain(h);
-    expect(live).toContain("/fabric/insights");
+  it("lists the live workspaces on non-demo tenants, each only with its own permission", () => {
+    const viewer = hrefs(navItemsFor(new Set(["dashboard.view", "insight.read"] as const), ENABLED, false));
+    expect(viewer).toEqual(expect.arrayContaining(["/fabric/twin", "/fabric/marketplace", "/fabric/insights"]));
+    for (const h of Object.keys(OWN_PERMISSION)) expect(viewer).not.toContain(h);
+    const leader = hrefs(
+      navItemsFor(new Set(["dashboard.view", "mastery.review", "scenario.manage", "studio.request"] as const), { modules: { mastery: true } }, false),
+    );
+    for (const h of Object.keys(OWN_PERMISSION)) expect(leader).toContain(h);
   });
 
   it("hides module-gated fabric pages when the module is off or permission is missing", () => {
@@ -46,12 +54,14 @@ describe("Fabric navigation", () => {
     );
 
     const fabricHrefs = [
-      // demoOnly fixture pages (students, simulator, twin, marketplace, studio) never appear in the nav (9bb75b9).
+      // students / simulator / studio need their own permission (not held here).
       "/fabric/learning",
       "/fabric/operations",
       "/fabric/finance-intel",
       "/fabric/insights",
+      "/fabric/twin",
       "/fabric/agents",
+      "/fabric/marketplace",
       "/fabric/data",
       "/fabric/trust",
     ];
@@ -77,11 +87,11 @@ describe("Fabric navigation", () => {
     expect(fabricAndPersonal).toHaveLength(0);
   });
 
-  it("ungated fabric items have dashboard.view permission", () => {
+  it("ungated fabric items have dashboard.view permission, except workspaces with their own", () => {
     const fabricItems = NAV_ITEMS.filter((item) => item.group === "Fabric" && !item.module);
 
     fabricItems.forEach((item) => {
-      expect(item.permission).toBe("dashboard.view");
+      expect(item.permission).toBe(OWN_PERMISSION[item.href] ?? "dashboard.view");
     });
   });
 

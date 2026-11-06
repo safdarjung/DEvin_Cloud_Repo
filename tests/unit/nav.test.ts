@@ -4,7 +4,10 @@ import { homePathFor, navItemsFor } from "@/lib/nav";
 
 // Independently re-derived from 07 §2.2 (not just re-running navItemsFor's own
 // logic back at itself) so a wrong permission on a NAV_ITEMS entry is caught.
-// Fixture-only pages (students, simulator, twin, marketplace, studio) are `demoOnly` and never in the nav (9bb75b9).
+// Live workspaces (2026-11-06): twin + marketplace need dashboard.view; students needs
+// mastery.review (+ mastery module), simulator scenario.manage, studio studio.request.
+const VIEW_WORKSPACES = ["/fabric/twin", "/fabric/marketplace"];
+const LEADER_WORKSPACES = [...VIEW_WORKSPACES, "/fabric/students", "/fabric/simulator", "/fabric/studio"];
 const FABRIC_HREFS = [
   "/fabric/learning", "/fabric/operations", "/fabric/finance-intel", "/fabric/insights",
   "/fabric/agents", "/fabric/data", "/fabric/trust",
@@ -19,6 +22,7 @@ const NO_AGENT = FABRIC_HREFS.filter((h) => h !== "/fabric/agents");
 const EXPECTED_HREFS: Record<Role, string[]> = {
   owner: [
     ...FABRIC_HREFS,
+    ...LEADER_WORKSPACES,
     "/dashboard",
     "/students",
     "/admissions",
@@ -37,6 +41,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   ],
   principal: [
     ...FABRIC_HREFS,
+    ...LEADER_WORKSPACES,
     "/dashboard",
     "/students",
     "/admissions",
@@ -55,6 +60,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   ],
   admin: [
     ...FABRIC_HREFS,
+    ...LEADER_WORKSPACES,
     "/dashboard",
     "/students",
     "/admissions",
@@ -70,10 +76,10 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/modules",
     "/diary", "/lesson-plans", "/ptm", "/timetable", "/assistant", "/messages",
   ],
-  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/timetable", "/assistant"],
-  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT, "/timetable", "/assistant"],
+  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
+  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, "/question-bank", "/timetable", "/assistant"],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/timetable", "/assistant"],
   teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
