@@ -21,6 +21,7 @@ import { MODULE_DISABLED_MESSAGE } from "@/lib/modules/catalog";
 import { createRunnerPorts, runOnceCore } from "@/modules/jobs/runner";
 import { closeFactoriesHelper, createAcademicYear, createClassSection, createEnrolment, createGrade } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -302,7 +303,7 @@ describe("X01 acceptance: student leave + diary over HTTP", () => {
         expect(nextRecord.status).toBe("OL");
 
         // --- 4. Run the job runner once; guardian sees the decision; studentLeave.list shows approved ---
-        const summary1 = await runOnceCore({ workerId: "x01-worker-1" }, createRunnerPorts(admin));
+        const summary1 = await runOnceCore({ workerId: "x01-worker-1" }, withoutSweeps(createRunnerPorts(admin)));
         expect(summary1.dead).toBe(0);
 
         const notifRes = await dispatchQuery("notifications.listMyNotifications", inst.slug, {}, guardianAuth);
@@ -327,7 +328,7 @@ describe("X01 acceptance: student leave + diary over HTTP", () => {
         expect(postRes.status).toBe(200);
         const entryId = (await postRes.json()).data.id as string;
 
-        const summary2 = await runOnceCore({ workerId: "x01-worker-2" }, createRunnerPorts(admin));
+        const summary2 = await runOnceCore({ workerId: "x01-worker-2" }, withoutSweeps(createRunnerPorts(admin)));
         expect(summary2.dead).toBe(0);
 
         const forStudentRes = await dispatchQuery("diary.forStudent", inst.slug, { studentId }, guardianAuth);

@@ -32,6 +32,7 @@ import {
   plantTimetable,
 } from "../helpers/insight-fixtures";
 import { closeRolesHelper, createTestInstitution, type FixtureRole, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 10 });
 
@@ -190,7 +191,7 @@ describe("M19 insights acceptance: real runner on a fixture tenant, HTTP review,
         await sql`update public.class_sections set class_teacher_id = ${teacherStaffId} where id = ${setup.classSectionId}`;
 
         // --- Run 1: real runner sweep + claim/dispatch ------------------------
-        const ports = createRunnerPorts(admin);
+        const ports = withoutSweeps(createRunnerPorts(admin), ["enqueueDueInsights"]);
         await runOnceCore({ workerId: "insights-acceptance-worker" }, ports);
 
         const counts = await domainCounts(inst.institutionId);

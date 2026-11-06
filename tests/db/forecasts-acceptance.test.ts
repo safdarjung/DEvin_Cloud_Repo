@@ -19,6 +19,7 @@ vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 import { GET as queryGet } from "@/app/api/v1/query/[name]/route";
 import { closeForecastFixturesHelper, seedForecastHistory } from "../helpers/forecast-fixtures";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -86,7 +87,7 @@ describe("M21 forecasts acceptance: sweep + runner produce real forecasts, serve
         expect(sweepError).toBeNull();
 
         // --- one runner pass with real ports (announcements-acceptance.test.ts pattern) ---
-        const summary = await runOnceCore({ workerId: "test-worker-forecasts-acceptance" }, createRunnerPorts(admin));
+        const summary = await runOnceCore({ workerId: "test-worker-forecasts-acceptance" }, withoutSweeps(createRunnerPorts(admin), ["enqueueDueForecasts"]));
         expect(summary.succeeded).toBeGreaterThanOrEqual(1);
         expect(summary.dead).toBe(0);
 
@@ -190,7 +191,7 @@ describe("M21 forecasts acceptance: sweep + runner produce real forecasts, serve
       const key = `forecast-module-off-${crypto.randomUUID()}`;
       await sql`select app.enqueue_job(${inst.institutionId}::uuid, 'forecast.run', ${sql.json({ as_of: "2026-01-01" })}, ${key})`;
 
-      const ports = createRunnerPorts(admin);
+      const ports = withoutSweeps(createRunnerPorts(admin), ["enqueueDueForecasts"]);
       const job = await ports.claimJob(`test-worker-forecasts-module-off-${crypto.randomUUID()}`);
       expect(job?.idempotency_key).toBe(key);
       if (!job) return;
