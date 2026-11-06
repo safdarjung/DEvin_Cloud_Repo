@@ -19,14 +19,17 @@ import type { TenantContext } from "@/lib/auth/types";
 import { humanize, inr } from "@/lib/format";
 import { invoiceStatusVariant } from "@/modules/finance/format";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
+import { PayNowButton } from "@/modules/finance/components/PayNowButton";
 
 interface StudentInvoicesProps {
   ctx: TenantContext;
   institutionSlug: string;
   studentId: string;
+  /** Guardian with finance.payment.online: show Pay now on open invoices. */
+  payOnline?: boolean;
 }
 
-export async function StudentInvoices({ ctx, institutionSlug, studentId }: StudentInvoicesProps) {
+export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnline = false }: StudentInvoicesProps) {
   const invoices = await listInvoicesForStudent(ctx, studentId);
 
   if (invoices.length === 0) {
@@ -42,6 +45,7 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId }: Stude
           <TableHead className="text-right">Total</TableHead>
           <TableHead className="hidden text-right sm:table-cell">Paid</TableHead>
           <TableHead className="hidden sm:table-cell">Due on</TableHead>
+          {payOnline && <TableHead className="text-right">Pay</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -61,6 +65,17 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId }: Stude
             <TableCell className="text-right tabular-nums">{inr(invoice.total)}</TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
             <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
+            {payOnline && (
+              <TableCell className="text-right">
+                {(invoice.status === "issued" || invoice.status === "part_paid") && invoice.total - invoice.paidTotal > 0 && (
+                  <PayNowButton
+                    institutionSlug={institutionSlug}
+                    invoiceId={invoice.id}
+                    amount={Math.round((invoice.total - invoice.paidTotal) * 100) / 100}
+                  />
+                )}
+              </TableCell>
+            )}
           </TableRow>
         ))}
       </TableBody>

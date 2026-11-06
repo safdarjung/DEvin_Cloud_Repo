@@ -14,8 +14,13 @@ const TABS = [
   { href: "/subjects", label: "Subjects" },
   { href: "/study", label: "Study" },
   { href: "/meetings", label: "Meetings" },
+  { href: "/updates", label: "Updates" },
+  { href: "/leave", label: "Leave" },
+  { href: "/surveys", label: "Surveys" },
   { href: "/notifications", label: "Notifications" },
 ] as const;
+
+const GUARDIAN_ONLY = new Set<string>(["/meetings", "/updates", "/leave", "/surveys"]);
 
 export type PortalTabHref = (typeof TABS)[number]["href"];
 
@@ -50,7 +55,7 @@ export function PortalNav({
       />
       <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
         {TABS.filter((tab) => {
-          if (tab.href === "/meetings") return role === "guardian";
+          if (GUARDIAN_ONLY.has(tab.href)) return role === "guardian";
           if (tab.href === "/subjects") return role === "student";
           if (tab.href === "/study") return role === "student" && canStudy;
           return true;
