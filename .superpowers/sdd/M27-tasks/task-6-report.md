@@ -1,0 +1,11 @@
+Packet: M27-T6 Grants audit — exact function buckets + 07 §4 drift
+Files changed: tests/security/grants.test.ts (Edit); docs/planning/coolskool/07-security-and-ai-governance.md §4 (Edit, 3 missing-name additions)
+Behavior implemented: exported PUBLIC_INVOKER_AUTHENTICATED (11 names) and SERVICE_ONLY (27 names), both derived live from pg_proc/has_function_privilege against this lane's own Supabase (M12-M25/X01-X08 all merged here). Added 3 tests: exact-set match for each bucket, and "every user-/service-callable definer named in 07 §4" (bare-name substring check). Old 13-name service-only loop now iterates SERVICE_ONLY (no duplicate literal). Doc drift found + fixed (not a code contradiction, just missing rows, per FILES note): mark_period_attendance (M08/0070, never documented) added to the staffing row; assert_forecast_window (M21/0094) added to the forecasting row; submit_platform_lead (0100, platform leads, UI-session migration) given a new row — all 3 functions' actual grants already matched their intended scope, so no code change, no finding to stop on.
+Tests run: pnpm test:security tests/security/grants.test.ts -> 12/12 pass. pnpm lint -> 0 errors (11 pre-existing warnings elsewhere). pnpm typecheck -> clean.
+pnpm test:security (full) -> 3685/3686 pass, 1 fail: rls-generated.test.ts "write: [] tables have no permissive write policy" (insight_actions) — NOT in my files; tests/security/rls-expectations.ts and tests/security/rls-demo-deny.test.ts show uncommitted changes from a concurrent task (T5) in this tree; ignored per brief.
+Tests not run and why: none skipped in scope.
+Limitations / honesty label: n/a (test/doc only).
+Security / integration risks: none — tightens test coverage and closes a docs gap; no runtime/grant change.
+Follow-ups: none for T6. The rls-generated.test.ts failure is owned by whichever task is mid-edit on rls-expectations.ts/rls-demo-deny.test.ts (T5) — flagging, not fixing.
+New dependencies (justification): none
+Assumptions made: lane-h has all M27 prereqs merged (confirmed: src/modules/{mastery,insights,forecasts,agents,workflows} all present), unlike the earlier BLOCKED lane-j report this file previously held — that report is superseded by this run.

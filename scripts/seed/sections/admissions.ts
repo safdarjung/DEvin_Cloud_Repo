@@ -114,6 +114,10 @@ export async function run(ctx: SeedContext): Promise<void> {
       assigned_to: ctx.rng() < 0.6 ? admissionsStaffId : null,
       notes,
       created_at: `${createdOn}T09:00:00+05:30`,
+      // M27-T1: insight_src_admissions proxies stage dwell off updated_at;
+      // without this it defaults to seed run time, so no enquiry is ever
+      // stale against AS_OF and admissions.stage_dwell never fires (DBT-110).
+      updated_at: `${createdOn}T09:00:00+05:30`,
     });
   }
 

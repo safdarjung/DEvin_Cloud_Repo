@@ -12,6 +12,7 @@ import { run as runCore } from "./sections/core.ts";
 import { run as runCurriculum } from "./sections/curriculum.ts";
 import { run as runExamSeating } from "./sections/exam-seating.ts";
 import { run as runExams } from "./sections/exams.ts";
+import { run as runFabric } from "./sections/fabric.ts";
 import { run as runFeePlans } from "./sections/fee-plans.ts";
 import { run as runFinance } from "./sections/finance.ts";
 import { run as runLibrary } from "./sections/library.ts";
@@ -62,6 +63,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "homeroom", run: runHomeroom },
   // X05-T6: last — needs core.ts's user ids and people.ts's student rows.
   { name: "notifications", run: runNotifications },
+  // M27-T2/T3: registered last — real detectors/engines over every earlier section's rows.
+  { name: "fabric", run: runFabric },
 ];
 
 async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {

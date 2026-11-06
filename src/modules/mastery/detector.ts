@@ -143,20 +143,21 @@ async function loadStats(admin: Admin, yearId: string): Promise<StatsRow[]> {
   }
 }
 
-/** `insight_actions.created_by` is a not-null profile: the detector has no actor, so the earliest active owner. */
+/** `insight_actions.created_by` is a not-null profile: the detector has no actor, so the earliest active owner, else principal (the demo roster has no owner). */
 async function planAuthor(admin: Admin, institutionId: string): Promise<string> {
   const { data, error } = await admin
     .from("memberships")
     .select("user_id")
     .eq("institution_id", institutionId)
-    .eq("role", "owner")
+    .in("role", ["owner", "principal"])
     .eq("status", "active")
+    .order("role") // 'owner' < 'principal'
     .order("created_at")
     .order("user_id")
     .limit(1)
     .maybeSingle();
   if (error) throw error;
-  if (!data) throw new Error("mastery gap detector: institution has no active owner");
+  if (!data) throw new Error("mastery gap detector: institution has no active owner or principal");
   return data.user_id;
 }
 

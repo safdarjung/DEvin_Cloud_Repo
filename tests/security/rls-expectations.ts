@@ -16,6 +16,13 @@ export interface TableExpectation {
    * makes `select("*")` 42501 at the grant layer, before RLS runs).
    */
   selectColumns?: string[];
+  /**
+   * M27-T4: a DBT id (e.g. "DBT-45") when a plain cross-institution INSERT
+   * on this table fails for a reason other than 42501 / coded P0001 — the
+   * generated suite's INSERT probe still requires an error, just not that
+   * specific shape, and the id documents why.
+   */
+  insertProbeException?: string;
 }
 
 // 05 §5 — the seven tables migration 0002 (T-004) creates. Later migrations'
@@ -40,12 +47,17 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   terms: {
     classes: ["S"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    // 20261028000051: a second permissive policy (terms_select_member)
+    // grants any institution member SELECT (dates aren't sensitive) —
+    // widens the staff-only 0003 policy to guardian/student too.
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "guardian", "student"],
     write: ["owner", "principal", "admin"],
   },
   memberships: {
     classes: ["O"],
-    read: ["owner", "principal", "admin"],
+    // memberships_select (0002): own row (any role) OR owner/principal/admin
+    // read all — class O's self-row scope, same shape as `profiles` below.
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin"],
   },
   institution_sequences: {
@@ -73,7 +85,11 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   jobs: {
     classes: ["A"],
     read: ["owner", "principal", "admin"],
-    write: ["owner", "principal", "admin"], // UPDATE (requeue) only; no INSERT policy
+    // M27-T4 fix: entry said "UPDATE (requeue) only", stale since 0012
+    // dropped jobs_update (HIGH fix — let any role escalate a job) in favour
+    // of public.jobs_requeue (security definer). No table write policy at
+    // all today — writes only via jobs_requeue/jobs_claim/jobs_complete.
+    write: [],
   },
   // Row-scoped (recipient_user_id = current user), not role-scoped — every
   // role can read/update(read_at) only their own rows. Listed here for
@@ -120,6 +136,11 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["S+G"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "teacher", "guardian"], // 07 §2.2 guardian.read (no exam_controller, no student — 0040); teacher: students in a taught section (DBT-17, 0025); guardian: own links
     write: ["owner", "principal", "admin", "admissions"],
+    // M27-T4: a plain cross-institution INSERT recurses (42P17) instead of
+    // 42501 — DBT-45 (guardian_students_insert check → guardians_select
+    // teacher branch subquery → guardian_students policy). Still rejected,
+    // just not in the coded shape the generic probe otherwise requires.
+    insertProbeException: "DBT-45",
   },
 
   // 0005 (T-011) — academics.
@@ -756,7 +777,9 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   insight_actions: {
     classes: ["C"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"], // inherits the parent insight's visibility
-    write: [], // append-only via record_insight_action (T3 definer)
+    // append-only via record_insight_action (T3 definer); 0093 (M20) adds a
+    // permissive UPDATE on kind = 'intervention' rows for owner/principal/class teacher.
+    write: ["owner", "principal", "teacher"],
   },
   briefings: {
     classes: ["S"],
