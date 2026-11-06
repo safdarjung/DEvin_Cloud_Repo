@@ -15,12 +15,14 @@ const TABS = [
   { href: "/study", label: "Study" },
   { href: "/meetings", label: "Meetings" },
   { href: "/updates", label: "Updates" },
+  { href: "/messages", label: "Messages" },
+  { href: "/assistant", label: "Ask" },
   { href: "/leave", label: "Leave" },
   { href: "/surveys", label: "Surveys" },
   { href: "/notifications", label: "Notifications" },
 ] as const;
 
-const GUARDIAN_ONLY = new Set<string>(["/meetings", "/updates", "/leave", "/surveys"]);
+const GUARDIAN_ONLY = new Set<string>(["/meetings", "/updates", "/messages", "/assistant", "/leave", "/surveys"]);
 
 export type PortalTabHref = (typeof TABS)[number]["href"];
 
