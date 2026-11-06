@@ -21,9 +21,12 @@ export function PwaRegister() {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
     let cancelled = false;
     let reloading = false;
+    let refreshAccepted = false;
 
+    // Reload only for an update the user accepted. A first install also fires controllerchange
+    // (clients.claim), and reloading then aborted whatever the visitor had just clicked.
     const onController = () => {
-      if (reloading) return;
+      if (reloading || !refreshAccepted) return;
       reloading = true;
       window.location.reload();
     };
@@ -31,7 +34,13 @@ export function PwaRegister() {
     const promptUpdate = (worker: ServiceWorker) =>
       toast("Update available", {
         duration: Infinity,
-        action: { label: "Refresh", onClick: () => worker.postMessage({ type: "SKIP_WAITING" }) },
+        action: {
+          label: "Refresh",
+          onClick: () => {
+            refreshAccepted = true;
+            worker.postMessage({ type: "SKIP_WAITING" });
+          },
+        },
       });
 
     navigator.serviceWorker
