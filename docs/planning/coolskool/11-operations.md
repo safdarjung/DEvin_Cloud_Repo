@@ -53,6 +53,7 @@ Dev/demo separation: the demo institution is the only `is_demo = true` tenant; r
 3. Auth settings: email/password enabled, confirmations off for demo, site URL = Vercel URL; rate limits default.
 4. `SERVICE_ROLE_CALLER=seed DEMO_RESET_ALLOWED=true pnpm seed` against hosted (from the laptop, using hosted env).
 5. Vercel: import repo, framework Next.js, env vars from §1, cron `*/5 * * * *` → `/api/jobs/run` with `CRON_SECRET` header; deploy `main`.
+   - Function region: `vercel.json` pins `regions: ["dub1"]` because the hosted Supabase project is in **eu-west-1** (not ap-south-1 as step 1 planned). If the database moves, move this region with it: each page makes dozens of sequential queries, and a cross-ocean round trip multiplied them into 10–16 s page loads (2026-11-06).
 6. Smoke: J-00, J-01, J-02; then full narrative.
 7. Backup/restore drill (§6).
 
