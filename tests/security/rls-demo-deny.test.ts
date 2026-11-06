@@ -29,9 +29,6 @@ const EMPTY_IN_DEMO = new Set<string>([
   "announcement_audiences", // no announcement published in the demo tenant
   "announcements", // no announcement published in the demo tenant
   "answer_sheets", // no exam answer-sheet scan uploaded in the demo tenant
-  "assignment_answer_keys", // 05 §8.2: zero homework assignments
-  "assignment_submissions", // 05 §8.2: zero homework assignments
-  "assignments", // 05 §8.2: zero homework assignments
   "briefings", // M25 ruling: generated lazily per calling user, never seeded
   "documents", // no document uploaded in the demo tenant
   "enrolment_status_history", // no enrolment status change recorded in the demo tenant
