@@ -7,6 +7,7 @@ import "server-only";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { ilikeTerm, LIST_PAGE_SIZE, pageRange, type PageResult } from "@/lib/list-search";
 import type { CollectionReportInput } from "./schemas";
 
 export interface PickerOption {
@@ -211,6 +212,61 @@ export async function listInvoices(
   }
 
   return rows.map((row) => toInvoiceSummary(row as InvoiceSummaryRow));
+}
+
+/** Paginated invoices: status/term/grade filters and `q` search (invoice no, student name or admission no). */
+export async function listInvoicesPage(
+  ctx: TenantContext,
+  opts: { termId?: string; status?: string; gradeId?: string; q?: string; page: number },
+): Promise<PageResult<InvoiceSummary>> {
+  const supabase = await createClient();
+  const [from, to] = pageRange(opts.page);
+  const empty = { rows: [], total: 0, page: opts.page, pageSize: LIST_PAGE_SIZE };
+
+  let gradeStudentIds: string[] | null = null;
+  if (opts.gradeId) {
+    const { data, error } = await supabase
+      .from("enrolments")
+      .select("student_id, class_sections!inner(grade_id)")
+      .eq("institution_id", ctx.institution.id)
+      .eq("status", "active")
+      .eq("class_sections.grade_id", opts.gradeId);
+    if (error) throw error;
+    gradeStudentIds = (data ?? []).map((e) => e.student_id);
+    if (gradeStudentIds.length === 0) return empty;
+  }
+
+  const q = opts.q?.trim();
+  let matchedStudentIds: string[] = [];
+  if (q) {
+    const t = ilikeTerm(q);
+    const { data, error } = await supabase
+      .from("students")
+      .select("id")
+      .eq("institution_id", ctx.institution.id)
+      .or(`admission_no.ilike.${t},first_name.ilike.${t},last_name.ilike.${t}`)
+      .limit(200);
+    if (error) throw error;
+    matchedStudentIds = (data ?? []).map((s) => s.id);
+  }
+
+  let query = supabase
+    .from("invoices")
+    .select("id, invoice_no, student_id, status, total, paid_total, due_on, students(first_name, last_name)", { count: "exact" })
+    .eq("institution_id", ctx.institution.id)
+    .order("due_on", { ascending: true, nullsFirst: false })
+    .order("id", { ascending: true })
+    .range(from, to);
+  if (opts.termId) query = query.eq("term_id", opts.termId);
+  if (opts.status) query = query.eq("status", opts.status);
+  if (gradeStudentIds) query = query.in("student_id", gradeStudentIds);
+  if (q) {
+    const byNo = `invoice_no.ilike.${ilikeTerm(q)}`;
+    query = query.or(matchedStudentIds.length ? `${byNo},student_id.in.(${matchedStudentIds.join(",")})` : byNo);
+  }
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { rows: (data ?? []).map((row) => toInvoiceSummary(row as InvoiceSummaryRow)), total: count ?? 0, page: opts.page, pageSize: LIST_PAGE_SIZE };
 }
 
 // T-028 — per-student invoice list for the student profile page (the
