@@ -62,6 +62,10 @@ Remaining: M07–M18 (12), V1-GATE, M19–M27 (9), then Workstream D (UI integra
 - Workflow scripts (controller session dir): milestone runner = Opus planner → Haiku/Sonnet tasks scheduled by deps with DB-exclusive tasks run alone → Sonnet security review → Sonnet fix → gate. Traps found: the `security-reviewer` agent type cannot write files (pass findings inline to the fixer); gate agents' 10-min command limit kills `test:db` (run it in background); fixtures must compute "today" in the institution timezone (UTC breaks 00:00–05:30 IST).
 - Hosted DB: owner runs `pnpm exec supabase db push --linked --include-all`. Once pushed, a migration is frozen — fixes go into a new number (BRIEF-COMMON HOSTED-APPLIED rule).
 
+## Fabric workspaces live 2026-11-06 (main a865eaa, hosted through 0107)
+
+Student success, Simulator (0106 `simulation_scenarios`), Digital twin, Marketplace and Custom Studio (0107 `studio_requests`) run on real data, with no fixtures; each nav item sits behind its page's permission. Gaps are shown with `LimitedBadge`: no cost data for the simulator, no historical twin, no studio build pipeline or preview, and no "New plan" in Student success. Demo dashboard/Today use real insights; the portal sample insights are gone. Gateway AI features run on Groq (`agentCloud`, low reasoning effort, `strictJsonSchema: false`). Three Studio "Live test" requests remain in the hosted demo until the next hosted demo reset.
+
 ## V2 complete 2026-11-06 (main 229a37f, hosted + Vercel)
 
 V1 + V2 shipped: M19–M25, M27, X01–X08 on `main`, hosted migrations through 0104, live on Vercel. Report: `reports/v2-completion.md` (18 met, 13 met-limited, 0 pending). All lane branches are merged; the "Paused" table below is historical.
