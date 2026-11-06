@@ -10,14 +10,7 @@ import {
   type WorkflowMetricKey,
 } from './catalog.ts'
 import { WorkflowNodeSchema, GraphEdgeSchema, type WorkflowNode } from './schemas.ts'
-
-// shortcut: M22 (agents module, src/modules/agents/catalog.ts) is not merged into
-// this lane yet, so AGENT_SLUGS is copied here from the planning doc's catalog
-// table (docs/planning/fabric/06-backend-packets/M22-tasks.md, 6 slugs, table
-// order). Switch to `import { AGENT_SLUGS } from '../agents/catalog.ts'` once M22
-// lands in this worktree.
-const AGENT_SLUGS = ['academic', 'attendance', 'admissions', 'finance', 'communication', 'administrative'] as const
-type AgentSlug = (typeof AGENT_SLUGS)[number]
+import { AGENT_SLUGS, type AgentSlug } from '../agents/catalog.ts'
 
 const MAX_ERRORS = 20
 

@@ -357,6 +357,8 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "website.listNotices": {},
         "website.listEvents": {},
         "website.getWebsite": {},
+        "workflows.list": {},
+        "workflows.runs": {},
       };
 
       const names = [...getRegisteredQueries().keys()];

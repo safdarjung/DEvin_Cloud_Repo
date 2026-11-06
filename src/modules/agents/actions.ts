@@ -49,6 +49,46 @@ export interface RunAgentResult {
   summary: string;
 }
 
+// M22-T7 / M23-T19 — shared tail of agent.run (after inserting a "running"
+// row) and agent.start (after claiming a "queued" row): run the executor,
+// persist the outcome under the guard's finished_at rule, and hand the
+// outcome back so each caller writes its own audit entry (agent.run logs
+// `proposals`; agent.start never logs the task, rulings "agent.start").
+async function finishRun(ctx: TenantContext, runId: string, slug: AgentSlug, task: string): Promise<AgentRunOutcome> {
+  // Default outcome if executeAgentRun (documented never to throw) throws
+  // anyway — the `finally` below always moves the row out of "running".
+  let outcome: AgentRunOutcome = {
+    status: "failed",
+    riskClass: "read_only",
+    summary: RUN_NOT_FINISHED,
+    log: [logEntry("error", "Run stopped (error)")],
+    proposals: [],
+  };
+  try {
+    outcome = await executeAgentRun(ctx, { runId, slug, task });
+  } catch (err) {
+    console.error(`[agents] run ${runId} (${slug}) threw unexpectedly`, err);
+  } finally {
+    // Guard (0095): finished_at is set iff status is done|failed|rejected —
+    // "awaiting_approval" must leave it null.
+    const isTerminal = outcome.status === "done" || outcome.status === "failed";
+    const admin = agentsAdmin();
+    const { error: updateError } = await admin
+      .from("agent_runs")
+      .update({
+        status: outcome.status,
+        risk_class: outcome.riskClass,
+        summary: outcome.summary,
+        log: outcome.log as unknown as NonNullable<Json>,
+        proposals: outcome.proposals as unknown as NonNullable<Json>,
+        finished_at: isTerminal ? new Date().toISOString() : null,
+      })
+      .eq("id", runId);
+    if (updateError) console.error(`[agents] run ${runId} failed to persist its outcome`, updateError);
+  }
+  return outcome;
+}
+
 export const runAgent = defineAction({
   name: "agent.run",
   module: "agents",
@@ -90,36 +130,7 @@ export const runAgent = defineAction({
     if (insertError || !run) throwMapped(insertError);
     const runId = run.id as string;
 
-    // Default outcome if executeAgentRun (documented never to throw) throws
-    // anyway — the `finally` below always moves the row out of "running".
-    let outcome: AgentRunOutcome = {
-      status: "failed",
-      riskClass: "read_only",
-      summary: RUN_NOT_FINISHED,
-      log: [logEntry("error", "Run stopped (error)")],
-      proposals: [],
-    };
-    try {
-      outcome = await executeAgentRun(ctx, { runId, slug: input.slug, task: input.task });
-    } catch (err) {
-      console.error(`[agents] run ${runId} (${input.slug}) threw unexpectedly`, err);
-    } finally {
-      // Guard (0095): finished_at is set iff status is done|failed|rejected —
-      // "awaiting_approval" must leave it null.
-      const isTerminal = outcome.status === "done" || outcome.status === "failed";
-      const { error: updateError } = await admin
-        .from("agent_runs")
-        .update({
-          status: outcome.status,
-          risk_class: outcome.riskClass,
-          summary: outcome.summary,
-          log: outcome.log as unknown as NonNullable<Json>,
-          proposals: outcome.proposals as unknown as NonNullable<Json>,
-          finished_at: isTerminal ? new Date().toISOString() : null,
-        })
-        .eq("id", runId);
-      if (updateError) console.error(`[agents] run ${runId} failed to persist its outcome`, updateError);
-    }
+    const outcome = await finishRun(ctx, runId, input.slug, input.task);
 
     await audit(ctx, {
       action: "agent.run",
@@ -129,6 +140,76 @@ export const runAgent = defineAction({
     });
 
     return { runId, status: outcome.status, summary: outcome.summary };
+  },
+});
+
+// M23-T19 — starts a queued agent run (queued by a workflow's agent node, M23
+// rulings "Agent queue") in-request as the caller, instead of waiting for a
+// job. Permission `agent.run` (top-level gate); `canDecideRun` with
+// `risk_class: "user_confirmed"` then narrows to the run's own requester or
+// anyone holding `agent.approve` (rulings "agent.start" steps 1-5).
+export const startAgentRun = defineAction({
+  name: "agent.start",
+  module: "agents",
+  schema: DecideAgentRunSchema.pick({ runId: true }),
+  permission: "agent.run",
+  handler: async (input, ctx): Promise<RunAgentResult> => {
+    const supabase = await createClient();
+
+    const { data: run, error: runError } = await supabase
+      .from("agent_runs")
+      .select("id, status, agent_id, task, requested_by")
+      .eq("institution_id", ctx.institution.id)
+      .eq("id", input.runId)
+      .maybeSingle();
+    if (runError) throwMapped(runError);
+    if (!run) throw new AppError("not_found", "Agent run not found.");
+    if (run.status !== "queued") throw new AppError("invalid_state", "This run has already started.");
+
+    const canApprove = hasPermission(ctx, "agent.approve");
+    if (
+      !canDecideRun(
+        { userId: ctx.user.id, canApprove },
+        { risk_class: "user_confirmed", requested_by: run.requested_by as string },
+      )
+    ) {
+      throw new AppError("forbidden", "You cannot start this run.");
+    }
+
+    const { data: definition, error: definitionError } = await supabase
+      .from("agent_definitions")
+      .select("slug, is_enabled")
+      .eq("institution_id", ctx.institution.id)
+      .eq("id", run.agent_id)
+      .maybeSingle();
+    if (definitionError) throwMapped(definitionError);
+    if (!definition) throw new AppError("not_found", "Agent run not found.");
+    if (!definition.is_enabled) throw new AppError("invalid_state", "This agent is turned off.");
+
+    // Claim queued -> running (lesson 2095-style conflict guard): only one
+    // concurrent `agent.start` wins the row.
+    const admin = agentsAdmin();
+    const { data: claimed, error: claimError } = await admin
+      .from("agent_runs")
+      .update({ status: "running", started_at: new Date().toISOString() })
+      .eq("id", run.id)
+      .eq("status", "queued")
+      .select("id")
+      .maybeSingle();
+    if (claimError) throwMapped(claimError);
+    if (!claimed) throw new AppError("conflict", "This run was already started.");
+
+    const slug = definition.slug as AgentSlug;
+    const outcome = await finishRun(ctx, run.id as string, slug, (run.task as string | null) ?? "");
+
+    await audit(ctx, {
+      action: "agent.start",
+      entityType: "agent_run",
+      entityId: run.id as string,
+      after: { slug, status: outcome.status },
+    });
+
+    return { runId: run.id as string, status: outcome.status, summary: outcome.summary };
   },
 });
 

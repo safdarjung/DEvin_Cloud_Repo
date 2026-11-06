@@ -4,6 +4,7 @@
 // the current `enquiries`/`grades` rows, never from the payload's
 // `child_name`/`guardian_name`/`phone` fields (lead ruling).
 import { createNotification } from "../../notifications/service.ts";
+import { emitWorkflowEvent } from "../../workflows/events.ts";
 import type { JobHandler } from "../types.ts";
 
 export const notifyEnquiryReceived: JobHandler = async (job, { admin }) => {
@@ -19,6 +20,9 @@ export const notifyEnquiryReceived: JobHandler = async (job, { admin }) => {
     .maybeSingle();
   if (enquiryError) throw enquiryError;
   if (!enquiry) return;
+
+  // M23-T14: one workflow event per enquiry (rulings §Events).
+  await emitWorkflowEvent(admin, enquiry.institution_id, "enquiry.received", enquiry.id);
 
   let gradeLabel = "—";
   if (enquiry.grade_applied_id) {

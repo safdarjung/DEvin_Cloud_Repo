@@ -28,6 +28,7 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "agent.definition.setEnabled": { permission: "agent.approve", input: () => ({ slug: "finance", enabled: true }) },
   "agent.approve": { permission: "agent.run", input: () => ({ runId: U() }) },
   "agent.reject": { permission: "agent.run", input: () => ({ runId: U() }) },
+  "agent.start": { permission: "agent.run", input: () => ({ runId: U() }) },
   "ai.study.chat.save": {
     permission: "ai.study",
     input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }),
@@ -337,6 +338,23 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
   },
   "report.schedule.setStatus": { permission: "report.schedule", input: () => ({ id: U(), status: "paused" }) },
+  "workflow.save": {
+    permission: "workflow.manage",
+    input: () => ({
+      name: "Probe Workflow",
+      nodes: [
+        { id: "t", type: "trigger", label: "Start", config: { kind: "manual" } },
+        { id: "e", type: "end", label: "End", config: {} },
+      ],
+      edges: [{ source: "t", target: "e" }],
+    }),
+  },
+  "workflow.setStatus": { permission: "workflow.manage", input: () => ({ id: U(), status: "paused" }) },
+  "workflow.runNow": { permission: "workflow.manage", input: () => ({ id: U() }) },
+  "workflow.run.decide": {
+    permission: "workflow.manage",
+    input: () => ({ runId: U(), decision: "reject" }),
+  },
   "certificate.issue": {
     permission: "certificate.manage",
     input: () => ({ studentId: U(), kind: "bonafide", purpose: "Passport application" }),
