@@ -23,7 +23,7 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-CORE-01 | all | P2 | FB-ID-01 | planned | F-BE-24+ | — | tenant isolation (rule 1) | 2 |
 | FB-CORE-02 | all | P2 | FB-AI-01, FB-AGT-01 | planned | F-BE-24+ | — | ai gateway boundary (rule 6) | 2 |
 | FB-CORE-03 | all | P2 | FB-MEM-01, FB-DATA-03 | planned | F-BE-24+ | — | own-rows RLS reused across packs | 2 |
-| FB-CORE-04 | owner, principal, admin | P2 | FB-AGT-02 | planned | F-BE-24+ | — | tenant isolation, append-only runs | 2 |
+| FB-CORE-04 | owner, principal, admin | P2 | FB-AGT-02 | limited | F-BE-24+ | — | tenant isolation, append-only runs | 2 |
 | FB-CORE-05 | staff | P1 | FB-INT-01..06 | simulated | F-BE-03 | tests/unit/fabric-spec.test.ts | no model emits HTML; action payloads capped (ADR D36) | 2 |
 | FB-CORE-06 | all | P2 | — | planned | F-BE-24+ | — | audit append-only (rule 5) | 2 |
 | FB-CORE-07 | owner, platform admin | P2 | FB-MKT-04 | planned | F-BE-24+ | — | platform-admin write only | 2 |
@@ -50,8 +50,8 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-AI-01 | platform admin | P2 | FB-CORE-02 | planned | F-BE-24+ | — | single gateway entry point (rule 6) | 3 |
 | FB-AI-02 | owner, admin | P1 | FB-AI-01 | simulated | F-BE-19 | tests/unit/fabric-router.test.ts | localhost-only bridge, any failure → null, never 5xx | 3 |
 | FB-AI-03 | owner, admin | P2 | FB-AI-02 | planned | F-BE-24+ | — | tests/security/* verifies restricted data never reaches cloud | 3 |
-| FB-AI-04 | all | P2 | FB-AI-01 | planned | F-BE-24+ | `tests/unit/assistant-tools.test.ts`, `tests/db/assistant-acceptance.test.ts` | ai gateway redaction + quota (rule 6); staff assistant M24: tool offered only when the permission is held and the module is on; the query re-checks | 3 |
-| FB-AI-05 | owner, principal, admin | P2 | FB-AGT-01, FB-AGT-02 | planned | F-BE-24+ | `tests/unit/assistant-tools.test.ts`, `tests/db/assistant-acceptance.test.ts` | tool call checked against caller permission; every async query in the tool calls `guardedCall` for re-check | 3 |
+| FB-AI-04 | all | P2 | FB-AI-01 | limited | F-BE-24+ | `tests/unit/assistant-tools.test.ts`, `tests/db/assistant-acceptance.test.ts` | ai gateway redaction + quota (rule 6); staff assistant M24: tool offered only when the permission is held and the module is on; the query re-checks | 3 |
+| FB-AI-05 | owner, principal, admin | P2 | FB-AGT-01, FB-AGT-02 | limited | F-BE-24+ | `tests/unit/assistant-tools.test.ts`, `tests/db/assistant-acceptance.test.ts` | tool call checked against caller permission; every async query in the tool calls `guardedCall` for re-check | 3 |
 
 ## MEM
 
@@ -137,7 +137,7 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-EDU-07 | admin, teacher, principal | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
 | FB-EDU-08 | teacher, student, guardian | P1 | matrix §D | live | coolskool (non-fabric) | see matrix §D | per coolskool rules 1–5 | 1 |
 | FB-EDU-09 | exam_controller, teacher | P1 | matrix §D | planned | coolskool (non-fabric) | see matrix §D | immutable results/marks (rule 5) | 1 |
-| FB-EDU-10 | teacher, principal | P1 | matrix §F | planned | coolskool (non-fabric) | see matrix §F | per coolskool rules 1–5 | 1 |
+| FB-EDU-10 | teacher, principal | P1 | matrix §F | limited | coolskool (non-fabric) | see matrix §F | per coolskool rules 1–5 | 1 |
 | FB-EDU-11 | teacher, principal, guardian | P1 | matrix §B | planned | coolskool (non-fabric) | — | AI signal only, human review required (vision §11.11) | 1 |
 | FB-EDU-12 | admin, teacher, guardian | P1 | matrix §C | planned | coolskool (non-fabric) | see matrix §C | per coolskool rules 1–5 | 1 |
 | FB-EDU-13 | accountant, guardian, principal | P1 | matrix §E | planned | coolskool (non-fabric) | see matrix §E | immutable payments/receipts (rule 5) | 1 |

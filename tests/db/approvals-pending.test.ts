@@ -87,7 +87,9 @@ describe("core.approvals.pending (seeded demo tenant, real RLS)", () => {
       where institution_id = ${institutionId} and status in ('submitted', 'under_review')`;
     expect(leave).toBeGreaterThan(0);
     expect(recheck).toBeGreaterThan(0);
-    expect(rows.map((r) => r.kind)).toEqual([...Array(leave).fill("leave"), ...Array(recheck).fill("recheck")]);
+    // The M27 fabric seed adds real insight/agent-run approvals after these; leave then recheck still lead.
+    expect(rows.slice(0, leave + recheck).map((r) => r.kind)).toEqual([...Array(leave).fill("leave"), ...Array(recheck).fill("recheck")]);
+    expect(rows.slice(leave + recheck).every((r) => r.kind !== "leave" && r.kind !== "recheck")).toBe(true);
 
     const leaveRows = rows.filter((r) => r.kind === "leave");
     expect(leaveRows.every((r) => /^[A-Z][a-z]+ leave, \d+ days?$/.test(r.title))).toBe(true);
@@ -100,28 +102,29 @@ describe("core.approvals.pending (seeded demo tenant, real RLS)", () => {
     expect(rows.every((r) => AGE.test(r.age))).toBe(true);
   }, 20_000);
 
-  it("exam_controller gets recheck rows only; accountant gets []", async () => {
+  it("exam_controller gets recheck rows and no leave rows; accountant gets []", async () => {
     const controller = await run("examcontroller", "exam_controller");
-    expect(controller.length).toBeGreaterThan(0);
-    expect(controller.every((r) => r.kind === "recheck")).toBe(true);
+    expect(controller.some((r) => r.kind === "recheck")).toBe(true);
+    expect(controller.every((r) => r.kind !== "leave")).toBe(true);
     expect(await run("accountant", "accountant")).toEqual([]);
   }, 20_000);
 
   it("module off drops that source: staff_attendance → no leave, exams → no recheck", async () => {
     const noLeave = await run("principal", "principal", (ctx) => withModules(ctx, { staff_attendance: false }));
-    expect(noLeave.length).toBeGreaterThan(0);
-    expect(noLeave.every((r) => r.kind === "recheck")).toBe(true);
+    expect(noLeave.some((r) => r.kind === "recheck")).toBe(true);
+    expect(noLeave.every((r) => r.kind !== "leave")).toBe(true);
     const noRecheck = await run("principal", "principal", (ctx) => withModules(ctx, { exams: false }));
-    expect(noRecheck.length).toBeGreaterThan(0);
-    expect(noRecheck.every((r) => r.kind === "leave")).toBe(true);
+    expect(noRecheck.some((r) => r.kind === "leave")).toBe(true);
+    expect(noRecheck.every((r) => r.kind !== "recheck")).toBe(true);
   }, 20_000);
 
   // M19-T20
-  it("principal with a critical open insight gets one insight row, after the recheck rows", async () => {
+  it("principal with a critical open insight gets its insight row, after the recheck rows", async () => {
     const insightId = await plantApprovalInsight();
     const rows = await run("principal", "principal");
-    expect(rows.map((r) => r.kind).filter((k) => k !== "leave" && k !== "recheck")).toEqual(["insight"]);
-    const lastIndex = rows.length - 1;
+    // Seeded fabric insights are older, so the planted one is the last insight row (oldest first).
+    const lastIndex = rows.map((r) => r.kind).lastIndexOf("insight");
+    expect(lastIndex).toBeGreaterThan(rows.map((r) => r.kind).lastIndexOf("recheck"));
     expect(rows[lastIndex]).toMatchObject({
       id: insightId,
       kind: "insight",
