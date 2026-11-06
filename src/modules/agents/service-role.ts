@@ -25,7 +25,7 @@ export function agentsAdmin(): SupabaseClient<Database> {
   return withAgentsServiceRole(() => createAdminClient());
 }
 
-// Materialises the 6 catalog slugs as rows for this institution (`on
+// Materialises the catalog slugs as rows for this institution (`on
 // conflict do nothing`, `is_enabled` defaults true) — no SQL slug list, no
 // trigger, survives `demo:reset`. Called at the start of `agent.run`,
 // `agent.definition.setEnabled` and the `agents.definitions` query.

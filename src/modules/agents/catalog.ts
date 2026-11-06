@@ -1,9 +1,20 @@
 // Agent catalog — agent definitions, tools, actions, and risk levels.
 // No imports (seed/jobs run this under plain node; importers use relative paths).
 
-export const AGENT_CATALOG_VERSION = "agents_v1";
+export const AGENT_CATALOG_VERSION = "agents_v2";
 
-export type AgentSlug = "academic" | "attendance" | "admissions" | "finance" | "communication" | "administrative";
+export type AgentSlug =
+  | "academic"
+  | "attendance"
+  | "admissions"
+  | "finance"
+  | "communication"
+  | "administrative"
+  | "exams"
+  | "student_success"
+  | "staff_hr"
+  | "operations"
+  | "library";
 
 export const AGENT_SLUGS: readonly AgentSlug[] = [
   "academic",
@@ -12,6 +23,11 @@ export const AGENT_SLUGS: readonly AgentSlug[] = [
   "finance",
   "communication",
   "administrative",
+  "exams",
+  "student_success",
+  "staff_hr",
+  "operations",
+  "library",
 ];
 
 export type AgentRunStatus = "running" | "done" | "failed" | "awaiting_approval" | "rejected" | "queued";
@@ -31,6 +47,10 @@ export const RISK_ORDER: readonly RiskClass[] = [
 export interface AgentSpec {
   readonly name: string;
   readonly roleDescription: string;
+  // One plain sentence a principal understands, <=120 chars, no jargon.
+  readonly summary: string;
+  // 2-3 example tasks for the "Try asking" chips, each <=90 chars.
+  readonly examples: readonly string[];
   readonly tools: Readonly<Record<string, string>>;
   readonly actions: Readonly<Record<string, string>>;
 }
@@ -40,6 +60,12 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     name: "Academic agent",
     roleDescription:
       "Analyzes academic performance, curriculum coverage, and assignment submissions to generate insights and recommendations for lesson planning and student assessment.",
+    summary: "Looks at exam results and classwork to suggest lesson plans and new assignments.",
+    examples: [
+      "Create an assignment for class 8B on fractions",
+      "Draft a lesson plan for next week's science unit",
+      "Check the grade distribution for the mid-term exam",
+    ],
     tools: {
       "exams.listExams": "List exams by term with dates and status",
       "exams.examGradeDistribution": "View grade distribution for an exam across sections",
@@ -57,6 +83,12 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     name: "Attendance agent",
     roleDescription:
       "Monitors attendance patterns, identifies at-risk sections, and coordinates coverage for substitute teaching and staff availability.",
+    summary: "Watches daily attendance and staff availability, and lines up substitute teachers.",
+    examples: [
+      "Find sections with attendance below 80% this week",
+      "Assign a substitute for period 3 tomorrow",
+      "Announce tomorrow's attendance drive to parents",
+    ],
     tools: {
       "attendance.attendanceTodaySummary": "View today's attendance summary by section",
       "attendance.sectionsBelowThreshold": "Identify sections with low attendance rates",
@@ -74,6 +106,12 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     name: "Admissions agent",
     roleDescription:
       "Manages the admissions funnel, tracks enquiry stage progression, and processes applications with escalation for human review.",
+    summary: "Tracks enquiries through the admissions funnel and flags follow-ups needed.",
+    examples: [
+      "Show enquiries stuck in the visited stage",
+      "Add a note to an enquiry about a sibling discount",
+      "Move an enquiry to the application stage",
+    ],
     tools: {
       "admissions.getAdmissionsFunnelCounts": "View counts at each admissions stage",
       "admissions.listEnquiriesByStage": "List enquiries filtered by stage",
@@ -90,6 +128,12 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     name: "Finance agent",
     roleDescription:
       "Analyzes collection trends, identifies payment defaulters, and proposes reminder campaigns to improve cash flow.",
+    summary: "Finds families with overdue fees and drafts payment reminder campaigns.",
+    examples: [
+      "List fee defaulters for this term",
+      "Send payment reminders to overdue families",
+      "Show this term's fee collection summary",
+    ],
     tools: {
       "finance.termCollectionSummary": "View term collection statistics",
       "finance.listDefaulters": "List students with overdue fees",
@@ -105,6 +149,12 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     name: "Communication agent",
     roleDescription:
       "Manages announcements, publishes notices to the website, and coordinates messaging across notification channels.",
+    summary: "Drafts and publishes school announcements and website notices.",
+    examples: [
+      "Publish a notice about the sports day schedule",
+      "Create an announcement about the holiday calendar",
+      "Check which notifications failed to deliver",
+    ],
     tools: {
       "notifications.listDeliveryLog": "View notification delivery history",
       "calendar.forRole": "View calendar events relevant to role",
@@ -121,6 +171,12 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     name: "Administrative agent",
     roleDescription:
       "Resolves operational bottlenecks, manages maintenance requests, and surfaces attention-needed jobs.",
+    summary: "Surfaces stuck background jobs and maintenance requests needing attention.",
+    examples: [
+      "List maintenance requests waiting for assignment",
+      "Retry the failed report-card generation job",
+      "Check for scheduling conflicts in the timetable",
+    ],
     tools: {
       "jobs.listAttentionJobs": "View jobs requiring attention or retry",
       "facilities.maintenanceRequests": "Track maintenance requests and status",
@@ -130,6 +186,106 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     actions: {
       "maintenance.assign": "Assign a maintenance request",
       "job.requeue": "Retry a failed job",
+    },
+  },
+
+  exams: {
+    name: "Exams agent",
+    roleDescription:
+      "Tracks exam schedules and grade results, and flags recheck requests and marks disputes for the exam controller to decide.",
+    summary: "Tracks exam schedules and grades, and flags marks disputes for review.",
+    examples: [
+      "Show recheck requests waiting for a decision",
+      "Check the grade distribution for the term 2 exam",
+      "Find scheduling conflicts in next week's exams",
+    ],
+    tools: {
+      "exams.listExams": "List exams by term with dates and status",
+      "exams.examGradeDistribution": "View grade distribution for an exam across sections",
+      "exams.listRecheckQueue": "List recheck requests pending review",
+      "exams.scheduleConflicts": "Identify scheduling conflicts in the exam timetable",
+    },
+    actions: {
+      "exam.recheck.decide": "Decide a recheck request, keeping or changing the result",
+    },
+  },
+
+  student_success: {
+    name: "Student success agent",
+    roleDescription:
+      "Finds students falling behind in mastery of topics and tracks the intervention plans put in place to help them.",
+    summary: "Finds students falling behind and tracks the help plans put in place for them.",
+    examples: [
+      "Show students at risk in class 9A this term",
+      "List open intervention plans and their progress",
+      "Update an intervention plan's next review date",
+    ],
+    tools: {
+      "mastery.studentSuccessRows": "View students with mastery scores and risk flags for a section",
+      "mastery.heatmapBySection": "View topic mastery heatmap for a section",
+      "mastery.interventions": "List intervention plans and their status",
+    },
+    actions: {
+      "mastery.intervention.update": "Update an intervention plan's goal, steps, or status",
+    },
+  },
+
+  staff_hr: {
+    name: "Staff & HR agent",
+    roleDescription:
+      "Tracks staff leave requests and daily availability, and finds periods needing a substitute.",
+    summary: "Tracks staff leave requests and availability, and finds periods needing cover.",
+    examples: [
+      "List leave requests waiting for approval",
+      "Approve a teacher's leave request for Friday",
+      "Check which staff are free to cover a class today",
+    ],
+    tools: {
+      "people.staffAvailabilityToday": "Check which staff are available today",
+      "people.pendingLeaveApprovals": "List staff leave requests awaiting approval",
+      "timetable.coverNeeded": "List periods needing a substitute teacher",
+    },
+    actions: {
+      "people.leave.approve": "Approve a staff leave request",
+      "people.leave.reject": "Reject a staff leave request",
+    },
+  },
+
+  operations: {
+    name: "Operations agent",
+    roleDescription:
+      "Tracks transport routes, classroom usage, and maintenance requests, and assigns maintenance jobs to staff.",
+    summary: "Tracks transport routes, room usage, and maintenance, and assigns repair jobs.",
+    examples: [
+      "List today's open maintenance requests",
+      "Assign a maintenance request to the caretaker",
+      "Check classroom usage rates for this term",
+    ],
+    tools: {
+      "transport.routes": "List school transport routes and capacity",
+      "facilities.maintenanceRequests": "Track maintenance requests and status",
+      "timetable.roomUtilisation": "View classroom usage rates across the timetable",
+    },
+    actions: {
+      "maintenance.assign": "Assign a maintenance request",
+    },
+  },
+
+  library: {
+    name: "Library agent",
+    roleDescription: "Tracks the book catalog and overdue loans, and renews loans on request.",
+    summary: "Tracks the book catalog and overdue loans, and renews loans on request.",
+    examples: [
+      "Show which books are overdue this month",
+      "Renew a student's library loan by two weeks",
+      "Search the catalog for science books",
+    ],
+    tools: {
+      "library.catalog": "Search the book catalog and copy availability",
+      "library.overdue": "List overdue book loans",
+    },
+    actions: {
+      "library.loan.renew": "Renew a student's book loan",
     },
   },
 };
@@ -149,6 +305,11 @@ export const ACTION_RISK: Readonly<Record<string, RiskClass>> = {
   "website.notice.upsert": "human_approved",
   "maintenance.assign": "user_confirmed",
   "job.requeue": "user_confirmed",
+  "exam.recheck.decide": "human_approved",
+  "mastery.intervention.update": "human_approved",
+  "people.leave.approve": "human_approved",
+  "people.leave.reject": "human_approved",
+  "library.loan.renew": "low_risk_reversible",
 };
 
 export interface AgentProposal {
