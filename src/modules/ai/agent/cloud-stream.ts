@@ -27,6 +27,8 @@ export interface CloudAgentInput<TOOLS extends ToolSet> {
   abortSignal: AbortSignal;
   redactions?: number;
   notConfiguredMessage: string;
+  /** Agent runs (M22): usage rows carry the run id so the run's cost is attributable. */
+  agentRunId?: string;
 }
 
 export type CloudAgentResult<TOOLS extends ToolSet> =
@@ -44,6 +46,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
 ): Promise<CloudAgentResult<TOOLS>> {
   const { ctx, feature, provider, system, messages, tools, abortSignal, notConfiguredMessage } = input;
   const redactions = input.redactions ?? 0;
+  const agentRunId = input.agentRunId ?? null;
   const { modelId, getModel } = resolveAgentModel(provider);
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;
@@ -68,6 +71,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
       ok: false,
       errorCode: limits.code,
       redactions,
+      agentRunId,
     });
     const message =
       limits.code === "quota_exceeded"
@@ -109,6 +113,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
       ok: false,
       errorCode: "ai_unavailable",
       redactions,
+      agentRunId,
     });
     return { ok: false, error: { code: "ai_unavailable", message: notConfiguredMessage } };
   }
@@ -156,6 +161,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
         ok: true,
         errorCode: null,
         redactions,
+        agentRunId,
       }),
     )
     .catch((err: unknown) => {
@@ -173,6 +179,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
         ok: false,
         errorCode: "ai_unavailable",
         redactions,
+        agentRunId,
       });
     })
     .finally(() => releaseConcurrencySlot(concurrencyId, "cloud"));

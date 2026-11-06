@@ -106,13 +106,24 @@ function proposal(action: string, risk: AgentProposal["risk_class"]): AgentPropo
 
 const texts = (log: { text: string }[]) => log.map((e) => e.text);
 
+// These cases drive the mocked local model; with a Groq/Gemini key the executor goes to the cloud.
+const savedCloudKeys = { GROQ_API_KEY: process.env.GROQ_API_KEY, GEMINI_API_KEY: process.env.GEMINI_API_KEY };
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(usage.checkLimits).mockResolvedValue({ ok: true });
   vi.mocked(usage.acquireConcurrencySlot).mockReturnValue(true);
+  delete process.env.GROQ_API_KEY;
+  delete process.env.GEMINI_API_KEY;
 });
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  for (const [k, v] of Object.entries(savedCloudKeys)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+});
 
 describe("decideOutcome", () => {
   it.each([
@@ -218,7 +229,7 @@ describe("executeAgentRun", () => {
 
     const out = await executeAgentRun(ownerCtx(), { runId: RUN_ID, slug: "finance", task: "x" });
 
-    expect(out).toMatchObject({ status: "failed", riskClass: "read_only", summary: "The local AI engine was not available.", proposals: [] });
+    expect(out).toMatchObject({ status: "failed", riskClass: "read_only", summary: "The AI service was not available.", proposals: [] });
     expect(texts(out.log)).toEqual(["Model unavailable (ai_unavailable)", "Finished: failed"]);
   });
 

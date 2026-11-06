@@ -10,6 +10,9 @@ import { getRegisteredActions } from "@/lib/actions/registry";
 import type { ActionResult } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { streamAgent } from "@/lib/ai/gateway";
+import { redact } from "@/lib/ai/redact";
+import { streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
+import { pickAgentProvider } from "@/modules/ai/agent/provider-routing";
 import { AGENT_CATALOG, maxRisk, type AgentLogEntry, type AgentProposal, type AgentSlug, type RiskClass } from "./catalog";
 import { buildAgentTools, createProposalSink } from "./tools";
 
@@ -20,7 +23,7 @@ const MAX_LOG_ENTRIES = 100;
 const MAX_LOG_TEXT = 200;
 const MAX_SUMMARY_CHARS = 2_000;
 const MAX_UNKNOWN_TOOL_NAME = 64;
-const LOCAL_AI_UNAVAILABLE = "The local AI engine was not available.";
+const AI_UNAVAILABLE = "The AI service was not available.";
 const RUN_NOT_FINISHED = "The agent run stopped before it finished.";
 
 export interface AgentRunOutcome {
@@ -138,23 +141,41 @@ export async function executeAgentRun(
   let log: AgentLogEntry[];
   try {
     const { tools, registryNameOf } = await buildAgentTools(ctx, slug, sink, nonce);
-    const streamed = await streamAgent({
-      ctx,
-      feature: `agent.${slug}`,
-      permission: "agent.run",
-      dataClass: "general", // streamAgent is local-only today (HIGH-2)
-      system: systemPrompt(slug, nonce),
-      messages: [{ role: "user", content: `<task-${nonce}>${task}</task-${nonce}>` }],
-      tools,
-      stopWhen: stepCountIs(MAX_STEPS),
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
-      toolCallConcurrency: 1,
-      abortSignal,
-      concurrencyKey: `${ctx.institution.id}:agents`,
-      agentRunId: runId,
-    });
+    // Owner cloud exception (D28, extended to agents 2026-11-07): with a Groq/Gemini key the run goes
+    // to the cloud like the teacher agent — task text redacted; local Ollama only on a keyless install.
+    const cloud = Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+    const redactedTask = cloud ? redact(task) : { text: task, count: 0 };
+    const messages = [{ role: "user" as const, content: `<task-${nonce}>${redactedTask.text}</task-${nonce}>` }];
+    const streamed = cloud
+      ? await streamCloudAgent({
+          ctx,
+          feature: `agent.${slug}`,
+          provider: pickAgentProvider(task),
+          system: systemPrompt(slug, nonce),
+          messages,
+          tools,
+          abortSignal,
+          redactions: redactedTask.count,
+          notConfiguredMessage: AI_UNAVAILABLE,
+          agentRunId: runId,
+        })
+      : await streamAgent({
+          ctx,
+          feature: `agent.${slug}`,
+          permission: "agent.run",
+          dataClass: "general",
+          system: systemPrompt(slug, nonce),
+          messages,
+          tools,
+          stopWhen: stepCountIs(MAX_STEPS),
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+          toolCallConcurrency: 1,
+          abortSignal,
+          concurrencyKey: `${ctx.institution.id}:agents`,
+          agentRunId: runId,
+        });
     if (!streamed.ok) {
-      const summary = streamed.error.code === "ai_unavailable" ? LOCAL_AI_UNAVAILABLE : RUN_NOT_FINISHED;
+      const summary = streamed.error.code === "ai_unavailable" ? AI_UNAVAILABLE : RUN_NOT_FINISHED;
       return failed(summary, [logEntry("error", `Model unavailable (${streamed.error.code})`)]);
     }
 

@@ -4,7 +4,7 @@
 // pattern) so the real streamAgent → tools → executeProposals path runs
 // end to end; everything else (DB, RLS, registry, usage logging) is real.
 import postgres from "postgres";
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { convertArrayToReadableStream, MockLanguageModelV4 } from "ai/test";
 
 vi.mock("next/headers", () => ({
@@ -108,6 +108,16 @@ async function waitForUsageRow(runId: string): Promise<{ feature: string; agent_
   }
   throw new Error(`no ai_usage_events row for run ${runId} after 5s`);
 }
+
+// The executor goes to Groq/Gemini when a key is set; these cases drive the mocked local model.
+const savedCloudKeys = { GROQ_API_KEY: process.env.GROQ_API_KEY, GEMINI_API_KEY: process.env.GEMINI_API_KEY };
+beforeAll(() => {
+  delete process.env.GROQ_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+});
+afterAll(() => {
+  Object.assign(process.env, Object.fromEntries(Object.entries(savedCloudKeys).filter(([, v]) => v !== undefined)));
+});
 
 afterAll(async () => {
   await sql.end();
