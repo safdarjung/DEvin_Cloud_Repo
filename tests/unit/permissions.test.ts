@@ -112,6 +112,8 @@ const MATRIX: Row[] = [
   ["message.read", true, true, true, false, false, false, true, false, true],
   ["message.send", true, true, true, false, false, false, true, false, true],
   ["practice.attempt", false, false, false, false, false, false, false, true, false],
+  ["studio.request", true, true, true, false, false, false, false, false, false],
+  ["studio.approve", true, true, false, false, false, false, false, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
@@ -284,5 +286,15 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
       expect(permissionsFor(role as Role).includes("workflow.read")).toBe(false);
       expect(permissionsFor(role as Role).includes("workflow.manage")).toBe(false);
     }
+  });
+
+  it("studio.request is held by owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("studio.request"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("studio.approve is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("studio.approve"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
   });
 });

@@ -18,6 +18,7 @@ import "@/modules/documents/actions";
 import "@/modules/exam-seating/actions";
 import "@/modules/exams/actions";
 import "@/modules/exams/paper-units.actions";
+import "@/modules/fabric/studio.actions";
 import "@/modules/facilities/actions";
 import "@/modules/fee-plans/actions";
 import "@/modules/finance/actions";
