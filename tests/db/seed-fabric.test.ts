@@ -271,7 +271,7 @@ describe("M27-T3 seed section fabric: forecasts", () => {
 });
 
 describe("M27-T3 seed section fabric: agents", () => {
-  it("has exactly the 6 catalog definitions, all enabled", async () => {
+  it("has exactly the catalog definitions (AGENT_SLUGS), all enabled", async () => {
     const defs = await sql`select slug, is_enabled from public.agent_definitions where institution_id = ${institutionId}`;
     expect(defs.map((d) => d.slug as string).sort()).toEqual([...AGENT_SLUGS].sort());
     expect(defs.every((d) => d.is_enabled === true)).toBe(true);
@@ -394,7 +394,7 @@ describe("M27-T3 seed section fabric: reset determinism", () => {
       const [{ n: defCount }] = await sql`select count(*)::int as n from public.agent_definitions where institution_id = ${institutionId}`;
       const [{ n: runCount }] = await sql`select count(*)::int as n from public.agent_runs where institution_id = ${institutionId}`;
       const [{ n: forecastCount }] = await sql`select count(*)::int as n from public.forecasts where institution_id = ${institutionId}`;
-      expect(defCount).toBe(6);
+      expect(defCount).toBe(AGENT_SLUGS.length);
       expect(runCount).toBe(4);
       expect(forecastCount).toBeGreaterThan(0);
     },

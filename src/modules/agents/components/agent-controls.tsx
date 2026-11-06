@@ -132,7 +132,7 @@ export function AgentCard({
         <div>
           <p className="text-xs font-medium">Can suggest</p>
           <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-            {agent.cardActions.length === 0 && <li>Nothing yet</li>}
+            {agent.cardActions.length === 0 && <li>No changes — it reads records and recommends; people decide.</li>}
             {agent.cardActions.map((a) => (
               <li key={a.description}>
                 {a.description} <span className="text-muted-foreground/80">({APPROVAL_TAG[a.risk]})</span>

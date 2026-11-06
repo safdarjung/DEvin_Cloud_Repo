@@ -205,9 +205,8 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
       "exams.listRecheckQueue": "List recheck requests pending review",
       "exams.scheduleConflicts": "Identify scheduling conflicts in the exam timetable",
     },
-    actions: {
-      "exam.recheck.decide": "Decide a recheck request, keeping or changing the result",
-    },
+    // Read-only by rule 6: AI never decides marks or rechecks; it flags them for the exam controller.
+    actions: {},
   },
 
   student_success: {
@@ -218,16 +217,15 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     examples: [
       "Show students at risk in class 9A this term",
       "List open intervention plans and their progress",
-      "Update an intervention plan's next review date",
+      "Which students need a new intervention plan?",
     ],
     tools: {
       "mastery.studentSuccessRows": "View students with mastery scores and risk flags for a section",
       "mastery.heatmapBySection": "View topic mastery heatmap for a section",
       "mastery.interventions": "List intervention plans and their status",
     },
-    actions: {
-      "mastery.intervention.update": "Update an intervention plan's goal, steps, or status",
-    },
+    // Read-only by rule 6: intervention plans are welfare decisions a person makes.
+    actions: {},
   },
 
   staff_hr: {
@@ -237,7 +235,7 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
     summary: "Tracks staff leave requests and availability, and finds periods needing cover.",
     examples: [
       "List leave requests waiting for approval",
-      "Approve a teacher's leave request for Friday",
+      "Suggest a substitute for a teacher on leave today",
       "Check which staff are free to cover a class today",
     ],
     tools: {
@@ -245,9 +243,9 @@ export const AGENT_CATALOG: Readonly<Record<AgentSlug, AgentSpec>> = {
       "people.pendingLeaveApprovals": "List staff leave requests awaiting approval",
       "timetable.coverNeeded": "List periods needing a substitute teacher",
     },
+    // Leave decisions stay with people (rule 6); the agent can only propose cover.
     actions: {
-      "people.leave.approve": "Approve a staff leave request",
-      "people.leave.reject": "Reject a staff leave request",
+      "timetable.substitution.assign": "Assign a substitute teacher to a period",
     },
   },
 
@@ -305,10 +303,6 @@ export const ACTION_RISK: Readonly<Record<string, RiskClass>> = {
   "website.notice.upsert": "human_approved",
   "maintenance.assign": "user_confirmed",
   "job.requeue": "user_confirmed",
-  "exam.recheck.decide": "human_approved",
-  "mastery.intervention.update": "human_approved",
-  "people.leave.approve": "human_approved",
-  "people.leave.reject": "human_approved",
   "library.loan.renew": "low_risk_reversible",
 };
 

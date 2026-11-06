@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { AGENT_SLUGS } from "@/modules/agents/catalog";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MODULE_DISABLED_MESSAGE } from "@/lib/modules/catalog";
 
@@ -184,16 +185,16 @@ describe("M22-T7 agent.definition.setEnabled", () => {
     }
   });
 
-  it("the first call materialises exactly 6 definition rows; a second call adds none", async () => {
+  it("the first call materialises one definition row per catalog slug; a second call adds none", async () => {
     const inst = await createTestInstitution("agent-ensure-idempotent");
     try {
       await callAs(inst, "principal", setAgentEnabled, { slug: "finance", enabled: true });
       const first = await sql`select count(*)::int as n from public.agent_definitions where institution_id = ${inst.institutionId}::uuid`;
-      expect(first[0].n).toBe(6);
+      expect(first[0].n).toBe(AGENT_SLUGS.length);
 
       await callAs(inst, "principal", setAgentEnabled, { slug: "academic", enabled: true });
       const second = await sql`select count(*)::int as n from public.agent_definitions where institution_id = ${inst.institutionId}::uuid`;
-      expect(second[0].n).toBe(6);
+      expect(second[0].n).toBe(AGENT_SLUGS.length);
     } finally {
       await inst.cleanup();
     }
