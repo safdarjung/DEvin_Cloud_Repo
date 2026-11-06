@@ -2,7 +2,7 @@
 // the honesty labels (CLAUDE.md rule 7) for a simulated/limited figure.
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Activity, ArrowDownRight, ArrowUpRight, CalendarCheck, GraduationCap, Minus, Users, Wallet } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { AnimatedNumber, type NumberFormat } from "@/components/motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "cn";
@@ -26,30 +26,16 @@ export interface KpiTileProps {
   delta?: KpiDelta;
 }
 
-function KpiIcon({ label }: { label: string }) {
-  const l = label.toLowerCase();
-  const Icon = /fee|₹|revenue|collect|due|paid|defaulter|invoice/.test(l)
-    ? Wallet
-    : /attend|present|absent/.test(l)
-      ? CalendarCheck
-      : /exam|result|mark|paper|grade/.test(l)
-        ? GraduationCap
-        : /student|staff|teacher|applic|enquir|admission|guardian/.test(l)
-          ? Users
-          : Activity;
-  return <Icon className="size-5" />;
-}
-
 function DeltaChip({ value, label, positiveIsGood = true }: KpiDelta) {
   const tone = value === 0 ? "neutral" : value > 0 === positiveIsGood ? "good" : "bad";
   const Icon = value === 0 ? Minus : value > 0 ? ArrowUpRight : ArrowDownRight;
   return (
     <span
       className={cn(
-        "mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold tabular-nums",
-        tone === "good" && "bg-success/15 text-success",
-        tone === "bad" && "bg-destructive/10 text-destructive",
-        tone === "neutral" && "bg-muted text-muted-foreground",
+        "mt-2 inline-flex items-center gap-1 text-xs font-medium tabular-nums",
+        tone === "good" && "text-success",
+        tone === "bad" && "text-destructive",
+        tone === "neutral" && "text-muted-foreground",
       )}
     >
       <Icon className="size-3" aria-hidden />
@@ -61,22 +47,17 @@ function DeltaChip({ value, label, positiveIsGood = true }: KpiDelta) {
 
 export function KpiTile({ label, value, animateTo, format, sub, href, badge, delta }: KpiTileProps) {
   const card = (
-    <Card className={href ? "h-full" : undefined}>
-      <CardContent className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-            {label}
-            {badge}
-          </p>
-          <p className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
-            {animateTo === undefined ? value : <AnimatedNumber value={animateTo} format={format} />}
-          </p>
-          {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
-          {delta && <DeltaChip {...delta} />}
-        </div>
-        <span aria-hidden className="grid size-12 shrink-0 place-items-center rounded-[12px] bg-primary text-primary-foreground shadow-(--brand-glow)">
-          <KpiIcon label={label} />
-        </span>
+    <Card className={cn("h-full", href && "group-hover/kpi:border-foreground/20")}>
+      <CardContent className="flex flex-col">
+        <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+          {label}
+          {badge}
+        </p>
+        <p className="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums">
+          {animateTo === undefined ? value : <AnimatedNumber value={animateTo} format={format} />}
+        </p>
+        {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
+        {delta && <DeltaChip {...delta} />}
       </CardContent>
     </Card>
   );

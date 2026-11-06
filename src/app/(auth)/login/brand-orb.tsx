@@ -22,7 +22,7 @@ export default function BrandOrb() {
       camera.position.z = 3.2;
 
       const geo = new THREE.IcosahedronGeometry(1, 4);
-      const points = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x876cea, size: 0.018, transparent: true, opacity: 0.8 }));
+      const points = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x52a8ff, size: 0.018, transparent: true, opacity: 0.8 }));
       const lines = new THREE.LineSegments(
         new THREE.WireframeGeometry(new THREE.IcosahedronGeometry(1, 2)),
         new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.06 }),

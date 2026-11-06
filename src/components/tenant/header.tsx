@@ -34,7 +34,7 @@ export function TenantHeader({
   bell?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl sm:px-4 lg:top-4 lg:h-16 lg:rounded-[20px] lg:border lg:border-(--glass-border) lg:bg-card/60 lg:px-6 lg:shadow-[0_20px_27px_rgb(0_0_0/0.05)]">
+    <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b bg-background px-3 sm:px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav items={navItems} />
         <HeaderCrumb institutionName={institutionName} />

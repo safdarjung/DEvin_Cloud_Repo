@@ -82,7 +82,7 @@ export default async function TenantLayout({
       >
         Skip to content
       </a>
-      <div className="flex flex-1 lg:gap-4 lg:p-4">
+      <div className="flex flex-1">
         <TenantSidebar items={navItems} defaultCollapsed={sidebarCollapsed} />
         <div className="flex min-w-0 flex-1 flex-col">
           <TenantHeader
@@ -106,7 +106,7 @@ export default async function TenantLayout({
               )
             }
           />
-          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-2 lg:pb-6">
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-8">
             <div className="mx-auto w-full max-w-7xl">
               <FabricProvider seed={fabricSeed({ now: startOfToday(), institutionId: ctx.institution.id }, ctx.user.id)}>
                 {children}

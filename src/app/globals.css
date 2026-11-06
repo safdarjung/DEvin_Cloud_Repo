@@ -94,50 +94,49 @@
   --color-chart-neutral: var(--chart-neutral);
 }
 
+/*
+  CoolSkool design system. One product, two themes; dark is the default.
+  Neutral grounds, 1px rules, colour on data only (one data hue, --chart-1).
+  Primary is an inverted neutral fill (near-black on light, near-white on dark).
+*/
 :root {
-  /* CoolSkool Design System — Light Theme */
-  --background: #f7f6f2;
-  --foreground: #0e1a2b;
-  --card: oklch(1 0 0);
-  --card-foreground: #0e1a2b;
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.13 0.02 250);
-  --primary: #582cff;
-  --primary-foreground: #ffffff;
-  --secondary: #eeeee9;
-  --secondary-foreground: #0e1a2b;
-  --muted: #eeeee9;
-  --muted-foreground: #4a5565;
-  --accent: #ece9fb;
-  --accent-foreground: #0e1a2b;
-  --destructive: oklch(0.58 0.24 25);
-  --border: #e2e1da;
-  --input: #d6d5cd;
-  --ring: #582cff;
-  --radius: 0.75rem;
-  --glass: #ffffff;
-  --glass-border: #e2e1da;
-  --brand-glow: 0 8px 24px -10px rgb(88 44 255 / 0.35);
+  --background: #fafafa;
+  --foreground: #0a0a0a;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f2f2f2;
+  --secondary-foreground: #0a0a0a;
+  --muted: #f2f2f2;
+  --muted-foreground: #5f5f5f;
+  --accent: #ebebeb;
+  --accent-foreground: #0a0a0a;
+  --destructive: #c4242a;
+  --border: #e6e6e6;
+  --input: #d4d4d4;
+  --ring: #0a72ef;
+  --link: #0a64d6;
+  --radius: 0.5rem;
 
-  /* Chart colors — validated categorical order: blue, orange, aqua, yellow, magenta.
-     Adjacent CVD dE >= 9.1, normal dE >= 19.6. Aqua/yellow/magenta are < 3:1 on white:
-     pair with visible labels or a table view. */
-  --chart-1: #2a78d6;
-  --chart-2: #eb6834;
-  --chart-3: #1baf7a;
-  --chart-4: #eda100;
-  --chart-5: #e87ba4;
-  --chart-positive: #0ca30c;
-  --chart-negative: #d03b3b;
-  --chart-neutral: #f0efec;
+  /* One data hue first; the rest only for multi-series charts. */
+  --chart-1: #0a72ef;
+  --chart-2: #d97706;
+  --chart-3: #16a34a;
+  --chart-4: #8f8f8f;
+  --chart-5: #db2777;
+  --chart-positive: #247b50;
+  --chart-negative: #c4242a;
+  --chart-neutral: #ededed;
 
-  /* Semantic colors */
-  --success: oklch(0.62 0.17 160);
-  --success-foreground: oklch(0.15 0.04 160);
-  --warning: oklch(0.75 0.18 70);
-  --warning-foreground: oklch(0.2 0.05 70);
-  --info: oklch(0.65 0.15 250);
-  --info-foreground: oklch(0.15 0.04 250);
+  --success: #247b50;
+  --success-foreground: #04250e;
+  --warning: #b45309;
+  --warning-foreground: #451a03;
+  --info: #0a64d6;
+  --info-foreground: #04203f;
 
   /* Z-layers (Tailwind v4 has no z namespace: use z-(--z-header)) */
   --z-sticky: 10;
@@ -147,71 +146,67 @@
   --z-modal: 50;
   --z-toast: 60;
 
-  /* Sidebar — lighter than dark theme */
-  --sidebar: #fbfaf7;
-  --sidebar-foreground: #0e1a2b;
-  --sidebar-primary: #582cff;
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: #ece9fb;
-  --sidebar-accent-foreground: #0e1a2b;
-  --sidebar-border: #e6e5de;
-  --sidebar-ring: #582cff;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-primary: #171717;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #ebebeb;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #e6e6e6;
+  --sidebar-ring: #0a72ef;
 }
 
 .dark {
-  /* Vision UI navy + brand violet (#582CFF) */
-  --background: #0b1030;
-  --foreground: #f4f5fb;
-  --card: #111a45;
-  --card-foreground: #f4f5fb;
-  --popover: #0f1638;
-  --popover-foreground: #f4f5fb;
-  --primary: #6f4dff;
-  --primary-foreground: #ffffff;
-  --secondary: #1a2352;
-  --secondary-foreground: #f4f5fb;
-  --muted: #161e4a;
-  --muted-foreground: #a0aec0;
-  --accent: #1f2a63;
-  --accent-foreground: #f4f5fb;
-  --destructive: oklch(0.7 0.19 22);
-  --border: rgb(255 255 255 / 9%);
-  --input: rgb(255 255 255 / 14%);
-  --ring: #876cea;
-  --radius: 0.9rem;
-  --glass: linear-gradient(127deg, rgb(6 11 40 / 0.94) 19%, rgb(10 14 35 / 0.49) 76%);
-  --glass-border: rgb(255 255 255 / 10%);
-  --brand-glow: 0 8px 28px -8px rgb(88 44 255 / 0.55);
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #111111;
+  --card-foreground: #ededed;
+  --popover: #161616;
+  --popover-foreground: #ededed;
+  --primary: #ededed;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1c1c1c;
+  --secondary-foreground: #ededed;
+  --muted: #1a1a1a;
+  --muted-foreground: #a1a1a1;
+  --accent: #1f1f1f;
+  --accent-foreground: #ededed;
+  --destructive: #e5566f;
+  --border: #242424;
+  --input: #333333;
+  --ring: #52a8ff;
+  --link: #52a8ff;
+  --radius: 0.5rem;
 
-  --chart-1: #6f4dff;
-  --chart-2: #2cd9ff;
-  --chart-3: #21d4a0;
-  --chart-4: #f5a623;
-  --chart-5: #e87ba4;
-  --chart-positive: #01b574;
-  --chart-negative: #e31a1a;
-  --chart-neutral: #2a3470;
+  --chart-1: #52a8ff;
+  --chart-2: #f5a524;
+  --chart-3: #3fc07a;
+  --chart-4: #8f8f8f;
+  --chart-5: #f075a8;
+  --chart-positive: #3fc07a;
+  --chart-negative: #e5566f;
+  --chart-neutral: #262626;
 
-  --success: oklch(0.7 0.17 160);
-  --success-foreground: oklch(0.15 0.04 160);
-  --warning: oklch(0.8 0.16 75);
-  --warning-foreground: oklch(0.2 0.05 70);
-  --info: oklch(0.72 0.14 250);
-  --info-foreground: oklch(0.15 0.04 250);
+  --success: #3fc07a;
+  --success-foreground: #0d2416;
+  --warning: #f5a524;
+  --warning-foreground: #2b1c05;
+  --info: #52a8ff;
+  --info-foreground: #071a2e;
 
-  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.3);
-  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.4), 0 1px 2px -1px oklch(0 0 0 / 0.3);
-  --shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.3);
-  --shadow-lg: 0 12px 24px -6px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.35);
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.45);
+  --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.7);
 
-  --sidebar: #080d2b;
-  --sidebar-foreground: #f4f5fb;
-  --sidebar-primary: #6f4dff;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgb(255 255 255 / 8%);
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ededed;
+  --sidebar-primary: #ededed;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1f1f1f;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 8%);
-  --sidebar-ring: #876cea;
+  --sidebar-border: #242424;
+  --sidebar-ring: #52a8ff;
 }
 
 @layer base {
@@ -220,10 +215,6 @@
   }
   body {
     @apply bg-background text-foreground;
-  }
-  .dark body {
-    background-image: radial-gradient(1200px 600px at 85% -10%, rgb(88 44 255 / 0.16), transparent 60%), radial-gradient(900px 500px at -10% 110%, rgb(44 217 255 / 0.07), transparent 60%);
-    background-attachment: fixed;
   }
   html {
     @apply font-sans antialiased;
@@ -275,13 +266,17 @@
 /* Linked cards: gentle border + shadow lift, no scale. */
 a:hover > [data-slot="card"],
 a:focus-visible > [data-slot="card"] {
-  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
-  box-shadow: var(--shadow-md);
+  border-color: color-mix(in oklab, var(--foreground) 22%, var(--border));
 }
 a > [data-slot="card"] {
-  transition-property: border-color, box-shadow, transform;
+  transition-property: border-color, box-shadow;
   transition-duration: var(--duration-normal);
   transition-timing-function: var(--ease-out);
+}
+
+@keyframes grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
 
 @keyframes draw {
@@ -300,6 +295,3 @@ a > [data-slot="card"] {
 #main-content > :nth-child(2) { animation-delay: 40ms; }
 #main-content > :nth-child(3) { animation-delay: 80ms; }
 #main-content > :nth-child(n+4) { animation-delay: 120ms; }
-a > [data-slot="card"]:hover {
-  transform: translateY(-2px);
-}
