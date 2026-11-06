@@ -5,6 +5,7 @@
 // the dataset is one institution's enrolled students). Row click opens the
 // drawer; Export writes the currently filtered rows as CSV.
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Download } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export function StudentRoster({
   sections,
   plans,
   canReview,
-  initialSection = "all",
+  activeSectionId,
   initialRisk = "all",
   initialSearch = "",
 }: {
@@ -38,27 +39,25 @@ export function StudentRoster({
   sections: { id: string; label: string }[];
   plans: InterventionPlan[];
   canReview: boolean;
-  initialSection?: string;
+  /** The server loaded only this section's rows; picking another navigates with ?section=. */
+  activeSectionId: string;
   initialRisk?: RiskFilter;
   initialSearch?: string;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
-  const [section, setSection] = useState(initialSection);
   const [risk, setRisk] = useState<RiskFilter>(initialRisk);
   const [hasGaps, setHasGaps] = useState(false);
   const [selected, setSelected] = useState<StudentSuccessRow | null>(null);
-
-  const sectionLabels = useMemo(() => [...new Set(sections.map((s) => s.label))].sort(), [sections]);
 
   const filtered = useMemo(
     () =>
       filterRoster(rows, {
         search,
-        section: section === "all" ? undefined : section,
         risk: risk === "all" ? undefined : risk,
         hasGaps,
       }),
-    [rows, search, section, risk, hasGaps],
+    [rows, search, risk, hasGaps],
   );
 
   function exportCsv(): void {
@@ -90,15 +89,17 @@ export function StudentRoster({
           className="w-56"
           aria-label="Search students"
         />
-        <Select value={section} onValueChange={setSection}>
-          <SelectTrigger className="w-40" aria-label="Filter by section">
+        <Select
+          value={activeSectionId}
+          onValueChange={(id) => router.push(`/${institutionSlug}/fabric/students?section=${encodeURIComponent(id)}`)}
+        >
+          <SelectTrigger className="w-40" aria-label="Section">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All sections</SelectItem>
-            {sectionLabels.map((label) => (
-              <SelectItem key={label} value={label}>
-                {label}
+            {sections.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.label}
               </SelectItem>
             ))}
           </SelectContent>

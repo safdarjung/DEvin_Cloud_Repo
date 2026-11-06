@@ -18,11 +18,16 @@ export default async function StudentSuccessPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "mastery.read");
 
-  const [sections, rows, plans] = await Promise.all([
-    studentSuccessSections(ctx),
-    studentSuccessRoster(ctx),
-    studentInterventionPlans(ctx),
-  ]);
+  // One section per view: an all-sections roster was one mastery query set per section (72 on the
+  // demo tenant) and took ~35s on hosted. The section picker navigates with ?section=<id>.
+  const sections = await studentSuccessSections(ctx);
+  const activeId = sections.find((s) => s.id === section)?.id ?? sections[0]?.id;
+  const [rows, plans] = activeId
+    ? await Promise.all([
+        studentSuccessRoster(ctx, { classSectionId: activeId }),
+        studentInterventionPlans(ctx, { classSectionId: activeId }),
+      ])
+    : [[], []];
 
   return (
     <FabricPage title="Student success" description="Roster, risk signals, and intervention plans from live records." ws="students">
@@ -32,7 +37,7 @@ export default async function StudentSuccessPage({
         sections={sections}
         plans={plans}
         canReview={hasPermission(ctx, "mastery.review")}
-        initialSection={section ?? "all"}
+        activeSectionId={activeId ?? ""}
         initialRisk={risk && RISK_FILTERS.has(risk) ? (risk as "watch" | "support") : "all"}
         initialSearch={topic ?? ""}
       />
