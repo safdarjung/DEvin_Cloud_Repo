@@ -2541,6 +2541,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"platform_leads": {
+                  Row: {
+                    "created_at": string,"email": string,"id": string,"institution_name": string | null,"kind": string,"message": string | null,"name": string,"phone": string | null,"role": string | null,"source_ip_hash": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"email": string,"id"?: string,"institution_name"?: string | null,"kind": string,"message"?: string | null,"name": string,"phone"?: string | null,"role"?: string | null,"source_ip_hash": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"email"?: string,"id"?: string,"institution_name"?: string | null,"kind"?: string,"message"?: string | null,"name"?: string,"phone"?: string | null,"role"?: string | null,"source_ip_hash"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"profiles": {
                   Row: {
                     "avatar_path": string | null,"created_at": string,"full_name": string | null,"id": string,"is_platform_admin": boolean,"phone": string | null,"updated_at": string

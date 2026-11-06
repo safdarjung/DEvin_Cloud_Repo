@@ -322,3 +322,39 @@ Job execution, handler signature, retry and idempotency: see §W12. The dispatch
 
 **`insights.detect`** (M19, module `insights`): payload `{as_of: "YYYY-MM-DD"}`, built in SQL by `public.enqueue_insight_detection()` per institution per local day (nightly sweep). Runs 8 detectors in order, each calling a source RPC with `.range()` paging, passing rows to a pure `detect*()` function, capping 20 per signal, writing to `insights` via `public.record_insights` (idempotent by dedupe_key, skips invalid sections). If any detector fails, catches and logs it, continues others, then throws `detectors failed: <keys>` for runner retry. Handler defined at `src/modules/jobs/handlers/insights.detect.ts`; manifest `JOB_MODULES.insights.detect = "insights"`. Insight state machine: `new|reviewing|actioned` can move to `resolved|dismissed`; reviewed rows can move `reviewing→reviewing` (reassign), or any open status plus `resolved` can have actions recorded; approval_required rows need owner/principal to resolve/dismiss; teachers can view taught-section insights but cannot review. AI explanation: structured `{what, why, next_steps}` (≤ 500 chars each) written via `public.set_insight_explanation`, audited without the text.
 **`forecast.run`** (M21, module `forecasts`): payload `{ as_of: "YYYY-MM-DD" }` (local date) built by `public.enqueue_due_forecasts()` sweep. Handler calls `public.forecast_fee_series` and `public.forecast_attendance_series` as service role, builds periods and targets with `src/modules/forecasts/series.ts`, runs the engine (`src/modules/forecasts/engine.ts`), upserts forecasts and backtests, then deletes stale rows (earlier `as_of` for that institution). Idempotency key `forecast.run:<institution_id>:<as_of>` (one run per institution per local day). Replace semantics: second call on same `as_of` produces identical rows; older `as_of` replayed writes nothing (no backfill). Shortcut: baseline model (deterministic TS, no LLM); MAPE confidence; no student-level forecasts by design.
+
+**`workflow.run`** (M23, module `workflows`): payload `{run_id uuid}` built in SQL by `app.create_workflow_run`, with idempotency keys `workflow.run:<id>:start` (initial trigger) and `workflow.run:<id>:<node_id>` (approval resumption). Handler reads the run, parses its graph snapshot, resumes from the cursor node if pending approval (with decision and last value), or starts from the trigger. Calls `runWorkflow(graph, start, ports)` engine with ports that invoke SQL metrics, emit notifications, upsert report/finance-reminder/agent-run jobs (built from verified rows, never caller-supplied), and record steps. Updates run status/steps/cursor/decision. Idempotent: same graph parsed, same ports called; re-run from any checkpoint (job retry = restart from trigger or approval cursor). Witness: condition evidence includes metric value + threshold + result (e.g. `finance.overdue_invoices = 12 (gte 1): true`), never confidence. Cadence: runner claims within 5 min; manual run immediate.
+
+### Events (M23) — 3 closed keys, emitted after the originating job's domain checks, before its recipient early-return
+
+| Event | Module | Emitter | Entity subject |
+|---|---|---|---|
+| `attendance.absences_submitted` | attendance | `notify.attendance_absence` after `notify_guardian` check | attendance session (one run per session, many absence jobs dedupe by session) |
+| `results.published` | exams | `notify.results_published` after exam status check | exam (one run per exam) |
+| `enquiry.received` | admissions | `notify.enquiry_received` after enquiry insert → no-op | enquiry (one run per new enquiry) |
+
+Each emitted run triggers every active `workflows` row of the institution with matching `trigger_type='event'` and `trigger_config` in the event key (deterministic, no listener registration). A module disabled at emit time → no runs emitted; job dropped by MOD → emits nothing (feature off = trigger off).
+
+### Workflow run state machine (M23)
+
+| From | To | Trigger | Notes |
+|---|---|---|---|
+| `running` | `awaiting_approval` | engine hits an approval node | `cursor_node_id` set; `finished_at` remains null; waiting for `workflow.run.decide` |
+| `awaiting_approval` | `running` | decision approved or rejected | `pending_decision` set; new `workflow.run` job enqueued with node-keyed key to resume; `decided_by`, `decided_at`, `decision_note` stamped |
+| `running` | `done` | engine finishes all paths | `finished_at` set; `cursor_node_id` null |
+| `running` | `failed` | engine step throws or graph invalid | `finished_at` set; `cursor_node_id` null; `_run` pseudo-step appended; reaper marks 6h-old `running` runs `failed` too (no progress) |
+| `awaiting_approval` | `done` | reaper or manual fix (rare) | — |
+| terminal | — | — | `done` and `failed` never change; `finished_at` immutable (guard enforces) |
+
+### Metrics (M23) — 6 SQL counts, stable invoker `public.workflow_metric(institution, key, entity_id, as_of)`
+
+| Key | Module | Event | Count |
+|---|---|---|---|
+| `attendance.session_absences` | attendance | `absences_submitted` | records of session `entity_id` with notify-code status |
+| `attendance.repeat_absentees` | attendance | `absences_submitted` | students absent (notify-code) in all 3 of the session's section's most recent submitted daily sessions (period sessions ignored; < 3 → 0) |
+| `assignments.missing_due_tomorrow` | academics | — | pairs (published assignment due tomorrow locally, active enrolment) minus `assignment_submissions` rows |
+| `exams.papers_next_7_days` | exams | — | exam papers `held_on` in [tomorrow, +7 days] whose exam is not `published` |
+| `finance.overdue_invoices` | finance | — | invoices `issued|part_paid`, due before today locally, with remaining balance > 0 |
+| `admissions.stale_enquiries` | admissions | — | enquiries `new` created > 48 hours ago |
+
+Condition nodes evaluate as: `v = metric(key, entity_id)`, then branch on `v <op> threshold`. Unknown metric or subject-metric with null entity → `code:validation_failed`. Foreign entity → 0. Module off → condition `skipped` (no branch choice, takes `false`).
