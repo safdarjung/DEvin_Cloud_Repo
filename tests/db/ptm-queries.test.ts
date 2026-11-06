@@ -420,6 +420,63 @@ describe("X08-T6: ptm.forStudent", () => {
     }
   }, 30_000);
 
+  // 0105: 0099's guard used `<> any(...)`, which refused a two-child guardian for each child
+  // and let a guardian with no linked child through for any student.
+  it("a guardian with two children reads and books slots for each of them", async () => {
+    const inst = await createTestInstitution("ptm-q-two-children");
+    try {
+      const base = await makeBase(inst);
+      const [second] = await sql`
+        insert into public.students (institution_id, admission_no, first_name, dob, gender)
+        values (${inst.institutionId}, ${`ADM-${crypto.randomUUID().slice(0, 8)}`}, 'Second Child', '2016-02-01', 'other')
+        returning id
+      `;
+      await sql`
+        insert into public.guardian_students (institution_id, guardian_id, student_id, relationship, is_primary, portal_access)
+        values (${inst.institutionId}, ${base.guardianId}, ${second.id}, 'father', true, true)
+      `;
+      await createEnrolment(inst.institutionId, second.id as string, base.sectionA, base.yearId, { status: "active" });
+      const eventId = await createDraftEvent(inst);
+      await addSection(inst, eventId, base.sectionA);
+      await publish(inst, eventId);
+      const slot0 = await insertSlot(inst.clientAs("teacher"), inst, eventId, base.teacherStaffId, 0, inst.users.teacher.id);
+      await insertSlot(inst.clientAs("teacher"), inst, eventId, base.teacherStaffId, 1, inst.users.teacher.id);
+
+      const guardian = inst.clientAs("guardian");
+      for (const studentId of [base.studentId, second.id as string]) {
+        const { error } = await guardian.rpc("ptm_slots_for_student", { p_student_id: studentId, p_event_id: eventId });
+        expect(error).toBeNull();
+      }
+      const booked = await guardian.rpc("book_ptm_slot", { p_slot_id: slot0, p_student_id: second.id as string });
+      expect(booked.error).toBeNull();
+      const cancelled = await guardian.rpc("cancel_ptm_booking", { p_booking_id: booked.data as string });
+      expect(cancelled.error).toBeNull();
+    } finally {
+      await inst.cleanup();
+    }
+  }, 30_000);
+
+  it("a guardian with no linked child cannot read or book slots for any student", async () => {
+    const inst = await createTestInstitution("ptm-q-no-children");
+    try {
+      const base = await makeBase(inst);
+      const otherFamily = await newFamily(inst.institutionId, base.sectionA, base.yearId, "Someone Else");
+      await sql`delete from public.guardian_students where guardian_id = ${base.guardianId}`;
+      const eventId = await createDraftEvent(inst);
+      await addSection(inst, eventId, base.sectionA);
+      await publish(inst, eventId);
+      const slot0 = await insertSlot(inst.clientAs("teacher"), inst, eventId, base.teacherStaffId, 0, inst.users.teacher.id);
+
+      const guardian = inst.clientAs("guardian");
+      const read = await guardian.rpc("ptm_slots_for_student", { p_student_id: otherFamily.studentId, p_event_id: eventId });
+      expect(read.error?.message).toContain("forbidden");
+      const book = await guardian.rpc("book_ptm_slot", { p_slot_id: slot0, p_student_id: otherFamily.studentId });
+      expect(book.error?.message).toContain("forbidden");
+    } finally {
+      await inst.cleanup();
+    }
+  }, 30_000);
+
   it("a guardian asking for another family's child -> forbidden", async () => {
     const inst = await createTestInstitution("ptm-q-forstudent-cross");
     try {

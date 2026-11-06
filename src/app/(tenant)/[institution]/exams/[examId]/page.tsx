@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission, requireModule } from "@/lib/auth/require";
+import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import { PaperGrid } from "@/modules/exams/components/PaperGrid";
 import { VerificationPanel } from "@/modules/exams/components/VerificationPanel";
@@ -25,6 +25,10 @@ export default async function ExamDetailPage({
   const { institution: institutionSlug, examId } = await params;
   const ctx = await getTenantContext(institutionSlug);
   requireModule(ctx, "exams");
+  // Dashboard rows and breadcrumbs link here for every result reader; without exam.manage, show results instead of crashing.
+  if (!hasPermission(ctx, "exam.manage") && hasPermission(ctx, "exam.result.read")) {
+    redirect(`/${institutionSlug}/exams/${examId}/results`);
+  }
   requirePermission(ctx, "exam.manage");
 
   const exam = await getExamWithPapers(ctx, examId);
