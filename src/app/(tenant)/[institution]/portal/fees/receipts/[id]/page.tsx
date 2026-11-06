@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { ReceiptView } from "@/modules/finance/components/ReceiptView";
 import { getReceipt } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -35,6 +35,7 @@ export default async function PortalReceiptPage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/fees"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
       <ReceiptView receipt={receipt} />
     </>

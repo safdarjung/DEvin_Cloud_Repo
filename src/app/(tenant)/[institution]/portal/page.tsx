@@ -15,6 +15,7 @@ import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listStudentAssignments } from "@/modules/academics/assignments.queries";
+import { mySubmissions } from "@/modules/academics/submissions.queries";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { attendanceTrend, getStudentAttendanceSummary } from "@/modules/attendance/queries";
 import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
@@ -91,12 +92,16 @@ export default async function PortalOverviewPage({
     isModuleEnabled(ctx, "attendance") ? attendanceTrend(ctx, { days: 30, studentId: selection.studentId }) : Promise.resolve([]),
   ]);
 
-  const [attendance, invoices, results, assignments] = await Promise.all([
+  const studentView = ctx.membership.role !== "guardian";
+  const [attendance, invoices, results, assignments, submissions] = await Promise.all([
     termId && isModuleEnabled(ctx, "attendance") ? getStudentAttendanceSummary(ctx, selection.studentId, termId) : Promise.resolve(null),
     isModuleEnabled(ctx, "fees") ? listInvoicesForStudent(ctx, selection.studentId) : Promise.resolve([]),
     isModuleEnabled(ctx, "exams") ? listResultsForStudent(ctx, selection.studentId) : Promise.resolve([]),
     isModuleEnabled(ctx, "assignments") ? listStudentAssignments(ctx, selection.studentId) : Promise.resolve([]),
+    // Student branch only: submission state drives "pending" and the row badges.
+    studentView && isModuleEnabled(ctx, "assignments") ? mySubmissions(ctx, selection.studentId) : Promise.resolve([]),
   ]);
+  const submissionState = new Map(submissions.map((x) => [x.assignmentId, x.state]));
   const [notices, events, notifications, timetableR, trendR] = await extras;
 
   // invoices.total / paid_total are numeric(12,2) rupees (finance/queries.ts), not paise.
@@ -110,14 +115,23 @@ export default async function PortalOverviewPage({
   const classLabel = profile?.enrolment ? `Class ${profile.enrolment.gradeName}-${profile.enrolment.sectionName}` : null;
   const attendancePct = attendance ? Math.round(attendance.percentage * 10) / 10 : undefined;
 
-  const upcoming = assignments.filter((a) => a.dueAt && new Date(a.dueAt).getTime() >= now.getTime());
-  const assignmentRows: ListRow[] = [...upcoming, ...assignments.filter((a) => !upcoming.includes(a))].slice(0, 5).map((a) => ({
-    id: a.id,
-    title: a.title,
-    meta: a.dueAt ? `Due ${shortDate.format(new Date(a.dueAt))}` : undefined,
-    href: `${basePath}/assignments${q}`,
-    badge: dueBadge(a.dueAt, now),
-  }));
+  const isPending = (id: string) => !studentView || (submissionState.get(id) ?? "not_submitted") === "not_submitted";
+  const upcoming = assignments.filter((a) => a.dueAt && new Date(a.dueAt).getTime() >= now.getTime() && isPending(a.id));
+  const assignmentRows: ListRow[] = [...upcoming, ...assignments.filter((a) => !upcoming.includes(a))].slice(0, 5).map((a) => {
+    const state = studentView ? submissionState.get(a.id) : undefined;
+    return {
+      id: a.id,
+      title: a.title,
+      meta: a.dueAt ? `Due ${shortDate.format(new Date(a.dueAt))}` : undefined,
+      href: studentView ? `${basePath}/assignments/${a.id}${q}` : `${basePath}/assignments${q}`,
+      badge:
+        state === "graded"
+          ? ({ label: "Graded", variant: "success" } as const)
+          : state === "submitted"
+            ? ({ label: "Submitted", variant: "info" } as const)
+            : dueBadge(a.dueAt, now),
+    };
+  });
   const resultRows: ListRow[] = results.slice(0, 4).map((r) => ({
     id: r.examId,
     title: r.examName,
@@ -169,7 +183,7 @@ export default async function PortalOverviewPage({
       label="Assignments due"
       value={String(upcoming.length)}
       animateTo={upcoming.length}
-      sub={`${assignments.length} published in total`}
+      sub={studentView ? `${assignments.length - submissions.filter((x) => x.state !== "not_submitted").length} not yet submitted` : `${assignments.length} published in total`}
       href={`${basePath}/assignments${q}`}
     />,
   ];
@@ -194,11 +208,11 @@ export default async function PortalOverviewPage({
   const homework = (
     <ListWidget
       key="asg"
-      title={isGuardian ? "Homework" : "Upcoming assignments"}
+      title={isGuardian ? "Homework" : "Pending assignments"}
       icon={<ClipboardList />}
       action={{ href: `${basePath}/assignments${q}`, label: "All assignments" }}
       rows={assignmentRows}
-      emptyTitle="No assignments right now"
+      emptyTitle={isGuardian ? "No assignments right now" : "Nothing pending"}
     />
   );
   const attendanceTrendWidget =
@@ -290,11 +304,11 @@ export default async function PortalOverviewPage({
 
   const sections = isGuardian
     ? [feesDue, attendanceTrendWidget, latestResults, homework, timetable, announcements, insightCards, schoolEvents, notificationFeed]
-    : [timetable, homework, attendanceTrendWidget, latestResults, insightCards, studyHelper, announcements, schoolEvents, notificationFeed];
+    : [timetable, homework, announcements, attendanceTrendWidget, latestResults, schoolEvents, notificationFeed, studyHelper, insightCards];
 
   return (
     <>
-      <PortalNav institutionSlug={institutionSlug} role={ctx.membership.role as "guardian" | "student"} selection={selection} activeHref="" />
+      <PortalNav institutionSlug={institutionSlug} role={ctx.membership.role as "guardian" | "student"} selection={selection} activeHref="" canStudy={hasPermission(ctx, "ai.study")} />
       <div className="mb-5">
         <h2 className="text-xl font-semibold tracking-tight">{isGuardian ? `${firstName}'s day` : `${greeting(now)}, ${firstName}`}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">{[longDate.format(now), classLabel].filter(Boolean).join(" · ")}</p>

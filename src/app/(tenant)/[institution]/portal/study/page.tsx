@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
@@ -26,27 +28,35 @@ export default async function PortalStudyPage({
 
   const basePath = `/${institutionSlug}/portal`;
 
-  if (!isFeatureEnabled(ctx, "student_ai_study")) {
-    return (
-      <PageHeader
-        title="Study helper"
-        description="The study assistant is not included in this school's plan."
-        back={{ href: basePath, label: "Back" }}
-      />
-    );
-  }
-
-  if (ctx.institution.ai_policy !== "local_only") {
-    return (
-      <PageHeader
-        title="Study helper"
-        description="Not available yet for this school — the study assistant currently only works for schools running AI locally."
-        back={{ href: basePath, label: "Back" }}
-      />
-    );
-  }
-
   const notebookEnabled = isFeatureEnabled(ctx, "student_ai_notebook");
+  const unavailable = !isFeatureEnabled(ctx, "student_ai_study")
+    ? "The study helper is not part of this school's current plan, so chat is switched off."
+    : ctx.institution.ai_policy !== "local_only"
+      ? "The study helper only runs when a school keeps AI on its own servers. This school uses a different AI setting, so chat is switched off."
+      : null;
+
+  if (unavailable) {
+    return (
+      <div className="space-y-4">
+        <PageHeader title="Study" description={unavailable} back={{ href: basePath, label: "Back" }} />
+        <p className="text-sm text-muted-foreground">What you can do instead:</p>
+        <div className="flex flex-wrap gap-2">
+          {notebookEnabled && (
+            <Link href={`${basePath}/study/notebook`} className={buttonVariants({ variant: "outline" })}>
+              Open notebook
+            </Link>
+          )}
+          <Link href={`${basePath}/assignments`} className={buttonVariants({ variant: "outline" })}>
+            View assignments
+          </Link>
+          <Link href={`${basePath}/subjects`} className={buttonVariants({ variant: "outline" })}>
+            See subjects and units
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Security review (L4) — a non-UUID `resume` value would otherwise reach
   // Postgres as a malformed uuid literal (22P02), surfacing as a 500
   // instead of just starting a fresh chat.
