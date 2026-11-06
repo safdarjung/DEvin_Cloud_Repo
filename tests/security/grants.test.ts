@@ -194,6 +194,7 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
       "jobs_claim",
       "jobs_complete",
       "submit_public_enquiry",
+      "submit_platform_lead",
       "record_online_payment",
       "apply_late_fees",
       "enqueue_due_late_fees",

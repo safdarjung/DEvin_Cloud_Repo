@@ -21,30 +21,42 @@ export default async function LoginPage({
   const showQuickAccess = process.env.NEXT_PUBLIC_DEMO_LOGIN_HINTS === "true";
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      <aside className="relative hidden overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:flex-col lg:justify-between">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-32 -right-32 size-[28rem] rounded-full bg-white/10 blur-3xl motion-safe:animate-pulse [animation-duration:6s]"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -bottom-40 -left-24 size-[26rem] rounded-full bg-black/20 blur-3xl"
-        />
+    <main className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <aside className="relative hidden overflow-hidden bg-[oklch(0.17_0.03_255)] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <svg aria-hidden className="pointer-events-none absolute inset-0 size-full text-white/[0.06]">
+          <defs>
+            <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path d="M32 0H0V32" fill="none" stroke="currentColor" strokeWidth="1" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid)" />
+        </svg>
+        <div aria-hidden className="pointer-events-none absolute -right-24 -bottom-24 size-[26rem] rounded-full bg-[oklch(0.77_0.1_190)]/15 blur-3xl" />
         <div className="relative flex items-center gap-2.5 text-lg font-semibold tracking-tight">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
             <GraduationCap className="size-5" aria-hidden />
           </span>
-          CoolSkool
+          Fabric
         </div>
         <div className="relative max-w-md space-y-8">
           <h2 className="text-4xl leading-[1.1] font-semibold tracking-[-0.02em] text-balance">
             Run your whole school from one calm place.
           </h2>
+          <svg viewBox="0 0 320 72" className="h-16 w-full max-w-xs text-[oklch(0.77_0.1_190)]" role="img" aria-label="Attendance trend, illustrative">
+            <path
+              d="M0 56 C30 52 50 40 80 44 S130 60 160 36 S220 18 250 26 S300 8 320 12"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              pathLength="1"
+              className="[stroke-dasharray:1] motion-safe:animate-[draw_1.6s_var(--ease-out)_both]"
+            />
+          </svg>
           <ul className="space-y-4">
             {HIGHLIGHTS.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-start gap-3 text-sm text-primary-foreground/85">
-                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/12 ring-1 ring-white/20">
+              <li key={text} className="flex items-start gap-3 text-sm text-white/80">
+                <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
                   <Icon className="size-4" aria-hidden />
                 </span>
                 {text}
@@ -52,10 +64,10 @@ export default async function LoginPage({
             ))}
           </ul>
         </div>
-        <p className="relative text-xs text-primary-foreground/60">Built for Indian private schools.</p>
+        <p className="relative text-xs text-white/50">Built for Indian private schools.</p>
       </aside>
 
-      <section className="flex flex-col items-center justify-center gap-8 bg-background px-5 py-10 sm:px-8">
+      <section className="flex flex-col items-center justify-center gap-8 bg-background px-5 py-10 pt-[max(2.5rem,env(safe-area-inset-top))] pb-[max(2.5rem,env(safe-area-inset-bottom))] sm:px-8">
         <div className="w-full max-w-sm space-y-7 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 duration-300">
           <div className="space-y-2">
             <span className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:hidden">

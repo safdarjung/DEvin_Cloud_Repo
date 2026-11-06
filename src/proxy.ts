@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
 import { defaultDemoEmail, demoAutoLoginEnabled, signInAsDemo } from "@/lib/auth/demo-session";
 import type { Database } from "@/lib/db/types";
+import { isMarketingPath } from "@/lib/marketing/routes";
 
 // Session refresh only — never authorization. Server Actions can bypass
 // proxy matchers, so every action re-verifies (04 §3, 07 §1 T13).
@@ -45,7 +46,8 @@ export async function proxy(request: NextRequest) {
   // /login?switch=1 and /logout are left alone so the role picker still works.
   const isLogin = firstSegment === "login";
   const wantsPicker = request.nextUrl.searchParams.has("switch");
-  if (!data?.claims && demoAutoLoginEnabled() && firstSegment !== "logout" && !(isLogin && wantsPicker)) {
+  const isMarketing = isMarketingPath(pathname) && firstSegment !== "select";
+  if (!data?.claims && demoAutoLoginEnabled() && !isMarketing && firstSegment !== "logout" && !(isLogin && wantsPicker)) {
     if (await signInAsDemo(supabase, defaultDemoEmail())) {
       data = (await supabase.auth.getClaims()).data;
       if (isLogin) {
@@ -56,7 +58,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const isTenantPath = pathname !== "/" && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment);
+  const isTenantPath = !isMarketingPath(pathname) && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment);
 
   if (isTenantPath && !data?.claims) {
     const loginUrl = new URL("/login", request.url);

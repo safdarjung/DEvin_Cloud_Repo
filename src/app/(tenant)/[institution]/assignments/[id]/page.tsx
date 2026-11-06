@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { LimitedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,15 +69,6 @@ export default async function AssignmentDetailPage({
         </Card>
       ) : null}
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Submissions</CardTitle>
-          <LimitedBadge />
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-sm">Planned (F-ACA-06) — out of scope for this packet.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -1,10 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState } from "@/components/states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 import { createClient, getClaims } from "@/lib/supabase/server";
 
-export default async function Home() {
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
+export default async function SelectInstitution() {
   const claims = await getClaims();
   if (!claims) {
     redirect("/login");
