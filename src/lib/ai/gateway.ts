@@ -27,8 +27,8 @@ export interface RunStructuredInput<T> {
   permission?: Permission;
   /**
    * Owner cloud exception (D28, extended 2026-11-06 — 12-decision-log.md): with
-   * `GEMINI_API_KEY` set, run on Gemini regardless of `ai_policy`; the prompt is
-   * still redacted. Only for prompts without student-personal data; callers opt in
+   * `GROQ_API_KEY` (else `GEMINI_API_KEY`) set, run on that provider regardless of
+   * `ai_policy`; the prompt is still redacted. Only for prompts without student-personal data; callers opt in
    * one by one, every other caller keeps the policy plan (C-62).
    */
   agentCloud?: boolean;
@@ -68,15 +68,17 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
     return fail("forbidden", "You do not have permission to use AI features.");
   }
 
-  const useGemini = agentCloud === true && Boolean(process.env.GEMINI_API_KEY);
-  const plan: ProviderStep[] = useGemini
+  const agentModel =
+    agentCloud !== true ? null : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : null;
+  const plan: ProviderStep[] = agentModel
     ? ["cloud"]
     : resolvePlan({
         aiPolicy: ctx.institution.ai_policy,
         cloudEnabled: process.env.AI_CLOUD_ENABLED === "true",
         hasCloudKey: Boolean(process.env.ANTHROPIC_API_KEY),
       });
-  const modelIdFor = (step: ProviderStep): string => (useGemini ? providers.geminiModelId() : stepModelId(step));
+  const modelIdFor = (step: ProviderStep): string =>
+    agentModel === "groq" ? providers.groqModelId() : agentModel === "gemini" ? providers.geminiModelId() : stepModelId(step);
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;
   try {
@@ -139,9 +141,11 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       const model =
         step === "local"
           ? providers.getLocalModel()
-          : useGemini
-            ? await providers.getGeminiModel()
-            : await providers.getCloudModel("quality");
+          : agentModel === "groq"
+            ? await providers.getGroqModel()
+            : agentModel === "gemini"
+              ? await providers.getGeminiModel()
+              : await providers.getCloudModel("quality");
       const modelId = modelIdFor(step);
 
       const attempt = (repairNote?: string) =>

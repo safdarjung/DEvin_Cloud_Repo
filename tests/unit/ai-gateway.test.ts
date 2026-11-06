@@ -23,6 +23,8 @@ vi.mock("@/lib/ai/providers", () => ({
   cloudModelId: vi.fn(() => "claude-sonnet-5"),
   getGeminiModel: vi.fn(async () => "gemini-model-handle"),
   geminiModelId: vi.fn(() => "gemini-flash-lite-latest"),
+  getGroqModel: vi.fn(async () => "groq-model-handle"),
+  groqModelId: vi.fn(() => "openai/gpt-oss-120b"),
 }));
 
 vi.mock("@/lib/ai/usage", () => ({
@@ -81,6 +83,7 @@ beforeEach(() => {
   delete process.env.AI_CLOUD_ENABLED;
   delete process.env.ANTHROPIC_API_KEY;
   delete process.env.GEMINI_API_KEY;
+  delete process.env.GROQ_API_KEY;
 });
 
 afterEach(() => {
@@ -113,7 +116,18 @@ describe("runStructured", () => {
     );
   });
 
-  it("agentCloud + GEMINI_API_KEY: a local_only school runs on Gemini, redacted, never local or Anthropic", async () => {
+  it("agentCloud + GROQ_API_KEY: a local_only school runs on Groq (preferred over Gemini)", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    process.env.GEMINI_API_KEY = "test-key";
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
+    expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "openai/gpt-oss-120b" } });
+    expect(generateTextMock.mock.calls[0][0]).toMatchObject({ model: "groq-model-handle" });
+    expect(providers.getGeminiModel).not.toHaveBeenCalled();
+    expect(providers.getLocalModel).not.toHaveBeenCalled();
+  });
+
+  it("agentCloud + only GEMINI_API_KEY: a local_only school runs on Gemini, redacted, never local or Anthropic", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     generateTextMock.mockResolvedValueOnce(usageResult());
     const result = await runStructured({
@@ -130,15 +144,16 @@ describe("runStructured", () => {
     expect(providers.getCloudModel).not.toHaveBeenCalled();
   });
 
-  it("agentCloud without GEMINI_API_KEY keeps the policy plan (local_only -> local)", async () => {
+  it("agentCloud without a Groq/Gemini key keeps the policy plan (local_only -> local)", async () => {
     generateTextMock.mockResolvedValueOnce(usageResult());
     const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
     expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
     expect(providers.getGeminiModel).not.toHaveBeenCalled();
   });
 
-  it("a caller that does not opt in stays local on local_only even with GEMINI_API_KEY set (C-62)", async () => {
+  it("a caller that does not opt in stays local on local_only even with cloud keys set (C-62)", async () => {
     process.env.GEMINI_API_KEY = "test-key";
+    process.env.GROQ_API_KEY = "test-key";
     generateTextMock.mockResolvedValueOnce(usageResult());
     const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput });
     expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
