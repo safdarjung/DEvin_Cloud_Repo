@@ -163,15 +163,15 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 |---|---|---|---|---|---|---|---|---|
 | FB-WS-01 | owner, principal | P1 | FB-DASH-01 | simulated | F-UI-02 | tests/unit/fabric-fixtures/command.test.ts | dashboard scoped to caller's institution | 4 |
 | FB-WS-02 | teacher, principal | P1 | FB-EDU-06, FB-EDU-09, FB-EDU-10 | simulated | F-UI-03 + M10 (backend) | tests/unit/fabric-fixtures/learning.test.ts, tests/db/curriculum-rls.test.ts, tests/db/curriculum-actions.test.ts, tests/db/curriculum-queries.test.ts, tests/db/curriculum-acceptance.test.ts | read-only derived from owner module tables | 4 |
-| FB-WS-03 | teacher, principal, guardian | P1 | FB-EDU-02, FB-EDU-11 | simulated | F-UI-04 | tests/unit/fabric-fixtures/success.test.ts | restricted student records gated by role | 4 |
+| FB-WS-03 | teacher, principal, guardian | P1 | FB-EDU-02, FB-EDU-11 | limited | F-UI-04 | tests/unit/fabric-fixtures/success.test.ts | restricted student records gated by role | 4 |
 | FB-WS-04 | admin, principal | P1 | FB-EDU-07, FB-EDU-14, FB-EDU-15 | simulated | F-UI-05 | tests/unit/fabric-fixtures/operations.test.ts | tenant-scoped reads | 4 |
 | FB-WS-05 | accountant, principal | P1 | FB-EDU-13 | simulated | F-UI-06 | tests/unit/fabric-fixtures/finance-intel.test.ts | finance data confidential sensitivity | 4 |
 | FB-WS-06 | staff, principal | P1 | FB-INT-01..04 | simulated | F-UI-07 | tests/unit/fabric-fixtures/insights.test.ts | read-only derived view | 4 |
-| FB-WS-07 | owner, principal | P1 | FB-INT-05 | simulated | F-UI-08 | tests/unit/fabric-simulator.test.ts | scenario approval gate before "implementation" | 9 |
-| FB-WS-08 | owner, principal | P1 | FB-TWIN-01..04 | simulated | F-UI-09 | tests/unit/fabric-fixtures/twin.test.ts | graph node cap, job-runner-only writes | 9 |
+| FB-WS-07 | owner, principal | P1 | FB-INT-05 | limited | F-UI-08 | tests/unit/fabric-simulator.test.ts | scenario approval gate before "implementation" | 9 |
+| FB-WS-08 | owner, principal | P1 | FB-TWIN-01..04 | limited | F-UI-09 | tests/unit/fabric-fixtures/twin.test.ts | graph node cap, job-runner-only writes | 9 |
 | FB-WS-09 | owner, principal | P1 | FB-AGT-01..04 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | risk-class ceiling (code + guard), approval gate (action via registry), local AI only: `<LimitedBadge/>` "Local AI only" | 5 |
-| FB-WS-10 | owner, admin | P1 | FB-MKT-01..06 | simulated | F-UI-11 | tests/unit/fabric-fixtures/marketplace.test.ts | install-status trigger | 6 |
-| FB-WS-11 | owner, principal | P1 | FB-STU-01..07 | simulated | F-UI-12 | tests/unit/fabric-fixtures/studio.test.ts | preview_html platform-admin only | 7 |
+| FB-WS-10 | owner, admin | P1 | FB-MKT-01..06 | limited | F-UI-11 | tests/unit/fabric-fixtures/marketplace.test.ts | install-status trigger | 6 |
+| FB-WS-11 | owner, principal | P1 | FB-STU-01..07 | limited | F-UI-12 | tests/unit/fabric-fixtures/studio.test.ts | preview_html platform-admin only | 7 |
 | FB-WS-12 | all | P1 | FB-PAI-01..05 | simulated | F-UI-13 | tests/unit/fabric-fixtures/personal.test.ts | own-rows RLS, no institution_id | 8 |
 | FB-WS-13 | admin, owner | P1 | FB-DATA-01..03 | simulated | F-UI-14 | tests/unit/fabric-fixtures/data.test.ts | connector secrets vault-ref only | 3 |
 | FB-WS-14 | owner, admin | P1 | FB-TRUST-01..05 | simulated | F-UI-15 | tests/unit/fabric-fixtures/trust.test.ts | tests/security/fabric-*.test.ts (0063) | ongoing |
