@@ -162,6 +162,13 @@ begin
     raise exception 'code:unauthenticated' using detail = 'sign-in required';
   end if;
 
+
+  select * into v_row from public.studio_requests where id = p_request_id for update;
+  if v_row.id is null or not app.has_role(v_row.institution_id, array['owner', 'principal', 'admin']) then
+    raise exception 'code:not_found' using detail = 'studio request not found';
+  end if;
+
+  -- Shape check after the visibility check: a non-member must get not_found, not a validation hint.
   if jsonb_typeof(p_proposal) <> 'object'
     or octet_length(p_proposal::text) > 20000
     or not (
@@ -176,11 +183,6 @@ begin
     or jsonb_typeof(p_proposal -> 'acceptanceCriteria') <> 'array'
   then
     raise exception 'code:validation_failed' using detail = 'proposal shape invalid';
-  end if;
-
-  select * into v_row from public.studio_requests where id = p_request_id for update;
-  if v_row.id is null or not app.has_role(v_row.institution_id, array['owner', 'principal', 'admin']) then
-    raise exception 'code:not_found' using detail = 'studio request not found';
   end if;
 
   if v_row.status <> 'submitted' then

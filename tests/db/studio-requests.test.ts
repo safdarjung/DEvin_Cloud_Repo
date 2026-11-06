@@ -44,6 +44,8 @@ const MINIMAL_PROPOSAL = {
   resolution: "new_module",
   interpretation: "A digital leave workflow tied to roles.",
   features: ["Leave request form"],
+  costEstimatePaise: 0,
+  timelineWeeks: 4,
   acceptanceCriteria: ["95% approved within 6 hours"],
 };
 
