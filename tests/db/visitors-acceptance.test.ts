@@ -22,6 +22,7 @@ import { POST as actionsPost } from "@/app/api/v1/actions/[name]/route";
 import { GET as queryGet } from "@/app/api/v1/query/[name]/route";
 import { createAcademicYear, createClassSection, createEnrolment, createGrade, closeFactoriesHelper } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -246,7 +247,7 @@ describe("X07-T10 visitors acceptance over HTTP", () => {
         );
         expect(approveRes.status).toBe(200);
 
-        await runOnceCore({ workerId: "test-worker-visitors-acceptance" }, createRunnerPorts(adminDb));
+        await runOnceCore({ workerId: "test-worker-visitors-acceptance" }, withoutSweeps(createRunnerPorts(adminDb)));
 
         // G1 by guardian id: the fixture also holds G2's guardian membership, so a bare role filter is ambiguous.
         const [g1UserId] = await sql`select user_id from public.memberships where institution_id = ${inst.institutionId} and guardian_id = ${g1GuardianId}`;

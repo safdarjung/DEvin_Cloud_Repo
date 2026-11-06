@@ -21,6 +21,7 @@ import { GET as queryGet } from "@/app/api/v1/query/[name]/route";
 import { MODULE_DISABLED_MESSAGE } from "@/lib/modules/catalog";
 import { createRunnerPorts, runOnceCore } from "@/modules/jobs/runner";
 import { closeRolesHelper, createTestInstitution, type FixtureRole, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -240,7 +241,7 @@ describe("X05-T5 WhatsApp acceptance over HTTP: opt-out, provider send, module g
 
       await publishSectionAnnouncement(adminAuth, inst, sectionId, "WhatsApp Acceptance Notice", "Please read this notice.");
 
-      const summary = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance" }, createRunnerPorts(admin));
+      const summary = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance" }, withoutSweeps(createRunnerPorts(admin)));
       expect(summary.succeeded).toBeGreaterThanOrEqual(1);
       expect(summary.dead).toBe(0);
 
@@ -272,7 +273,7 @@ describe("X05-T5 WhatsApp acceptance over HTTP: opt-out, provider send, module g
       expect(channels).toContain("whatsapp");
 
       // --- rerun: nothing left to claim, no extra MSG91 call -------------
-      const rerun = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance-2" }, createRunnerPorts(admin));
+      const rerun = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance-2" }, withoutSweeps(createRunnerPorts(admin)));
       expect(rerun.succeeded).toBe(0);
       expect(msg91Calls(fetchSpy)).toHaveLength(1);
 
@@ -291,7 +292,7 @@ describe("X05-T5 WhatsApp acceptance over HTTP: opt-out, provider send, module g
       expect(blockedPrefBody.error).toMatchObject({ code: "forbidden", message: MODULE_DISABLED_MESSAGE });
 
       await publishSectionAnnouncement(adminAuth, inst, sectionId, "Second Notice Module Off", "Second body.");
-      const summary2 = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance-3" }, createRunnerPorts(admin));
+      const summary2 = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance-3" }, withoutSweeps(createRunnerPorts(admin)));
       expect(summary2.succeeded).toBeGreaterThanOrEqual(1);
 
       const attemptAModuleOff = await whatsappAttempt(inst.institutionId, inst.users.guardian.id, "Second Notice Module Off");
@@ -304,7 +305,7 @@ describe("X05-T5 WhatsApp acceptance over HTTP: opt-out, provider send, module g
       expect(enableRes.status).toBe(200);
 
       await publishSectionAnnouncement(adminAuth, inst, sectionId, "Third Notice Unkeyed", "Third body.");
-      const summary3 = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance-4" }, createRunnerPorts(admin));
+      const summary3 = await runOnceCore({ workerId: "test-worker-whatsapp-acceptance-4" }, withoutSweeps(createRunnerPorts(admin)));
       expect(summary3.succeeded).toBeGreaterThanOrEqual(1);
 
       const attemptAThird = await whatsappAttempt(inst.institutionId, inst.users.guardian.id, "Third Notice Unkeyed");

@@ -1,3 +1,4 @@
+import { lateFees } from "./fee_plans.late_fees.ts";
 import { feeReminder } from "./finance.fee_reminder.ts";
 import { generateTermInvoices } from "./finance.generate_term_invoices.ts";
 import { insightsDetect } from "./insights.detect.ts";
@@ -15,6 +16,7 @@ import { notifyStudentLeaveDecided } from "./notify.student_leave_decided.ts";
 
 export {
   generateReport,
+  lateFees,
   feeReminder,
   generateTermInvoices,
   insightsDetect,

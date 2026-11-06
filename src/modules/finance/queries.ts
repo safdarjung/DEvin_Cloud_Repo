@@ -557,7 +557,12 @@ export interface DefaulterRow {
   paidTotal: number;
   outstanding: number;
   dueOn: string | null;
+  // X04-T9 — ruling "Defaulters respect instalments": true when this
+  // invoice has an instalment plan (set via `feePlans.instalments.set`).
+  onPlan: boolean;
 }
+
+const INSTALMENT_STATUS_PAGE_SIZE = 1000;
 
 /** Outstanding (issued/part_paid) invoices for a term — fully paid and cancelled invoices are excluded (AC4). invoices RLS also allows the owning guardian/student, but defaulters is a staff-only page (gated by finance.read + role in practice); no guardian call path renders it. */
 export async function listDefaulters(ctx: TenantContext, filters: { termId: string }): Promise<DefaulterRow[]> {
@@ -571,20 +576,50 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
     .order("due_on", { ascending: true, nullsFirst: false });
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
-    const student = row.students as { first_name: string; last_name: string | null } | null;
-    return {
-      studentId: row.student_id,
-      studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
-      invoiceId: row.id,
-      invoiceNo: row.invoice_no,
-      total: Number(row.total),
-      paidTotal: Number(row.paid_total),
-      // Money-float fix round 1: subtract in integer paise, not floats.
-      outstanding: paiseToMoney(moneyToPaise(row.total) - moneyToPaise(row.paid_total)),
-      dueOn: row.due_on,
-    };
-  });
+  // X04-T9 — ruling "Defaulters respect instalments": a plan invoice is
+  // only a defaulter when one of its parts is `overdue`; its `dueOn`
+  // becomes the earliest unpaid part's due date, not the invoice's own
+  // due_on. Paged like `ledgerExport` — never trust PostgREST's default
+  // 1,000-row cap. `invoice_instalment_status` returns seq-ordered rows
+  // (due dates strictly increasing, ruling "Instalment plans"), so the
+  // first non-`paid` row per invoice is the earliest unpaid part.
+  const planParts = new Map<string, { dueOn: string; status: string }[]>();
+  for (let from = 0; ; from += INSTALMENT_STATUS_PAGE_SIZE) {
+    const { data: page, error: planError } = await supabase
+      .rpc("invoice_instalment_status", { p_institution_id: ctx.institution.id, p_term_id: filters.termId })
+      .range(from, from + INSTALMENT_STATUS_PAGE_SIZE - 1);
+    if (planError) throw planError;
+    for (const row of page ?? []) {
+      const parts = planParts.get(row.invoice_id) ?? [];
+      parts.push({ dueOn: row.due_on, status: row.status });
+      planParts.set(row.invoice_id, parts);
+    }
+    if (!page || page.length < INSTALMENT_STATUS_PAGE_SIZE) break;
+  }
+
+  return (data ?? [])
+    .flatMap((row) => {
+      const plan = planParts.get(row.id);
+      const onPlan = plan !== undefined;
+      if (onPlan && !plan.some((p) => p.status === "overdue")) return []; // plan invoice with no overdue part is not a defaulter
+      const student = row.students as { first_name: string; last_name: string | null } | null;
+      const earliestUnpaidPart = plan?.find((p) => p.status !== "paid");
+      const dueOn = onPlan && earliestUnpaidPart ? earliestUnpaidPart.dueOn : row.due_on;
+      return [
+        {
+          studentId: row.student_id,
+          studentName: [student?.first_name, student?.last_name].filter(Boolean).join(" "),
+          invoiceId: row.id,
+          invoiceNo: row.invoice_no,
+          total: Number(row.total),
+          paidTotal: Number(row.paid_total),
+          // Money-float fix round 1: subtract in integer paise, not floats.
+          outstanding: paiseToMoney(moneyToPaise(row.total) - moneyToPaise(row.paid_total)),
+          dueOn,
+          onPlan,
+        },
+      ];
+    });
 }
 
 // dashboard — T-039.

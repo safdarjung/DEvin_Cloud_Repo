@@ -11,6 +11,7 @@ import { createNotification } from "@/modules/notifications/service";
 import { createRunnerPorts } from "@/modules/jobs/runner";
 import { callAs, closeActionsHelper } from "../helpers/actions";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 // MOD-T11 — JOB_MODULES gate in the runner's dispatch (src/modules/jobs/runner.ts),
 // email/sms channel drop in notifications/service.ts, and inviteMember's email
@@ -93,7 +94,7 @@ describe("JOB_MODULES gate in the runner (MOD-T11)", () => {
     const announcementId = await publishRoleAnnouncement(inst, "teacher");
     await setModule(inst.institutionId, "announcements", false);
 
-    const ports = createRunnerPorts(admin);
+    const ports = withoutSweeps(createRunnerPorts(admin));
     const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
     expect(job?.type).toBe("notify.announcement");
     if (!job) return;
@@ -114,7 +115,7 @@ describe("JOB_MODULES gate in the runner (MOD-T11)", () => {
     createdInstitutions.push(inst);
     await publishRoleAnnouncement(inst, "teacher");
 
-    const ports = createRunnerPorts(admin);
+    const ports = withoutSweeps(createRunnerPorts(admin));
     const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
     expect(job?.type).toBe("notify.announcement");
     if (!job) return;
@@ -137,7 +138,7 @@ describe("JOB_MODULES gate in the runner (MOD-T11)", () => {
     // it reach the handler at all, with no institutions lookup in between.
     await sql`select app.enqueue_job(${inst.institutionId}::uuid, 'notify.attendance_absence', ${sql.json({ record_id: crypto.randomUUID() })}, ${key})`;
 
-    const ports = createRunnerPorts(admin);
+    const ports = withoutSweeps(createRunnerPorts(admin));
     const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
     expect(job?.idempotency_key).toBe(key);
     if (!job) return;

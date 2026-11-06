@@ -369,6 +369,20 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "survey.close": { permission: "survey.manage", input: () => ({ surveyId: U() }) },
   "survey.respond": { permission: "survey.respond", input: () => ({ surveyId: U(), answers: ["Probe answer"] }) },
+  "feePlans.lateFeeRule.upsert": {
+    permission: "finance.plan.manage",
+    input: () => ({ feeStructureId: U(), kind: "flat", amount: 100, cap: null }),
+  },
+  "feePlans.instalments.set": {
+    permission: "finance.plan.manage",
+    input: () => ({
+      invoiceId: U(),
+      parts: [
+        { dueOn: "2026-11-10", amount: 100 },
+        { dueOn: "2026-12-10", amount: 100 },
+      ],
+    }),
+  },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

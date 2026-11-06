@@ -94,6 +94,7 @@ export function mapSqlError(err: unknown): ActionResult<never> {
   if (sqlState === "42501") return fail("forbidden", "You do not have access to this record.");
   if (sqlState === "23505") return fail("conflict", "This record already exists.");
   if (sqlState === "23503") return fail("not_found", "A related record was not found.");
+  if (sqlState === "23514") return fail("validation_failed", "A value failed a database check.");
 
   const correlationId = crypto.randomUUID();
   console.error(`[${correlationId}] unexpected SQL error`, err);

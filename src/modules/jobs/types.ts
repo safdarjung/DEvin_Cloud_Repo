@@ -14,6 +14,7 @@ export type JobType =
   | "finance.generate_term_invoices"
   | "report.generate"
   | "finance.fee_reminder"
+  | "fee_plans.late_fees"
   | "insights.detect"
   | "forecast.run"
   | "notify.student_leave_decided"

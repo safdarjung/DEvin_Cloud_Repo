@@ -122,3 +122,13 @@ export const SubstitutionsSchema = z
   })
   .strict();
 export type SubstitutionsInput = z.infer<typeof SubstitutionsSchema>;
+
+// M25-T3: timetable.suggest (read-only fill proposals for a draft version)
+export const SuggestFillSchema = z
+  .object({
+    versionId: uuid,
+    classSectionIds: z.array(uuid).min(1).max(100).optional(),
+    limit: z.number().int().min(1).max(200).default(200),
+  })
+  .strict();
+export type SuggestFillInput = z.infer<typeof SuggestFillSchema>;

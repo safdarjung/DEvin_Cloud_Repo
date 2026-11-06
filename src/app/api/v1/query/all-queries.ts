@@ -18,6 +18,7 @@ import "@/modules/documents/query-defs";
 import "@/modules/exam-seating/query-defs";
 import "@/modules/exams/query-defs";
 import "@/modules/facilities/query-defs";
+import "@/modules/fee-plans/query-defs";
 import "@/modules/finance/query-defs";
 import "@/modules/forecasts/query-defs";
 import "@/modules/imports/query-defs";

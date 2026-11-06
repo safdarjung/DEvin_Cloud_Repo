@@ -20,14 +20,14 @@ import "server-only";
 // request's own echoed history, not a rebuild from stored state.
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
+import { convertToModelMessages, stepCountIs } from "ai";
 import { AppError, fail, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { requirePermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { streamAgent } from "@/lib/ai/gateway";
-import { UIMessageRequestSchema } from "@/lib/ai/ui-message-schema";
+import { UIMessageRequestSchema, stripToText } from "@/lib/ai/ui-message-schema";
 import { composeStudentInstructions } from "@/modules/ai/prompts/student-skills";
 import { getStudentPreferences } from "@/modules/ai/student-preferences";
 import { studentTools } from "@/modules/ai/agent/student-tools";
@@ -81,19 +81,6 @@ function mapTenantContextError(err: unknown): ActionResult<never> | null {
   return null;
 }
 
-// DBT-37 fix — see the module header comment. Only `text` parts of
-// `user`/`assistant` messages survive; a message left with zero parts is
-// dropped entirely rather than forwarded empty.
-function stripToUserText(messages: z.infer<typeof StudentAgentRequestSchema>["messages"]): UIMessage[] {
-  return messages
-    .filter((message) => message.role === "user" || message.role === "assistant")
-    .map((message) => ({
-      ...message,
-      parts: message.parts.filter((part): part is { type: "text"; text: string } => part.type === "text"),
-    }))
-    .filter((message) => message.parts.length > 0) as unknown as UIMessage[];
-}
-
 export async function POST(request: Request): Promise<Response> {
   // DBT-29: cookie-authenticated and cost-bearing — refuse cross-site callers.
   if (isCrossSiteRequest(request)) {
@@ -143,7 +130,7 @@ export async function POST(request: Request): Promise<Response> {
     return json(fail("ai_unavailable", "The study assistant is not included in this school's plan."));
   }
 
-  const strippedMessages = stripToUserText(input.messages);
+  const strippedMessages = stripToText(input.messages);
   if (strippedMessages.length === 0) {
     return json(fail("validation_failed", "No readable text in this message."));
   }

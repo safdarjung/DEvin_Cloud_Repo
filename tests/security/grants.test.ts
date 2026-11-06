@@ -124,6 +124,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.return_library_loan",
   "public.revoke_invitation",
   "public.set_insight_explanation",
+  "public.set_invoice_instalments",
   "public.staff_check_in",
   "public.start_recheck_review",
   "public.submit_assignment",
@@ -195,6 +196,8 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
       "submit_public_enquiry",
       "submit_platform_lead",
       "record_online_payment",
+      "apply_late_fees",
+      "enqueue_due_late_fees",
       // M21-T3: service-role-only series sources + sweep (rulings "Series sources").
       "assert_forecast_window",
       "forecast_fee_series",

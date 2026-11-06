@@ -19,6 +19,7 @@ import { POST as actionsPost } from "@/app/api/v1/actions/[name]/route";
 import { GET as queryGet } from "@/app/api/v1/query/[name]/route";
 import { createRunnerPorts, runOnceCore } from "@/modules/jobs/runner";
 import { closeRolesHelper, createTestInstitution, type FixtureRole, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -173,7 +174,7 @@ describe("M06 announcements acceptance: admin publishes -> job runner fans out -
         expect((await publishTeacher.json()).ok).toBe(true);
 
         // --- run the job runner once (as tests/db/jobs.test.ts does) ---
-        const summary = await runOnceCore({ workerId: "test-worker-announcements-acceptance" }, createRunnerPorts(admin));
+        const summary = await runOnceCore({ workerId: "test-worker-announcements-acceptance" }, withoutSweeps(createRunnerPorts(admin)));
         expect(summary.succeeded).toBeGreaterThanOrEqual(2);
         expect(summary.dead).toBe(0);
 

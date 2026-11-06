@@ -84,7 +84,27 @@ export const feeReminder: JobHandler = async (job, { admin }) => {
     if (!page || page.length < PAGE_SIZE) break;
   }
 
+  // X04-T9 — ruling "Defaulters respect instalments": same RPC as
+  // `listDefaulters`, service role. A plan invoice (any `invoice_
+  // instalments` row for this term) is skipped unless one of its parts
+  // is `overdue`; a no-plan invoice (absent from this map) is unaffected.
+  const hasOverduePart = new Set<string>();
+  const planInvoiceIds = new Set<string>();
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data: page, error } = await admin
+      .rpc("invoice_instalment_status", { p_institution_id: job.institution_id, p_term_id: termId })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    for (const row of (page as { invoice_id: string; status: string }[] | null) ?? []) {
+      planInvoiceIds.add(row.invoice_id);
+      if (row.status === "overdue") hasOverduePart.add(row.invoice_id);
+    }
+    if (!page || page.length < PAGE_SIZE) break;
+  }
+
   for (const invoice of invoices) {
+    if (planInvoiceIds.has(invoice.id) && !hasOverduePart.has(invoice.id)) continue; // plan invoice, no overdue part — not a defaulter
+
     const outstanding = outstandingOf(invoice.total, invoice.paid_total);
     if (outstanding <= 0) continue; // re-check at send: fully paid since the query ran
 

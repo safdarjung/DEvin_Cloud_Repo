@@ -43,11 +43,14 @@ const MATRIX: Row[] = [
   ["finance.payment.void", true, true, false, false, false, false, false, false, false],
   ["finance.payment.online", true, true, false, false, true, false, false, false, true],
   ["finance.reminder.send", true, true, false, false, true, false, false, false, false],
+  ["finance.plan.manage", true, true, false, false, true, false, false, false, false],
   ["finance.read", true, true, true, false, true, false, false, true, true],
   ["exam.manage", true, true, false, false, false, true, false, false, false],
   ["exam.marks.enter", true, true, false, false, false, true, true, false, false],
   ["exam.result.publish", true, true, false, false, false, true, false, false, false],
   ["exam.result.read", true, true, true, false, false, true, true, true, true],
+  ["mastery.read", true, true, true, false, false, true, true, true, true],
+  ["mastery.review", true, true, true, false, false, true, true, false, false],
   ["exam.recheck.request", false, false, false, false, false, false, false, true, true],
   ["exam.recheck.review", true, true, false, false, false, true, false, false, false],
   ["exam.recheck.decide", true, true, false, false, false, true, false, false, false],
@@ -90,6 +93,8 @@ const MATRIX: Row[] = [
   ["gatepass.manage", true, true, true, false, false, false, true, false, false],
   ["pickup.manage", true, true, true, false, false, false, false, false, true],
   ["report.schedule", true, true, true, false, false, false, false, false, false],
+  ["workflow.read", true, true, true, false, false, false, false, false, false],
+  ["workflow.manage", true, true, false, false, false, false, false, false, false],
   ["student_leave.request", false, false, false, false, false, false, false, false, true],
   ["student_leave.approve", true, true, true, false, false, false, true, false, false],
   ["diary.write", true, true, true, false, false, false, true, false, false],
@@ -216,6 +221,24 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
   it("finance.payment.void is held by owner and principal only", () => {
     const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("finance.payment.void"));
     expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("workflow.read is held by owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("workflow.read"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("workflow.manage is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("workflow.manage"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("teacher, accountant, exam_controller, admissions, guardian, student hold neither workflow permission", () => {
+    const noRead = ["accountant", "admissions", "exam_controller", "guardian", "student", "teacher"];
+    for (const role of noRead) {
+      expect(permissionsFor(role as Role).includes("workflow.read")).toBe(false);
+      expect(permissionsFor(role as Role).includes("workflow.manage")).toBe(false);
+    }
   });
 
   it("agent.run is held by owner, principal, and admin", () => {

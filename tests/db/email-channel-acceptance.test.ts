@@ -20,6 +20,7 @@ import { POST as actionsPost } from "@/app/api/v1/actions/[name]/route";
 import { GET as queryGet } from "@/app/api/v1/query/[name]/route";
 import { createRunnerPorts, runOnceCore } from "@/modules/jobs/runner";
 import { closeRolesHelper, createTestInstitution, type FixtureRole, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -164,7 +165,7 @@ describe("M17 email channel acceptance: invite + announcement fan-out + listDeli
       expect((await publishRes.json()).ok).toBe(true);
 
       // --- job runner fans the announcement out, once -----------------
-      const summary = await runOnceCore({ workerId: "test-worker-email-acceptance" }, createRunnerPorts(admin));
+      const summary = await runOnceCore({ workerId: "test-worker-email-acceptance" }, withoutSweeps(createRunnerPorts(admin)));
       expect(summary.succeeded).toBeGreaterThanOrEqual(1);
       expect(summary.dead).toBe(0);
 
@@ -207,7 +208,7 @@ describe("M17 email channel acceptance: invite + announcement fan-out + listDeli
       expect(emailStatuses).toContain("simulated");
 
       // --- rerunning the job (nothing left to claim) makes no extra call
-      const rerun = await runOnceCore({ workerId: "test-worker-email-acceptance-2" }, createRunnerPorts(admin));
+      const rerun = await runOnceCore({ workerId: "test-worker-email-acceptance-2" }, withoutSweeps(createRunnerPorts(admin)));
       expect(rerun.succeeded).toBe(0);
       expect(resendCallsOf(fetchSpy)).toHaveLength(callsAfterFirstRun);
     } finally {
@@ -240,7 +241,7 @@ describe("M17 email channel acceptance: invite + announcement fan-out + listDeli
       const announcementId = (await createRes.json()).data.announcementId as string;
       await dispatchAction("announcement.publish", { institution: inst.slug, input: { announcementId } }, adminAuth);
 
-      const summary = await runOnceCore({ workerId: "test-worker-email-acceptance-unkeyed" }, createRunnerPorts(admin));
+      const summary = await runOnceCore({ workerId: "test-worker-email-acceptance-unkeyed" }, withoutSweeps(createRunnerPorts(admin)));
       expect(summary.succeeded).toBeGreaterThanOrEqual(1);
 
       const [notification] = await sql<{ id: string }[]>`

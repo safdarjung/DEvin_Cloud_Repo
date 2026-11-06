@@ -144,6 +144,9 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | `payments` | Money received | `invoice_id →` · `amount` · `mode text check in (cash, upi, cheque, neft, card)` · `reference text?` · `received_at` · `received_by → profiles` · `idempotency_key text!` | unique(idempotency_key); check amount > 0; index(invoice_id) | imm | conf |
 | `receipts` | Printable proof | `payment_id →!` · `receipt_no text!` · `financial_year text` · `snapshot jsonb` (student, heads, amounts, mode) | unique(institution_id, receipt_no); unique(payment_id) | imm | conf |
 | `ledger_entries` | Double entry | `payment_id?→` · `invoice_id?→` · `account text` (fees_receivable, cash, bank, fee_income, concession_expense) · `debit numeric(12,2)` · `credit numeric(12,2)` · `entry_date date` · `memo?` | check (debit = 0) <> (credit = 0); index(institution_id, entry_date) | imm | conf |
+| `late_fee_rules` | Fee structures with late-fee policy | `fee_structure_id →!` · `kind text check in (flat, per_day)` · `amount numeric(12,2) > 0` · `grace_days int 0–90 default 0` · `cap numeric(12,2)?` (null for flat, required for per_day with cap ≥ amount) · `is_active bool default true` · `updated_by → profiles` | unique(fee_structure_id); check `(kind = 'flat' and cap is null) or (kind = 'per_day' and cap is not null and cap >= amount)` | op | conf |
+| `invoice_instalments` | Flexible due-date payment plans | `invoice_id →` · `seq int 1–12` · `due_on date` · `amount numeric(12,2) ≥ 1.00` · `created_by → profiles` | unique(invoice_id, seq); partial unique(invoice_id) where <none> if plan (rule: one plan per invoice) | op | conf |
+| `late_fee_charges` | Accrued late fees (immutable, idempotent insertion) | `invoice_id →` · `unit_seq int 0–12` · `charge_date date` · `days_late int ≥ 1` · `amount numeric(12,2) > 0` · `rule_id → late_fee_rules` · `invoice_line_id uuid not null unique →` | unique(invoice_id, unit_seq, charge_date); index(institution_id, charge_date) | imm | conf |
 
 ### 2.7 exams (migration 0009)
 
@@ -220,6 +223,7 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | attendance | attendance_sessions, attendance_records, attendance_corrections | academics, people |
 | admissions | enquiries, applications, application_decisions | people, academics, finance (via `finance.generate_invoice`) |
 | finance | fee_structures, fee_components, fee_assignments, concessions, invoices, invoice_lines, payments, receipts, ledger_entries | people, academics |
+| fee-plans | late_fee_rules, invoice_instalments, late_fee_charges | finance |
 | exams | exams, exam_papers, marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
 | exam-seating | exam_seating_plans, exam_seats | exams, academics, people, timetable |
 | certificates | certificates | people, academics, documents, lifecycle |

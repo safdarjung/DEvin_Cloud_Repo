@@ -41,6 +41,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     enqueueDueReports: vi.fn(async () => 0),
     enqueueDueInsights: vi.fn(async () => 0),
     enqueueDueForecasts: vi.fn(async () => {}),
+    enqueueDueLateFees: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -212,6 +213,39 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
 
     expect(enqueueDueForecasts).toHaveBeenCalledTimes(1);
     expect(calls).toEqual(["enqueueDueReports", "enqueueDueForecasts", "claimJob"]);
+  });
+
+  it("sweeps for due late fees exactly once, before the first claimJob", async () => {
+    const calls: string[] = [];
+    const claimJob = vi.fn(async () => {
+      calls.push("claimJob");
+      return null;
+    });
+    const enqueueDueLateFees = vi.fn(async () => {
+      calls.push("enqueueDueLateFees");
+      return 1;
+    });
+    const ports = fakePorts({ claimJob, enqueueDueLateFees });
+
+    await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(enqueueDueLateFees).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["enqueueDueLateFees", "claimJob"]);
+  });
+
+  it("still claims jobs and leaves the summary unchanged when the late-fee sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueDueLateFees = vi.fn(async () => {
+      throw new Error("sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueDueLateFees });
+
+    const summary = await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(completeJob).toHaveBeenCalledWith(job.id, true);
   });
 
   it("still claims jobs and still runs the reports sweep when the insights sweep rejects", async () => {
@@ -423,6 +457,21 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
     const ports = createRunnerPorts(admin);
 
     await expect(ports.enqueueDueForecasts()).rejects.toThrow("forecast boom");
+  });
+
+  it("enqueueDueLateFees throws on an RPC error", async () => {
+    const { admin } = fakeAdmin({ rpcResult: { data: null, error: { message: "boom" } } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueLateFees()).rejects.toThrow("boom");
+  });
+
+  it("enqueueDueLateFees calls the enqueue_due_late_fees RPC and returns its count", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: 1, error: null } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.enqueueDueLateFees()).resolves.toBe(1);
+    expect(rpc).toHaveBeenCalledWith("enqueue_due_late_fees");
   });
 });
 
