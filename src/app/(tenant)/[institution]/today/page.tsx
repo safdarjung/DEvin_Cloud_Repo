@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ClipboardCheck, ClipboardList, FilePlus2, Megaphone, PenLine } from "lucide-react";
+import { BookOpenCheck, CalendarDays, ClipboardCheck, ClipboardList, FilePlus2, FileCheck2, Megaphone, PenLine } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -16,6 +16,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listTeacherAssignments } from "@/modules/academics/assignments.queries";
+import { curriculumCoverageBySection } from "@/modules/academics/curriculum.queries";
+import { submissionsForAssignment } from "@/modules/academics/submissions.queries";
 import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getSession, getTodaySectionsForTeacher } from "@/modules/attendance/queries";
 import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
@@ -23,6 +25,9 @@ import { getMyPapers } from "@/modules/exams/queries";
 import { insightCards } from "@/modules/insights/derived";
 import { examStatusVariant } from "@/modules/exams/status";
 import { listMyNotifications } from "@/modules/notifications/queries";
+import { ptmEvents, ptmTeacherSchedule } from "@/modules/ptm/queries";
+import { StudentLeaveReview } from "@/modules/student-leave/components/StudentLeaveReview";
+import { studentLeaveRequests } from "@/modules/student-leave/queries";
 import { timetableTodayFor } from "@/modules/timetable/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 
@@ -66,8 +71,12 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
   const canReadAssignments = hasPermission(ctx, "assignment.read");
   const canManageAssignments = hasPermission(ctx, "assignment.manage");
   const canReadNotifications = hasPermission(ctx, "notification.read");
+  const staffId = ctx.membership.staffId;
+  const canReviewLeave = hasPermission(ctx, "student_leave.approve") && isModuleEnabled(ctx, "student_leave");
+  const canSeePtm = hasPermission(ctx, "ptm.slot.manage") && isModuleEnabled(ctx, "ptm") && Boolean(staffId);
+  const canSeeCoverage = canReadAssignments && isModuleEnabled(ctx, "lesson_plans") && Boolean(staffId);
 
-  const [sectionsR, papersR, assignmentsR, notificationsR, noticesR, eventsR, timetableR] = await Promise.allSettled([
+  const [sectionsR, papersR, assignmentsR, notificationsR, noticesR, eventsR, timetableR, leaveR, ptmR, coverageR] = await Promise.allSettled([
     isModuleEnabled(ctx, "attendance") ? getTodaySectionsForTeacher(ctx).then((sections) =>
       Promise.all(
         sections.map(async (s, i) => ({
@@ -85,7 +94,26 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     // Ordered oldest-first with no date filter, so over-fetch and keep the upcoming ones.
     isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 20).then((events) => events.filter((e) => new Date(e.endsAt ?? e.startsAt) >= now).slice(0, 3)) : Promise.resolve([]),
     isModuleEnabled(ctx, "timetable") ? timetableTodayFor(ctx) : Promise.resolve([]),
+    // RLS scopes leave, PTM slots and coverage to what this teacher may see; the teacherId filter keeps coverage to their own subjects.
+    canReviewLeave ? studentLeaveRequests(ctx, { status: "pending", limit: 8 }) : Promise.resolve([]),
+    canSeePtm
+      ? ptmEvents(ctx).then(async (events) => {
+          const upcoming = events.filter((e) => e.status === "published").slice(0, 2);
+          const schedules = await Promise.all(upcoming.map((e) => ptmTeacherSchedule(ctx, e.id)));
+          return upcoming.map((event, i) => ({ event, slots: schedules[i] }));
+        })
+      : Promise.resolve([]),
+    canSeeCoverage ? curriculumCoverageBySection(ctx, { teacherId: staffId ?? undefined }) : Promise.resolve([]),
   ]);
+
+  // Submissions awaiting a grade: one roster read per published assignment, capped (shortcut: no cross-assignment aggregate query yet).
+  const toGradeR = await Promise.allSettled(
+    (assignmentsR.status === "fulfilled" && canManageAssignments ? assignmentsR.value.filter((a) => a.status === "published").slice(0, 5) : []).map(
+      async (a) => ({ assignment: a, count: (await submissionsForAssignment(ctx, a.id)).filter((r) => r.state === "submitted").length }),
+    ),
+  );
+  const toGrade = toGradeR.flatMap((r) => (r.status === "fulfilled" && r.value.count > 0 ? [r.value] : []));
+  const toGradeTotal = toGrade.reduce((n, r) => n + r.count, 0);
 
   const sections = sectionsR.status === "fulfilled" ? sectionsR.value : [];
   const papers = papersR.status === "fulfilled" ? papersR.value : [];
@@ -109,8 +137,12 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     ...(canManageAssignments ? [{ href: `${basePath}/assignments/new`, label: "New assignment", icon: <FilePlus2 className="size-4" /> }] : []),
     ...(canReadAssignments ? [{ href: `${basePath}/assignments`, label: "All assignments", icon: <ClipboardList className="size-4" /> }] : []),
     ...(canEnterMarks ? [{ href: `${basePath}/exams`, label: "Exams", icon: <PenLine className="size-4" /> }] : []),
+    ...(canSeeCoverage ? [{ href: `${basePath}/lesson-plans`, label: "Lesson plans", icon: <BookOpenCheck className="size-4" /> }] : []),
+    ...(hasPermission(ctx, "diary.write") && isModuleEnabled(ctx, "diary") ? [{ href: `${basePath}/diary`, label: "Class diary", icon: <Megaphone className="size-4" /> }] : []),
+    ...(hasPermission(ctx, "question.manage") && isModuleEnabled(ctx, "question_bank") ? [{ href: `${basePath}/question-bank`, label: "Question bank", icon: <ClipboardList className="size-4" /> }] : []),
   ];
 
+  const leaveRows = leaveR.status === "fulfilled" ? leaveR.value : [];
   const kpis = [
     { label: "Sections today", n: sectionsR.status === "fulfilled" ? sections.length : undefined, href: `${basePath}/attendance` },
     { label: "Registers pending", n: sectionsR.status === "fulfilled" ? pending.length : undefined, href: `${basePath}/attendance` },
@@ -120,6 +152,8 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
       n: assignmentsR.status === "fulfilled" ? activeAssignments.length : undefined,
       href: `${basePath}/assignments`,
     },
+    canManageAssignments && { label: "Submissions to grade", n: assignmentsR.status === "fulfilled" ? toGradeTotal : undefined, href: `${basePath}/assignments` },
+    canReviewLeave && { label: "Leave requests", n: leaveR.status === "fulfilled" ? leaveRows.length : undefined, href: `${basePath}/today#leave` },
   ].filter((k) => !!k);
 
   const sectionsWidget = settled(
@@ -211,6 +245,101 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
       "Assignments",
     );
 
+  const submissionsWidget =
+    canManageAssignments &&
+    assignmentsR.status === "fulfilled" && (
+      <ListWidget
+        title="Submissions to grade"
+        icon={<FileCheck2 />}
+        emptyTitle="Nothing waiting to be graded"
+        rows={toGrade.map(
+          (r): ListRow => ({
+            id: r.assignment.id,
+            title: r.assignment.title,
+            meta: `${r.count} submitted`,
+            href: `${basePath}/assignments/${r.assignment.id}`,
+            badge: { label: "Grade", variant: "info" },
+          }),
+        )}
+      />
+    );
+
+  const leaveWidget =
+    canReviewLeave &&
+    settled(
+      leaveR,
+      (rows) => (
+        <div id="leave" className="scroll-mt-24">
+          <Widget title="Student leave requests" description={rows.length ? `${rows.length} waiting for you` : undefined}>
+            <StudentLeaveReview
+              institutionSlug={institutionSlug}
+              requests={rows.map((r) => ({
+                id: r.id,
+                studentName: r.studentName,
+                classSection: r.classSection,
+                startDate: r.startDate,
+                endDate: r.endDate,
+                days: r.days,
+                reason: r.reason,
+              }))}
+            />
+          </Widget>
+        </div>
+      ),
+      "Student leave requests",
+    );
+
+  const ptmWidget =
+    canSeePtm &&
+    settled(
+      ptmR,
+      (groups) => (
+        <ListWidget
+          title="Parent meetings"
+          icon={<CalendarDays />}
+          action={{ href: `${basePath}/ptm`, label: "Manage slots" }}
+          emptyTitle="No published meetings"
+          rows={groups.flatMap(({ event, slots }) =>
+            slots.length === 0
+              ? [{ id: event.id, title: event.title, meta: `${shortDate.format(new Date(`${event.eventDate}T00:00:00Z`))} · you have no slots yet`, href: `${basePath}/ptm` } satisfies ListRow]
+              : slots
+                  .filter((s) => s.booking)
+                  .map(
+                    (s): ListRow => ({
+                      id: s.slotId,
+                      title: `${s.startsAt} · ${s.booking?.studentName ?? ""}`,
+                      meta: `${event.title} · ${shortDate.format(new Date(`${event.eventDate}T00:00:00Z`))}`,
+                    }),
+                  ),
+          )}
+        />
+      ),
+      "Parent meetings",
+    );
+
+  const coverageWidget =
+    canSeeCoverage &&
+    settled(
+      coverageR,
+      (rows) => (
+        <ListWidget
+          title="Syllabus coverage"
+          icon={<BookOpenCheck />}
+          action={{ href: `${basePath}/lesson-plans`, label: "Lesson plans" }}
+          emptyTitle="No curriculum units set for your subjects"
+          rows={rows.map(
+            (c): ListRow => ({
+              id: `${c.section_label}:${c.subject}`,
+              title: `${c.subject} · ${c.section_label}`,
+              meta: `${c.completed_units} of ${c.planned_units} units covered`,
+              badge: c.planned_units === 0 ? undefined : { label: c.on_track ? "On track" : "Behind", variant: c.on_track ? "success" : "warning" },
+            }),
+          )}
+        />
+      ),
+      "Syllabus coverage",
+    );
+
   const notificationsWidget =
     canReadNotifications &&
     settled(
@@ -277,7 +406,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
         }
       />
 
-      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <Stagger className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
         {kpis.map((k) => (
           <StaggerItem key={k.label}>
             <KpiTile label={k.label} value={k.n === undefined ? "—" : String(k.n)} animateTo={k.n} href={k.href} />
@@ -285,13 +414,19 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
         ))}
       </Stagger>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <div className="flex min-w-0 flex-col gap-6">
-          {sectionsWidget}
           {timetableWidget}
+          {sectionsWidget}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           {papersWidget}
+          {submissionsWidget}
+          {leaveWidget}
+        </div>
+        <div className="flex min-w-0 flex-col gap-6">
+          {ptmWidget}
+          {coverageWidget}
           {assignmentsWidget}
           <QuickActions actions={quickActions} />
           {insights.map((insight) => (
