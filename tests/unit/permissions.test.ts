@@ -112,6 +112,9 @@ const MATRIX: Row[] = [
   ["message.read", true, true, true, false, false, false, true, false, true],
   ["message.send", true, true, true, false, false, false, true, false, true],
   ["practice.attempt", false, false, false, false, false, false, false, true, false],
+  // live-fabric simulator (F-UI-08): owner/principal/admin only; approve/
+  // reject further restricted to owner/principal by the handler (M106).
+  ["scenario.manage", true, true, true, false, false, false, false, false, false],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {

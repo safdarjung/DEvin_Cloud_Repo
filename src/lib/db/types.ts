@@ -3267,6 +3267,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"simulation_scenarios": {
+                  Row: {
+                    "assumptions": NonNullable<Json>,"created_at": string,"created_by": string,"decided_at": string | null,"decided_by": string | null,"id": string,"institution_id": string,"name": string,"rationale": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "assumptions": NonNullable<Json>,"created_at"?: string,"created_by": string,"decided_at"?: string | null,"decided_by"?: string | null,"id"?: string,"institution_id": string,"name": string,"rationale"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "assumptions"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"id"?: string,"institution_id"?: string,"name"?: string,"rationale"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "simulation_scenarios_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "simulation_scenarios_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "simulation_scenarios_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"staff": {
                   Row: {
                     "created_at": string,"department_id": string | null,"designation": string,"email": string | null,"employee_no": string,"full_name": string,"id": string,"institution_id": string,"is_teaching": boolean,"phone": string | null,"status": string,"updated_at": string,"user_id": string | null
@@ -3442,6 +3474,38 @@ isOneToOne: false
       columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"studio_requests": {
+                  Row: {
+                    "context": NonNullable<Json>,"created_at": string,"created_by": string,"decided_at": string | null,"decided_by": string | null,"desired_outcome": string,"id": string,"institution_id": string,"notes": (string)[],"problem": string,"proposal": Json | null,"status": string,"terms": NonNullable<Json>,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "context"?: NonNullable<Json>,"created_at"?: string,"created_by": string,"decided_at"?: string | null,"decided_by"?: string | null,"desired_outcome": string,"id"?: string,"institution_id": string,"notes"?: (string)[],"problem": string,"proposal"?: Json | null,"status"?: string,"terms"?: NonNullable<Json>,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "context"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"desired_outcome"?: string,"id"?: string,"institution_id"?: string,"notes"?: (string)[],"problem"?: string,"proposal"?: Json | null,"status"?: string,"terms"?: NonNullable<Json>,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "studio_requests_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_requests_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "studio_requests_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
       referencedColumns: ["id"]
     }
                   ]
@@ -4315,6 +4379,30 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"decide_studio_request":
+{ Args: { "p_decision": string,"p_note"?: string,"p_request_id": string }; Returns: {
+              "context": NonNullable<Json>,
+"created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decided_by": string | null,
+"desired_outcome": string,
+"id": string,
+"institution_id": string,
+"notes": (string)[],
+"problem": string,
+"proposal": Json | null,
+"status": string,
+"terms": NonNullable<Json>,
+"title": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "studio_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "decide_workflow_run":
 { Args: { "p_decision": string,"p_note"?: string,"p_run_id": string }; Returns: {
               "created_at": string,
@@ -4631,6 +4719,30 @@ isOneToOne: false
 "promote_students":
 { Args: { "p_exclude"?: (string)[],"p_from_year_id": string,"p_mappings": Json,"p_overrides"?: Json,"p_to_year_id": string }; Returns: Json
                            },
+"propose_studio_request":
+{ Args: { "p_proposal": Json,"p_request_id": string }; Returns: {
+              "context": NonNullable<Json>,
+"created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decided_by": string | null,
+"desired_outcome": string,
+"id": string,
+"institution_id": string,
+"notes": (string)[],
+"problem": string,
+"proposal": Json | null,
+"status": string,
+"terms": NonNullable<Json>,
+"title": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "studio_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "ptm_slots_for_student":
 { Args: { "p_event_id"?: string,"p_student_id": string }; Returns: {
               "booking_closes_at": string,"booking_id": string,"ends_at": string,"event_date": string,"event_id": string,"event_title": string,"is_class_teacher": boolean,"seq": number,"slot_id": string,"staff_id": string,"starts_at": string,"state": string,"subjects": (string)[],"teacher_name": string
