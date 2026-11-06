@@ -282,3 +282,21 @@ export async function listSectionSubjects(ctx: TenantContext, classSectionId: st
   if (error) throw error;
   return data ?? [];
 }
+
+/** listTeachableSections with grade-qualified labels ("VI-A"), same convention as the register and coverage views. */
+export async function listLabelledTeachableSections(ctx: TenantContext): Promise<SectionOption[]> {
+  const sections = await listTeachableSections(ctx);
+  if (sections.length === 0) return sections;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("grades")
+    .select("id, code, sort_key")
+    .eq("institution_id", ctx.institution.id)
+    .in("id", [...new Set(sections.map((s) => s.gradeId))]);
+  if (error) throw error;
+  const grade = new Map((data ?? []).map((g) => [g.id, g]));
+  return sections
+    .map((s) => ({ ...s, label: `${grade.get(s.gradeId)?.code ?? "?"}-${s.label}`, sort: grade.get(s.gradeId)?.sort_key ?? 0 }))
+    .sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label))
+    .map(({ id, label, gradeId }) => ({ id, label, gradeId }));
+}

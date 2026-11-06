@@ -1,41 +1,87 @@
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getTenantContext } from "@/lib/auth/context";
-import { hasPermission, requireModule, requirePermission } from "@/lib/auth/require";
+import { hasPermission, requireModule } from "@/lib/auth/require";
+import { AppError } from "@/lib/actions/result";
 import { humanize } from "@/lib/format";
 import { listSectionOptions } from "@/modules/exams/queries";
 import { PtmEventForm, PublishPtmButton } from "@/modules/ptm/components/PtmAdmin";
 import { CloseSurveyButton, SurveyForm } from "@/modules/ptm/components/SurveyAdmin";
-import { ptmEvents } from "@/modules/ptm/queries";
+import { PtmSlotsManager } from "@/modules/ptm/components/PtmSlotsManager";
+import { ptmEvents, ptmTeacherSchedule } from "@/modules/ptm/queries";
 import { surveyList } from "@/modules/ptm/survey.queries";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric" });
 const dateTimeFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
-// Parent-teacher meetings and parent surveys (admin). Authorization:
-// `ptm.manage` for events; surveys additionally need `survey.manage`.
-export default async function PtmAdminPage({ params }: { params: Promise<{ institution: string }> }) {
+const slotDate = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+// Parent-teacher meetings. One page, two jobs gated separately:
+// `ptm.manage` creates/publishes meeting days (surveys also need `survey.manage`);
+// `ptm.slot.manage` lets a teacher open their own slots on published days.
+export default async function PtmPage({ params }: { params: Promise<{ institution: string }> }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
   requireModule(ctx, "ptm");
-  requirePermission(ctx, "ptm.manage");
-  const canSurveys = hasPermission(ctx, "survey.manage");
+  const canManage = hasPermission(ctx, "ptm.manage");
+  const canSlots = hasPermission(ctx, "ptm.slot.manage");
+  if (!canManage && !canSlots) throw new AppError("forbidden", "You do not have access to parent-teacher meetings.");
+  const canSurveys = canManage && hasPermission(ctx, "survey.manage");
 
   const [eventsR, sectionsR, surveysR] = await Promise.allSettled([
-    ptmEvents(ctx, true),
-    listSectionOptions(ctx),
+    ptmEvents(ctx, canManage),
+    canManage ? listSectionOptions(ctx) : Promise.resolve([]),
     canSurveys ? surveyList(ctx) : Promise.resolve([]),
   ]);
   for (const r of [eventsR, sectionsR, surveysR]) if (r.status === "rejected") console.error("ptm page fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
   const sections = sectionsR.status === "fulfilled" ? sectionsR.value : [];
 
+  // Only published meetings accept bookings; RLS narrows ptm_slots to the caller's own for a teacher.
+  const published = eventsR.status === "fulfilled" ? eventsR.value.filter((e) => e.status === "published") : [];
+  const staffId = ctx.membership.staffId;
+  const schedules = canSlots && staffId ? await Promise.all(published.map((e) => ptmTeacherSchedule(ctx, e.id))) : [];
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Parent-teacher meetings" description="Create meeting days, publish them to guardians, and run parent surveys." />
+      <PageHeader
+        title="Parent-teacher meetings"
+        description={canManage ? "Create meeting days, publish them to guardians, and run parent surveys." : "Open time slots for parents to book with you."}
+      />
 
+      {canSlots && (
+        <section aria-labelledby="ptm-my-slots" className="max-w-3xl space-y-3">
+          {canManage && (
+            <h2 id="ptm-my-slots" className="text-base font-semibold">
+              My slots
+            </h2>
+          )}
+          {!staffId ? (
+            <EmptyState title="No staff profile on this account" description="Slots are tied to a staff profile. Ask an administrator to link yours." />
+          ) : published.length === 0 ? (
+            <EmptyState title="No published meetings" description="When the school publishes a parent-teacher meeting, you can open your slots here." />
+          ) : (
+            published.map((e, i) => (
+              <Card key={e.id}>
+                <CardHeader>
+                  <CardTitle>{e.title}</CardTitle>
+                  <CardDescription>
+                    {slotDate.format(new Date(`${e.eventDate}T00:00:00Z`))} · {e.dayStartsAt} to {e.dayEndsAt} · {e.slotMinutes} min slots ·{" "}
+                    {schedules[i].filter((s) => s.booking).length} booked
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PtmSlotsManager institutionSlug={institutionSlug} eventId={e.id} dayStartsAt={e.dayStartsAt} dayEndsAt={e.dayEndsAt} slots={schedules[i]} />
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </section>
+      )}
+
+      {canManage && (
       <section aria-labelledby="ptm-events" className="space-y-3">
         <h2 id="ptm-events" className="text-base font-semibold">
           Meetings
@@ -89,6 +135,7 @@ export default async function PtmAdminPage({ params }: { params: Promise<{ insti
           </CardContent>
         </Card>
       </section>
+      )}
 
       {canSurveys && (
         <section aria-labelledby="ptm-surveys" className="space-y-3">

@@ -40,6 +40,8 @@ export interface DiaryEntryRow {
   requiresAck: boolean;
   /** null unless the caller holds `diary.write` (rulings). */
   ackCount: number | null;
+  /** True when the caller authored the entry (only the author or an admin can delete it). */
+  isMine: boolean;
 }
 
 export interface DiaryEntryForStudentRow extends DiaryEntryRow {
@@ -96,7 +98,7 @@ export async function diaryForSection(
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("diary_entries")
-    .select("id, entry_date, due_date, body, requires_ack, subjects(id, name)")
+    .select("id, entry_date, due_date, body, requires_ack, created_by, subjects(id, name)")
     .eq("institution_id", ctx.institution.id)
     .eq("class_section_id", classSectionId)
     .gte("entry_date", window.from)
@@ -118,6 +120,7 @@ export async function diaryForSection(
       dueDate: row.due_date,
       requiresAck: row.requires_ack,
       ackCount: counts ? counts.get(row.id) ?? 0 : null,
+      isMine: row.created_by === ctx.user.id,
     };
   });
 }
