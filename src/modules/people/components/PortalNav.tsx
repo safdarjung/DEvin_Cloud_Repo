@@ -11,6 +11,7 @@ const TABS = [
   { href: "/fees", label: "Fees" },
   { href: "/results", label: "Results" },
   { href: "/assignments", label: "Assignments" },
+  { href: "/meetings", label: "Meetings" },
   { href: "/notifications", label: "Notifications" },
 ] as const;
 
@@ -43,7 +44,7 @@ export function PortalNav({
         actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
       />
       <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
-        {TABS.map((tab) => (
+        {TABS.filter((tab) => tab.href !== "/meetings" || role === "guardian").map((tab) => (
           <Link
             key={tab.href}
             href={`${basePath}${tab.href}?student=${selection.studentId}`}
