@@ -74,12 +74,17 @@ export async function callAs<I, O>(
   // unused module instance for every other db test, which still imports the
   // real `@/lib/supabase/server`.
   setActingClient(fixture.clientAs(role) as unknown as SupabaseClient<Database>);
+  inFlightCalls += 1;
   try {
     return await action(fixture.slug, input, ctx);
   } finally {
-    setActingClient(null);
+    // Concurrent callAs (same role) share the single acting client; only the last one clears it.
+    inFlightCalls -= 1;
+    if (inFlightCalls === 0) setActingClient(null);
   }
 }
+
+let inFlightCalls = 0;
 
 export async function closeActionsHelper(): Promise<void> {
   await sql.end();

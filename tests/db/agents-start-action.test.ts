@@ -138,7 +138,11 @@ describe("M23-T19 agent.start", () => {
       ]);
 
       const codes = [first, second].map((r) => (r.ok ? "ok" : r.error.code)).sort();
-      expect(codes).toEqual(["conflict", "ok"]);
+      // The loser sees `conflict` if it overlaps the winner's claim, `invalid_state` if it lands after the
+      // (mocked, instant) run already finished — either way exactly one start wins.
+      expect(codes).toHaveLength(2);
+      expect(codes.filter((c) => c === "ok")).toHaveLength(1);
+      expect(codes.find((c) => c !== "ok")).toMatch(/^(conflict|invalid_state)$/);
       expect(mockedExecuteAgentRun).toHaveBeenCalledTimes(1);
     } finally {
       await inst.cleanup();

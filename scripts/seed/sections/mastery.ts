@@ -6,6 +6,10 @@ import type { SeedContext } from "../lib/context.ts";
 // (0093 part 2); ctx.admin is the service-role client every seed section
 // already uses.
 export async function run(ctx: SeedContext): Promise<void> {
-  const { error } = await ctx.admin.rpc("compute_mastery", { p_institution_id: ctx.institutionId });
-  if (error) throw new Error(`mastery: compute_mastery failed: ${error.message}`);
+  // Direct SQL, not ctx.admin.rpc: a full-tenant compute (3k students) can outlast the PostgREST
+  // statement_timeout under load and leave the demo tenant half-seeded. Lifted for this transaction only.
+  await ctx.sql.begin(async (tx) => {
+    await tx`set local statement_timeout = 0`;
+    await tx`select public.compute_mastery(${ctx.institutionId}::uuid)`;
+  });
 }
