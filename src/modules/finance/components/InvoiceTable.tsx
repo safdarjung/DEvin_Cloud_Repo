@@ -19,9 +19,11 @@ const STATUS_OPTIONS = ["all", "issued", "part_paid", "paid", "cancelled"] as co
 interface InvoiceTableProps {
   institutionSlug: string;
   invoices: InvoiceSummary[];
+  /** The page already filtered server-side (status/search); hide the client status filter. */
+  serverFiltered?: boolean;
 }
 
-export function InvoiceTable({ institutionSlug, invoices }: InvoiceTableProps) {
+export function InvoiceTable({ institutionSlug, invoices, serverFiltered }: InvoiceTableProps) {
   const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>("all");
 
   const filtered = useMemo(
@@ -31,7 +33,7 @@ export function InvoiceTable({ institutionSlug, invoices }: InvoiceTableProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      {!serverFiltered && <div className="flex items-center gap-2">
         <Label htmlFor="statusFilter">
           Status
         </Label>
@@ -47,7 +49,7 @@ export function InvoiceTable({ institutionSlug, invoices }: InvoiceTableProps) {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </div>}
 
       {filtered.length === 0 ? (
         <EmptyState title="No invoices" description="No invoices match this filter." />

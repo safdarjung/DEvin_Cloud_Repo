@@ -4,6 +4,7 @@ import "server-only";
 // owner/principal/admin/admissions.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { ilikeTerm, LIST_PAGE_SIZE, pageRange, type PageResult } from "@/lib/list-search";
 import { DEFAULT_ENQUIRY_STAGES, type ApplicationStatus, type EnquiryStage } from "./state";
 
 export interface EnquiryNote {
@@ -164,6 +165,30 @@ export async function listApplications(ctx: TenantContext, status?: ApplicationS
   const { data, error } = await query;
   if (error) throw error;
   return ((data ?? []) as ApplicationQueryRow[]).map(toApplicationRow);
+}
+
+/** Paginated applications list: optional status filter and `q` search (application no, applicant first/last name). */
+export async function listApplicationsPage(
+  ctx: TenantContext,
+  opts: { status?: ApplicationStatus; q?: string; page: number },
+): Promise<PageResult<ApplicationRow>> {
+  const supabase = await createClient();
+  const [from, to] = pageRange(opts.page);
+  let query = supabase
+    .from("applications")
+    .select(APPLICATION_COLUMNS, { count: "exact" })
+    .eq("institution_id", ctx.institution.id)
+    .order("created_at", { ascending: false })
+    .range(from, to);
+  if (opts.status) query = query.eq("status", opts.status);
+  const q = opts.q?.trim();
+  if (q) {
+    const t = ilikeTerm(q);
+    query = query.or(`application_no.ilike.${t},applicant->>firstName.ilike.${t},applicant->>lastName.ilike.${t}`);
+  }
+  const { data, error, count } = await query;
+  if (error) throw error;
+  return { rows: ((data ?? []) as ApplicationQueryRow[]).map(toApplicationRow), total: count ?? 0, page: opts.page, pageSize: LIST_PAGE_SIZE };
 }
 
 export async function getApplication(ctx: TenantContext, applicationId: string): Promise<ApplicationRow | null> {
