@@ -160,6 +160,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await runStructured({
     ctx,
     feature: "attendance_pattern_insight",
+    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
     schema: AttendanceInsightGenerationSchema,
     instructions: ATTENDANCE_INSIGHT_INSTRUCTIONS,
     prompt: buildAttendanceInsightPrompt(input.students),

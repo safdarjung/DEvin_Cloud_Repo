@@ -52,6 +52,7 @@ export const explainInsight = defineAction({
     const result = await runStructured({
       ctx,
       feature: "insight_explain",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
       schema: InsightExplanationSchema,
       instructions: INSIGHT_EXPLAIN_INSTRUCTIONS,
       prompt: buildInsightExplainPrompt(toExplainInput(row)),

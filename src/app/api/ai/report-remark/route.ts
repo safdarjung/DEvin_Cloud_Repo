@@ -192,6 +192,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const generated = await runStructured({
     ctx,
     feature: "result_remark_draft",
+    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
     schema: RemarkGenerationSchema,
     instructions: REMARK_GENERATION_INSTRUCTIONS,
     prompt,

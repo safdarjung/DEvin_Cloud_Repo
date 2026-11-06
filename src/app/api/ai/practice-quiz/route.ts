@@ -157,6 +157,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const result = await runStructured({
       ctx,
       feature: "practice_quiz",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
       permission: "ai.study",
       schema: PracticeGenerationSchema,
       instructions: PRACTICE_QUIZ_INSTRUCTIONS,

@@ -322,6 +322,7 @@ export async function teacherTools(ctx: TenantContext) {
           const result = await runStructured({
             ctx,
             feature: "quiz_generation",
+            agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
             schema: QuizGenerationSchema,
             instructions: QUIZ_GENERATION_INSTRUCTIONS,
             prompt,
@@ -404,6 +405,7 @@ export async function teacherTools(ctx: TenantContext) {
           const generated = await runStructured({
             ctx,
             feature: "result_remark_draft",
+            agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
             schema: RemarkGenerationSchema,
             instructions: REMARK_GENERATION_INSTRUCTIONS,
             prompt,

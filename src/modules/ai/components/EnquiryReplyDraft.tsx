@@ -27,7 +27,7 @@ interface EnquiryReplySuccessBody {
 function errorMessage(body: EnquiryReplyErrorBody, aiPolicy: string): string {
   switch (body.error.code) {
     case "ai_unavailable":
-      return "Local AI engine is offline; retry or write the note manually";
+      return "AI is unavailable right now; retry or write the note manually";
     case "ai_invalid_output":
       return "Could not produce a valid draft; try again";
     case "ai_policy_blocked":

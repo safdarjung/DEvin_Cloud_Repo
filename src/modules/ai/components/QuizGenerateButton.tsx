@@ -33,7 +33,7 @@ interface QuizErrorBody {
 function errorMessage(body: QuizErrorBody, aiPolicy: string): string {
   switch (body.error.code) {
     case "ai_unavailable":
-      return "Local AI engine is offline; retry or write the quiz manually";
+      return "AI is unavailable right now; retry or write the quiz manually";
     case "ai_invalid_output":
       return "Could not produce a valid quiz; try fewer questions";
     case "ai_policy_blocked":

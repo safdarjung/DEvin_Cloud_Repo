@@ -25,6 +25,13 @@ export interface RunStructuredInput<T> {
   maxOutputTokens?: number;
   /** Defaults to `ai.generate`; a student-facing caller passes `ai.study`. */
   permission?: Permission;
+  /**
+   * Owner cloud exception (D28, extended 2026-11-06 — 12-decision-log.md): with
+   * `GEMINI_API_KEY` set, run on Gemini regardless of `ai_policy`; the prompt is
+   * still redacted. Only for prompts without student-personal data; callers opt in
+   * one by one, every other caller keeps the policy plan (C-62).
+   */
+  agentCloud?: boolean;
 }
 
 export interface RunStructuredOutput<T> {
@@ -55,17 +62,21 @@ function unavailableMessage(step: ProviderStep, aiPolicy: AiPolicy): string {
  * return. Never throws across the action boundary.
  */
 export async function runStructured<T>(input: RunStructuredInput<T>): Promise<ActionResult<RunStructuredOutput<T>>> {
-  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate" } = input;
+  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate", agentCloud } = input;
 
   if (!hasPermission(ctx, permission)) {
     return fail("forbidden", "You do not have permission to use AI features.");
   }
 
-  const plan = resolvePlan({
-    aiPolicy: ctx.institution.ai_policy,
-    cloudEnabled: process.env.AI_CLOUD_ENABLED === "true",
-    hasCloudKey: Boolean(process.env.ANTHROPIC_API_KEY),
-  });
+  const useGemini = agentCloud === true && Boolean(process.env.GEMINI_API_KEY);
+  const plan: ProviderStep[] = useGemini
+    ? ["cloud"]
+    : resolvePlan({
+        aiPolicy: ctx.institution.ai_policy,
+        cloudEnabled: process.env.AI_CLOUD_ENABLED === "true",
+        hasCloudKey: Boolean(process.env.ANTHROPIC_API_KEY),
+      });
+  const modelIdFor = (step: ProviderStep): string => (useGemini ? providers.geminiModelId() : stepModelId(step));
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;
   try {
@@ -125,8 +136,13 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       const effectiveInstructions = forStep(instructions);
 
       // Cloud provider module is imported here, inside this branch only (C-62).
-      const model = step === "local" ? providers.getLocalModel() : await providers.getCloudModel("quality");
-      const modelId = stepModelId(step);
+      const model =
+        step === "local"
+          ? providers.getLocalModel()
+          : useGemini
+            ? await providers.getGeminiModel()
+            : await providers.getCloudModel("quality");
+      const modelId = modelIdFor(step);
 
       const attempt = (repairNote?: string) =>
         generateText({
@@ -180,7 +196,7 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
         ctx,
         feature,
         provider: step,
-        model: stepModelId(step),
+        model: modelIdFor(step),
         inputTokens: 0,
         outputTokens: 0,
         latencyMs,

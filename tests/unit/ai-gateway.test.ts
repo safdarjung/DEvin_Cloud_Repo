@@ -21,6 +21,8 @@ vi.mock("@/lib/ai/providers", () => ({
   getCloudModel: vi.fn(async () => "cloud-model-handle"),
   localModelId: vi.fn(() => "qwen3:4b-instruct-2507-q4_K_M"),
   cloudModelId: vi.fn(() => "claude-sonnet-5"),
+  getGeminiModel: vi.fn(async () => "gemini-model-handle"),
+  geminiModelId: vi.fn(() => "gemini-flash-lite-latest"),
 }));
 
 vi.mock("@/lib/ai/usage", () => ({
@@ -78,6 +80,7 @@ beforeEach(() => {
   vi.mocked(usage.acquireConcurrencySlot).mockReturnValue(true);
   delete process.env.AI_CLOUD_ENABLED;
   delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.GEMINI_API_KEY;
 });
 
 afterEach(() => {
@@ -108,6 +111,39 @@ describe("runStructured", () => {
     expect(usage.logUsage).toHaveBeenCalledWith(
       expect.objectContaining({ ok: false, errorCode: "ai_unavailable", provider: "local" }),
     );
+  });
+
+  it("agentCloud + GEMINI_API_KEY: a local_only school runs on Gemini, redacted, never local or Anthropic", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const result = await runStructured({
+      ctx: fakeCtx("local_only"),
+      ...baseInput,
+      prompt: "Remark for Aarav Sharma",
+      denyNames: ["Aarav Sharma"],
+      agentCloud: true,
+    });
+    expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "gemini-flash-lite-latest", fallback: false } });
+    expect(generateTextMock.mock.calls[0][0]).toMatchObject({ model: "gemini-model-handle" });
+    expect(JSON.stringify(generateTextMock.mock.calls[0][0].prompt)).not.toContain("Aarav Sharma");
+    expect(providers.getLocalModel).not.toHaveBeenCalled();
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
+  });
+
+  it("agentCloud without GEMINI_API_KEY keeps the policy plan (local_only -> local)", async () => {
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
+    expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
+    expect(providers.getGeminiModel).not.toHaveBeenCalled();
+  });
+
+  it("a caller that does not opt in stays local on local_only even with GEMINI_API_KEY set (C-62)", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput });
+    expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
+    expect(providers.getGeminiModel).not.toHaveBeenCalled();
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
   });
 
   it("returns quota_exceeded without calling a provider", async () => {

@@ -135,6 +135,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await runStructured({
     ctx,
     feature: "dashboard_briefing",
+    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
     schema: BriefingHeadlineSchema,
     instructions: BRIEFING_HEADLINE_INSTRUCTIONS,
     prompt,

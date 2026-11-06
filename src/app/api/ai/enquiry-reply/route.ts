@@ -167,6 +167,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await runStructured({
     ctx,
     feature: "enquiry_reply_draft",
+    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
     schema: EnquiryReplySchema,
     instructions: ENQUIRY_REPLY_INSTRUCTIONS,
     prompt,
