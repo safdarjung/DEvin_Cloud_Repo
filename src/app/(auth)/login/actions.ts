@@ -8,6 +8,13 @@ import { signInAsDemo } from "@/lib/auth/demo-session";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
 import { createClient } from "@/lib/supabase/server";
 
+// No explicit target: go to the tenant picker, which forwards to the role home.
+// Falling back to "/" would land signed-in users on the marketing page.
+function postLoginPath(next: string | undefined): string {
+  const path = sanitizeNextPath(next);
+  return path === "/" ? "/select" : path;
+}
+
 const LoginInput = z
   .object({
     email: z.string().trim().email(),
@@ -46,7 +53,7 @@ export async function login(
     return INVALID_CREDENTIALS;
   }
 
-  redirect(sanitizeNextPath(parsed.data.next));
+  redirect(postLoginPath(parsed.data.next));
 }
 
 const DemoLoginInput = z
@@ -86,5 +93,5 @@ export async function demoLogin(
     return INVALID_CREDENTIALS;
   }
 
-  redirect(sanitizeNextPath(parsed.data.next));
+  redirect(postLoginPath(parsed.data.next));
 }

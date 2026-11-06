@@ -195,6 +195,7 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
       "jobs_claim",
       "jobs_complete",
       "submit_public_enquiry",
+      "submit_platform_lead",
       "record_online_payment",
       // M21-T3: service-role-only series sources + sweep (rulings "Series sources").
       "assert_forecast_window",

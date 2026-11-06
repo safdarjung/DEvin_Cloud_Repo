@@ -1,0 +1,32 @@
+# Fabric
+
+> Fabric is an AI-assisted operating system for private schools: admissions, attendance, fees, exams and results, assignments, a school website CMS, and notifications in one multi-tenant, permission-checked workspace.
+
+This file is optional documentation for AI agents and crawlers. Nothing here guarantees search ranking or citation. If this file and a public page disagree, the page is correct.
+
+## Public pages
+- [Product](/product): what Fabric does
+- [Modules](/modules): module list
+- [AI](/ai): how AI is used and bounded
+- [Security](/security): tenant isolation, roles, audit log
+- [Pricing](/pricing)
+- [How it works](/how-it-works)
+- [FAQ](/faq)
+- [Roles](/roles)
+- [Demo](/demo)
+- [Contact](/contact)
+- [Privacy](/legal/privacy), [Terms](/legal/terms), [Cookies](/legal/cookies), [Data processing](/legal/data-processing), [Acceptable use](/legal/acceptable-use)
+- [Agent notes](/for-agents.md)
+
+## Capabilities
+- Admissions, attendance, fees, exams and results, assignments, school website CMS, notifications.
+- Fee payments run through Razorpay in test mode only.
+- Email and WhatsApp notifications are simulated until a channel is configured.
+- AI features are permission-checked; a human reviews and saves AI output. Insights, forecasts and agents require human approval.
+- Multi-tenant isolation with row-level security; audit log of sensitive actions.
+
+## Not available
+AI credits or bring-your-own-key, voice, what-if simulation, marketplace purchasing.
+
+## Not for crawling
+Signed-in app routes, /api, /login, /select, /portal. See /robots.txt.
