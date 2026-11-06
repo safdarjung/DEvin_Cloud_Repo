@@ -662,6 +662,21 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
   },
+  // 0096 (M23-T2) — workflows: owner/principal/admin read every row;
+  // insert/update owner/principal only (admin can never author, matching
+  // 07 §2.2 workflow.manage); no DELETE policy (disable instead).
+  workflows: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal"],
+  },
+  // workflow_runs: owner/principal/admin read every row; every write is
+  // server-only (definers + service role, rulings "Run lifecycle").
+  workflow_runs: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+  },
   // 0086 (X03-T2) — library_books/library_copies: every active member
   // reads (titles aren't sensitive); owner/principal/admin write.
   library_books: {
@@ -684,6 +699,23 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["O"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: [],
+  },
+
+  // 20261028000087 (X04-T2) — fee_plans: late fees + instalment plans.
+  late_fee_rules: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "accountant"], // app.finance_write_roles() — admin excluded
+  },
+  invoice_instalments: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the instalment's invoice
+    write: [], // public.set_invoice_instalments only; no direct write policy
+  },
+  late_fee_charges: {
+    classes: ["C"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"], // scoped via the charge's invoice
+    write: [], // app.apply_late_fees (X04-T4) only; immutable (block_mutation)
   },
   // 0091 (X02-T2) — certificates: staff-only (certificate.manage role set),
   // narrower than student_lifecycle_events (no teacher/student/guardian —
@@ -888,6 +920,11 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   survey_responses: {
     classes: ["A", "O"],
     read: ["owner", "principal", "admin"],
+    write: [],
+  },
+  mastery_snapshots: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"],
     write: [],
   },
 };

@@ -1,0 +1,10 @@
+Packet: M25-T5 Action `briefing.generate` + query `briefings.today`
+Files changed: src/modules/insights/briefing.actions.ts (found complete from interrupted run, unchanged) · src/modules/insights/query-defs.ts (Edit: add briefings.today) · src/app/api/v1/actions/all-actions.ts (Edit: manifest import) · tests/db/api-query-route.test.ts (Edit: smoke sample) · tests/security/escalation.test.ts (Edit: C-03 fixture + rolesForbidden field) · tests/db/briefing-actions.test.ts (new)
+Behavior implemented: generateBriefing (ai_briefings, insight.read -> ensureBriefing, audits counts-only once per day); briefings.today query (-> readBriefing, null-safe). escalation.test.ts gained optional `rolesForbidden` on FIXTURES (additive, all other entries unaffected) since exam_controller holds insight.read but has no brief role — a role-based forbidden the generic permission walk can't express otherwise.
+Tests run: `pnpm test:db tests/db/briefing-actions.test.ts` -> 1 file, 6 passed. `pnpm test:db tests/db/api-query-route.test.ts` -> 1 file, 7 passed. `pnpm test:security tests/security/escalation.test.ts tests/security/module-gate.test.ts` -> 2 files, 1850 passed. `pnpm test tests/unit/action-names-unique.test.ts` -> 6 passed. `pnpm lint` -> 0 errors, 8 pre-existing warnings (tests/unit/mastery-schemas.test.ts, not mine). `pnpm typecheck` -> clean.
+Tests not run and why: none of this packet's; no db:reset/seed/types (lane rules).
+Limitations / honesty label: none — no AI call in this packet, no UI.
+Security / integration risks: query/action both gate on insight.read + ai_briefings module before any read/write (defineAction/defineQuery guardedCall); write path unchanged from T4 (service-role confined to briefings.service-role.ts). escalation.test.ts change is test-only, additive, verified against the full 1850-case walk.
+Follow-ups: none new.
+New dependencies: none.
+Assumptions made: query-defs.ts/all-actions.ts/escalation.test.ts/api-query-route.test.ts re-read immediately before editing (concurrent T4/T7 agents); edits were append-only single lines/blocks, no existing lines moved.

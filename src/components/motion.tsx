@@ -137,3 +137,28 @@ export function AnimatedNumber({ value, format = "number" }: { value: number; fo
     </span>
   );
 }
+
+/**
+ * Shared variants for the few places that need JS motion (menus, drawers,
+ * viewport reveals). Durations 160-260ms; MotionProvider's reducedMotion="user"
+ * strips the transforms for reduced-motion users.
+ */
+export const VARIANTS = {
+  pageEnter: { hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0, transition: { duration: 0.22, ease: MOTION.ease.out } } },
+  reveal: { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: MOTION.ease.out } } },
+} as const;
+
+/** Reveals a lower-page section once when it scrolls into view. Content is visible without JS (SSR renders `show`). */
+export function Reveal({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <motion.div
+      className={className}
+      variants={VARIANTS.reveal}
+      initial={false}
+      whileInView="show"
+      viewport={{ once: true, margin: "0px 0px -10% 0px" }}
+    >
+      {children}
+    </motion.div>
+  );
+}

@@ -91,6 +91,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.decide_insight",
   "public.decide_leave",
   "public.decide_student_leave",
+  "public.decide_workflow_run",
   "public.enqueue_fee_reminders",
   "public.enqueue_term_invoices",
   "public.enrol_applicant",
@@ -124,8 +125,10 @@ const PUBLIC_AUTHENTICATED = [
   "public.return_library_loan",
   "public.revoke_invitation",
   "public.set_insight_explanation",
+  "public.set_invoice_instalments",
   "public.staff_check_in",
   "public.start_recheck_review",
+  "public.start_workflow_run",
   "public.submit_assignment",
   "public.submit_attendance",
   "public.submit_survey_response",
@@ -193,12 +196,20 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
       "jobs_claim",
       "jobs_complete",
       "submit_public_enquiry",
+      "submit_platform_lead",
       "record_online_payment",
+      "apply_late_fees",
+      "enqueue_due_late_fees",
       // M21-T3: service-role-only series sources + sweep (rulings "Series sources").
       "assert_forecast_window",
       "forecast_fee_series",
       "forecast_attendance_series",
       "enqueue_due_forecasts",
+      // M20-T5 — rulings "Algorithm"/"Scheduling": compute_mastery is
+      // security invoker but only the job handler's/sweep's admin client
+      // ever calls it; enqueue_mastery_compute is the definer sweep.
+      "compute_mastery",
+      "enqueue_mastery_compute",
     ];
     for (const name of serviceOnly) {
       const row = rows.find((r) => r.schema === "public" && r.name === name)!;

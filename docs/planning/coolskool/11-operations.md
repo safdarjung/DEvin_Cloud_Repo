@@ -60,7 +60,7 @@ Dev/demo separation: the demo institution is the only `is_demo = true` tenant; r
 
 - `pnpm seed` — idempotent on an empty demo tenant; aborts if the demo institution already has students unless `DEMO_RESET_ALLOWED=true` (then resets first).
 - `pnpm demo:reset` — `app.demo_reset` + seed; prints counts and duration.
-- `pnpm jobs:run` — processes queued jobs once (use in dev instead of cron); `/api/jobs/run` is called by Vercel Cron in demo.
+- `pnpm jobs:run` — processes queued jobs once (use in dev instead of cron); `/api/jobs/run` is called by Vercel Cron in demo. The runner sweeps late-fee rules before the job claim loop: `enqueue_due_late_fees()` enqueues one `fee_plans.late_fees` job per institution per local day when the `fee_plans` module is enabled and active rules exist. The late_fees handler applies charges (nightly logic: per unpaid unit, flat or per-day capped amount, respecting grace periods). Late fees appear in invoices and are immutable once charged; the module-off gate is in TS (`feePlans.instalments.set` returns 403 when module is disabled), not SQL.
 - Job health: `/[institution]/jobs` lists failed/dead with errors and requeue.
 
 ## 6. Backup and restore

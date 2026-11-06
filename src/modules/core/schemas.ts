@@ -5,13 +5,21 @@ import { z } from "zod";
 // Relative + .ts: the seed scripts (plain node, no path alias) import this file.
 import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
 import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
+import { MARKETING_SEGMENTS } from "../../lib/marketing/routes.ts";
+
+// Mirrors app.create_institution's list (0064) + 0101's check constraint, plus
+// every public marketing path: a school slug must never shadow a public page.
+const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  "api", "s", "login", "logout", "auth", "admin", "app", "www", "static", "public", "demo", "invite", "onboarding",
+  "portal", "sw", ...MARKETING_SEGMENTS,
+]);
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
 // checks live in create_institution (SQL); this only validates shape.
 export const CreateInstitutionSchema = z
   .object({
     name: z.string().trim().min(2).max(120),
-    slug: z.string().trim().min(3).max(40),
+    slug: z.string().trim().min(3).max(40).refine((s) => !RESERVED_SLUGS.has(s), "slug is reserved"),
     timezone: z.string().trim().min(1).optional(),
     yearStart: isoDate.optional(),
   })

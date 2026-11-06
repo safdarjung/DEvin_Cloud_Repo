@@ -26,17 +26,9 @@ export const DashboardBriefingRequestSchema = z
 
 export type DashboardBriefingRequestInput = z.infer<typeof DashboardBriefingRequestSchema>;
 
-// Lesson 9 (BRIEF-COMMON.md): every AI structured-output string capped at
-// 500 chars.
-export const DashboardBriefingOutputSchema = z
-  .object({
-    summary: z.string().trim().min(1).max(500),
-  })
-  .strict();
-
-export type DashboardBriefingOutput = z.infer<typeof DashboardBriefingOutputSchema>;
-
-// Briefing headline schema (M25-T6): 1–200 chars, strict.
+// Briefing headline schema (M25-T6): 1–200 chars, strict. Replaces the
+// legacy `DashboardBriefingOutputSchema` (deleted per rulings "Route") —
+// the route now narrates only the headline, not a free-form summary.
 export const BriefingHeadlineSchema = z
   .object({
     headline: z.string().trim().min(1).max(200),

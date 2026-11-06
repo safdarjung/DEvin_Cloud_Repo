@@ -258,7 +258,7 @@ interface OperationsDashboardLike {
   staffToday: { onLeave: number | null; absent: number | null };
   coverNeeded: unknown[];
   openMaintenance: unknown[];
-  upcomingEvents: { title: string; date: string; kind?: string }[];
+  upcomingEvents: { title: string; startsOn: string; kind?: string }[];
 }
 
 function isOperationsDashboard(data: unknown): data is OperationsDashboardLike {
@@ -304,7 +304,7 @@ function eventsItems(results: readonly BriefingSourceResult[]): Item[] {
   const operations = find(results, "dashboard.operations");
   if (isOperationsDashboard(operations)) {
     const first = operations.upcomingEvents[0];
-    return first ? [{ text: eventText(first.title, first.date, first.kind) }] : [];
+    return first ? [{ text: eventText(first.title, first.startsOn, first.kind) }] : [];
   }
   const calendar = find(results, "calendar.forRole");
   if (Array.isArray(calendar)) {

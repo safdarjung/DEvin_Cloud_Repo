@@ -2,6 +2,7 @@ import postgres from "postgres";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { createRunnerPorts, runOnceCore } from "@/modules/jobs/runner";
 import { closeRolesHelper, createTestInstitution, withTwoInstitutions } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 // C-70/C-71/C-72 already prove `app.claim_job`/`app.complete_job` themselves
 // in tests/db/platform.test.ts (0003's own suite). This file proves the
@@ -32,12 +33,16 @@ describe("jobs runner (T-037) against the real public.jobs_claim/public.jobs_com
     const key = "jobs-runner-test-c70";
     await sql`select app.enqueue_job(null, 'notify.attendance_absence', '{}'::jsonb, ${key})`;
 
-    const [summaryA, summaryB] = await Promise.all([
-      runOnceCore({ workerId: "test-worker-a" }, createRunnerPorts(admin)),
-      runOnceCore({ workerId: "test-worker-b" }, createRunnerPorts(admin)),
+    // Sweeps (reports/insights/forecasts) would enqueue real jobs for seeded tenants; this test is about claim races only.
+    const ports = () => withoutSweeps(createRunnerPorts(admin));
+    await Promise.all([
+      runOnceCore({ workerId: "test-worker-a" }, ports()),
+      runOnceCore({ workerId: "test-worker-b" }, ports()),
     ]);
 
-    expect(summaryA.claimed + summaryB.claimed).toBe(1);
+    // Other tenants' queued jobs may be claimed too; the claim race is about this single job.
+    const [row] = await sql`select attempts from public.jobs where idempotency_key = ${key}`;
+    expect(row.attempts).toBe(1);
   });
 
   it("C-71: a handler that fails is requeued with backoff, then dies at max_attempts", async () => {
@@ -47,7 +52,7 @@ describe("jobs runner (T-037) against the real public.jobs_claim/public.jobs_com
       values ('notify.attendance_absence', '{}'::jsonb, ${key}, 2)
       returning id
     `;
-    const ports = createRunnerPorts(admin);
+    const ports = withoutSweeps(createRunnerPorts(admin));
 
     const beforeFirst = Date.now();
     const first = await runOnceCore({ workerId: "test-worker-c71" }, ports);
@@ -76,7 +81,7 @@ describe("jobs runner (T-037) against the real public.jobs_claim/public.jobs_com
     const rows = await sql`select id from public.jobs where idempotency_key = ${key}`;
     expect(rows).toHaveLength(1);
 
-    const summary = await runOnceCore({ workerId: "test-worker-c72" }, createRunnerPorts(admin));
+    const summary = await runOnceCore({ workerId: "test-worker-c72" }, withoutSweeps(createRunnerPorts(admin)));
     expect(summary.claimed).toBe(1);
 
     // Still exactly one row for this key — no duplicate was ever created,
@@ -94,7 +99,7 @@ describe("jobs runner (T-037) against the real public.jobs_claim/public.jobs_com
       returning id
     `;
 
-    const summary = await runOnceCore({ workerId: "test-worker-unknown" }, createRunnerPorts(admin));
+    const summary = await runOnceCore({ workerId: "test-worker-unknown" }, withoutSweeps(createRunnerPorts(admin)));
     expect(summary).toMatchObject({ claimed: 1, succeeded: 0, requeued: 0, dead: 1 });
 
     const [row] = await sql`select status, last_error, attempts from public.jobs where id = ${job.id}::uuid`;
@@ -112,7 +117,7 @@ describe("jobs runner (T-037) against the real public.jobs_claim/public.jobs_com
       returning id
     `;
 
-    const summary = await runOnceCore({ workerId: "test-worker-stale" }, createRunnerPorts(admin));
+    const summary = await runOnceCore({ workerId: "test-worker-stale" }, withoutSweeps(createRunnerPorts(admin)));
     expect(summary.claimed).toBe(1);
 
     const [row] = await sql`select locked_by from public.jobs where id = ${job.id}::uuid`;

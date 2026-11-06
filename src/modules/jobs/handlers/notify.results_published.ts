@@ -6,6 +6,7 @@
 // never the payload — and the result's own current/published state is
 // re-checked at send time, same shape as notify.attendance_absence.ts.
 import { createNotification } from "../../notifications/service.ts";
+import { emitWorkflowEvent } from "../../workflows/events.ts";
 import type { JobHandler } from "../types.ts";
 
 export const notifyResultsPublished: JobHandler = async (job, { admin }) => {
@@ -37,6 +38,10 @@ export const notifyResultsPublished: JobHandler = async (job, { admin }) => {
   // Defense in depth: no RPC ever unpublishes an exam, but never send on a
   // stale assumption about current state.
   if (exam.status !== "published") return;
+
+  // M23-T14: one workflow event per exam, before recipient lookups
+  // (rulings §Events). Many result jobs of one exam dedupe into one run.
+  await emitWorkflowEvent(admin, result.institution_id, "results.published", result.exam_id);
 
   const { data: institution, error: institutionError } = await admin
     .from("institutions")

@@ -226,6 +226,24 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
     expect(holders.sort()).toEqual(["owner", "principal"].sort());
   });
 
+  it("workflow.read is held by owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("workflow.read"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("workflow.manage is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("workflow.manage"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("teacher, accountant, exam_controller, admissions, guardian, student hold neither workflow permission", () => {
+    const noRead = ["accountant", "admissions", "exam_controller", "guardian", "student", "teacher"];
+    for (const role of noRead) {
+      expect(permissionsFor(role as Role).includes("workflow.read")).toBe(false);
+      expect(permissionsFor(role as Role).includes("workflow.manage")).toBe(false);
+    }
+  });
+
   it("agent.run is held by owner, principal, and admin", () => {
     const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("agent.run"));
     expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());

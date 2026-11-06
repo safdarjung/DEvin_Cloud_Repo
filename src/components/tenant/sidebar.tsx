@@ -199,14 +199,16 @@ export function TenantSidebar({
   );
 }
 
-export function MobileNav({ items }: { items: NavLinkItem[] }) {
+export function MobileNav({ items, trigger }: { items: NavLinkItem[]; trigger?: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="size-10 lg:hidden" aria-label="Open menu">
-          <Menu className="size-5" aria-hidden />
-        </Button>
+        {trigger ?? (
+          <Button type="button" variant="ghost" size="icon" className="size-10 lg:hidden" aria-label="Open menu">
+            <Menu className="size-5" aria-hidden />
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent side="left" className="gap-0 p-3">
         <div className="flex min-h-10 items-center px-3">

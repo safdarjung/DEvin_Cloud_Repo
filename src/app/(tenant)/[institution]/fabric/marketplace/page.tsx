@@ -1,7 +1,8 @@
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { demoFixturesEnabled } from "@/modules/core/demo/fixtures";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
-import { WorkspaceSkeleton } from "@/modules/fabric/components/workspace-skeleton";
+import { PlannedWorkspace } from "@/modules/fabric/components/planned-workspace";
 
 export default async function MarketplacePage({
   params,
@@ -14,7 +15,7 @@ export default async function MarketplacePage({
 
   return (
     <FabricPage title="Marketplace" ws="marketplace">
-      <WorkspaceSkeleton packet="F-UI-11" />
+      <PlannedWorkspace demo={demoFixturesEnabled(ctx)} packet="F-UI-11" name="Marketplace" base={`/${institutionSlug}`} />
     </FabricPage>
   );
 }

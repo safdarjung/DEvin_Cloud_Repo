@@ -201,22 +201,22 @@ stateDiagram-v2
 - **Feedback:** report card shows "Corrected on <date> after recheck" with current values; exam roles see version history.
 - **Tests:** C-42, C-44, J-11, J-12.
 
-### W9 — Fee structure → assignment → invoice → payment → receipt → ledger
+### W9 — Fee structure → assignment → invoice → payment → receipt → ledger; late fees and instalments (X04)
 
-- **Trigger:** accountant configures structures (`/finance`), generates term invoices, records payments at the counter.
-- **Preconditions:** academic year, terms, grades exist; students enrolled; `invoice_no`/`receipt_no` sequences exist for the financial year.
-- **Actor / permission:** `finance.structure.manage` → `upsertFeeStructure({ academicYearId, gradeId, name: shortText, components: z.array({ head: z.enum(heads), amount: money, frequency: z.enum(['one_time','annual','term','quarterly','monthly']), appliesToNewOnly: z.boolean() }).min(1) })`, `assignFeeStructure({ studentId, feeStructureId, concessions?: z.array({ kind, head?, percent?, amount?, reason: shortText }) })`; `finance.invoice.generate` → `generateTermInvoices({ termId, gradeIds?: uuid[] })`; `finance.payment.record` → `recordPayment({ invoiceId, amount: money.positive(), mode: z.enum(settings modes), reference?: shortText, receivedAt: z.string().datetime(), idempotencyKey: uuid })`.
-- **States:** invoice `issued → part_paid → paid` (and `cancelled`, admin only, P1); payments and receipts have no states.
-- **Validation:** concession has percent xor amount; payment amount ≤ outstanding; mode in settings; `receivedAt` not in the future.
-- **Side effects:** invoice generation creates invoices + lines + ledger (Dr `fees_receivable` / Cr `fee_income`, Dr `concession_expense` for concessions); payment creates payment + receipt (number from `receipt_no:<FY>`) + ledger (Dr `cash` for cash, Dr `bank` otherwise / Cr `fees_receivable`) and updates `paid_total`/status.
-- **DB / transaction:** `app.generate_invoice(student_id, term_id)` (idempotent on (student, term); `annual`/`one_time` in Term 1 only or at first invoice for new admissions; `term` each term; `monthly` × 6 and `quarterly` × 2 per term) and `app.record_payment(...)`, both single transactions; `generateTermInvoices` enqueues `finance.generate_term_invoices` (key `invoices:<term_id>:<grade_id|all>`) whose handler loops enrolments and calls the function per student.
-- **Notifications:** none on payment (fee receipt SMS is P1); overdue reminders via `fee_reminder` (W9a).
-- **Approvals:** concessions record `approved_by` = caller with `finance.structure.manage`; no separate approval step in the demo.
-- **Failure / retry:** job failures retry per W12 and are idempotent per student; a failed payment leaves nothing behind; the cashier retries with the same `idempotencyKey` (generated when the dialog opens).
-- **Duplicates:** `payments.idempotency_key` unique → the function returns the existing payment and receipt.
-- **Audit:** `finance.invoice.generated`, `finance.payment.recorded` (amount, mode, receipt no).
-- **Feedback:** printable receipt page; invoice shows outstanding; dashboard collection tile updates.
-- **Tests:** C-50..C-54, unit tests for proration and concession math, J-07 (guardian view; demo records a payment for Aarav Sharma's Term 2 invoice live, `05 §8.1`).
+- **Trigger:** accountant configures structures (`/finance`), generates term invoices, records payments at the counter; late-fee rules apply nightly to unpaid invoices; payment respects instalment priorities.
+- **Preconditions:** academic year, terms, grades exist; students enrolled; `invoice_no`/`receipt_no` sequences exist for the financial year; a late-fee rule may be active on the fee structure.
+- **Actor / permission:** `finance.structure.manage` → `upsertFeeStructure(...)`, `assignFeeStructure(...)`, `feePlans.lateFeeRule.upsert({ feeStructureId, kind: flat|per_day, amount, graceDays, cap? })`; `finance.invoice.generate` → `generateTermInvoices({ termId, ... })`; `finance.plan.manage` → `feePlans.instalments.set({ invoiceId, parts: {dueOn, amount}[] })`; `finance.payment.record` → `recordPayment({ invoiceId, amount, ... })`.
+- **States:** invoice `issued → part_paid → paid` (and `cancelled`, admin only, P1); no-plan unit = the whole invoice (unit_seq 0, due = `due_on`); with-plan unit = each instalment (seq ≥ 1, due = `due_on` per part). Payment waterfall: principal (by instalment seq order) first, charges (late fees, library fines) last.
+- **Validation:** late-fee rule: per_day requires cap ≥ amount; plan: 2–12 parts, sum = principal (tuition through activity heads only, never charges), dates strictly increasing, first ≥ invoice `due_on`, last ≤ year end; payment amount ≤ (principal remaining + charges outstanding).
+- **Side effects:** invoice generation creates invoices + lines + ledger (Dr `fees_receivable` / Cr `fee_income`, Dr `concession_expense`); late-fee sweep (nightly, W12) applies `public.apply_late_fees(institution_id)` per unit, inserting `late_fee_charges` (amounts via `app.add_invoice_charge` to maintain immutability); payment creates payment + receipt + ledger, allocating principal first (instalment seq order), charges last; `feePlans.instalments.set` replaces the plan, locked once any late fee accrues.
+- **DB / transaction:** `app.generate_invoice`, `app.record_payment`, `public.set_invoice_instalments`, `public.apply_late_fees` (the last is service-role only); generating term invoices enqueues a job; applying late fees happens nightly via `fee_plans.late_fees` handler (W12).
+- **Notifications:** none on payment (fee receipt SMS is P1); late-fee overdue reminders via `fee_reminder` (W9a); no notification when a late fee is charged (the charge is in the invoice; reminders show it).
+- **Approvals:** late-fee rule is not approved (threshold values from settings or the school's finance board, recorded by the accountant); concessions record `approved_by`; plan changes require `finance.plan.manage` (no further approval).
+- **Failure / retry:** late-fee sweep is idempotent per (invoice, unit_seq, charge_date); payment retries via same `idempotencyKey`; plan replacement is allowed only until the first late fee (error `invalid_state` after).
+- **Duplicates:** `invoice_instalments` (invoice_id, seq) unique; `late_fee_charges` (invoice_id, unit_seq, charge_date) unique (top-up: if the same unit is charged again the same day, skip); `payments.idempotency_key` unique.
+- **Audit:** `finance.invoice.generated`, `finance.payment.recorded` (amount, mode, receipt no), `fee_plans.late_fee_rule.upserted` (structure, kind, amount, grace, cap, is_active), `fee_plans.instalments.set` (invoice, parts, previous_parts), `finance.invoice.charge_added` per late fee (head = late_fee, amount, via `app.add_invoice_charge`).
+- **Feedback:** receipt page shows payment waterfall; plan UI shows per-part status and outstanding charges; late-fee rules list shows active rules per structure; dashboard defaulters filter drops plan invoices with no overdue part.
+- **Tests:** C-50..C-54, unit tests for proration/concession/plan math, `tests/db/fee-plans-acceptance.test.ts`, J-07 (guardian view; demo records a payment for Aarav Sharma's Term 2 invoice live, `05 §8.1`).
 
 ### W9a — Payment void/refund/bounce → fee reminders → online intent → webhook (M12)
 
@@ -296,7 +296,7 @@ stateDiagram-v2
 
 ## 4. Audit action catalog
 
-`seed.completed` · `demo.reset` · `membership.changed` · `website.page.published` · `admissions.enquiry.status` · `admissions.decision` · `admissions.enrolled` · `attendance.submitted` · `attendance.corrected` · `assignment.published` · `exam.marks.entered` · `exam.published` · `exam.recheck.requested` · `exam.recheck.applied` · `exam.recheck.rejected` · `finance.invoice.generated` · `finance.payment.recorded` · `finance.payment.voided` (M12; never carries the free-text `reason`) · `finance.reminders.enqueued` (M12) · `finance.payment.intent_created` (M12; amount, provider) · `finance.invoice.charge_added` (X03; head, amount when library fines added) · `library.loan.issued` (X03; loan_id, copy_id, borrower_kind, due_on) · `library.loan.renewed` (X03; loan_id, due_on, renew_count) · `library.loan.returned` (X03; loan_id, days_late, fine_amount, fine_waived, invoice_id) · `job.requeued` · `ai.request` (metadata only). Every entry carries `actor_user_id`, entity ids, and before/after where a row changed.
+`seed.completed` · `demo.reset` · `membership.changed` · `website.page.published` · `admissions.enquiry.status` · `admissions.decision` · `admissions.enrolled` · `attendance.submitted` · `attendance.corrected` · `assignment.published` · `exam.marks.entered` · `exam.published` · `exam.recheck.requested` · `exam.recheck.applied` · `exam.recheck.rejected` · `finance.invoice.generated` · `finance.payment.recorded` · `finance.payment.voided` (M12; never carries the free-text `reason`) · `finance.reminders.enqueued` (M12) · `finance.payment.intent_created` (M12; amount, provider) · `finance.invoice.charge_added` (X03, X04; head, amount when library fines or late fees added) · `library.loan.issued` (X03; loan_id, copy_id, borrower_kind, due_on) · `library.loan.renewed` (X03; loan_id, due_on, renew_count) · `library.loan.returned` (X03; loan_id, days_late, fine_amount, fine_waived, invoice_id) · `fee_plans.late_fee_rule.upserted` (X04; fee_structure_id, kind, amount, grace_days, cap, is_active) · `fee_plans.instalments.set` (X04; invoice_id, parts, previous_parts) · `job.requeued` · `ai.request` (metadata only). Every entry carries `actor_user_id`, entity ids, and before/after where a row changed.
 
 ## 5. Approval summary
 
@@ -318,7 +318,47 @@ Job execution, handler signature, retry and idempotency: see §W12. The dispatch
 
 `finance.fee_reminder` (M12, `src/modules/jobs/handlers/finance.fee_reminder.ts`): payload `{ term_id, as_of }` built in SQL by `public.enqueue_fee_reminders`; idempotency key `fee_reminders:<term_id>:<as_of>` (one run per term per day); the handler re-reads overdue invoices at run time and never trusts payload fields beyond those two; one job per term, no chunked continuation (DBT-69). Daily scheduling is M23 (workflows), not M12.
 
+`fee_plans.late_fees` (X04, `src/modules/jobs/handlers/fee_plans.late_fees.ts`): payload `{ as_of: "YYYY-MM-DD" }` (institution local date) built in SQL by `public.enqueue_due_late_fees()` sweep; idempotency key `fee_plans.late_fees:<institution_id>:<as_of>` (one run per institution per local day); the handler calls `public.apply_late_fees(institution_id)` and logs the result (charges count and total amount); service-role only; zeros when `app.module_enabled(institution_id, 'fee_plans')` is false. Nightly sweep: first runner tick after local midnight enqueues one job per institution with active late-fee rules (W12).
+
+
 **`report.generate`** (M15, module `scheduled_reports`): payload `{scheduled_report_id uuid, fire_at timestamptz}`, built by `public.enqueue_due_reports()` sweep. Reads schedule (missing/paused → no-op), re-parses params with source schema, calls `runReportSource(institution_id, source, params, fire_at)` to fetch allowlisted rows via RPC invoker, converts to CSV (`rowsToCsvText`), uploads to `tenant-docs` at deterministic path, inserts/upserts `documents` row (entity_type `report`, mime `text/csv`), notifies recipient-role members of that schedule. Idempotent: same path, document, and notification key on replay. Cron subset evaluates in institution timezone (05 §4.1); cadence = runner cadence (default 5 min). Shortcut 10 MB / 20 000-row cap; later sources need a migration + `app.report_source_roles` case.
 
 **`insights.detect`** (M19, module `insights`): payload `{as_of: "YYYY-MM-DD"}`, built in SQL by `public.enqueue_insight_detection()` per institution per local day (nightly sweep). Runs 8 detectors in order, each calling a source RPC with `.range()` paging, passing rows to a pure `detect*()` function, capping 20 per signal, writing to `insights` via `public.record_insights` (idempotent by dedupe_key, skips invalid sections). If any detector fails, catches and logs it, continues others, then throws `detectors failed: <keys>` for runner retry. Handler defined at `src/modules/jobs/handlers/insights.detect.ts`; manifest `JOB_MODULES.insights.detect = "insights"`. Insight state machine: `new|reviewing|actioned` can move to `resolved|dismissed`; reviewed rows can move `reviewing→reviewing` (reassign), or any open status plus `resolved` can have actions recorded; approval_required rows need owner/principal to resolve/dismiss; teachers can view taught-section insights but cannot review. AI explanation: structured `{what, why, next_steps}` (≤ 500 chars each) written via `public.set_insight_explanation`, audited without the text.
 **`forecast.run`** (M21, module `forecasts`): payload `{ as_of: "YYYY-MM-DD" }` (local date) built by `public.enqueue_due_forecasts()` sweep. Handler calls `public.forecast_fee_series` and `public.forecast_attendance_series` as service role, builds periods and targets with `src/modules/forecasts/series.ts`, runs the engine (`src/modules/forecasts/engine.ts`), upserts forecasts and backtests, then deletes stale rows (earlier `as_of` for that institution). Idempotency key `forecast.run:<institution_id>:<as_of>` (one run per institution per local day). Replace semantics: second call on same `as_of` produces identical rows; older `as_of` replayed writes nothing (no backfill). Shortcut: baseline model (deterministic TS, no LLM); MAPE confidence; no student-level forecasts by design.
+
+**No job `briefing.generate`** (M25): briefing generation is in-request, not queued (D48). `briefing.generate` action and `/api/ai/dashboard-briefing` route generate the brief as the caller, store it, and return immediately. No separate job type; the action is gated by `ai_briefings` module and `insight.read` permission.
+**`workflow.run`** (M23, module `workflows`): payload `{run_id uuid}` built in SQL by `app.create_workflow_run`, with idempotency keys `workflow.run:<id>:start` (initial trigger) and `workflow.run:<id>:<node_id>` (approval resumption). Handler reads the run, parses its graph snapshot, resumes from the cursor node if pending approval (with decision and last value), or starts from the trigger. Calls `runWorkflow(graph, start, ports)` engine with ports that invoke SQL metrics, emit notifications, upsert report/finance-reminder/agent-run jobs (built from verified rows, never caller-supplied), and record steps. Updates run status/steps/cursor/decision. Idempotent: same graph parsed, same ports called; re-run from any checkpoint (job retry = restart from trigger or approval cursor). Witness: condition evidence includes metric value + threshold + result (e.g. `finance.overdue_invoices = 12 (gte 1): true`), never confidence. Cadence: runner claims within 5 min; manual run immediate.
+
+### Events (M23) — 3 closed keys, emitted after the originating job's domain checks, before its recipient early-return
+
+| Event | Module | Emitter | Entity subject |
+|---|---|---|---|
+| `attendance.absences_submitted` | attendance | `notify.attendance_absence` after `notify_guardian` check | attendance session (one run per session, many absence jobs dedupe by session) |
+| `results.published` | exams | `notify.results_published` after exam status check | exam (one run per exam) |
+| `enquiry.received` | admissions | `notify.enquiry_received` after enquiry insert → no-op | enquiry (one run per new enquiry) |
+
+Each emitted run triggers every active `workflows` row of the institution with matching `trigger_type='event'` and `trigger_config` in the event key (deterministic, no listener registration). A module disabled at emit time → no runs emitted; job dropped by MOD → emits nothing (feature off = trigger off).
+
+### Workflow run state machine (M23)
+
+| From | To | Trigger | Notes |
+|---|---|---|---|
+| `running` | `awaiting_approval` | engine hits an approval node | `cursor_node_id` set; `finished_at` remains null; waiting for `workflow.run.decide` |
+| `awaiting_approval` | `running` | decision approved or rejected | `pending_decision` set; new `workflow.run` job enqueued with node-keyed key to resume; `decided_by`, `decided_at`, `decision_note` stamped |
+| `running` | `done` | engine finishes all paths | `finished_at` set; `cursor_node_id` null |
+| `running` | `failed` | engine step throws or graph invalid | `finished_at` set; `cursor_node_id` null; `_run` pseudo-step appended; reaper marks 6h-old `running` runs `failed` too (no progress) |
+| `awaiting_approval` | `done` | reaper or manual fix (rare) | — |
+| terminal | — | — | `done` and `failed` never change; `finished_at` immutable (guard enforces) |
+
+### Metrics (M23) — 6 SQL counts, stable invoker `public.workflow_metric(institution, key, entity_id, as_of)`
+
+| Key | Module | Event | Count |
+|---|---|---|---|
+| `attendance.session_absences` | attendance | `absences_submitted` | records of session `entity_id` with notify-code status |
+| `attendance.repeat_absentees` | attendance | `absences_submitted` | students absent (notify-code) in all 3 of the session's section's most recent submitted daily sessions (period sessions ignored; < 3 → 0) |
+| `assignments.missing_due_tomorrow` | academics | — | pairs (published assignment due tomorrow locally, active enrolment) minus `assignment_submissions` rows |
+| `exams.papers_next_7_days` | exams | — | exam papers `held_on` in [tomorrow, +7 days] whose exam is not `published` |
+| `finance.overdue_invoices` | finance | — | invoices `issued|part_paid`, due before today locally, with remaining balance > 0 |
+| `admissions.stale_enquiries` | admissions | — | enquiries `new` created > 48 hours ago |
+
+Condition nodes evaluate as: `v = metric(key, entity_id)`, then branch on `v <op> threshold`. Unknown metric or subject-metric with null entity → `code:validation_failed`. Foreign entity → 0. Module off → condition `skipped` (no branch choice, takes `false`).

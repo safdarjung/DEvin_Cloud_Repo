@@ -34,6 +34,7 @@ import {
   createGrade,
 } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type FixtureRole, type TestInstitution } from "../helpers/roles";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -175,7 +176,7 @@ describe("M15 scheduled reports acceptance: principal schedules, teacher marks a
         await sql`update public.scheduled_reports set next_run_at = now() - interval '1 minute' where id = ${scheduleId}::uuid`;
 
         // --- real runner: sweep enqueues report.generate, then claims and runs it ---
-        const ports = createRunnerPorts(admin);
+        const ports = withoutSweeps(createRunnerPorts(admin), ["enqueueDueReports"]);
         const beforeSweep = new Date();
         await runOnceCore({ workerId: "reports-acceptance-worker" }, ports);
 

@@ -24,6 +24,7 @@ import {
 } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, withTwoInstitutions, type TestInstitution } from "../helpers/roles";
 import { setActingClient } from "../helpers/server-client-mock";
+import { withoutSweeps } from "../helpers/runner-ports";
 
 process.env.SERVICE_ROLE_CALLER = "test";
 const { createAdminClient } = await import("@/lib/supabase/admin");
@@ -464,7 +465,7 @@ describe("finance.generate_term_invoices job handler (T-031) — idempotency and
       const key1 = `invoices:${termId}:all:test1`;
       await sql`select app.enqueue_job(${inst.institutionId}::uuid, 'finance.generate_term_invoices', ${sql.json({ term_id: termId, grade_id: null })}, ${key1})`;
 
-      const summary = await runOnceCore({ workerId: "test-worker-invoices" }, createRunnerPorts(admin));
+      const summary = await runOnceCore({ workerId: "test-worker-invoices" }, withoutSweeps(createRunnerPorts(admin)));
       expect(summary.succeeded).toBeGreaterThanOrEqual(1);
 
       const invoices = await sql`
@@ -476,7 +477,7 @@ describe("finance.generate_term_invoices job handler (T-031) — idempotency and
       // re-run) must not create duplicates — generate_invoice's idempotency.
       const key2 = `invoices:${termId}:all:test2`;
       await sql`select app.enqueue_job(${inst.institutionId}::uuid, 'finance.generate_term_invoices', ${sql.json({ term_id: termId, grade_id: null })}, ${key2})`;
-      await runOnceCore({ workerId: "test-worker-invoices" }, createRunnerPorts(admin));
+      await runOnceCore({ workerId: "test-worker-invoices" }, withoutSweeps(createRunnerPorts(admin)));
 
       const invoicesAfterRerun = await sql`
         select id from public.invoices where term_id = ${termId}::uuid and status <> 'cancelled'

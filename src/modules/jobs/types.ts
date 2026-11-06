@@ -14,10 +14,13 @@ export type JobType =
   | "finance.generate_term_invoices"
   | "report.generate"
   | "finance.fee_reminder"
+  | "fee_plans.late_fees"
   | "insights.detect"
   | "forecast.run"
   | "notify.student_leave_decided"
-  | "notify.diary_entry";
+  | "notify.diary_entry"
+  | "mastery.compute"
+  | "workflow.run";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 
