@@ -205,7 +205,7 @@ export const MODULES = {
     label: 'WhatsApp',
     category: 'Communication',
     description: 'Sends parent alerts on WhatsApp through MSG91 approved templates; simulated until the provider key is set.',
-    default: false,
+    default: true,
   },
   ptm: {
     label: 'PTM booking & surveys',

@@ -248,7 +248,8 @@ describe("X07-T10 visitors acceptance over HTTP", () => {
 
         await runOnceCore({ workerId: "test-worker-visitors-acceptance" }, createRunnerPorts(adminDb));
 
-        const [g1UserId] = await sql`select user_id from public.memberships where institution_id = ${inst.institutionId} and role = 'guardian'`;
+        // G1 by guardian id: the fixture also holds G2's guardian membership, so a bare role filter is ambiguous.
+        const [g1UserId] = await sql`select user_id from public.memberships where institution_id = ${inst.institutionId} and guardian_id = ${g1GuardianId}`;
         const [notification] = await sql`
           select id, recipient_user_id from public.notifications
           where institution_id = ${inst.institutionId} and type = 'gate_pass_approved'

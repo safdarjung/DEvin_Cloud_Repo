@@ -78,7 +78,6 @@ export type Permission =
   | "agent.run"
   | "agent.approve"
   | "report.schedule"
-  | "report.schedule"
   | "library.manage"
   | "library.read"
   | "insight.read"
@@ -87,13 +86,9 @@ export type Permission =
   | "gatepass.manage"
   | "pickup.manage"
   | "forecast.read"
-  | "report.schedule"
   | "student_leave.request"
   | "student_leave.approve"
   | "diary.write"
-  | "facilities.manage"
-  | "transport.manage"
-  | "maintenance.request"
   | "ptm.manage"
   | "ptm.slot.manage"
   | "ptm.book"
@@ -171,9 +166,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "library.read",
     "student_leave.approve",
     "diary.write",
-    "facilities.manage",
-    "transport.manage",
-    "maintenance.request",
     "ptm.manage",
     "ptm.slot.manage",
     "ptm.book",
@@ -250,9 +242,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "library.read",
     "student_leave.approve",
     "diary.write",
-    "facilities.manage",
-    "transport.manage",
-    "maintenance.request",
     "ptm.manage",
     "ptm.slot.manage",
     "ptm.book",
@@ -315,9 +304,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "library.read",
     "student_leave.approve",
     "diary.write",
-    "facilities.manage",
-    "transport.manage",
-    "maintenance.request",
     "ptm.manage",
     "ptm.slot.manage",
     "ptm.book",
