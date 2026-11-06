@@ -115,6 +115,16 @@ describe("T-029 named demo entities (05 §8.1)", () => {
   });
 });
 
+describe("M27-T1 admissions.stage_dwell planting", () => {
+  it("every seeded enquiry has updated_at = created_at (dwell proxy, not seed time)", async () => {
+    const rows = await sql`
+      select created_at, updated_at from public.enquiries where institution_id = ${institutionId}
+    `;
+    expect(rows).toHaveLength(40);
+    for (const row of rows) expect(row.updated_at.getTime()).toBe(row.created_at.getTime());
+  });
+});
+
 describe("T-029 integrity (idempotency + determinism)", () => {
   it("enquiry phones are all in the reserved 98000002xx block, distinct", async () => {
     const rows = await sql`select phone from public.enquiries where institution_id = ${institutionId}`;
