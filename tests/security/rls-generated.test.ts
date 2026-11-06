@@ -16,9 +16,35 @@ async function discoverTenantTables(): Promise<string[]> {
   return rows.map((r) => r.table_name);
 }
 
+// 07 §6 C-01 (M27-T4): rowsecurity flag per discovered tenant table, and the
+// set of tables with at least one permissive INSERT/UPDATE/DELETE/ALL policy
+// (the write-policy catalog checks below).
+async function fetchRlsCatalog(
+  tables: string[],
+): Promise<{ rowsecurity: Map<string, boolean>; writable: Set<string> }> {
+  const rlsRows = await sql<{ relname: string; relrowsecurity: boolean }[]>`
+    select c.relname, c.relrowsecurity
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = any(${tables})
+  `;
+  const policyRows = await sql<{ tablename: string; cmd: string; permissive: string }[]>`
+    select tablename, cmd, permissive from pg_policies
+    where schemaname = 'public' and tablename = any(${tables})
+  `;
+  const rowsecurity = new Map(rlsRows.map((r) => [r.relname, r.relrowsecurity]));
+  const writable = new Set(
+    policyRows
+      .filter((p) => p.permissive === "PERMISSIVE" && ["INSERT", "UPDATE", "DELETE", "ALL"].includes(p.cmd))
+      .map((p) => p.tablename),
+  );
+  return { rowsecurity, writable };
+}
+
 let a: TestInstitution;
 let b: TestInstitution;
 let tenantTables: string[];
+let rlsCatalog: { rowsecurity: Map<string, boolean>; writable: Set<string> };
 
 beforeAll(async () => {
   [tenantTables, a, b] = await Promise.all([
@@ -26,6 +52,7 @@ beforeAll(async () => {
     createTestInstitution("gen-a"),
     createTestInstitution("gen-b"),
   ]);
+  rlsCatalog = await fetchRlsCatalog(tenantTables);
 }, 60_000);
 
 afterAll(async () => {
@@ -115,4 +142,55 @@ describe("C-01: generated RLS suite", () => {
       expect(error).not.toBeNull();
     }
   });
+
+  // M27-T4: RLS catalog audit — every discovered tenant table, not one
+  // hand-picked table at a time.
+  it("every tenant table has RLS enabled", () => {
+    const disabled = tenantTables.filter((t) => rlsCatalog.rowsecurity.get(t) !== true);
+    expect(disabled).toEqual([]);
+  });
+
+  it("write: [] tables have no permissive write policy", () => {
+    const violating = Object.keys(RLS_EXPECTATIONS)
+      .filter((t) => tenantTables.includes(t) && RLS_EXPECTATIONS[t].write.length === 0)
+      .filter((t) => rlsCatalog.writable.has(t));
+    expect(violating).toEqual([]);
+  });
+
+  it("tables with writers have a permissive write policy", () => {
+    const missing = Object.keys(RLS_EXPECTATIONS)
+      .filter((t) => tenantTables.includes(t) && RLS_EXPECTATIONS[t].write.length > 0)
+      .filter((t) => !rlsCatalog.writable.has(t));
+    expect(missing).toEqual([]);
+  });
+
+  // M27-T4: cross-institution INSERT probe, every table × role. RLS WITH
+  // CHECK runs before NOT NULL/FK/CHECK, so `{ institution_id: b }` alone is
+  // enough to prove the point without satisfying every other column.
+  it(
+    "cross-institution INSERT is rejected by RLS or a coded guard, for every table and role",
+    async () => {
+      const tables = Object.keys(RLS_EXPECTATIONS).filter(
+        (t) => t !== "profiles" && t !== "institutions",
+      );
+      for (const table of tables) {
+        const exception = RLS_EXPECTATIONS[table].insertProbeException;
+        for (const role of ROLES) {
+          const { error } = await a
+            .clientAs(role)
+            .from(table)
+            .insert({ institution_id: b.institutionId });
+
+          expect(error, `${table} / ${role} accepted a foreign institution_id`).not.toBeNull();
+          if (exception) continue; // documented deviation (DBT id) — any rejection counts
+
+          const code = error?.code;
+          const message = error?.message ?? "";
+          const isExpectedCode = code === "42501" || (code === "P0001" && message.startsWith("code:"));
+          expect(isExpectedCode, `${table} / ${role}: got ${code} "${message}"`).toBe(true);
+        }
+      }
+    },
+    180_000,
+  );
 });
