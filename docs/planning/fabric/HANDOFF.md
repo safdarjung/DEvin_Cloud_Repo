@@ -62,6 +62,12 @@ Remaining: M07–M18 (12), V1-GATE, M19–M27 (9), then Workstream D (UI integra
 - Workflow scripts (controller session dir): milestone runner = Opus planner → Haiku/Sonnet tasks scheduled by deps with DB-exclusive tasks run alone → Sonnet security review → Sonnet fix → gate. Traps found: the `security-reviewer` agent type cannot write files (pass findings inline to the fixer); gate agents' 10-min command limit kills `test:db` (run it in background); fixtures must compute "today" in the institution timezone (UTC breaks 00:00–05:30 IST).
 - Hosted DB: owner runs `pnpm exec supabase db push --linked --include-all`. Once pushed, a migration is frozen — fixes go into a new number (BRIEF-COMMON HOSTED-APPLIED rule).
 
+## V2 complete 2026-11-06 (main 229a37f, hosted + Vercel)
+
+V1 + V2 shipped: M19–M25, M27, X01–X08 on `main`, hosted migrations through 0104, live on Vercel. Report: `reports/v2-completion.md` (18 met, 13 met-limited, 0 pending). All lane branches are merged; the "Paused" table below is historical.
+
+Open follow-ups: DBT-156 (guardian-mode assistant from origin `0e5b02f` not merged; `/portal/assistant` returns forbidden for guardians), DBT-153 (chunk the `mastery.compute` job per section), the hosted demo needs an owner-run `DEMO_RESET_ALLOWED=true pnpm demo:reset` before the fabric seed data shows, and `12-decision-log.md` reuses DBT-86..104 and DBT-125..130 (needs a renumbering pass).
+
 ## Paused 2026-11-05 — resume here
 
 **On main + hosted + Vercel (e6b64c2):** V1 complete (M01–M18, MOD; report `docs/planning/fabric/reports/v1-completion.md`), M19 insights, M21 forecasts, M22 agents, X01 student leave + diary, X02 certificates + ID cards, X03 library, X05 WhatsApp, X06 exam seating, X07 visitors + gate pass, X08 PTM + surveys. Hosted Supabase holds every migration on main (0087, 0093, 0096 are not written to main yet).
