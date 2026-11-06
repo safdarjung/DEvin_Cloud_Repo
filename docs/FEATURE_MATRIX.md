@@ -47,4 +47,20 @@ Notes
 - Row grouping is mine; status for grouped rows follows the HANDOFF "done" table and gate files, not a per-feature test audit.
 - Real-device, accessibility audit (WCAG) and Lighthouse results do not exist for any row.
 
+## UI redesign pass (2026-11-06) — what changed
+
+Verified = typecheck + `pnpm build` passed. Nothing below was exercised in a browser: no `.env.local` and no local Supabase in this environment, so login, demo and the five dashboards are **untested at runtime**. Unit tests could not run (vitest startup error `code.charCodeAt is not a function`, vite 8 / vitest 5). Lint was not run on touched files.
+
+| Change | Files | State |
+|---|---|---|
+| Post-login redirect falls back to `/select` (was marketing `/`) | `src/app/(auth)/login/actions.ts` | typechecked, untested |
+| `/demo` role cards sign in directly as one allow-listed demo account; hero CTA "Try a demo" | `src/app/(marketing)/demo/*`, `(marketing)/page.tsx` | typechecked, untested |
+| Fixture-only Fabric pages (Student success, Simulator, Digital twin, Marketplace, Studio) removed from nav and command palette; pages and code kept | `src/lib/nav.ts` | typechecked |
+| "Planned" placeholder tiles hidden (mastery, budgets, late fees, connectors, lineage, model registry, consent) | `src/modules/fabric/components/fabric-sections.tsx` | typechecked |
+| Marketplace promo removed from principal dashboard | `dashboard/page.tsx` | typechecked |
+| Tokens: warm off-white / graphite-navy, muted teal primary; polish (tabular numbers, balanced text, press feedback, linked-card hover) | `src/app/globals.css` | built, not eyeballed in light/dark |
+| Shared `VARIANTS` + `Reveal` motion helpers; "Demo mode" header badge; dashboard/today skeletons | `motion.tsx`, `header.tsx`, `*/loading.tsx` | typechecked |
+
+Not done (needs backend or a separate pass): teacher lesson-plan/materials/grading/quiz-attempt UI; student self-practice quiz and curriculum topic level; community (no tables/RLS/moderation exist); PTM page (backend exists, no page); per-role dashboard split for admin; three.js visual (not installed, skipped); full login-page redesign.
+
 Last verified: 2026-11-06 against branch feat/fabric-public-wave1

@@ -35,8 +35,8 @@ export default function Home() {
               <ButtonLink href="/contact" arrow>
                 Book a Demo
               </ButtonLink>
-              <ButtonLink href="/product" variant="secondary">
-                Explore Fabric
+              <ButtonLink href="/demo" variant="secondary">
+                Try a demo
               </ButtonLink>
             </div>
           </div>

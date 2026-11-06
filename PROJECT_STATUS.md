@@ -17,6 +17,9 @@ lane-c (M20 mastery, M25 partial), lane-g (M23 workflows, 11/22), lane-i (X04 la
 Wave 1: marketing site `src/app/(marketing)` (15 public pages + 5 legal), `/select`, `/api/public/lead` + migration 0100 `platform_leads`, PWA (manifest, `public/sw.js`, `/offline`), SEO files (sitemap, robots, `llms.txt`, `for-agents.md`, JSON-LD), mobile bottom nav, `global-error`, `not-found`, route loading/error boundaries.
 - Migration 0100 is NOT pushed to hosted. Owner runs: `pnpm exec supabase db push --linked --include-all`.
 
+## UI redesign pass (2026-11-06, uncommitted, untested at runtime)
+Typecheck + `pnpm build` pass; no browser run (no `.env.local`/local Supabase), vitest broken at startup, touched-file lint not run. Done: demo role cards sign in directly, post-login redirect to `/select`, fixture-only Fabric pages and "Planned" tiles hidden, new tokens/polish, login visual, demo-mode badge, skeletons, admin dashboard ordered work-first. Not done: teacher/student/parent quiz, grading, self-practice, community (backend gaps). Detail: `docs/FEATURE_MATRIX.md` "UI redesign pass".
+
 ## UI-only
 12 `/fabric/*` pages (agents, data, finance-intel, insights, learning, marketplace, operations, simulator, students, studio, trust, twin) render fixtures from `src/modules/fabric/demo`. No backend.
 
