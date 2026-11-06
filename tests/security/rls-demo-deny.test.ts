@@ -45,7 +45,9 @@ const EMPTY_IN_DEMO = new Set<string>([
   "online_payment_intents", // M12: no online payment started in the demo tenant
   "payment_reversals", // M12: no payment reversed in the demo tenant
   "practice_attempts", // 0103: no practice quiz taken in the demo tenant
+  "simulation_scenarios", // 0106: no what-if scenario saved in the demo tenant
   "question_bank", // not used by the demo exam flow
+  "studio_requests", // 0107: no Custom Studio request submitted in the demo tenant
   "result_remarks", // no result remark added in the demo tenant
   "scheduled_reports", // M15: none scheduled in the demo tenant
   "student_lifecycle_events", // M14: no lifecycle event recorded in the demo tenant
