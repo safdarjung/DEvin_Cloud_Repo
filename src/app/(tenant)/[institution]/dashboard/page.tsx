@@ -28,6 +28,8 @@ import { GradeDistributionChart } from "@/modules/core/components/dashboard/Grad
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { demoFixturesEnabled, demoInsights, type InsightRole } from "@/modules/core/demo/fixtures";
 import { listExams, listRecheckQueue } from "@/modules/exams/queries";
+import { forecastCards as realForecastCards } from "@/modules/forecasts/queries";
+import { insightCards, priorityActions as realPriorityActions, riskIndicators as realRiskIndicators } from "@/modules/insights/derived";
 import { CommandGrid, type GridCard } from "@/modules/fabric/components/command/command-grid";
 import { DailyBriefWidget } from "@/modules/fabric/components/command/daily-brief";
 import { ForecastCards } from "@/modules/fabric/components/command/forecast-cards";
@@ -187,6 +189,23 @@ export default async function DashboardPage({
     ?.filter((e) => (e.endsAt ?? e.startsAt) >= now.toISOString())
     .slice(0, 4);
 
+  // Real (non-demo) insight/forecast data. Gated on permission + module flag; a
+  // rejected query becomes a FailedWidget, never a fabricated number.
+  const canInsights = !demo && hasPermission(ctx, "insight.read");
+  const canForecasts = !demo && hasPermission(ctx, "forecast.read");
+  const insightsOn = canInsights && isModuleEnabled(ctx, "insights");
+  const forecastsOn = canForecasts && isModuleEnabled(ctx, "forecasts");
+  const [prioR, riskR, cardsR, forecastR] = await Promise.allSettled([
+    insightsOn ? realPriorityActions(ctx) : skip,
+    insightsOn ? realRiskIndicators(ctx) : skip,
+    insightsOn ? insightCards(ctx, { limit: 4 }) : skip,
+    forecastsOn ? realForecastCards(ctx) : skip,
+  ]);
+  for (const r of [prioR, riskR, cardsR, forecastR]) {
+    if (r.status === "rejected") console.error("dashboard insight/forecast fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
+  }
+  const realCards = value(cardsR);
+
   const insightRole: InsightRole = isLeader ? "principal" : role === "admissions" || role === "accountant" ? role : "exam_controller";
   const insights = demo
     ? demoInsights(insightRole, {
@@ -197,7 +216,9 @@ export default async function DashboardPage({
         overdueInvoices: defaulters ? overdue.length : undefined,
         basePath,
       })
-    : null;
+    : realCards && realCards.length > 0
+      ? realCards
+      : null;
 
   const icon = "size-4";
   const quickActions = (
@@ -537,6 +558,25 @@ export default async function DashboardPage({
       add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts).slice(0, 5)} base={basePath} />);
       add("forecasts", "Forecasts", FULL, <ForecastCards cards={forecastCards(fOpts)} base={basePath} />);
       add("risks", "Risks", NARROW, <RiskIndicators risks={riskIndicators(fOpts)} base={basePath} />);
+    }
+    if (canInsights || canForecasts) {
+      const off = (title: string, d: string) => (
+        <Widget title={title}>
+          <EmptyState title={`No ${title.toLowerCase()} yet`} description={d} />
+        </Widget>
+      );
+      const PLAN_OFF = "This module is not turned on for your school. An owner can enable it in Settings > Modules.";
+      if (canInsights) {
+        const prio = value(prioR);
+        const risks = value(riskR);
+        add("priorities", "Priorities", NARROW, !insightsOn ? off("Priorities", PLAN_OFF) : failed(prioR) ? <FailedWidget title="Priorities" /> : <PriorityActionsWidget actions={(prio ?? []).slice(0, 5)} base={basePath} />);
+        add("risks", "Risks", NARROW, !insightsOn ? off("Risks", PLAN_OFF) : failed(riskR) ? <FailedWidget title="Risks" /> : risks && risks.length > 0 ? <RiskIndicators risks={risks} base={basePath} /> : off("Risks", "Risk indicators appear once insights are detected."));
+        add("insights", "Insights", FULL, !insightsOn ? off("Insights", PLAN_OFF) : failed(cardsR) ? <FailedWidget title="Insights" /> : insights ? <Insights items={insights} /> : off("Insights", "Nothing has been detected yet."));
+      }
+      if (canForecasts) {
+        const fc = value(forecastR);
+        add("forecasts", "Forecasts", FULL, !forecastsOn ? off("Forecasts", PLAN_OFF) : failed(forecastR) ? <FailedWidget title="Forecasts" /> : fc && fc.length > 0 ? <ForecastCards cards={fc} base={basePath} /> : off("Forecasts", "Forecasts appear once enough history is recorded."));
+      }
     }
     add("atRisk", "Sections at risk", NARROW, atRisk);
     add("funnel", "Admissions funnel", WIDE, funnel(""));

@@ -1,0 +1,28 @@
+/* Marketing-only tokens. Scoped to the (marketing) layout wrapper; the app
+   theme (next-themes `.dark` class on <html>) switches them. */
+.fabric-mk {
+  --mk-bg: #f7f5f0;
+  --mk-fg: #1b2027;
+  --mk-muted: #566070;
+  --mk-line: #d9d5cb;
+  --mk-surface: #eeebe3;
+  --mk-accent: #0f6f68;
+  --mk-accent-fg: #ffffff;
+  --mk-accent-soft: #d8ebe7;
+  --mk-blue: #2b5cab;
+  background: var(--mk-bg);
+  color: var(--mk-fg);
+}
+
+.dark .fabric-mk {
+  --mk-bg: #0a111e;
+  --mk-fg: #e6ebf2;
+  --mk-muted: #9aa5b6;
+  --mk-line: #1f2b40;
+  --mk-surface: #101929;
+  --mk-accent: #5bbfb3;
+  --mk-accent-fg: #06141a;
+  --mk-accent-soft: #12303a;
+  --mk-blue: #7aa2e0;
+}
+
