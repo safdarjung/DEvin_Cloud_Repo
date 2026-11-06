@@ -13,9 +13,12 @@ const FABRIC_HREFS = [
 // without them don't get dead pages. Demo tenant, no module settings.
 const NO_FORECAST_AGENT = FABRIC_HREFS.filter((h) => h !== "/fabric/finance-intel" && h !== "/fabric/agents");
 const NO_AGENT = FABRIC_HREFS.filter((h) => h !== "/fabric/agents");
+// Education OS pages (2026-11-06): lesson plans + class diary (diary.write), question bank
+// (question.manage), timetable (timetable.read), parent meetings (ptm.manage or ptm.slot.manage).
+// /me (Personal AI) is a placeholder workspace and is no longer linked from the nav.
 const EXPECTED_HREFS: Record<Role, string[]> = {
   owner: [
-    ...FABRIC_HREFS, "/me",
+    ...FABRIC_HREFS,
     "/dashboard",
     "/students",
     "/admissions",
@@ -30,9 +33,10 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
+    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable",
   ],
   principal: [
-    ...FABRIC_HREFS, "/me",
+    ...FABRIC_HREFS,
     "/dashboard",
     "/students",
     "/admissions",
@@ -47,9 +51,10 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
+    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable",
   ],
   admin: [
-    ...FABRIC_HREFS, "/me",
+    ...FABRIC_HREFS,
     "/dashboard",
     "/students",
     "/admissions",
@@ -63,12 +68,13 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
+    "/diary", "/lesson-plans", "/ptm", "/timetable",
   ],
-  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/me"],
-  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT],
+  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/timetable"],
+  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT, "/timetable"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT],
-  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/me"],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, "/question-bank", "/timetable"],
+  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   student: ["/notifications", "/portal"],

@@ -56,7 +56,8 @@ describe("Fabric navigation", () => {
       "/fabric/trust",
     ];
 
-    const personalHrefs = ["/me"];
+    // /me is a placeholder workspace, no longer linked (2026-11-06).
+    const personalHrefs: string[] = [];
 
     const allExpected = [...fabricHrefs, ...personalHrefs];
 
@@ -84,12 +85,8 @@ describe("Fabric navigation", () => {
     });
   });
 
-  it("personal item has ai.generate permission", () => {
-    const personalItem = NAV_ITEMS.find((item) => item.group === "Personal");
-
-    expect(personalItem).toBeDefined();
-    expect(personalItem?.href).toBe("/me");
-    expect(personalItem?.permission).toBe("ai.generate");
+  it("links no placeholder personal workspace", () => {
+    expect(NAV_ITEMS.find((item) => item.group === "Personal")).toBeUndefined();
   });
 
   it("fabric items are contiguous in NAV_ITEMS", () => {
