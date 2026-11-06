@@ -55,15 +55,13 @@ export function renderSection<T>(
 }
 
 /** A capability with no backend yet. Never shows numbers. */
-export function PlannedWidget({ title, note, className }: { title: string; note: string; className?: string }) {
-  return (
-    <Widget title={title} className={className}>
-      <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <LimitedBadge />
-        <span>Planned. {note}</span>
-      </p>
-    </Widget>
-  );
+/**
+ * Not-yet-built capabilities are hidden from customer-facing pages (redesign
+ * rule: only working features visible). Call sites stay so the slot is easy to
+ * restore when the backend lands; see docs/FEATURE_MATRIX.md for the gap list.
+ */
+export function PlannedWidget(_props: { title: string; note: string; className?: string }) {
+  return null;
 }
 
 /** Accessible read-only table; wide tables scroll horizontally inside the card. */

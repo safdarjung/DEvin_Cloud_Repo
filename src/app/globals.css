@@ -96,24 +96,24 @@
 
 :root {
   /* CoolSkool Design System — Light Theme */
-  --background: #f8f9ff;
-  --foreground: #0b1c30;
+  --background: #f7f6f2;
+  --foreground: #0e1a2b;
   --card: oklch(1 0 0);
-  --card-foreground: #0b1c30;
+  --card-foreground: #0e1a2b;
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.13 0.02 250);
-  --primary: #4f46e5;
+  --primary: #0f766e;
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: #eff4ff;
-  --secondary-foreground: #0b1c30;
-  --muted: #eff4ff;
-  --muted-foreground: #464555;
-  --accent: #e5eeff;
-  --accent-foreground: #0b1c30;
+  --secondary: #eeeee9;
+  --secondary-foreground: #0e1a2b;
+  --muted: #eeeee9;
+  --muted-foreground: #4a5565;
+  --accent: #e4eeec;
+  --accent-foreground: #0e1a2b;
   --destructive: oklch(0.58 0.24 25);
-  --border: #dce6f5;
-  --input: #d3dcec;
-  --ring: #4f46e5;
+  --border: #e2e1da;
+  --input: #d6d5cd;
+  --ring: #0f766e;
   --radius: 0.75rem;
 
   /* Chart colors — validated categorical order: blue, orange, aqua, yellow, magenta.
@@ -145,25 +145,25 @@
   --z-toast: 60;
 
   /* Sidebar — lighter than dark theme */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0b1c30;
-  --sidebar-primary: #4f46e5;
+  --sidebar: #fbfaf7;
+  --sidebar-foreground: #0e1a2b;
+  --sidebar-primary: #0f766e;
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: #eff4ff;
-  --sidebar-accent-foreground: #0b1c30;
-  --sidebar-border: #e3ebf8;
-  --sidebar-ring: #4f46e5;
+  --sidebar-accent: #eaeeea;
+  --sidebar-accent-foreground: #0e1a2b;
+  --sidebar-border: #e6e5de;
+  --sidebar-ring: #0f766e;
 }
 
 .dark {
-  --background: oklch(0.16 0.015 250);
+  --background: oklch(0.155 0.02 255);
   --foreground: oklch(0.96 0.005 90);
   --card: oklch(0.205 0.018 250);
   --card-foreground: oklch(0.96 0.005 90);
   --popover: oklch(0.205 0.018 250);
   --popover-foreground: oklch(0.96 0.005 90);
-  --primary: oklch(0.72 0.17 290);
-  --primary-foreground: oklch(0.15 0.03 290);
+  --primary: oklch(0.77 0.1 190);
+  --primary-foreground: oklch(0.17 0.03 200);
   --secondary: oklch(0.27 0.02 250);
   --secondary-foreground: oklch(0.96 0.005 90);
   --muted: oklch(0.27 0.02 250);
@@ -173,7 +173,7 @@
   --destructive: oklch(0.7 0.19 22);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.72 0.17 290);
+  --ring: oklch(0.77 0.1 190);
   --radius: 0.5rem;
 
   /* Dark steps of the same hues, validated on #1a1a19: all >= 3:1, adjacent CVD dE >= 8.4 */
@@ -200,12 +200,12 @@
 
   --sidebar: oklch(0.19 0.017 250);
   --sidebar-foreground: oklch(0.96 0.005 90);
-  --sidebar-primary: oklch(0.72 0.17 290);
-  --sidebar-primary-foreground: oklch(0.15 0.03 290);
+  --sidebar-primary: oklch(0.77 0.1 190);
+  --sidebar-primary-foreground: oklch(0.17 0.03 200);
   --sidebar-accent: oklch(0.27 0.02 250);
   --sidebar-accent-foreground: oklch(0.96 0.005 90);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.72 0.17 290);
+  --sidebar-ring: oklch(0.77 0.1 190);
 }
 
 @layer base {
@@ -216,7 +216,33 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans antialiased;
+  }
+  h1, h2, h3 {
+    text-wrap: balance;
+  }
+  p, li, figcaption {
+    text-wrap: pretty;
+  }
+  table, [data-slot="table"], .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Neutral inset outline so image edges don't blur into the surface. */
+  img:not([src$=".svg"]) {
+    outline: 1px solid oklch(0 0 0 / 0.08);
+    outline-offset: -1px;
+  }
+  .dark img:not([src$=".svg"]) {
+    outline-color: oklch(1 0 0 / 0.1);
+  }
+  /* Tactile press on solid buttons; explicit properties, never transition: all. */
+  button:not(:disabled), [role="button"] {
+    transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+    transition-duration: var(--duration-fast);
+    transition-timing-function: var(--ease-out);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.98);
   }
 }
 
@@ -234,4 +260,21 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Linked cards: gentle border + shadow lift, no scale. */
+a:hover > [data-slot="card"],
+a:focus-visible > [data-slot="card"] {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  box-shadow: var(--shadow-md);
+}
+a > [data-slot="card"] {
+  transition-property: border-color, box-shadow;
+  transition-duration: var(--duration-normal);
+  transition-timing-function: var(--ease-out);
+}
+
+@keyframes draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
 }

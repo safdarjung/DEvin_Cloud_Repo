@@ -42,7 +42,7 @@ export interface NavItem {
   permission: Permission;
   group: NavGroup;
   module?: ModuleKey;
-  /** Fabric page with no real backend yet: shown on demo tenants only. */
+  /** Fabric page backed only by fixtures: kept in code, never listed in nav (even on demo tenants). */
   demoOnly?: boolean;
 }
 
@@ -94,14 +94,14 @@ export const NAV_ITEMS: readonly NavItem[] = [
 // aren't built for them — the portal tabs are. UI only; RLS still governs data.
 const PORTAL_NAV_HREFS = new Set(["/portal", "/notifications"]);
 
-export function navItemsFor(permissions: ReadonlySet<Permission>, settings?: Record<string, unknown>, isDemo = false): NavItem[] {
+export function navItemsFor(permissions: ReadonlySet<Permission>, settings?: Record<string, unknown>, _isDemo = false): NavItem[] {
   const isPortalUser = permissions.has("exam.recheck.request");
   const hasDashboard = permissions.has("dashboard.view");
   return NAV_ITEMS.filter((item) => {
     if (!permissions.has(item.permission)) return false;
     if (isPortalUser && !PORTAL_NAV_HREFS.has(item.href)) return false;
     if (item.href === "/today" && hasDashboard) return false;
-    if (item.demoOnly && !isDemo) return false;
+    if (item.demoOnly) return false;
     // Fabric pages themselves require dashboard.view; hide the link from roles that would get a 403.
     if (item.group === "Fabric" && !hasDashboard) return false;
     if (item.module && settings && !isModuleEnabled({ institution: { settings } }, item.module)) return false;

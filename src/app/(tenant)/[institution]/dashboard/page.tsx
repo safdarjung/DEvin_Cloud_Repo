@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, Banknote, BarChart3, CalendarCheck, CheckCircle2, ClipboardList, GraduationCap, MessageSquare, Store, UserPlus, Users } from "lucide-react";
+import { AlertTriangle, Banknote, BarChart3, CalendarCheck, CheckCircle2, ClipboardList, GraduationCap, MessageSquare, UserPlus, Users } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
 import { ApprovalsWidget } from "@/components/widgets/approvals-widget";
-import { HomeActivity, HomeHero, HomeKpi, HomePerformance, HomePromo, HomeQuickActions, HomeSchedule, type ActivityItem, type HeroChip, type HomeQuickAction, type ScheduleItem } from "@/components/widgets/home-blocks";
+import { HomeActivity, HomeHero, HomeKpi, HomePerformance, HomeQuickActions, HomeSchedule, type ActivityItem, type HeroChip, type HomeQuickAction, type ScheduleItem } from "@/components/widgets/home-blocks";
 import { InsightCarousel, type CarouselInsight } from "@/components/widgets/insight-carousel";
 import { KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
@@ -627,17 +627,31 @@ export default async function DashboardPage({
         )}
         <div className="grid gap-4 lg:grid-cols-12">
           <div className="min-w-0 space-y-4 lg:col-span-8">
+            {/* Admin = work first (activity, tasks); principal = trend first. */}
+            {role === "admin" ? (
+              <>
+            <HomeActivity title="Recent activity" items={activityItems} badge={activityHasSimulated ? <SimulatedBadge /> : undefined} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
             {canAttendance && (
               <HomePerformance title="Attendance performance" description="School-wide attendance, week by week" icon={<BarChart3 />} bars={bars} footer={bars ? "Weekly average of daily attendance" : undefined}>
                 <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
               </HomePerformance>
             )}
-            <HomePromo icon={<Store />} tag="Add-ons" title="Explore the CoolSkool marketplace" body="Install modules for fee billing, timetable scheduling and parent messaging, and turn on only what your school needs." cta="Browse marketplace" href={`${basePath}/fabric/marketplace`} />
+              </>
+            ) : (
+              <>
+            {canAttendance && (
+              <HomePerformance title="Attendance performance" description="School-wide attendance, week by week" icon={<BarChart3 />} bars={bars} footer={bars ? "Weekly average of daily attendance" : undefined}>
+                <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
+              </HomePerformance>
+            )}
             <HomeActivity title="Recent activity" items={activityItems} badge={activityHasSimulated ? <SimulatedBadge /> : undefined} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
+              </>
+            )}
           </div>
           <div className="min-w-0 space-y-4 lg:col-span-4">
+            {role === "admin" && <HomeQuickActions actions={homeActions} />}
             {carousel.length > 0 && <InsightCarousel items={carousel} allHref={`${basePath}/fabric/insights`} />}
-            <HomeQuickActions actions={homeActions} />
+            {role !== "admin" && <HomeQuickActions actions={homeActions} />}
             <HomeSchedule title="Upcoming events" count={`${scheduleItems.length} upcoming`} items={scheduleItems} action={canEditWebsite ? { href: `${basePath}/website/events`, label: "Manage" } : undefined} empty="No upcoming public events." />
           </div>
         </div>
