@@ -155,7 +155,10 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
           prompt: effectivePrompt,
           output: Output.object({ schema }),
           timeout: TIMEOUT_MS[step],
-          maxOutputTokens,
+          // gpt-oss on Groq is a reasoning model: reasoning tokens count against the cap and a
+          // truncated JSON comes back as an API error, so keep reasoning low and the cap >= 1024.
+          maxOutputTokens: agentModel === "groq" && maxOutputTokens ? Math.max(maxOutputTokens, 1024) : maxOutputTokens,
+          providerOptions: agentModel === "groq" ? { groq: { reasoningEffort: "low" } } : undefined,
         });
 
       let result;

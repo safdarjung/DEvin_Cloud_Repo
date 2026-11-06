@@ -122,7 +122,10 @@ describe("runStructured", () => {
     generateTextMock.mockResolvedValueOnce(usageResult());
     const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
     expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "openai/gpt-oss-120b" } });
-    expect(generateTextMock.mock.calls[0][0]).toMatchObject({ model: "groq-model-handle" });
+    expect(generateTextMock.mock.calls[0][0]).toMatchObject({
+      model: "groq-model-handle",
+      providerOptions: { groq: { reasoningEffort: "low" } },
+    });
     expect(providers.getGeminiModel).not.toHaveBeenCalled();
     expect(providers.getLocalModel).not.toHaveBeenCalled();
   });
