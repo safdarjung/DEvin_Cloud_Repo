@@ -15,6 +15,7 @@ import { run as runExams } from "./sections/exams.ts";
 import { run as runFabric } from "./sections/fabric.ts";
 import { run as runFeePlans } from "./sections/fee-plans.ts";
 import { run as runFinance } from "./sections/finance.ts";
+import { run as runHomework } from "./sections/homework.ts";
 import { run as runLibrary } from "./sections/library.ts";
 import { run as runMastery } from "./sections/mastery.ts";
 import { run as runNotifications } from "./sections/notifications.ts";
@@ -37,6 +38,10 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   // M13-T11: right after timetable, so public.rooms already exists for assets.room_id.
   { name: "operations", run: runOperations },
   { name: "curriculum", run: runCurriculum },
+  // Owner decision (2026-11-07): needs academics.ts's class_sections/subject_assignments/
+  // curriculum_units and core.ts's named demo logins; no rng draws, so it
+  // never shifts any later section's PRNG-derived output.
+  { name: "homework", run: runHomework },
   { name: "attendance", run: runAttendance },
   { name: "admissions", run: runAdmissions },
   { name: "finance", run: runFinance },
@@ -141,12 +146,18 @@ async function assertCounts(ctx: SeedContext): Promise<void> {
     );
   }
 
+  // Owner decision (2026-11-07): homework.ts seeds 3 assignments per section
+  // of grades VI, VIII, X, plus 1 quiz-type assignment for each of the 3
+  // named sections (VI-A, VIII-B, X-A) — always present regardless of
+  // SEED_SCALE.
+  const homeworkSections = ["VI", "VIII", "X"].reduce((sum, code) => sum + sectionNames(code).length, 0);
+  const expectedAssignments = homeworkSections * 3 + 3;
   const { count: homeworkAssignments } = await ctx.admin
     .from("assignments")
     .select("id", { count: "exact", head: true })
     .eq("institution_id", ctx.institutionId);
-  if (homeworkAssignments) {
-    throw new Error(`Count assertion failed: assignments (homework) expected 0, got ${homeworkAssignments}`);
+  if (homeworkAssignments !== expectedAssignments) {
+    throw new Error(`Count assertion failed: assignments (homework) expected ${expectedAssignments}, got ${homeworkAssignments}`);
   }
 }
 
