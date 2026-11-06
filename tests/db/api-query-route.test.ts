@@ -215,6 +215,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "insights.priorityActions": {},
         "insights.riskIndicators": {},
         "insights.cards": {},
+        "briefings.today": {},
         "people.getCurrentTermId": { academicYearId: UUID },
         "people.listMyChildren": {},
         "people.getMyStudent": {},
@@ -325,6 +326,10 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "library.overdue": {},
         "library.myLoans": {},
         "lifecycle.history": { studentId: UUID },
+        "mastery.heatmapBySection": {},
+        "mastery.gapsForStudent": { studentId: UUID },
+        "mastery.studentSuccessRows": { classSectionId: UUID },
+        "mastery.interventions": {},
         "notifications.listMyNotifications": {},
         "notifications.unreadCount": {},
         "ptm.events": {},
@@ -361,6 +366,8 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "website.listNotices": {},
         "website.listEvents": {},
         "website.getWebsite": {},
+        "workflows.list": {},
+        "workflows.runs": {},
       };
 
       const names = [...getRegisteredQueries().keys()];

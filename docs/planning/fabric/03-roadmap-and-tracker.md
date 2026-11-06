@@ -90,6 +90,7 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-INT-04 | staff, owner, principal | P1 | FB-INT-03 | simulated | F-UI-07 | tests/unit/fabric-fixtures/insights.test.ts | insight_actions append-only, outcome via new row | 4 |
 | FB-INT-05 | owner, principal | P1 | FB-INT-03 | simulated | F-UI-08 | tests/unit/fabric-simulator.test.ts | scenario approval requires approver ≠ creator | 9 |
 | FB-INT-06 | owner, principal | P1 | FB-INT-04 | simulated | F-UI-07 | tests/unit/fabric-fixtures/insights.test.ts | measured outcome via new row, never overwrite | 4 |
+| FB-INT-07 | owner, principal | P2 | FB-INT-04, FB-AGT-02 | limited | M23 backend | tests/db/workflows-acceptance.test.ts | low-risk deterministic automation: in-app alerts, reports, queued agent tasks; family reminders need approval (`<LimitedBadge>`) | 6 |
 
 ## TWIN
 

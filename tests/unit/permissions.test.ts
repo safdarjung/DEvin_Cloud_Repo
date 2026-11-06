@@ -92,9 +92,12 @@ const MATRIX: Row[] = [
   ["visitor.manage", true, true, true, false, false, false, false, false, false],
   ["gatepass.manage", true, true, true, false, false, false, true, false, false],
   ["pickup.manage", true, true, true, false, false, false, false, false, true],
+  ["agent.run", true, true, true, false, false, false, false, false, false],
+  ["agent.approve", true, true, false, false, false, false, false, false, false],
   ["report.schedule", true, true, true, false, false, false, false, false, false],
   ["workflow.read", true, true, true, false, false, false, false, false, false],
   ["workflow.manage", true, true, false, false, false, false, false, false, false],
+  ["report.schedule", true, true, true, false, false, false, false, false, false],
   ["student_leave.request", false, false, false, false, false, false, false, false, true],
   ["student_leave.approve", true, true, true, false, false, false, true, false, false],
   ["diary.write", true, true, true, false, false, false, true, false, false],
@@ -260,5 +263,23 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
     expect(permissionsFor("guardian").includes("agent.approve")).toBe(false);
     expect(permissionsFor("student").includes("agent.run")).toBe(false);
     expect(permissionsFor("student").includes("agent.approve")).toBe(false);
+  });
+
+  it("workflow.read is held by owner, principal, admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("workflow.read"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("workflow.manage is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("workflow.manage"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("teacher, accountant, exam_controller, admissions, guardian, student hold neither workflow permission", () => {
+    const noRead = ["accountant", "admissions", "exam_controller", "guardian", "student", "teacher"];
+    for (const role of noRead) {
+      expect(permissionsFor(role as Role).includes("workflow.read")).toBe(false);
+      expect(permissionsFor(role as Role).includes("workflow.manage")).toBe(false);
+    }
   });
 });

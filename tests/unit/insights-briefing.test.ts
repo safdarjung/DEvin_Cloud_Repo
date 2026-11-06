@@ -112,7 +112,7 @@ describe("composeBriefing", () => {
         staffToday: { onLeave: 2, absent: 1 },
         coverNeeded: [1, 2, 3],
         openMaintenance: [1, 2],
-        upcomingEvents: [{ title: "PTM", date: "2026-11-10", kind: "ptm" }],
+        upcomingEvents: [{ title: "PTM", startsOn: "2026-11-10", kind: "ptm" }],
       }),
       result("insights.priorityActions", {}, [
         { id: "i1", title: "Fix timetable gap", why: "", href: "/demo/insights/i1", owner: "", due: "2026-11-10", severity: "warning" },
@@ -239,7 +239,7 @@ describe("composeBriefing", () => {
         staffToday: { onLeave: 1, absent: 0 },
         coverNeeded: [1],
         openMaintenance: [1],
-        upcomingEvents: [{ title: "PTM", date: "2026-11-10", kind: "ptm" }],
+        upcomingEvents: [{ title: "PTM", startsOn: "2026-11-10", kind: "ptm" }],
       }),
     ];
 

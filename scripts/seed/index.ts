@@ -15,6 +15,7 @@ import { run as runExams } from "./sections/exams.ts";
 import { run as runFeePlans } from "./sections/fee-plans.ts";
 import { run as runFinance } from "./sections/finance.ts";
 import { run as runLibrary } from "./sections/library.ts";
+import { run as runMastery } from "./sections/mastery.ts";
 import { run as runNotifications } from "./sections/notifications.ts";
 import { run as runHomeroom } from "./sections/homeroom.ts";
 import { run as runOperations } from "./sections/operations.ts";
@@ -24,6 +25,7 @@ import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
 import { run as runVisitors } from "./sections/visitors.ts";
 import { run as runWebsite } from "./sections/website.ts";
+import { run as runWorkflows } from "./sections/workflows.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "core", run: runCore },
@@ -39,7 +41,11 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "finance", run: runFinance },
   // X04-T10: needs finance.ts's fee_structures/invoices.
   { name: "fee-plans", run: runFeePlans },
+  // M23-T20: after finance and admissions (both read by its templates' metrics).
+  { name: "workflows", run: runWorkflows },
   { name: "exams", run: runExams },
+  // M20-T13: after exams — compute_mastery reads exam_papers.unit_ids + marks exams.ts just wrote.
+  { name: "mastery", run: runMastery },
   // X06-T10: after exams (own exam/papers) and timetable (rooms) — both already earlier.
   { name: "exam_seating", run: runExamSeating },
   { name: "website", run: runWebsite },

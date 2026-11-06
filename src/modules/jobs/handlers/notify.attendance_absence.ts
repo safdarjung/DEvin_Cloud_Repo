@@ -4,6 +4,7 @@
 // 20261028000014). Every value in the rendered message is re-read from the
 // current DB rows below — never the payload.
 import { createNotification } from "../../notifications/service.ts";
+import { emitWorkflowEvent } from "../../workflows/events.ts";
 import type { JobHandler } from "../types.ts";
 
 interface AttendanceStatusConfig {
@@ -40,6 +41,10 @@ export const notifyAttendanceAbsence: JobHandler = async (job, { admin }) => {
     ?.statuses ?? []) as AttendanceStatusConfig[];
   const statusConfig = statuses.find((s) => s.code === record.status);
   if (!statusConfig?.notify_guardian) return;
+
+  // M23-T14: one workflow event per session, before recipient lookups
+  // (rulings §Events). Many absence jobs of one session dedupe into one run.
+  await emitWorkflowEvent(admin, record.institution_id, "attendance.absences_submitted", record.session_id);
 
   const { data: session, error: sessionError } = await admin
     .from("attendance_sessions")

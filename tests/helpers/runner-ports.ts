@@ -5,7 +5,7 @@
 export function withoutSweeps<T extends object>(ports: T, keep: readonly string[] = []): T {
   const out = { ...ports } as Record<string, unknown>;
   for (const key of Object.keys(out)) {
-    if (key.startsWith("enqueueDue") && !keep.includes(key)) out[key] = async () => 0;
+    if (key.startsWith("enqueue") && !keep.includes(key)) out[key] = async () => 0;
   }
   return out as T;
 }

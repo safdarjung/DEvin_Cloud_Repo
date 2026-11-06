@@ -137,6 +137,8 @@ function buildPapersAndMarks(
   sectionIds: Set<string>,
   assignments: SubjectAssignmentInfo[],
   enrolmentsBySection: Map<string, EnrolmentInfo[]>,
+  sectionById: Map<string, SectionInfo>,
+  unitSeqs: number[],
   maxMarksFor: (kind: string) => number,
   passMarksFor: (maxMarks: number) => number,
   skipMarksFor?: (classSectionId: string, subjectCode: string) => boolean,
@@ -151,6 +153,8 @@ function buildPapersAndMarks(
     const maxMarks = maxMarksFor(a.kind);
     const passMarks = passMarksFor(maxMarks);
     const paperId = uuidV5("exams", `paper:${examKey}:${a.classSectionId}:${a.subjectCode}`);
+    const gradeCode = sectionById.get(a.classSectionId)!.gradeCode;
+    const unitIds = unitSeqs.map((seq) => uuidV5("academics", `unit:${gradeCode}:${a.subjectCode}:${seq}`));
     paperRows.push({
       id: paperId,
       institution_id: ctx.institutionId,
@@ -160,6 +164,7 @@ function buildPapersAndMarks(
       max_marks: maxMarks,
       pass_marks: passMarks,
       held_on: heldOnFor(paperIndex),
+      unit_ids: unitIds,
     });
     paperIdByKey.set(`${a.classSectionId}:${a.subjectCode}`, { id: paperId, maxMarks });
     paperIndex += 1;
@@ -216,7 +221,7 @@ export async function run(ctx: SeedContext): Promise<void> {
     .maybeSingle();
   if (existing?.status === "published") return; // idempotent rerun guard (packet security requirement)
 
-  const { sections, sectionByKey, assignments, enrolmentsBySection } = await loadAcademicsData(ctx);
+  const { sections, sectionById, sectionByKey, assignments, enrolmentsBySection } = await loadAcademicsData(ctx);
 
   const subjectCodesBySection = new Map<string, string[]>();
   for (const a of assignments) {
@@ -246,6 +251,8 @@ export async function run(ctx: SeedContext): Promise<void> {
     allSectionIds,
     assignments,
     enrolmentsBySection,
+    sectionById,
+    [1, 2], // M20-T13: HY-2026 papers map units 1-2 of the paper's grade+subject
     (kind) => (kind === "co_scholastic" ? 50 : 80),
     (maxMarks) => Math.round((maxMarks * PASS_PERCENTAGE) / 100),
   );
@@ -394,6 +401,8 @@ export async function run(ctx: SeedContext): Promise<void> {
     gradeXSectionIds,
     assignments,
     enrolmentsBySection,
+    sectionById,
+    [3], // M20-T13: PT2-X papers map unit 3 of the paper's grade+subject
     () => 40,
     () => 13,
     (classSectionId, subjectCode) => classSectionId === xaSectionId && subjectCode === "MATH",

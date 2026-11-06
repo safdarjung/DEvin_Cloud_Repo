@@ -212,6 +212,11 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | `pickup_persons` | Authorized persons to collect a student (removed hard-delete) | `student_id →` · `full_name 1–80` · `relation check in (father, mother, grandparent, uncle, aunt, sibling, driver, other)` · `phone 1–10 (6-9......)` · `created_by → profiles` | unique(student_id, phone); no UPDATE policy (remove + add instead) | op (hard delete only) | conf |
 | `gate_passes` | Student early-leave permission slips (immutable collection; one open per student) | `student_id →` · `reason 1–200` · `guardian_id?→ guardians` · `pickup_person_id?→ pickup_persons` (on delete set null) · `collector_name 1–80` (snapshot) · `collector_relation text` (snapshot) · `status check in (pending, approved, rejected, cancelled, exited)` default pending · `requested_by → profiles` (forced to current user for non-admin) · `requested_at timestamptz` (forced to now()) · `decided_by?→ profiles` (stamped on status change) · `decided_at?` (stamped) · `exited_at?` · `exit_marked_by?→ profiles` | unique(student_id) where status in (pending, approved); index(institution_id, requested_at desc); check exactly one of guardian_id/pickup_person_id; no DELETE policy | imm (status transitions: pending→{approved,rejected,cancelled}, approved→{cancelled,exited}, others terminal) | conf |
 
+### 2.13 workflows (migration 0096)
+
+| `workflows` | Graph automation — deterministic routing, approval gates, notifications, reports, agent tasks | `name text` (1–80, unique per institution) · `version int default 1` (`check >= 1`; increments on graph change) · `status text default 'draft' check in (draft, active, paused, disabled)` · `trigger_type text check in (schedule, event, manual)` · `trigger_config text ≤ 100` (cron for schedule, event key for event, empty for manual) · `nodes jsonb` (array 2–30, length ≤ 30000 bytes) · `edges jsonb` (array 1–60, length ≤ 10000 bytes) · `next_run_at timestamptz?` (set to next fire time on active schedule; recomputed by sweep) · `created_by → profiles not null` · `created_at`/`updated_at` + `set_updated_at` trigger | unique(institution_id, name); partial index(next_run_at) where status='active' and trigger_type='schedule'; index(institution_id, trigger_type, trigger_config) where status='active'; checks: cron syntax, event key in allowed set, manual with empty config only | op (no delete — disable instead; service role reaps, graphs not versioned separately) | int |
+| `workflow_runs` | Run history and state machine for automation branches | `workflow_id → workflows (composite FK with institution_id)` · `workflow_version int not null` (snapshot of the workflow's version at run start) · `engine_version text? ≤ 20` (e.g. `workflows_v1`) · `graph jsonb not null` (snapshot: `{nodes, edges}` from the workflow) · `trigger_kind text check in (schedule, event, manual)` · `trigger_key text` (1–200, unique per workflow; dedupes runs within a window) · `entity_id uuid?` (event subject) · `requested_by → profiles?` (manual runs) · `status text default 'running' check in (running, awaiting_approval, done, failed)` · `started_at timestamptz not null default now()` · `finished_at timestamptz?` · `steps jsonb default '[]'` (array ≤ 100 steps with `{node_id, status, at, note}`) · `cursor_node_id text? ≤ 40` (approval wait point) · `pending_decision text? check in (approved, rejected)` · `last_value int?` (condition result, used in messages) · `decided_by → profiles?` · `decided_at timestamptz?` · `decision_note text? ≤ 500` · `created_at`/`updated_at` + `set_updated_at` trigger | unique(id, institution_id); unique(workflow_id, trigger_key); index(institution_id, created_at desc); index(workflow_id, created_at desc); partial index(institution_id) where status='awaiting_approval'; partial index(updated_at) where status='running'; checks: `(status in (done,failed)) = (finished_at is not null)`, `status='awaiting_approval' → cursor_node_id not null` | imm (reaper marks running runs failed after 6h; no update of terminal rows) | int |
+
 ## 3. Ownership matrix
 
 | Module | Owns | Reads from |
@@ -225,6 +230,8 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | finance | fee_structures, fee_components, fee_assignments, concessions, invoices, invoice_lines, payments, receipts, ledger_entries | people, academics |
 | fee-plans | late_fee_rules, invoice_instalments, late_fee_charges | finance |
 | exams | exams, exam_papers, marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
+| exams | exams, exam_papers (+ `unit_ids` column added in M20), marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
+| mastery | mastery_snapshots, insight_actions rows (kind = 'intervention') | exams, academics, attendance, people |
 | exam-seating | exam_seating_plans, exam_seats | exams, academics, people, timetable |
 | certificates | certificates | people, academics, documents, lifecycle |
 | facilities | assets, maintenance_requests | people |
@@ -232,11 +239,12 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | calendar | academic_calendar_events | academics |
 | lifecycle | student_lifecycle_events | people, academics |
 | reports | scheduled_reports, documents (report entity) | attendance (for `attendance.daily` source), finance (for `finance.defaulters` source); via RPC invokers only, no TS query registration |
-| insights | insights, insight_actions, briefings | academics, attendance, finance, admissions (via RPC sources only; writes only by the job runner and definers; M25 reads `briefings` to compose summaries) |
+| insights | insights, insight_actions, briefings | academics, attendance, finance, admissions (via RPC sources only; writes only by the job runner and definers; M25 reads `briefings` to compose summaries, writes via `src/modules/insights/briefings.ts` in-request) |
 | visitors | visitor_entries, pickup_persons, gate_passes | people, academics |
 | ptm | ptm_events, ptm_event_sections, ptm_slots, ptm_bookings, surveys, survey_audiences, survey_respondents, survey_responses | academics (via calendar event date), people |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |
 | library | library_books, library_copies, library_loans | finance (writes via `app.add_invoice_charge`); people (borrows via students/staff) |
+| workflows | workflows, workflow_runs | agents (queues agent runs; M22 adds `workflow_run_id` FK to `agent_runs`) |
 
 Reserved names, not created: `payroll_*`, `inventory_*`, `modules`, `plans`, `subscriptions`, `entitlements`, `usage_events`, `workflow_definitions`, `timetable_runs`, `devices`, `consents`, `retention_policies`.
 

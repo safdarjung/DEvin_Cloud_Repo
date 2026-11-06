@@ -7,6 +7,7 @@ import {
   generateTermInvoices,
   insightsDetect,
   forecastRun,
+  masteryCompute,
   notifyAnnouncement,
   notifyAttendanceAbsence,
   notifyDiaryEntry,
@@ -16,6 +17,7 @@ import {
   notifyRecheckDecided,
   notifyResultsPublished,
   notifyStudentLeaveDecided,
+  workflowRun,
 } from "./handlers/index.ts";
 
 // MOD-T11 — job type -> owning module (rulings "Jobs"). Core job types
@@ -35,6 +37,8 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "fee_plans.late_fees": "fee_plans",
   "insights.detect": "insights",
   "forecast.run": "forecasts",
+  "mastery.compute": "mastery",
+  "workflow.run": "workflows",
 };
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
@@ -56,6 +60,8 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "fee_plans.late_fees": lateFees,
   "insights.detect": insightsDetect,
   "forecast.run": forecastRun,
+  "mastery.compute": masteryCompute,
+  "workflow.run": workflowRun,
 };
 
 export function resolveHandler(type: string): JobHandler | undefined {
