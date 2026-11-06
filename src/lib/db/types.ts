@@ -1095,14 +1095,14 @@ isOneToOne: false
                   ]
                 },"exam_papers": {
                   Row: {
-                    "class_section_id": string,"created_at": string,"duration_minutes": number | null,"exam_id": string,"held_on": string | null,"id": string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id": string | null,"scheduled_at": string | null,"subject_id": string,"updated_at": string
+                    "class_section_id": string,"created_at": string,"duration_minutes": number | null,"exam_id": string,"held_on": string | null,"id": string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id": string | null,"scheduled_at": string | null,"subject_id": string,"unit_ids": (string)[],"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "class_section_id": string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id": string,"held_on"?: string | null,"id"?: string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id": string,"updated_at"?: string
+                    "class_section_id": string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id": string,"held_on"?: string | null,"id"?: string,"institution_id": string,"max_marks": number,"pass_marks": number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id": string,"unit_ids"?: (string)[],"updated_at"?: string
                   }
                   Update: {
-                    "class_section_id"?: string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id"?: string,"held_on"?: string | null,"id"?: string,"institution_id"?: string,"max_marks"?: number,"pass_marks"?: number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id"?: string,"updated_at"?: string
+                    "class_section_id"?: string,"created_at"?: string,"duration_minutes"?: number | null,"exam_id"?: string,"held_on"?: string | null,"id"?: string,"institution_id"?: string,"max_marks"?: number,"pass_marks"?: number,"room_id"?: string | null,"scheduled_at"?: string | null,"subject_id"?: string,"unit_ids"?: (string)[],"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1649,14 +1649,14 @@ isOneToOne: false
                   ]
                 },"insight_actions": {
                   Row: {
-                    "action": string,"actual_outcome": string | null,"created_at": string,"created_by": string,"decided_at": string,"expected_outcome": string,"id": string,"insight_id": string,"institution_id": string,"measured_at": string | null,"owner": string,"rationale": string,"status": string,"supersedes_id": string | null,"updated_at": string
+                    "action": string,"actual_outcome": string | null,"created_at": string,"created_by": string,"decided_at": string,"expected_outcome": string,"goal": string | null,"id": string,"insight_id": string,"institution_id": string,"intervention_status": string | null,"kind": string,"measured_at": string | null,"owner": string,"owner_staff_id": string | null,"rationale": string,"review_date": string | null,"status": string,"steps": Json | null,"student_id": string | null,"supersedes_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "action": string,"actual_outcome"?: string | null,"created_at"?: string,"created_by": string,"decided_at"?: string,"expected_outcome": string,"id"?: string,"insight_id": string,"institution_id": string,"measured_at"?: string | null,"owner": string,"rationale": string,"status": string,"supersedes_id"?: string | null,"updated_at"?: string
+                    "action": string,"actual_outcome"?: string | null,"created_at"?: string,"created_by": string,"decided_at"?: string,"expected_outcome": string,"goal"?: string | null,"id"?: string,"insight_id": string,"institution_id": string,"intervention_status"?: string | null,"kind"?: string,"measured_at"?: string | null,"owner": string,"owner_staff_id"?: string | null,"rationale": string,"review_date"?: string | null,"status": string,"steps"?: Json | null,"student_id"?: string | null,"supersedes_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "action"?: string,"actual_outcome"?: string | null,"created_at"?: string,"created_by"?: string,"decided_at"?: string,"expected_outcome"?: string,"id"?: string,"insight_id"?: string,"institution_id"?: string,"measured_at"?: string | null,"owner"?: string,"rationale"?: string,"status"?: string,"supersedes_id"?: string | null,"updated_at"?: string
+                    "action"?: string,"actual_outcome"?: string | null,"created_at"?: string,"created_by"?: string,"decided_at"?: string,"expected_outcome"?: string,"goal"?: string | null,"id"?: string,"insight_id"?: string,"institution_id"?: string,"intervention_status"?: string | null,"kind"?: string,"measured_at"?: string | null,"owner"?: string,"owner_staff_id"?: string | null,"rationale"?: string,"review_date"?: string | null,"status"?: string,"steps"?: Json | null,"student_id"?: string | null,"supersedes_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1676,6 +1676,18 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_owner_staff_id_fkey"
+      columns: ["owner_staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "insight_actions_supersedes_id_fkey"
@@ -2300,6 +2312,56 @@ isOneToOne: false
       columns: ["superseded_by"]
 isOneToOne: false
       referencedRelation: "marks"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"mastery_snapshots": {
+                  Row: {
+                    "academic_year_id": string,"class_section_id": string,"computed_at": string,"confidence": number,"created_at": string,"curriculum_unit_id": string,"detector_version": string,"evidence": NonNullable<Json>,"id": string,"institution_id": string,"mark_count": number,"score": number,"student_id": string,"subject_id": string,"submission_count": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "academic_year_id": string,"class_section_id": string,"computed_at": string,"confidence": number,"created_at"?: string,"curriculum_unit_id": string,"detector_version": string,"evidence": NonNullable<Json>,"id"?: string,"institution_id": string,"mark_count"?: number,"score": number,"student_id": string,"subject_id": string,"submission_count"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "academic_year_id"?: string,"class_section_id"?: string,"computed_at"?: string,"confidence"?: number,"created_at"?: string,"curriculum_unit_id"?: string,"detector_version"?: string,"evidence"?: NonNullable<Json>,"id"?: string,"institution_id"?: string,"mark_count"?: number,"score"?: number,"student_id"?: string,"subject_id"?: string,"submission_count"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "mastery_snapshots_academic_year_id_fkey"
+      columns: ["academic_year_id"]
+isOneToOne: false
+      referencedRelation: "academic_years"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "mastery_snapshots_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
       referencedColumns: ["id"]
     }
                   ]
@@ -3947,6 +4009,9 @@ isOneToOne: true
 "commit_import_batch":
 { Args: { "p_batch_id": string }; Returns: Json
                            },
+"compute_mastery":
+{ Args: { "p_institution_id": string }; Returns: number
+                           },
 "convert_enquiry":
 { Args: { "p_academic_year_id": string,"p_applicant": Json,"p_enquiry_id": string,"p_grade_id": string,"p_guardian": Json,"p_institution_id": string }; Returns: Json
                            },
@@ -4079,6 +4144,9 @@ isOneToOne: true
 { Args: { "p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
 "enqueue_insight_detection":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"enqueue_mastery_compute":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
 "enqueue_term_invoices":
@@ -4303,6 +4371,16 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"mastery_heatmap":
+{ Args: { "p_academic_year_id": string,"p_class_section_id": string,"p_gap_threshold": number,"p_min_confidence": number,"p_subject_id": string }; Returns: {
+              "below": number,"class_section_id": string,"curriculum_unit_id": string,"mean_score": number,"students": number,"subject_id": string
+            }[]
+                           },
+"mastery_student_stats":
+{ Args: { "p_academic_year_id": string,"p_class_section_id": string,"p_gap_threshold": number,"p_min_confidence": number }; Returns: {
+              "class_section_id": string,"confident_units": number,"gap_units": number,"mean_score": number,"student_id": string
+            }[]
+                           },
 "my_open_surveys":
 { Args: { "p_institution_id": string }; Returns: {
               "closes_at": string,"description": string,"id": string,"is_anonymous": boolean,"questions": Json,"responded": boolean,"title": string
@@ -4389,13 +4467,20 @@ isOneToOne: true
 "created_by": string,
 "decided_at": string,
 "expected_outcome": string,
+"goal": string | null,
 "id": string,
 "insight_id": string,
 "institution_id": string,
+"intervention_status": string | null,
+"kind": string,
 "measured_at": string | null,
 "owner": string,
+"owner_staff_id": string | null,
 "rationale": string,
+"review_date": string | null,
 "status": string,
+"steps": Json | null,
+"student_id": string | null,
 "supersedes_id": string | null,
 "updated_at": string
             }

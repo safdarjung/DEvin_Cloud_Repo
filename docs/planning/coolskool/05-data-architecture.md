@@ -225,6 +225,8 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | finance | fee_structures, fee_components, fee_assignments, concessions, invoices, invoice_lines, payments, receipts, ledger_entries | people, academics |
 | fee-plans | late_fee_rules, invoice_instalments, late_fee_charges | finance |
 | exams | exams, exam_papers, marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
+| exams | exams, exam_papers (+ `unit_ids` column added in M20), marks, results, recheck_requests, recheck_decisions, answer_sheets | academics, people, attendance (attendance % in snapshot) |
+| mastery | mastery_snapshots, insight_actions rows (kind = 'intervention') | exams, academics, attendance, people |
 | exam-seating | exam_seating_plans, exam_seats | exams, academics, people, timetable |
 | certificates | certificates | people, academics, documents, lifecycle |
 | facilities | assets, maintenance_requests | people |

@@ -7,6 +7,7 @@ import { defineQuery } from "@/lib/actions/define-query";
 import { InsightCardsSchema, InsightIdSchema, ListInsightsSchema } from "./schemas";
 import { listInsightActions, listInsights } from "./queries";
 import { insightCards, priorityActions, riskIndicators } from "./derived";
+import { readBriefing } from "./briefings";
 
 export const insightsListQuery = defineQuery({
   name: "insights.list",
@@ -46,4 +47,14 @@ export const insightsCardsQuery = defineQuery({
   schema: InsightCardsSchema,
   permission: "insight.read",
   handler: (input, ctx) => insightCards(ctx, input),
+});
+
+// M25-T5 — reads the day's persisted brief (no write); null when the
+// caller has no brief role or none generated yet (rulings "Writes" / "Frozen").
+export const briefingsTodayQuery = defineQuery({
+  name: "briefings.today",
+  module: "ai_briefings",
+  schema: z.object({}).strict(),
+  permission: "insight.read",
+  handler: (_input, ctx) => readBriefing(ctx),
 });

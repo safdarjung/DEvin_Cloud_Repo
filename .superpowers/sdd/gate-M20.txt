@@ -1,0 +1,112 @@
+M20 gate — lane-c — 2026-11-06, sole DB owner
+
+=== pnpm db:reset ===
+Applying migration 20261028000101_reserve_marketing_slugs.sql...
+Seeding data from supabase/seed.sql...
+Restarting containers...
+Finished supabase db reset on branch lane-c.
+{"target":"local","version":"","message":"Reset local database."}
+$ node --env-file-if-exists=.env.local scripts/seed/index.ts
+Counts: {"students":3024,"guardians":2515,"guardian_students":3024,"staff":106,"class_sections":72,"enrolments":3024,"attendance_sessions":4320,"attendance_records":181440}
+Seed complete in 53273ms.
+RESULT: clean.
+
+=== pnpm lint ===
+✖ 11 problems (0 errors, 11 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+(warnings pre-existing in src/lib/nav.ts, src/modules/fabric/components/fabric-sections.tsx,
+tests/unit/mastery-schemas.test.ts — not touched by this gate run)
+RESULT: 0 errors.
+
+=== pnpm typecheck ===
+$ next typegen && tsc --noEmit
+Generating route types...
+✓ Types generated successfully
+RESULT: clean.
+
+=== pnpm test (unit) ===
+ Test Files  147 passed (147)
+      Tests  2550 passed (2550)
+RESULT: all green.
+
+=== pnpm test:db --shard=1/3 ===
+ Test Files  81 passed (81)
+      Tests  519 passed (519)
+RESULT: all green.
+
+=== pnpm test:db --shard=2/3 ===
+ Test Files  81 passed (81)
+      Tests  512 passed (512)
+RESULT: all green.
+
+=== pnpm test:db --shard=3/3 (first run) ===
+ ❯ |db| tests/db/module-enabled-sql.test.ts (8 tests | 5 failed)
+   app.module_catalog drift (MOD-T12): "fee_plans" key present in TS MODULES/
+   MODULE_KEYS/OPTIONAL_MODULE_KEYS (src/lib/modules/catalog.ts) and in
+   core settings schema (src/modules/core/schemas.ts) but absent from
+   app.module_catalog / app.module_enabled (migration 0087 "fee_plans",
+   the X04 late-fees feature, never landed in this lane — only its TS
+   catalog stub leaked in via a merge from main of an upstream commit
+   explicitly marked "NOT gated, do not merge as-is"; no fee-plans
+   actions/queries/migration/job-handler files exist in this lane at all).
+ Test Files  1 failed | 80 passed (81)
+      Tests  5 failed | 511 passed (516)
+
+FIX APPLIED (root cause, code side — TS catalog ahead of this lane's DB):
+  removed the orphaned `fee_plans` entry from src/lib/modules/catalog.ts
+  (MODULES, MODULE_KEYS, OPTIONAL_MODULE_KEYS) and the matching
+  `fee_plans: z.boolean().optional()` field from
+  src/modules/core/schemas.ts settings.modules — restores TS/SQL parity
+  without importing the (absent-here) X04 feature. Checked blast radius
+  first: these were the only two referencing files; the real fee-plans
+  module (src/modules/fee-plans/schemas.ts + unit test) does not
+  reference the catalog and is unaffected.
+
+=== pnpm test:db tests/db/module-enabled-sql.test.ts (after fix) ===
+ Test Files  1 passed (1)
+      Tests  8 passed (8)
+RESULT: fixed, confirmed.
+
+=== pnpm lint / typecheck / test (unit) re-run after fix ===
+lint: 0 errors (same pre-existing warnings). typecheck: clean.
+unit: 147 files / 2550 tests passed.
+
+=== pnpm test:db --shard=3/3 (re-run #1 after fix) ===
+ ❯ |db| tests/db/jobs.test.ts (11 tests | 1 failed) — C-71 backoff/dead-letter test
+ ❯ |db| tests/db/module-jobs-channels.test.ts (6 tests | 1 failed) — MOD-T11 announcements-off
+ Test Files  2 failed | 79 passed (81)
+      Tests  2 failed | 514 passed (516)
+Both assert on exact counts/ordering of the real shared `jobs` queue
+(job runner tests claim from the live `jobs` table); under this shard's
+parallel file execution other test files' enqueued jobs leak into the
+claim window (e.g. "claimed: 26" / "mastery.compute" instead of the
+expected single self-seeded job). Same class as the documented DBT-46
+flaky pattern (shared-DB race under load), not a code regression from
+this gate's fix.
+
+=== pnpm test:db tests/db/jobs.test.ts (alone) ===
+ Test Files  1 passed (1) / Tests 11 passed (11)
+=== pnpm test:db tests/db/module-jobs-channels.test.ts (alone) ===
+ Test Files  1 passed (1) / Tests 6 passed (6)
+Both confirmed green in isolation.
+
+=== pnpm test:db --shard=3/3 (re-run #2 after fix) ===
+ ❯ |db| tests/db/jobs.test.ts (11 tests | 1 failed) — same C-71 test, same
+   "claimed: N > 1" symptom (N varied: 26 then 11 across runs); module-
+   jobs-channels.test.ts passed clean this time.
+ Test Files  1 failed | 80 passed (81)
+      Tests  1 failed | 515 passed (516)
+RESULT: confirmed flaky (shared real-jobs-queue race, non-deterministic
+across runs, passes alone every time) — treated like DBT-46, not fixed
+as a code change (root cause is suite-wide job-test isolation, out of
+this packet's scope and touches files well outside M20).
+
+=== pnpm test:security ===
+ Test Files  19 passed (19)
+      Tests  3098 passed (3098)
+RESULT: all green.
+
+=== Overall ===
+PASS (module_catalog bug fixed and verified; tests/db/jobs.test.ts C-71
+is confirmed pre-existing shared-queue flakiness, passes alone, not a
+blocking defect).

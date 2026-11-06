@@ -26,6 +26,7 @@ import "@/modules/insights/query-defs";
 import "@/modules/jobs/query-defs";
 import "@/modules/library/query-defs";
 import "@/modules/lifecycle/query-defs";
+import "@/modules/mastery/query-defs";
 import "@/modules/notifications/query-defs";
 import "@/modules/people/hr.query-defs";
 import "@/modules/people/query-defs";
