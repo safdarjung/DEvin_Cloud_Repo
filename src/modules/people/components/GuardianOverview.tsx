@@ -22,6 +22,8 @@ import {
 } from "@/modules/attendance/queries";
 import { AckButton } from "@/modules/diary/components/AckButton";
 import { diaryForStudent } from "@/modules/diary/queries";
+import { UpcomingExams } from "@/modules/exams/components/UpcomingExams";
+import { upcomingExamsForStudent } from "@/modules/exams/queries";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { getStudentProfile } from "@/modules/people/queries";
 import type { PortalSelection } from "@/modules/people/portal";
@@ -69,7 +71,7 @@ export async function GuardianOverview({
   const today = todayInInstitutionTimezone(ctx);
   const on = (m: Parameters<typeof isModuleEnabled>[1]) => isModuleEnabled(ctx, m);
 
-  const [profile, invoices, assignments, diary, notices, events, timetable, trend, counts] = await Promise.allSettled([
+  const [profile, invoices, assignments, diary, notices, events, timetable, trend, counts, exams] = await Promise.allSettled([
     getStudentProfile(ctx, studentId),
     on("fees") ? listInvoicesForStudent(ctx, studentId) : Promise.resolve([]),
     on("assignments") ? listStudentAssignments(ctx, studentId) : Promise.resolve([]),
@@ -82,6 +84,7 @@ export async function GuardianOverview({
     on("attendance")
       ? attendanceDailyCounts(ctx, { from: shiftDays(today, -(2 * WINDOW_DAYS - 1)), to: today, studentId })
       : Promise.resolve([]),
+    on("exams") ? upcomingExamsForStudent(ctx, studentId, 60) : Promise.resolve([]),
   ]);
 
   const firstName = (profile.status === "fulfilled" && profile.value?.firstName) || selection.studentName.split(" ")[0];
@@ -241,6 +244,8 @@ export async function GuardianOverview({
           ) : (
             <Failed title="Attendance, last 30 days" icon={<CalendarDays />} />
           ))}
+
+        {on("exams") && <UpcomingExams papers={exams.status === "fulfilled" ? exams.value : null} />}
 
         {notices.status === "fulfilled" ? (
           <ListWidget

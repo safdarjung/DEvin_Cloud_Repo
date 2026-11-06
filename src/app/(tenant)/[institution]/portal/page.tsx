@@ -19,7 +19,10 @@ import { mySubmissions } from "@/modules/academics/submissions.queries";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { attendanceTrend, getStudentAttendanceSummary } from "@/modules/attendance/queries";
 import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
-import { listResultsForStudent } from "@/modules/exams/queries";
+import { UpcomingExams } from "@/modules/exams/components/UpcomingExams";
+import { listResultsForStudent, upcomingExamsForStudent } from "@/modules/exams/queries";
+import { streakText } from "@/modules/practice/components/PracticeHistory";
+import { practiceProgress, STREAK_WINDOW_DAYS } from "@/modules/practice/queries";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { listMyNotifications } from "@/modules/notifications/queries";
 import { GuardianOverview } from "@/modules/people/components/GuardianOverview";
@@ -94,12 +97,15 @@ export default async function PortalOverviewPage({
 
   // Extras never fail the page: each rejected one renders ErrorState in its own widget.
   const canNotifications = hasPermission(ctx, "notification.read");
+  const canPractice = hasPermission(ctx, "practice.attempt") && isModuleEnabled(ctx, "practice");
   const extras = Promise.allSettled([
     isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 4) : Promise.resolve([]),
     isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 4) : Promise.resolve([]),
     canNotifications ? listMyNotifications(ctx, 5) : Promise.resolve([]),
     isModuleEnabled(ctx, "timetable") ? timetableTodayFor(ctx, selection.studentId) : Promise.resolve([]),
     isModuleEnabled(ctx, "attendance") ? attendanceTrend(ctx, { days: 30, studentId: selection.studentId }) : Promise.resolve([]),
+    isModuleEnabled(ctx, "exams") ? upcomingExamsForStudent(ctx, selection.studentId, 60) : Promise.resolve([]),
+    canPractice ? practiceProgress(ctx, selection.studentId) : Promise.resolve(null),
   ]);
 
   const studentView = ctx.membership.role !== "guardian";
@@ -112,7 +118,7 @@ export default async function PortalOverviewPage({
     studentView && isModuleEnabled(ctx, "assignments") ? mySubmissions(ctx, selection.studentId) : Promise.resolve([]),
   ]);
   const submissionState = new Map(submissions.map((x) => [x.assignmentId, x.state]));
-  const [notices, events, notifications, timetableR, trendR] = await extras;
+  const [notices, events, notifications, timetableR, trendR, examsR, practiceR] = await extras;
 
   // invoices.total / paid_total are numeric(12,2) rupees (finance/queries.ts), not paise.
   const outstanding = invoices.reduce((sum, inv) => sum + (inv.total - inv.paidTotal), 0);
@@ -256,8 +262,21 @@ export default async function PortalOverviewPage({
   const studyHelper = hasPermission(ctx, "ai.study") && (
     <Widget key="study" title="Study helper" icon={<Sparkles />} action={{ href: `${basePath}/study${q}`, label: "Open study helper" }}>
       <p className="text-sm text-muted-foreground">Ask about a topic, get notes, mindmaps, or practice.</p>
+      {canPractice && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3">
+          <p className="text-sm tabular-nums text-muted-foreground">
+            {practiceR.status === "fulfilled" && practiceR.value
+              ? `${streakText(practiceR.value.streak)} (last ${STREAK_WINDOW_DAYS} days)`
+              : "Practice streak unavailable"}
+          </p>
+          <Link href={`${basePath}/practice${q}`} className={buttonVariants({ variant: "outline", className: "min-h-10" })}>
+            Practice
+          </Link>
+        </div>
+      )}
     </Widget>
   );
+  const upcomingExams = isModuleEnabled(ctx, "exams") && <UpcomingExams key="exams" papers={examsR.status === "fulfilled" ? examsR.value : null} />;
   const announcements =
     notices.status === "fulfilled" ? (
       <ListWidget
@@ -314,7 +333,7 @@ export default async function PortalOverviewPage({
 
   const sections = isGuardian
     ? [feesDue, attendanceTrendWidget, latestResults, homework, timetable, announcements, insightCards, schoolEvents, notificationFeed]
-    : [timetable, homework, announcements, attendanceTrendWidget, latestResults, schoolEvents, notificationFeed, studyHelper, insightCards];
+    : [timetable, homework, upcomingExams, announcements, attendanceTrendWidget, latestResults, schoolEvents, notificationFeed, studyHelper, insightCards];
 
   return (
     <>
