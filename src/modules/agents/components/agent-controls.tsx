@@ -109,7 +109,6 @@ export function AgentCard({
           <Badge variant={agent.enabled ? "success" : "secondary"}>{agent.enabled ? "Enabled" : "Disabled"}</Badge>
         </div>
         <p className="text-sm font-medium">{agent.summary}</p>
-        <p className="text-xs text-muted-foreground">{agent.role}</p>
       </CardHeader>
       <CardContent className="space-y-3">
         <dl className="grid grid-cols-3 gap-2 text-sm">
@@ -117,7 +116,6 @@ export function AgentCard({
           <div><dt className="text-xs text-muted-foreground">Errors</dt><dd className="font-medium">{agent.errorRatePct}%</dd></div>
           <div><dt className="text-xs text-muted-foreground">Cost (30d)</dt><dd className="font-medium">{formatPaise(agent.costPaise30d)}</dd></div>
         </dl>
-        <p className="text-xs text-muted-foreground">Highest risk: {RISK_LABEL[agent.maxRisk]}</p>
 
         <div>
           <p className="text-xs font-medium">Looks at</p>
