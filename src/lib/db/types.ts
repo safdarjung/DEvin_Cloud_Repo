@@ -3878,6 +3878,9 @@ isOneToOne: true
 "commit_import_batch":
 { Args: { "p_batch_id": string }; Returns: Json
                            },
+"compute_mastery":
+{ Args: { "p_institution_id": string }; Returns: number
+                           },
 "convert_enquiry":
 { Args: { "p_academic_year_id": string,"p_applicant": Json,"p_enquiry_id": string,"p_grade_id": string,"p_guardian": Json,"p_institution_id": string }; Returns: Json
                            },
@@ -4007,6 +4010,9 @@ isOneToOne: true
 { Args: { "p_institution_id": string,"p_term_id": string }; Returns: Json
                            },
 "enqueue_insight_detection":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
+"enqueue_mastery_compute":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
 "enqueue_term_invoices":
@@ -4221,6 +4227,16 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"mastery_heatmap":
+{ Args: { "p_academic_year_id": string,"p_class_section_id": string,"p_gap_threshold": number,"p_min_confidence": number,"p_subject_id": string }; Returns: {
+              "below": number,"class_section_id": string,"curriculum_unit_id": string,"mean_score": number,"students": number,"subject_id": string
+            }[]
+                           },
+"mastery_student_stats":
+{ Args: { "p_academic_year_id": string,"p_class_section_id": string,"p_gap_threshold": number,"p_min_confidence": number }; Returns: {
+              "class_section_id": string,"confident_units": number,"gap_units": number,"mean_score": number,"student_id": string
+            }[]
+                           },
 "my_open_surveys":
 { Args: { "p_institution_id": string }; Returns: {
               "closes_at": string,"description": string,"id": string,"is_anonymous": boolean,"questions": Json,"responded": boolean,"title": string

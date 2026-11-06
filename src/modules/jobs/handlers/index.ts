@@ -2,6 +2,7 @@ import { feeReminder } from "./finance.fee_reminder.ts";
 import { generateTermInvoices } from "./finance.generate_term_invoices.ts";
 import { insightsDetect } from "./insights.detect.ts";
 import { forecastRun } from "./forecast.run.ts";
+import { masteryCompute } from "./mastery.compute.ts";
 import { notifyAnnouncement } from "./notify.announcement.ts";
 import { notifyAttendanceAbsence } from "./notify.attendance_absence.ts";
 import { notifyDiaryEntry } from "./notify.diary_entry.ts";
@@ -19,6 +20,7 @@ export {
   generateTermInvoices,
   insightsDetect,
   forecastRun,
+  masteryCompute,
   notifyAnnouncement,
   notifyAttendanceAbsence,
   notifyDiaryEntry,

@@ -199,6 +199,11 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
       "forecast_fee_series",
       "forecast_attendance_series",
       "enqueue_due_forecasts",
+      // M20-T5 — rulings "Algorithm"/"Scheduling": compute_mastery is
+      // security invoker but only the job handler's/sweep's admin client
+      // ever calls it; enqueue_mastery_compute is the definer sweep.
+      "compute_mastery",
+      "enqueue_mastery_compute",
     ];
     for (const name of serviceOnly) {
       const row = rows.find((r) => r.schema === "public" && r.name === name)!;
