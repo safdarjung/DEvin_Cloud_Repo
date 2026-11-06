@@ -990,4 +990,15 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
   },
+  // 20261028000107 (live-fabric studio lane) — studio_requests: leadership
+  // (owner/principal/admin) read and INSERT directly; every status
+  // transition (propose/approve/reject) is server-only via
+  // propose_studio_request/decide_studio_request (no UPDATE grant to
+  // authenticated at all) — decide further narrows to owner/principal
+  // inside that definer, proved in tests/db/studio-requests.test.ts.
+  studio_requests: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
 };

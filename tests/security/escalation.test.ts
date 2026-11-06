@@ -451,6 +451,19 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     rolesForbidden: ["admin"],
   },
   "fabric.simulator.delete": { permission: "scenario.manage", input: () => ({ id: U() }) },
+  "studio.request.submit": {
+    permission: "studio.request",
+    input: () => ({
+      title: "Probe",
+      problem: "Probe problem.",
+      desiredOutcome: "Probe outcome.",
+      budgetRange: "under_50k",
+      timeline: "1 month",
+      successCriteria: "Probe criteria.",
+    }),
+  },
+  "studio.request.propose": { permission: "studio.request", input: () => ({ requestId: U() }) },
+  "studio.request.decide": { permission: "studio.approve", input: () => ({ requestId: U(), decision: "approve" }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;
