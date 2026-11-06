@@ -863,6 +863,82 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"diary_acknowledgements": {
+                  Row: {
+                    "acknowledged_by": string,"created_at": string,"entry_id": string,"id": string,"institution_id": string,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "acknowledged_by": string,"created_at"?: string,"entry_id": string,"id"?: string,"institution_id": string,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "acknowledged_by"?: string,"created_at"?: string,"entry_id"?: string,"id"?: string,"institution_id"?: string,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "diary_acknowledgements_acknowledged_by_fkey"
+      columns: ["acknowledged_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diary_acknowledgements_entry_id_fkey"
+      columns: ["entry_id"]
+isOneToOne: false
+      referencedRelation: "diary_entries"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diary_acknowledgements_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diary_acknowledgements_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"diary_entries": {
+                  Row: {
+                    "body": string,"class_section_id": string,"created_at": string,"created_by": string,"due_date": string | null,"entry_date": string,"id": string,"institution_id": string,"requires_ack": boolean,"subject_id": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"class_section_id": string,"created_at"?: string,"created_by": string,"due_date"?: string | null,"entry_date": string,"id"?: string,"institution_id": string,"requires_ack"?: boolean,"subject_id"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "body"?: string,"class_section_id"?: string,"created_at"?: string,"created_by"?: string,"due_date"?: string | null,"entry_date"?: string,"id"?: string,"institution_id"?: string,"requires_ack"?: boolean,"subject_id"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "diary_entries_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diary_entries_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diary_entries_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "diary_entries_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"documents": {
                   Row: {
                     "created_at": string,"created_by": string,"deleted_at": string | null,"deleted_by": string | null,"entity_id": string,"entity_type": string,"file_name": string,"id": string,"institution_id": string,"kind": string,"mime": string,"path": string,"size_bytes": number,"status": string,"updated_at": string
@@ -2429,14 +2505,14 @@ isOneToOne: false
                   ]
                 },"pickup_persons": {
                   Row: {
-                    "created_at": string,"created_by": string,"full_name": string,"id": string,"institution_id": string,"phone": string,"relation": string,"student_id": string,"updated_at": string
+                    "created_at": string,"created_by": string,"full_name": string,"id": string,"institution_id": string,"phone": string,"phone_masked": string | null,"relation": string,"student_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string,"full_name": string,"id"?: string,"institution_id": string,"phone": string,"relation": string,"student_id": string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string,"full_name": string,"id"?: string,"institution_id": string,"phone": string,"phone_masked"?: never,"relation": string,"student_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string,"full_name"?: string,"id"?: string,"institution_id"?: string,"phone"?: string,"relation"?: string,"student_id"?: string,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string,"full_name"?: string,"id"?: string,"institution_id"?: string,"phone"?: string,"phone_masked"?: never,"relation"?: string,"student_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2472,6 +2548,164 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"ptm_bookings": {
+                  Row: {
+                    "booked_by": string,"cancelled_at": string | null,"cancelled_by": string | null,"created_at": string,"event_id": string,"id": string,"institution_id": string,"slot_id": string,"staff_id": string,"status": string,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booked_by": string,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"event_id": string,"id"?: string,"institution_id": string,"slot_id": string,"staff_id": string,"status"?: string,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "booked_by"?: string,"cancelled_at"?: string | null,"cancelled_by"?: string | null,"created_at"?: string,"event_id"?: string,"id"?: string,"institution_id"?: string,"slot_id"?: string,"staff_id"?: string,"status"?: string,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ptm_bookings_booked_by_fkey"
+      columns: ["booked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_bookings_cancelled_by_fkey"
+      columns: ["cancelled_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_bookings_event_id_fkey"
+      columns: ["event_id"]
+isOneToOne: false
+      referencedRelation: "ptm_events"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_bookings_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_bookings_slot_fk"
+      columns: ["slot_id","event_id","staff_id"]
+isOneToOne: false
+      referencedRelation: "ptm_slots"
+      referencedColumns: ["id","event_id","staff_id"]
+    },{
+      foreignKeyName: "ptm_bookings_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_bookings_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"ptm_event_sections": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"event_id": string,"institution_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"event_id": string,"institution_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"event_id"?: string,"institution_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ptm_event_sections_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_event_sections_event_id_fkey"
+      columns: ["event_id"]
+isOneToOne: false
+      referencedRelation: "ptm_events"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_event_sections_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"ptm_events": {
+                  Row: {
+                    "booking_closes_at": string,"created_at": string,"created_by": string,"day_ends_at": string,"day_starts_at": string,"event_date": string,"id": string,"institution_id": string,"published_at": string | null,"published_by": string | null,"slot_minutes": number,"status": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "booking_closes_at": string,"created_at"?: string,"created_by": string,"day_ends_at": string,"day_starts_at": string,"event_date": string,"id"?: string,"institution_id": string,"published_at"?: string | null,"published_by"?: string | null,"slot_minutes": number,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "booking_closes_at"?: string,"created_at"?: string,"created_by"?: string,"day_ends_at"?: string,"day_starts_at"?: string,"event_date"?: string,"id"?: string,"institution_id"?: string,"published_at"?: string | null,"published_by"?: string | null,"slot_minutes"?: number,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ptm_events_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_events_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_events_published_by_fkey"
+      columns: ["published_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"ptm_slots": {
+                  Row: {
+                    "created_at": string,"created_by": string,"event_id": string,"id": string,"institution_id": string,"seq": number,"staff_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"event_id": string,"id"?: string,"institution_id": string,"seq": number,"staff_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"event_id"?: string,"id"?: string,"institution_id"?: string,"seq"?: number,"staff_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ptm_slots_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_slots_event_id_fkey"
+      columns: ["event_id"]
+isOneToOne: false
+      referencedRelation: "ptm_events"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_slots_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ptm_slots_staff_id_fkey"
+      columns: ["staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"question_bank": {
                   Row: {
@@ -2799,6 +3033,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"student_leave_requests": {
+                  Row: {
+                    "class_section_id": string,"created_at": string,"created_by": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"end_date": string,"id": string,"institution_id": string,"reason": string,"start_date": string,"status": string,"student_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "class_section_id": string,"created_at"?: string,"created_by": string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"end_date": string,"id"?: string,"institution_id": string,"reason": string,"start_date": string,"status"?: string,"student_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "class_section_id"?: string,"created_at"?: string,"created_by"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"end_date"?: string,"id"?: string,"institution_id"?: string,"reason"?: string,"start_date"?: string,"status"?: string,"student_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "student_leave_requests_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "student_leave_requests_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "student_leave_requests_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "student_leave_requests_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "student_leave_requests_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"student_lifecycle_events": {
                   Row: {
                     "batch_id": string | null,"created_at": string,"created_by": string,"effective_on": string,"from_enrolment_id": string | null,"id": string,"institution_id": string,"kind": string,"reason": string | null,"student_id": string,"tc_no": string | null,"tc_snapshot": Json | null,"to_enrolment_id": string | null,"updated_at": string
@@ -3038,6 +3316,134 @@ isOneToOne: false
       columns: ["substitute_teacher_id"]
 isOneToOne: false
       referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"survey_audiences": {
+                  Row: {
+                    "audience_type": string,"class_section_id": string | null,"created_at": string,"grade_id": string | null,"id": string,"institution_id": string,"role": string | null,"survey_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "audience_type": string,"class_section_id"?: string | null,"created_at"?: string,"grade_id"?: string | null,"id"?: string,"institution_id": string,"role"?: string | null,"survey_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "audience_type"?: string,"class_section_id"?: string | null,"created_at"?: string,"grade_id"?: string | null,"id"?: string,"institution_id"?: string,"role"?: string | null,"survey_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "survey_audiences_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_audiences_grade_id_fkey"
+      columns: ["grade_id"]
+isOneToOne: false
+      referencedRelation: "grades"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_audiences_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_audiences_survey_id_fkey"
+      columns: ["survey_id"]
+isOneToOne: false
+      referencedRelation: "surveys"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"survey_respondents": {
+                  Row: {
+                    "created_at": string,"institution_id": string,"survey_id": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"institution_id": string,"survey_id": string,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"institution_id"?: string,"survey_id"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "survey_respondents_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_respondents_survey_id_fkey"
+      columns: ["survey_id"]
+isOneToOne: false
+      referencedRelation: "surveys"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_respondents_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"survey_responses": {
+                  Row: {
+                    "answers": NonNullable<Json>,"created_at": string,"id": string,"institution_id": string,"respondent_user_id": string | null,"survey_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answers": NonNullable<Json>,"created_at"?: string,"id"?: string,"institution_id": string,"respondent_user_id"?: string | null,"survey_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "answers"?: NonNullable<Json>,"created_at"?: string,"id"?: string,"institution_id"?: string,"respondent_user_id"?: string | null,"survey_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "survey_responses_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_responses_respondent_user_id_fkey"
+      columns: ["respondent_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "survey_responses_survey_id_fkey"
+      columns: ["survey_id"]
+isOneToOne: false
+      referencedRelation: "surveys"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"surveys": {
+                  Row: {
+                    "closed_at": string | null,"closes_at": string,"created_at": string,"created_by": string,"description": string | null,"id": string,"institution_id": string,"is_anonymous": boolean,"opened_at": string | null,"questions": NonNullable<Json>,"status": string,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "closed_at"?: string | null,"closes_at": string,"created_at"?: string,"created_by": string,"description"?: string | null,"id"?: string,"institution_id": string,"is_anonymous"?: boolean,"opened_at"?: string | null,"questions": NonNullable<Json>,"status"?: string,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "closed_at"?: string | null,"closes_at"?: string,"created_at"?: string,"created_by"?: string,"description"?: string | null,"id"?: string,"institution_id"?: string,"is_anonymous"?: boolean,"opened_at"?: string | null,"questions"?: NonNullable<Json>,"status"?: string,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "surveys_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "surveys_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
       referencedColumns: ["id"]
     }
                   ]
@@ -3356,6 +3762,9 @@ isOneToOne: true
 "apply_recheck_decision":
 { Args: { "p_decision": string,"p_new_marks": number,"p_note": string,"p_request_id": string }; Returns: Json
                            },
+"assert_forecast_window":
+{ Args: { "p_from": string,"p_to": string }; Returns: undefined
+                           },
 "assign_substitution":
 { Args: { "p_date": string,"p_leave_request_id"?: string,"p_note"?: string,"p_slot_id": string,"p_substitute_id": string }; Returns: {
               "cancelled_at": string | null,
@@ -3383,6 +3792,12 @@ isOneToOne: true
 { Args: { "p_by_section"?: boolean,"p_class_section_id"?: string,"p_from": string,"p_institution_id": string,"p_student_id"?: string,"p_to": string }; Returns: {
               "class_section_id": string,"date": string,"n": number,"status": string
             }[]
+                           },
+"book_ptm_slot":
+{ Args: { "p_slot_id": string,"p_student_id": string }; Returns: string
+                           },
+"cancel_ptm_booking":
+{ Args: { "p_booking_id": string }; Returns: string
                            },
 "cancel_substitution":
 { Args: { "p_substitution_id": string }; Returns: {
@@ -3509,6 +3924,32 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"decide_student_leave":
+{ Args: { "p_decision": string,"p_leave_id": string,"p_note"?: string }; Returns: {
+              "class_section_id": string,
+"created_at": string,
+"created_by": string,
+"decided_at": string | null,
+"decided_by": string | null,
+"decision_note": string | null,
+"end_date": string,
+"id": string,
+"institution_id": string,
+"reason": string,
+"start_date": string,
+"status": string,
+"student_id": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "student_leave_requests"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"enqueue_due_forecasts":
+{ Args: { "p_now"?: string }; Returns: undefined
+                           },
 "enqueue_due_reports":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -3536,6 +3977,16 @@ isOneToOne: true
 "finance_collection_report":
 { Args: { "p_academic_year_id": string,"p_group_by"?: string,"p_institution_id": string,"p_term_id"?: string }; Returns: {
               "billed": number,"collected": number,"group_key": string,"group_label": string,"invoice_count": number,"outstanding": number,"payment_count": number,"reversed": number,"sort_order": number
+            }[]
+                           },
+"forecast_attendance_series":
+{ Args: { "p_from": string,"p_institution_id": string,"p_to": string }; Returns: {
+              "class_section_id": string,"points": Json
+            }[]
+                           },
+"forecast_fee_series":
+{ Args: { "p_institution_id": string }; Returns: {
+              "billed_paise": number,"collected_paise": number,"name": string,"sequence": number,"starts_on": string,"term_id": string,"window_end": string
             }[]
                            },
 "generate_invoice":
@@ -3720,11 +4171,21 @@ isOneToOne: true
         isOneToOne: true
         isSetofReturn: false
       } },
+"my_open_surveys":
+{ Args: { "p_institution_id": string }; Returns: {
+              "closes_at": string,"description": string,"id": string,"is_anonymous": boolean,"questions": Json,"responded": boolean,"title": string
+            }[]
+                           },
 "open_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },
 "promote_students":
 { Args: { "p_exclude"?: (string)[],"p_from_year_id": string,"p_mappings": Json,"p_overrides"?: Json,"p_to_year_id": string }; Returns: Json
+                           },
+"ptm_slots_for_student":
+{ Args: { "p_event_id"?: string,"p_student_id": string }; Returns: {
+              "booking_closes_at": string,"booking_id": string,"ends_at": string,"event_date": string,"event_id": string,"event_title": string,"is_class_teacher": boolean,"seq": number,"slot_id": string,"staff_id": string,"starts_at": string,"state": string,"subjects": (string)[],"teacher_name": string
+            }[]
                            },
 "publish_announcement":
 { Args: { "p_announcement_id": string }; Returns: {
@@ -3959,6 +4420,12 @@ isOneToOne: true
       } },
 "submit_public_enquiry":
 { Args: { "p_ip_hash": string,"p_payload": Json,"p_slug": string }; Returns: Json
+                           },
+"submit_survey_response":
+{ Args: { "p_answers": Json,"p_survey_id": string }; Returns: undefined
+                           },
+"survey_results":
+{ Args: { "p_survey_id": string }; Returns: Json
                            },
 "term_collection_totals":
 { Args: { "p_institution_id": string,"p_term_id": string }; Returns: {

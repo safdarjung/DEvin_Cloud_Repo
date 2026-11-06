@@ -67,10 +67,10 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 
 | id | role | priority | deps | status | packet | tests | security | phase |
 |---|---|---|---|---|---|---|---|---|
-| FB-AGT-01 | owner, principal, admin | P1 | FB-ID-04, FB-AI-01 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | max_risk_class trigger-enforced at insert | 5 |
+| FB-AGT-01 | owner, principal, admin | P1 | FB-ID-04, FB-AI-01 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | catalog + code compute risk_class, DB constraint enforced, local AI only (DBT-90) | 5 |
 | FB-AGT-02 | owner, principal, admin | P1 | FB-CORE-04 | simulated | F-UI-10 | tests/unit/flow-from-spec.test.ts | version bump on edit, runs append-only | 5 |
 | FB-AGT-03 | owner, principal, admin | P1 | FB-AGT-01 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | cost/error data read-restricted to owner/principal/admin | 5 |
-| FB-AGT-04 | owner, principal, admin | P1 | FB-AGT-01 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | human_approved runs block on definer-fn approval | 5 |
+| FB-AGT-04 | owner, principal, admin | P1 | FB-AGT-01 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | human_approved runs block on `agent.approve` action via registry; state machine enforced by guard | 5 |
 
 ## DATA
 
@@ -168,7 +168,7 @@ Status: Phase 0 (2026-10-31). One row per `01-master-prd.md` feature id. `03-fea
 | FB-WS-06 | staff, principal | P1 | FB-INT-01..04 | simulated | F-UI-07 | tests/unit/fabric-fixtures/insights.test.ts | read-only derived view | 4 |
 | FB-WS-07 | owner, principal | P1 | FB-INT-05 | simulated | F-UI-08 | tests/unit/fabric-simulator.test.ts | scenario approval gate before "implementation" | 9 |
 | FB-WS-08 | owner, principal | P1 | FB-TWIN-01..04 | simulated | F-UI-09 | tests/unit/fabric-fixtures/twin.test.ts | graph node cap, job-runner-only writes | 9 |
-| FB-WS-09 | owner, principal | P1 | FB-AGT-01..04 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | risk-class ceiling + approval gate | 5 |
+| FB-WS-09 | owner, principal | P1 | FB-AGT-01..04 | simulated | F-UI-10 | tests/unit/fabric-fixtures/agents.test.ts | risk-class ceiling (code + guard), approval gate (action via registry), local AI only: `<LimitedBadge/>` "Local AI only" | 5 |
 | FB-WS-10 | owner, admin | P1 | FB-MKT-01..06 | simulated | F-UI-11 | tests/unit/fabric-fixtures/marketplace.test.ts | install-status trigger | 6 |
 | FB-WS-11 | owner, principal | P1 | FB-STU-01..07 | simulated | F-UI-12 | tests/unit/fabric-fixtures/studio.test.ts | preview_html platform-admin only | 7 |
 | FB-WS-12 | all | P1 | FB-PAI-01..05 | simulated | F-UI-13 | tests/unit/fabric-fixtures/personal.test.ts | own-rows RLS, no institution_id | 8 |

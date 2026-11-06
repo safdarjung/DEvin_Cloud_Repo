@@ -1,13 +1,11 @@
 Packet: M21-T3 Migration 0094 part 2 — series functions + sweep
-Status: BLOCKED (root cause outside task scope, no git state change made).
-Files changed: none kept (migration file reverted to T2-only; DB reset back to clean seeded state). Draft SQL saved: .superpowers/sdd/M21-tasks/task-3-sql-draft.sql.
-Root cause: lane-e is one commit behind `main` (missing `2162d32` "M12 finance completion, 0074/0082/0083"). `public.payment_reversals` (0074) does not exist in this lane's migrations folder or applied DB — confirmed via `supabase migration list --local` and a live `db:reset` failure: `ERROR: relation "public.payment_reversals" does not exist (SQLSTATE 42P01)` at `forecast_fee_series`'s reversed-payment exclusion (ruling's own M12 prereq).
-Why not fixed here: fixing requires either a git merge/pull from main (forbidden: "No git state changes") or adding migration 0074's content myself (forbidden: not in my FILES list; risks a duplicate/conflicting migration once lane syncs with main).
-Attempted: wrote forecast_fee_series, forecast_attendance_series, app.assert_forecast_window helper, enqueue_due_forecasts exactly per rulings; ran db:reset once — failed as above. Reverted the append and re-ran db:reset successfully to restore the lane's shared DB to its prior seeded T2-only baseline (other concurrent agents share this stack).
-Tests run: none (blocked before any test file was needed).
-Tests not run and why: forecasts-sql.test.ts not written — would test against functions that can't be created yet.
-Limitations / honesty label: n/a.
-Security / integration risks: none introduced; DB restored to pre-task state.
-Follow-ups: sync lane-e with main (merge/rebase bringing in 2162d32) before retrying T3; reusable draft SQL at task-3-sql-draft.sql.
+Files changed: supabase/migrations/20261028000094_forecasts.sql (appended); tests/db/forecasts-sql.test.ts (new); src/lib/db/types.ts (regen, +16 additive); tests/security/grants.test.ts (edit, +4 names in `serviceOnly`).
+Behavior implemented: public.forecast_fee_series (contiguous term windows, payment_reversals/cancelled-invoice exclusion, exact paise), public.forecast_attendance_series (0009-style counts_present/in_denominator weighting, period/open-session exclusion, school-wide = Σsections), public.enqueue_due_forecasts (per-institution-per-day forecast.run sweep). Both series fns `security invoker`, service-role-only, per rulings. Validation helper `public.assert_forecast_window` kept in `public` (not `app`): an app.* fn reachable by service_role fails grants.test.ts's "no app fn granted to service_role" check, since new app fns default to PUBLIC execute until revoked (0003 lesson) and app has no default-privilege override for service_role (unlike public, 0046).
+Prior blocker (payment_reversals/0074 missing) resolved: lane merged main (b5d6fff) since the earlier interrupted run; 0074 is now present and clean.
+Tests run: pnpm db:reset (clean, full seed ok) -> pnpm test:db tests/db/forecasts-sql.test.ts tests/db/forecasts-rls.test.ts: 2 files, 19/19 pass -> pnpm test:security tests/security/grants.test.ts: 1 file, 9/9 pass -> pnpm lint: clean -> pnpm typecheck: clean.
+Tests not run and why: full test:db/test:security suites not run (not in ACCEPT list; concurrent lane agents share the DB).
+Limitations / honesty label: n/a (no user-facing surface yet; T9-T12 land queries/docs).
+Security / integration risks: none found; verified 42501 for authenticated on all 3 new RPCs, success for service_role; window>400d raises validation_failed; reversed/cancelled/cross-institution rows correctly excluded.
+Follow-ups: none new.
 New dependencies: none.
-Assumptions made: none beyond diagnosis above.
+Assumptions made: validation helper placed in public schema (not app) to satisfy existing grants.test.ts invariant — see rationale above; not spelled out in rulings but required by BRIEF-COMMON's existing test contract.

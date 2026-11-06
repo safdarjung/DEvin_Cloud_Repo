@@ -58,6 +58,8 @@ export interface RunnerPorts {
   enqueueDueReports(): Promise<number>;
   /** M19-T15: enqueues due `insights.detect` jobs (`public.enqueue_insight_detection`). */
   enqueueDueInsights(): Promise<number>;
+  /** M21-T8: enqueues due `forecast.run` jobs (`public.enqueue_due_forecasts`). */
+  enqueueDueForecasts(): Promise<void>;
   now(): number;
 }
 
@@ -161,6 +163,10 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
       if (error) throw new Error(error.message);
       return Number(data);
     },
+    async enqueueDueForecasts() {
+      const { error } = await admin.rpc("enqueue_due_forecasts");
+      if (error) throw new Error(error.message);
+    },
     now: () => Date.now(),
   };
 }
@@ -196,6 +202,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] insights sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.enqueueDueForecasts();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] forecast sweep failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

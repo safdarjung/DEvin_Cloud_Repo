@@ -18,6 +18,7 @@ import {
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 const POSTGRES_RLS_VIOLATION = "42501";
+const POSTGRES_FOREIGN_KEY_VIOLATION = "23503";
 
 function sqlErrorCode(error: unknown): string | undefined {
   return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
@@ -50,6 +51,12 @@ export const addPickupPerson = defineAction({
       }
       if (code === POSTGRES_RLS_VIOLATION) {
         throw new AppError("forbidden", "Student not found in this school.");
+      }
+      // ErrorCode mapping (X07 rulings): 23503 -> not_found. Pre-empted
+      // today by the RLS with-check exists() clause above (42501 fires
+      // first), but mapped for robustness per gate-pass.actions.ts.
+      if (code === POSTGRES_FOREIGN_KEY_VIOLATION) {
+        throw new AppError("not_found", "Student not found.");
       }
       throwMapped(error);
     }

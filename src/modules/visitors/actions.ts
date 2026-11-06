@@ -21,6 +21,7 @@ import {
 } from "@/modules/visitors/schemas";
 
 const POSTGRES_RLS_VIOLATION = "42501";
+const POSTGRES_FOREIGN_KEY_VIOLATION = "23503";
 
 function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
@@ -28,8 +29,12 @@ function throwMapped(error: unknown): never {
   throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
 }
 
+function pgCode(error: unknown): string | undefined {
+  return error && typeof error === "object" ? (error as { code?: string }).code : undefined;
+}
+
 function isRlsViolation(error: unknown): boolean {
-  return Boolean(error && typeof error === "object" && (error as { code?: unknown }).code === POSTGRES_RLS_VIOLATION);
+  return pgCode(error) === POSTGRES_RLS_VIOLATION;
 }
 
 export const checkInVisitor = defineAction({
@@ -58,6 +63,12 @@ export const checkInVisitor = defineAction({
       .single();
     if (error) {
       if (isRlsViolation(error)) throw new AppError("forbidden", "Host staff member not found in this school.");
+      // ErrorCode mapping (X07 rulings): 23503 -> not_found. Pre-empted today
+      // by the RLS with-check exists() clause above (42501 fires first), but
+      // mapped for robustness per gate-pass.actions.ts's convention.
+      if (pgCode(error) === POSTGRES_FOREIGN_KEY_VIOLATION) {
+        throw new AppError("not_found", "Host staff member not found.");
+      }
       throwMapped(error);
     }
 

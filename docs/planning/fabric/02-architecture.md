@@ -62,7 +62,7 @@ Derived read models (no tables): mastery, coverage, student success, operations,
 
 ## 5. Agent model (vision §5.4)
 
-`RiskClass`: `read_only` → `low_risk_reversible` → `user_confirmed` → `human_approved` → `prohibited`. An agent definition carries `max_risk_class`; a run above it is rejected at insert (trigger). `human_approved` runs stop in `awaiting_approval` until a member with the matching permission approves (definer). Phase 1 shows this state machine with fixtures and the demo store; nothing executes.
+`RiskClass`: `read_only` → `low_risk_reversible` → `user_confirmed` → `human_approved` → `prohibited`. An agent definition carries `max_risk_class` (derived from catalog); a run's `risk_class` is the maximum over its proposals (code computes it, check enforced as a DB constraint). `human_approved` runs stop in `awaiting_approval` and require explicit approval via `agent.approve` action (Zod validation, permission check, service-role write under guard `app.guard_agent_run_update`). All state transitions validated in code and the guard; proposals execute only when a run transitions to `done` (low-risk batch), never during the model loop. Phase 1 shows this state machine with fixtures and the demo store; nothing executes.
 
 ## 6. Demo store (Phase 1 persistence, vision §19.4)
 
