@@ -15,6 +15,19 @@ import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { approvedLeaveDates } from "@/modules/people/hr.queries";
 import type { RoomSlot } from "@/modules/exams/schedule-conflicts";
 
+const PAGE_SIZE = 1000;
+
+/** PostgREST caps a response at max_rows (1000) — a 3,000-slot timetable came back truncated. Pages (caller orders by id) until a short page. */
+async function allRows<T>(fetchPage: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await fetchPage(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    out.push(...(data ?? []));
+    if ((data ?? []).length < PAGE_SIZE) return out;
+  }
+}
+
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DEFAULT_MAX_PERIODS_WEEK = 36; // rulings: settings.timetable.max_periods_week, default 36
 
@@ -282,27 +295,32 @@ export async function timetableTodayFor(ctx: TenantContext, studentId?: string):
 /** room_capacity (room smaller than the section's active strength) + teacher_unavailable (over settings.timetable.max_periods_week) — double-booking can't occur, it's a DB constraint (0069 rulings). Requires timetable.manage. */
 export async function timetableConflicts(ctx: TenantContext, versionId: string): Promise<TimetableConflict[]> {
   const supabase = await createClient();
-  const { data: slotRows, error } = await supabase
-    .from("timetable_slots")
-    .select(
-      "id, weekday, teacher_id, class_section_id, periods(seq), rooms(name, capacity), class_sections(name, grades(code))",
-    )
-    .eq("institution_id", ctx.institution.id)
-    .eq("version_id", versionId);
-  if (error) throw error;
-  const rows = slotRows ?? [];
+  const rows = await allRows((from, to) =>
+    supabase
+      .from("timetable_slots")
+      .select(
+        "id, weekday, teacher_id, class_section_id, periods(seq), rooms(name, capacity), class_sections(name, grades(code))",
+      )
+      .eq("institution_id", ctx.institution.id)
+      .eq("version_id", versionId)
+      .order("id")
+      .range(from, to),
+  );
   if (rows.length === 0) return [];
 
   const sectionIds = [...new Set(rows.map((r) => r.class_section_id))];
-  const { data: enrolmentRows, error: enrolError } = await supabase
-    .from("enrolments")
-    .select("class_section_id")
-    .eq("institution_id", ctx.institution.id)
-    .eq("status", "active")
-    .in("class_section_id", sectionIds);
-  if (enrolError) throw enrolError;
+  const enrolmentRows = await allRows((from, to) =>
+    supabase
+      .from("enrolments")
+      .select("class_section_id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("status", "active")
+      .in("class_section_id", sectionIds)
+      .order("id")
+      .range(from, to),
+  );
   const strengthBySection = new Map<string, number>();
-  for (const row of enrolmentRows ?? []) {
+  for (const row of enrolmentRows) {
     strengthBySection.set(row.class_section_id, (strengthBySection.get(row.class_section_id) ?? 0) + 1);
   }
 
@@ -357,13 +375,15 @@ export async function timetableConflicts(ctx: TenantContext, versionId: string):
 /** Per-teacher periods/week against settings.timetable.max_periods_week, for every teacher who has at least one slot in this version. subjects/sections are the distinct values across their actual slots (subject_id is direct on timetable_slots, 0069 amended — no subject_assignments inference needed). Requires timetable.manage. leave_dates (M08-T12) = approvedLeaveDates for today..today+13 (0070 leave_requests). */
 export async function timetableTeacherWorkload(ctx: TenantContext, versionId: string): Promise<TeacherWorkload[]> {
   const supabase = await createClient();
-  const { data: slotRows, error } = await supabase
-    .from("timetable_slots")
-    .select("teacher_id, subjects(name), class_sections(name, grades(code))")
-    .eq("institution_id", ctx.institution.id)
-    .eq("version_id", versionId);
-  if (error) throw error;
-  const rows = slotRows ?? [];
+  const rows = await allRows((from, to) =>
+    supabase
+      .from("timetable_slots")
+      .select("teacher_id, subjects(name), class_sections(name, grades(code))")
+      .eq("institution_id", ctx.institution.id)
+      .eq("version_id", versionId)
+      .order("id")
+      .range(from, to),
+  );
   if (rows.length === 0) return [];
 
   const teacherIds = [...new Set(rows.map((r) => r.teacher_id))];
@@ -401,28 +421,30 @@ export async function timetableTeacherWorkload(ctx: TenantContext, versionId: st
 /** Every room's usage in this version against the bell schedule (periods_total = 6 x non-break periods, rulings). Requires timetable.manage. */
 export async function timetableRoomUtilisation(ctx: TenantContext, versionId: string): Promise<RoomUtilisation[]> {
   const supabase = await createClient();
-  const [{ data: rooms, error: roomsError }, { count: nonBreakCount, error: periodsError }, { data: slotRows, error: slotsError }] =
-    await Promise.all([
-      supabase.from("rooms").select("id, name, capacity").eq("institution_id", ctx.institution.id),
-      supabase
-        .from("periods")
-        .select("id", { count: "exact", head: true })
-        .eq("institution_id", ctx.institution.id)
-        .eq("is_break", false),
+  const [{ data: rooms, error: roomsError }, { count: nonBreakCount, error: periodsError }, slotRows] = await Promise.all([
+    supabase.from("rooms").select("id, name, capacity").eq("institution_id", ctx.institution.id),
+    supabase
+      .from("periods")
+      .select("id", { count: "exact", head: true })
+      .eq("institution_id", ctx.institution.id)
+      .eq("is_break", false),
+    allRows((from, to) =>
       supabase
         .from("timetable_slots")
         .select("room_id")
         .eq("institution_id", ctx.institution.id)
         .eq("version_id", versionId)
-        .not("room_id", "is", null),
-    ]);
+        .not("room_id", "is", null)
+        .order("id")
+        .range(from, to),
+    ),
+  ]);
   if (roomsError) throw roomsError;
   if (periodsError) throw periodsError;
-  if (slotsError) throw slotsError;
 
   const periodsTotal = 6 * (nonBreakCount ?? 0);
   const usedByRoom = new Map<string, number>();
-  for (const row of slotRows ?? []) {
+  for (const row of slotRows) {
     if (!row.room_id) continue;
     usedByRoom.set(row.room_id, (usedByRoom.get(row.room_id) ?? 0) + 1);
   }
