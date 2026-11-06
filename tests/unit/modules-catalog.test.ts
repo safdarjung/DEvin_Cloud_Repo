@@ -8,7 +8,7 @@ import {
   allModulesOn,
   MODULE_DISABLED_MESSAGE,
 } from '@/lib/modules/catalog';
-import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS } from '@/modules/core/schemas';
+import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS, SetModuleEnabledSchema } from '@/modules/core/schemas';
 
 type TestContext = {
   institution: {
@@ -77,6 +77,17 @@ describe('modules-catalog', () => {
         expect(entry.label.length).toBeLessThanOrEqual(40);
         expect(entry.description.length).toBeLessThanOrEqual(160);
       }
+    });
+
+    it('includes student_leave and diary modules', () => {
+      expect(MODULES).toHaveProperty('student_leave');
+      expect(MODULES).toHaveProperty('diary');
+      expect(MODULES.student_leave.category).toBe('Communication');
+      expect(MODULES.diary.category).toBe('Communication');
+      expect(MODULES.student_leave.default).toBe(true);
+      expect(MODULES.diary.default).toBe(true);
+      expect((MODULES.student_leave as Record<string, unknown>).requires).toBeUndefined();
+      expect((MODULES.diary as Record<string, unknown>).requires).toBeUndefined();
     });
   });
 
@@ -188,6 +199,16 @@ describe('modules-catalog', () => {
       const settings = { ...DEFAULT_INSTITUTION_SETTINGS, modules: { exam_seating: true } };
       expect(InstitutionSettingsSchema.safeParse(settings).success).toBe(true);
     });
+
+    it('parses {modules: {diary: false}} and returns false for diary', () => {
+      const ctx = { institution: { settings: { modules: { diary: false } } } };
+      expect(isModuleEnabled(ctx as TestContext, 'diary')).toBe(false);
+    });
+
+    it('returns default true for student_leave when not in settings', () => {
+      const ctx = { institution: { settings: { modules: {} } } };
+      expect(isModuleEnabled(ctx as TestContext, 'student_leave')).toBe(true);
+    });
   });
 
   describe('allModulesOn', () => {
@@ -275,6 +296,15 @@ describe('modules-catalog', () => {
       };
       const result = UpdateInstitutionSettingsSchema.safeParse(update);
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe('SetModuleEnabledSchema', () => {
+    it('accepts every optional module key (core.module.set must cover the full catalog)', () => {
+      for (const key of OPTIONAL_MODULE_KEYS) {
+        const result = SetModuleEnabledSchema.safeParse({ key, enabled: true });
+        expect(result.success).toBe(true);
+      }
     });
   });
 

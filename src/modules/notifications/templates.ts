@@ -17,9 +17,12 @@ export const NOTIFICATION_TYPES = [
   "enquiry_received",
   "enrolment_welcome",
   "announcement",
+  "gate_pass_approved",
   "report_ready",
   "fee_reminder",
   "workflow_alert",
+  "student_leave_decided",
+  "diary_entry",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -52,6 +55,29 @@ const EnrolmentWelcomeVars = z
 
 const AnnouncementVars = z.object({ title: z.string().min(1), excerpt: z.string().min(1) }).strict();
 
+// X07-T7 — gate pass approval notice (rulings "Notification").
+const GatePassApprovedVars = z
+  .object({
+    student: z.string().min(1),
+    class: z.string().min(1),
+    collector: z.string().min(1),
+    time: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
+
+// X01-T10 — no `reason`/`decision_note` var (lesson 10: never notify the
+// leave's own reason, it may hold health details).
+const StudentLeaveDecidedVars = z
+  .object({
+    student: z.string().min(1),
+    from: z.string().min(1),
+    to: z.string().min(1),
+    decision: z.string().min(1),
+    school: z.string().min(1),
+  })
+  .strict();
+
 const ReportReadyVars = z.object({ report: z.string().min(1).max(80), date: z.string().min(1).max(20) }).strict();
 const FeeReminderVars = z
   .object({
@@ -64,6 +90,9 @@ const FeeReminderVars = z
   .strict();
 
 const WorkflowAlertVars = z.object({ workflow: z.string().min(1).max(80), message: z.string().min(1).max(300) }).strict();
+const DiaryEntryVars = z
+  .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
+  .strict();
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -139,6 +168,16 @@ export const NOTIFICATION_TEMPLATES = {
     title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
     body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
   }),
+  gate_pass_approved: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: GatePassApprovedVars,
+    title: (lang) => (lang === "hi" ? "गेट पास स्वीकृत" : "Gate pass approved"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `गेट पास: ${v.student} (${v.class}) आज स्कूल से जल्दी जा सकते हैं ${v.collector} के साथ, स्वीकृत ${v.time}। अप्रत्याशित है? अभी स्कूल को कॉल करें। -${v.school}`
+        : `Gate pass: ${v.student} (${v.class}) may leave school early today with ${v.collector}, approved ${v.time}. Not expected? Call the school now. -${v.school}`,
+  }),
   report_ready: def({
     channels: ["in_app"],
     category: "report",
@@ -165,6 +204,26 @@ export const NOTIFICATION_TEMPLATES = {
     varsSchema: WorkflowAlertVars,
     title: (lang) => (lang === "hi" ? "वर्कफ़्लो अलर्ट" : "Workflow alert"),
     body: (v) => `${v.workflow}: ${v.message}`,
+  }),
+  student_leave_decided: def({
+    channels: ["in_app", "sms"],
+    category: "attendance",
+    varsSchema: StudentLeaveDecidedVars,
+    title: (lang) => (lang === "hi" ? "अवकाश निर्णय" : "Leave decision"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.student} का अवकाश (${v.from} से ${v.to}) ${v.decision} कर दिया गया है। -${v.school}`
+        : `${v.student}'s leave (${v.from} to ${v.to}) has been ${v.decision}. -${v.school}`,
+  }),
+  diary_entry: def({
+    channels: ["in_app"],
+    category: "academic",
+    varsSchema: DiaryEntryVars,
+    title: (lang) => (lang === "hi" ? "नई डायरी प्रविष्टि" : "New diary entry"),
+    body: (v, lang) =>
+      lang === "hi"
+        ? `${v.section} (${v.subject}): ${v.excerpt}`
+        : `${v.section} (${v.subject}): ${v.excerpt}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

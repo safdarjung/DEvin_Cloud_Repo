@@ -197,6 +197,9 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
   // for ids that won't resolve to a row, so most handlers see an RLS-empty
   // read). not_found/validation_failed/forbidden/ok all pass — only
   // `internal` (an unhandled exception reaching the envelope) fails.
+  // One sequential HTTP round-trip per registered query; the registry has
+  // grown past the 5s default as M19 adds queries (M19-T19), so this one
+  // test gets a longer budget rather than a flaky timeout.
   it("owner smoke: every registered query runs, none returns internal", async () => {
     const inst = await createTestInstitution("api-query-smoke");
     try {
@@ -207,6 +210,11 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "people.listStudents": { page: 1 },
         "people.getStudentProfile": { studentId: UUID },
         "imports.getBatch": { batchId: UUID },
+        "insights.list": {},
+        "insights.actions": { insightId: UUID },
+        "insights.priorityActions": {},
+        "insights.riskIndicators": {},
+        "insights.cards": {},
         "people.getCurrentTermId": { academicYearId: UUID },
         "people.listMyChildren": {},
         "people.getMyStudent": {},
@@ -263,6 +271,9 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "dashboard.teacher": {},
         "dashboard.parent": { studentId: UUID },
         "dashboard.student": {},
+        "diary.forSection": { classSectionId: UUID },
+        "diary.forStudent": { studentId: UUID },
+        "diary.ackStatus": { entryId: UUID },
         "documents.listForEntity": { entityType: "student", entityId: UUID },
         "examSeating.slots": { examId: UUID },
         "examSeating.chart": { planId: UUID },
@@ -303,6 +314,9 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "finance.listLedgerEntries": { from: DATE, to: DATE },
         "finance.listDefaulters": { termId: UUID },
         "finance.termCollectionSummary": { termId: UUID },
+        "forecasts.cards": {},
+        "forecasts.financeSeries": {},
+        "forecasts.list": {},
         "finance.collectionReport": { groupBy: "mode" },
         "library.catalog": {},
         "library.overdue": {},
@@ -310,11 +324,18 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "lifecycle.history": { studentId: UUID },
         "notifications.listMyNotifications": {},
         "notifications.unreadCount": {},
+        "ptm.events": {},
+        "ptm.teacherSchedule": { eventId: UUID },
+        "ptm.forStudent": { studentId: UUID },
+        "survey.list": {},
+        "survey.results": { surveyId: UUID },
+        "survey.mine": {},
         "notifications.listDeliveryLog": {},
         "questionBank.list": { page: 1 },
         "report.list": {},
         "report.runs": { reportId: UUID },
         "report.export": { source: "attendance.daily", params: {} },
+        "studentLeave.list": {},
         "timetable.forSection": { classSectionId: UUID },
         "timetable.forTeacher": {},
         "timetable.forStudent": { studentId: UUID },
@@ -327,6 +348,9 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "timetable.substitutions": {},
         "transport.routes": {},
         "transport.forStudent": { studentId: UUID },
+        "visitors.list": {},
+        "visitors.gatePasses": {},
+        "visitors.pickupList": { studentId: UUID },
         "website.listPages": {},
         "website.getPageWithVersions": { pageId: UUID },
         "website.getVersion": { pageId: UUID, versionId: UUID },
@@ -358,5 +382,5 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
     } finally {
       await inst.cleanup();
     }
-  });
+  }, 30000);
 });

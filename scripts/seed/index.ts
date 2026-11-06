@@ -15,10 +15,13 @@ import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
 import { run as runLibrary } from "./sections/library.ts";
 import { run as runNotifications } from "./sections/notifications.ts";
+import { run as runHomeroom } from "./sections/homeroom.ts";
 import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
+import { run as runPtm } from "./sections/ptm.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
+import { run as runVisitors } from "./sections/visitors.ts";
 import { run as runWebsite } from "./sections/website.ts";
 import { run as runWorkflows } from "./sections/workflows.ts";
 
@@ -44,6 +47,13 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "library", run: runLibrary },
   // X02-T11: last — issues demo certificates for already-seeded students.
   { name: "certificates", run: runCertificates },
+  // X07-T9: registered last — reads students/guardians/staff ids every earlier section wrote.
+  { name: "visitors", run: runVisitors },
+  // X08-T10: needs class_sections (academics), studentsBySection (people).
+  { name: "ptm", run: runPtm },
+  // X01-T12: last — needs class_sections/subject_assignments (academics),
+  // studentsBySection (people), demo logins (core).
+  { name: "homeroom", run: runHomeroom },
   // X05-T6: last — needs core.ts's user ids and people.ts's student rows.
   { name: "notifications", run: runNotifications },
 ];

@@ -1,0 +1,10 @@
+Packet: M19-T19 Derived queries: priority actions, risk indicators, cards
+Files changed: src/modules/insights/derived.ts (new), src/modules/insights/query-defs.ts (+3 defs), tests/unit/insights-derived.test.ts (new), tests/db/api-query-route.test.ts (+3 smoke samples; bumped owner-smoke test timeout to 30s — registry growth across M19 pushed it past vitest's 5s default, confirmed by running with --testTimeout=30000 before the fix: 0 internal errors)
+Behavior implemented: toPriorityActions/toRiskIndicators/toInsightCards pure mappers (default order = severity desc, confidence desc, created_at asc; 8-cap new|reviewing only; 6-cap one-per-domain risk with up/down/flat trend from a 7-vs-7-day split; card confidence buckets 0.75/0.5); async priorityActions/riskIndicators/insightCards(ctx[, input]) wrapping listInsights + one raw domain/created_at select for the 14-day trend window; 3 new query-defs (insight.read, module insights).
+Tests run: `pnpm test tests/unit/insights-derived.test.ts` -> 18 passed; `pnpm test:db tests/db/api-query-route.test.ts` -> 7 passed; `pnpm lint` -> clean; `pnpm typecheck` -> clean.
+Tests not run and why: full test:db (DB-owner rule, single-file only per lane rules).
+Limitations / honesty label: none; derived views carry no badge (rulings: insights are real detections, not simulated).
+Security / integration risks: none new — both async fns go through listInsights (RLS-scoped) or an institution_id-filtered select on the same user client; no new writes, no new permission.
+Follow-ups: none.
+New dependencies: none.
+Assumptions made: `toPriorityActions`'s `now: Date` param is accepted per EXPORTS but intentionally unused for `due` (rulings: due = created_at + SLA, no `now` dependency) — kept only for signature symmetry with `toRiskIndicators`, documented inline (`void now`). Trend window split: age in days from `now`, [0,7) = last7, [7,14) = prev7, >=14 or negative ignored. Card `title` = row.title (rulings don't name it explicitly but `AIInsightCardProps.title` is required).

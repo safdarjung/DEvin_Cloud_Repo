@@ -55,6 +55,7 @@ describe("ai_usage_events (T-035)", () => {
       expect(row).toBeDefined();
       expect(Object.keys(row).sort()).toEqual(
         [
+          "agent_run_id",
           "cost_estimate_usd",
           "created_at",
           "error_code",
