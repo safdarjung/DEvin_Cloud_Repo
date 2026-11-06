@@ -58,6 +58,8 @@ export interface RunnerPorts {
   enqueueDueReports(): Promise<number>;
   /** X04-T8: enqueues due `fee_plans.late_fees` jobs (`public.enqueue_due_late_fees`). */
   enqueueDueLateFees(): Promise<number>;
+  /** M23-T13: enqueues due `workflow.run` jobs (`public.enqueue_due_workflows`). */
+  enqueueDueWorkflows(): Promise<number>;
   /** M19-T15: enqueues due `insights.detect` jobs (`public.enqueue_insight_detection`). */
   enqueueDueInsights(): Promise<number>;
   /** M20-T11: enqueues due `mastery.compute` jobs (`public.enqueue_mastery_compute`). */
@@ -167,6 +169,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
       if (error) throw new Error(error.message);
       return Number(data);
     },
+    async enqueueDueWorkflows() {
+      const { data, error } = await admin.rpc("enqueue_due_workflows");
+      if (error) throw new Error(error.message);
+      return Number(data);
+    },
     async enqueueDueInsights() {
       const { data, error } = await admin.rpc("enqueue_insight_detection");
       if (error) throw new Error(error.message);
@@ -225,6 +232,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] mastery sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.enqueueDueWorkflows();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] workflows sweep failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

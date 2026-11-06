@@ -19,7 +19,8 @@ export type JobType =
   | "forecast.run"
   | "notify.student_leave_decided"
   | "notify.diary_entry"
-  | "mastery.compute";
+  | "mastery.compute"
+  | "workflow.run";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 

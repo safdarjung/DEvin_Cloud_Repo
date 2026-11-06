@@ -50,3 +50,4 @@ import "@/modules/visitors/actions";
 import "@/modules/visitors/gate-pass.actions";
 import "@/modules/visitors/pickup.actions";
 import "@/modules/website/actions";
+import "@/modules/workflows/actions";

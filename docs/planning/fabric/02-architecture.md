@@ -49,7 +49,7 @@ Types: `src/modules/fabric/types.ts`. Reserved migrations `20261028000052`–`00
 | 0053 | `scenarios` | staff (S) | owner, principal | `status` draft→proposed→approved/rejected via definer `public.decide_scenario`; results jsonb; `is_baseline` unique per institution |
 | 0054 | `insights`, `insight_actions` | S | `dashboard.view` roles | actions append-only (outcome measured by new row with `superseded_by`) |
 | 0055 | `agent_definitions`, `agent_runs` | owner, principal, admin | owner, principal | `risk_class` enum; `human_approved` runs need `approver`; runs append-only |
-| 0056 | `workflows`, `workflow_runs` | owner, principal, admin | owner, principal | `version` bump on edit (new row), runs append-only |
+| 0096 | `workflows`, `workflow_runs` | owner, principal, admin | owner, principal | version bumps in place; runs snapshot the graph |
 | 0057 | `studio_requests`, `studio_proposals` | owner, principal | owner, principal | proposals versioned; `preview_html` only platform-admin written |
 | 0058 | `personal_memories`, `personal_goals` | own rows | own rows | no `institution_id`; export/delete actions; `retain_until` job |
 | 0059 | `connectors`, `connector_syncs` | owner, admin | owner, admin | secrets never in rows (vault ref only) |

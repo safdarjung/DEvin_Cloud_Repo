@@ -39,3 +39,4 @@ import "@/modules/timetable/query-defs";
 import "@/modules/transport/query-defs";
 import "@/modules/visitors/query-defs";
 import "@/modules/website/query-defs";
+import "@/modules/workflows/query-defs";

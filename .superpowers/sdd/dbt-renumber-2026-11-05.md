@@ -6,3 +6,4 @@ X08 (lane-f): DBT-66..70 -> DBT-115..119
 X01 (lane-f): DBT-71..75 -> DBT-120..124
 Earlier renumbers: M15 DBT-66..73 -> 73..80; M16 66..70 -> 84..88; X03 -> 89..90; X05 81..86 -> 91..96; X02 66 -> 97.
 M25 (lane-k at merge): DBT-125..135 -> DBT-134..144; ADR D47 -> D48
+M23 (lane-g at merge): DBT-125..132 -> DBT-145..152; ADR D47 -> D49

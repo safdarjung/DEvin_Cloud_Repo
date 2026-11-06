@@ -14,6 +14,7 @@ import { notifyRecheckDecided } from "./notify.recheck_decided.ts";
 import { notifyResultsPublished } from "./notify.results_published.ts";
 import { generateReport } from "./report.generate.ts";
 import { notifyStudentLeaveDecided } from "./notify.student_leave_decided.ts";
+import { workflowRun } from "./workflow.run.ts";
 
 export {
   generateReport,
@@ -32,4 +33,5 @@ export {
   notifyRecheckDecided,
   notifyResultsPublished,
   notifyStudentLeaveDecided,
+  workflowRun,
 };
