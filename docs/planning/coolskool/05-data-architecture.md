@@ -234,7 +234,7 @@ Column notation: `name type` · `?` = nullable · `!` = unique (scoped to instit
 | calendar | academic_calendar_events | academics |
 | lifecycle | student_lifecycle_events | people, academics |
 | reports | scheduled_reports, documents (report entity) | attendance (for `attendance.daily` source), finance (for `finance.defaulters` source); via RPC invokers only, no TS query registration |
-| insights | insights, insight_actions, briefings | academics, attendance, finance, admissions (via RPC sources only; writes only by the job runner and definers; M25 reads `briefings` to compose summaries) |
+| insights | insights, insight_actions, briefings | academics, attendance, finance, admissions (via RPC sources only; writes only by the job runner and definers; M25 reads `briefings` to compose summaries, writes via `src/modules/insights/briefings.ts` in-request) |
 | visitors | visitor_entries, pickup_persons, gate_passes | people, academics |
 | ptm | ptm_events, ptm_event_sections, ptm_slots, ptm_bookings, surveys, survey_audiences, survey_respondents, survey_responses | academics (via calendar event date), people |
 | website | websites, pages, page_versions, notices, events | admissions (writes via `app.submit_public_enquiry`) |

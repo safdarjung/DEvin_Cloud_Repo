@@ -1,0 +1,67 @@
+CoolSkool M25 gate — lane-f — 2026-11-06
+
+== pnpm db:reset ==
+Finished supabase db reset on branch lane-k.
+{"target":"local","version":"","message":"Reset local database."}
+Seed complete in 76534ms.
+Counts: {"students":3024,"guardians":2515,"guardian_students":3024,"staff":106,"class_sections":72,"enrolments":3024,"attendance_sessions":4320,"attendance_records":181440}
+
+== pnpm lint ==
+✖ 11 problems (0 errors, 11 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
+== pnpm typecheck ==
+$ next typegen && tsc --noEmit
+Generating route types...
+✓ Types generated successfully
+(tsc --noEmit: no output, exit 0)
+
+== pnpm test (unit) ==
+ Test Files  147 passed (147)
+      Tests  2558 passed (2558)
+   Duration  4.61s
+
+   FIX: tests/unit/insights-briefing.test.ts had 2 failures (RangeError: Invalid time
+   value in formatDate). Root cause: operations dashboard upcomingEvents field was
+   renamed title/date -> title/startsOn (src/modules/insights/briefing-compose.ts,
+   matching CalendarEventRow.startsOn in src/modules/calendar/queries.ts) but two
+   test fixtures still used the old `date` key, producing `startsOn: undefined`.
+   Fixed the test fixtures (not the implementation) to use `startsOn`. Rerun: pass.
+
+== pnpm test:db --shard=1/3 ==
+ Test Files  82 passed (82)
+      Tests  518 passed (518)
+   Duration  807.34s
+
+== pnpm test:db --shard=2/3 ==
+ Test Files  82 passed (82)
+      Tests  517 passed (517)
+   Duration  1004.94s
+
+== pnpm test:db --shard=3/3 ==
+ Test Files  82 passed (82)
+      Tests  527 passed (527)
+   Duration  991.61s
+
+   DBT-46 invoice chunk test: not observed as a failure in any shard this run
+   (ran under load alongside other lanes; no rerun-alone needed since it never failed).
+
+== pnpm test:security ==
+ Test Files  19 passed (19)
+      Tests  3127 passed (3127)
+   Duration  10.37s
+
+== Summary ==
+lint: 0 errors, 11 warnings (pre-existing, not touched)
+typecheck: clean
+unit: 2558/2558 passed (1 file fixed, see above)
+test:db shard 1/3: 518/518 passed
+test:db shard 2/3: 517/517 passed
+test:db shard 3/3: 527/527 passed
+test:db total: 1562/1562 passed, 246 files
+test:security: 3127/3127 passed, 19 files
+
+GATE: PASS
+Fix rounds used: 1 of 2 (test fixture only; no implementation change)
+Files changed: tests/unit/insights-briefing.test.ts
+No git state changes made (no commit/stage/push).
