@@ -93,3 +93,10 @@ export function buildQuizPrompt(input: QuizPromptInput): string {
     endMarker,
   ].join("\n");
 }
+
+// Student practice quizzes (Lane E): same data-block prompt as the teacher
+// quiz (`buildQuizPrompt` — unit text only, no student data), plus a required
+// one-sentence explanation per question shown after the student answers.
+export const PRACTICE_QUIZ_INSTRUCTIONS =
+  QUIZ_GENERATION_INSTRUCTIONS +
+  " Give every question a short `explanation` (one or two sentences) saying why the answer is correct.";

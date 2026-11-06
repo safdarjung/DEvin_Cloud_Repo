@@ -219,6 +219,22 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "diary.entry.delete": { permission: "diary.write", input: () => ({ entryId: U() }) },
   "diary.acknowledge": { permission: "assignment.read", input: () => ({ entryId: U(), studentId: U() }) },
+  "messaging.startThread": {
+    permission: "message.send",
+    input: () => ({ studentId: U(), counterpartId: U(), subject: "Probe subject", body: "Probe body" }),
+  },
+  "messaging.send": { permission: "message.send", input: () => ({ threadId: U(), body: "Probe body" }) },
+  "messaging.markRead": { permission: "message.read", input: () => ({ threadId: U() }) },
+  "practice.submitAttempt": {
+    permission: "practice.attempt",
+    input: () => ({
+      studentId: U(),
+      curriculumUnitId: U(),
+      difficulty: "easy",
+      questions: [{ stem: "Probe?", options: ["a", "b", "c", "d"], answerIndex: 0 }],
+      answers: [0],
+    }),
+  },
   "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
   "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
   "people.guardian.link": {

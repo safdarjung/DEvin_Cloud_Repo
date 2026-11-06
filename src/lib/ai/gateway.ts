@@ -23,6 +23,8 @@ export interface RunStructuredInput<T> {
   /** Names to redact from the prompt before any cloud call (07 §5). */
   denyNames?: readonly string[];
   maxOutputTokens?: number;
+  /** Defaults to `ai.generate`; a student-facing caller passes `ai.study`. */
+  permission?: Permission;
 }
 
 export interface RunStructuredOutput<T> {
@@ -53,9 +55,9 @@ function unavailableMessage(step: ProviderStep, aiPolicy: AiPolicy): string {
  * return. Never throws across the action boundary.
  */
 export async function runStructured<T>(input: RunStructuredInput<T>): Promise<ActionResult<RunStructuredOutput<T>>> {
-  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens } = input;
+  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate" } = input;
 
-  if (!hasPermission(ctx, "ai.generate")) {
+  if (!hasPermission(ctx, permission)) {
     return fail("forbidden", "You do not have permission to use AI features.");
   }
 
