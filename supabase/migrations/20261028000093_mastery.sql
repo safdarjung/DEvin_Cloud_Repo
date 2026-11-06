@@ -43,7 +43,8 @@ begin
 
   select cs.grade_id into v_grade_id
   from public.class_sections cs
-  where cs.id = new.class_section_id;
+  where cs.id = new.class_section_id
+    and cs.institution_id = new.institution_id;
 
   select count(*) into v_matched_count
   from public.curriculum_units cu
@@ -388,3 +389,249 @@ $$;
 
 revoke execute on function public.mastery_student_stats(uuid, uuid, numeric, numeric) from public, anon;
 grant execute on function public.mastery_student_stats(uuid, uuid, numeric, numeric) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- M20-T6: migration 0093 part 3 — interventions on insight_actions (rulings
+-- "Interventions"). M19's insight_actions (0092) gains a kind discriminator
+-- plus six intervention-only columns; M19's own columns, functions and
+-- policies are untouched — this only adds new columns/constraints/indexes/
+-- policies/grant to that same table (rulings "M20 never edits M19's files,
+-- policies or functions"). M19 added no INSERT/UPDATE/DELETE policy on this
+-- table, so a non-trusted INSERT is already denied by RLS alone (raw 42501,
+-- no permissive INSERT policy exists before or after this part) — the
+-- trigger below never raises its own exception on INSERT, so that denial
+-- surfaces unmodified.
+-- ---------------------------------------------------------------------------
+
+alter table public.insight_actions
+  add column kind text not null default 'action' check (kind in ('action', 'intervention')),
+  add column student_id uuid references public.students (id),
+  add column goal text check (length(goal) between 1 and 300),
+  add column steps jsonb,
+  add column review_date date,
+  add column intervention_status text check (intervention_status in ('proposed', 'active', 'review', 'closed')),
+  add column owner_staff_id uuid references public.staff (id);
+
+alter table public.insight_actions
+  add constraint insight_actions_intervention_fields check (
+    (
+      kind = 'intervention'
+      and student_id is not null
+      and goal is not null
+      and steps is not null
+      and review_date is not null
+      and intervention_status is not null
+    )
+    or (
+      kind = 'action'
+      and student_id is null
+      and goal is null
+      and steps is null
+      and review_date is null
+      and intervention_status is null
+      and owner_staff_id is null
+    )
+  );
+
+create unique index insight_actions_one_intervention
+  on public.insight_actions (insight_id)
+  where kind = 'intervention';
+
+create index insight_actions_student_intervention_idx
+  on public.insight_actions (student_id)
+  where kind = 'intervention';
+
+-- app.guard_intervention — security invoker, BEFORE INSERT OR UPDATE.
+-- Validates `steps` and syncs the M19 `status` column for every writer of
+-- an intervention row, then (service_role/postgres bypass per lesson 5)
+-- enforces the state machine for everyone else: no direct INSERT (left to
+-- RLS, see above), no edit of a closed plan, no identity-field change, and
+-- only the proposed/active/review/closed edges the rulings allow. Kind
+-- itself can never change on UPDATE, trusted or not — 'action' rows return
+-- immediately and are otherwise unaffected.
+create function app.guard_intervention()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_steps_len int;
+  v_bad_step boolean;
+  v_trusted boolean;
+begin
+  if tg_op = 'UPDATE' and new.kind is distinct from old.kind then
+    raise exception 'code:forbidden' using detail = 'kind cannot change on an insight_actions row';
+  end if;
+
+  if new.kind <> 'intervention' then
+    return new;
+  end if;
+
+  if jsonb_typeof(new.steps) <> 'array' then
+    raise exception 'code:validation_failed' using detail = 'steps must be a JSON array of 1 to 8 entries';
+  end if;
+
+  v_steps_len := jsonb_array_length(new.steps);
+  if v_steps_len < 1 or v_steps_len > 8 or length(new.steps::text) > 4000 then
+    raise exception 'code:validation_failed'
+      using detail = 'steps must have 1 to 8 entries and serialize to at most 4000 characters';
+  end if;
+
+  -- Short-circuit OR, left to right (same reliance as the jsonb_typeof/
+  -- jsonb_array_length AND pattern on insights.evidence/briefings.items,
+  -- 0092): the type check always runs before jsonb_object_keys/->>, so a
+  -- non-object element never reaches a function that would error on it.
+  select exists (
+    select 1 from jsonb_array_elements(new.steps) elem
+    where jsonb_typeof(elem) <> 'object'
+      or (select array_agg(k order by k) from jsonb_object_keys(elem) k) is distinct from array['done', 'due', 'title']
+      or jsonb_typeof(elem -> 'title') <> 'string'
+      or length(elem ->> 'title') not between 1 and 120
+      or jsonb_typeof(elem -> 'due') <> 'string'
+      or elem ->> 'due' !~ '^\d{4}-\d{2}-\d{2}$'
+      or jsonb_typeof(elem -> 'done') <> 'boolean'
+  ) into v_bad_step;
+
+  if v_bad_step then
+    raise exception 'code:validation_failed'
+      using detail = 'each step needs exactly title (1-120 chars), due (YYYY-MM-DD), and done (boolean)';
+  end if;
+
+  new.status := case when new.intervention_status = 'closed' then 'done' else 'planned' end;
+
+  v_trusted := coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role', '') = 'service_role'
+    or session_user = 'postgres';
+  if v_trusted then
+    return new;
+  end if;
+
+  if tg_op = 'UPDATE' then
+    if old.intervention_status = 'closed' then
+      raise exception 'code:invalid_state' using detail = 'a closed intervention cannot be updated';
+    end if;
+
+    if new.institution_id is distinct from old.institution_id
+      or new.insight_id is distinct from old.insight_id
+      or new.student_id is distinct from old.student_id
+      or new.owner_staff_id is distinct from old.owner_staff_id
+    then
+      raise exception 'code:forbidden'
+        using detail = 'institution_id, insight_id, student_id, and owner_staff_id cannot change on an intervention';
+    end if;
+
+    if new.intervention_status is distinct from old.intervention_status
+      and not (
+        (old.intervention_status = 'proposed' and new.intervention_status in ('active', 'closed'))
+        or (old.intervention_status = 'active' and new.intervention_status in ('review', 'closed'))
+        or (old.intervention_status = 'review' and new.intervention_status in ('active', 'closed'))
+      )
+    then
+      raise exception 'code:invalid_state' using detail = 'invalid intervention_status transition';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger guard_intervention
+before insert or update on public.insight_actions
+for each row
+execute function app.guard_intervention();
+
+-- RLS: S = owner/principal of the institution, or the class teacher of the
+-- student (app.my_class_teacher_student_ids, X07/0090 — reused, not
+-- redefined). Permissive policies grant intervention visibility to S
+-- independently of the parent insight's own visibility (rulings "keep M20
+-- independent of M19's"); restrictive policies then deny everyone else,
+-- even if M19's insight_actions_select would otherwise have let them
+-- through via the parent insight.
+create policy insight_actions_intervention_select on public.insight_actions
+  for select to authenticated
+  using (
+    kind = 'intervention'
+    and (
+      institution_id = any((select app.my_institution_ids(array['owner', 'principal'])))
+      or student_id = any((select app.my_class_teacher_student_ids()))
+    )
+  );
+
+create policy insight_actions_intervention_update on public.insight_actions
+  for update to authenticated
+  using (
+    kind = 'intervention'
+    and (
+      institution_id = any((select app.my_institution_ids(array['owner', 'principal'])))
+      or student_id = any((select app.my_class_teacher_student_ids()))
+    )
+  )
+  with check (
+    kind = 'intervention'
+    and (
+      institution_id = any((select app.my_institution_ids(array['owner', 'principal'])))
+      or student_id = any((select app.my_class_teacher_student_ids()))
+    )
+  );
+
+create policy insight_actions_intervention_restrict_select on public.insight_actions
+  as restrictive
+  for select to authenticated
+  using (
+    kind <> 'intervention'
+    or institution_id = any((select app.my_institution_ids(array['owner', 'principal'])))
+    or student_id = any((select app.my_class_teacher_student_ids()))
+  );
+
+create policy insight_actions_intervention_restrict_update on public.insight_actions
+  as restrictive
+  for update to authenticated
+  using (
+    kind <> 'intervention'
+    or institution_id = any((select app.my_institution_ids(array['owner', 'principal'])))
+    or student_id = any((select app.my_class_teacher_student_ids()))
+  )
+  with check (
+    kind <> 'intervention'
+    or institution_id = any((select app.my_institution_ids(array['owner', 'principal'])))
+    or student_id = any((select app.my_class_teacher_student_ids()))
+  );
+
+create policy insight_actions_intervention_restrict_insert on public.insight_actions
+  as restrictive
+  for insert to authenticated
+  with check (kind <> 'intervention');
+
+create policy insight_actions_intervention_restrict_delete on public.insight_actions
+  as restrictive
+  for delete to authenticated
+  using (kind <> 'intervention');
+
+-- Harmless alongside the table-level grant authenticated already has
+-- (0045 default); narrows what a non-trusted UPDATE can touch by column.
+grant update (goal, steps, review_date, intervention_status) on public.insight_actions to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- M20-T12: migration 0093 part 4 — M19's insights checks admit the gap
+-- detector (rulings "Gap detector"). 0092 enumerates its 11 signals and 6
+-- reviewer roles; mastery_gap_v1 writes signal 'academics.mastery_gap' with
+-- reviewer_role 'teacher' (the class teacher owns the plan). Widen-only:
+-- every existing row and value stays valid; no M19 function or policy
+-- changes. detector_version stays M19's int (1 = mastery_gap_v1).
+-- ---------------------------------------------------------------------------
+
+alter table public.insights drop constraint insights_signal_check;
+alter table public.insights add constraint insights_signal_check check (signal in (
+  'attendance.section_drop', 'attendance.student_drop',
+  'academics.marks_decline', 'academics.missing_work', 'academics.awaiting_review',
+  'finance.overdue_growth', 'finance.concession_spike',
+  'admissions.stage_dwell',
+  'staff.workload',
+  'operations.room_capacity', 'operations.room_pressure',
+  'academics.mastery_gap'
+));
+
+alter table public.insights drop constraint insights_reviewer_role_check;
+alter table public.insights add constraint insights_reviewer_role_check check (reviewer_role in (
+  'owner', 'principal', 'admin', 'admissions', 'accountant', 'exam_controller', 'teacher'
+));

@@ -332,3 +332,55 @@ export async function insertSnapshots(
   }
   return ids;
 }
+
+export interface GapPlan {
+  insightId: string;
+  actionId: string;
+}
+
+/**
+ * Service-role (direct `postgres` connection, trusted by `app.guard_intervention`)
+ * insert of one insight + one `kind = 'intervention'` insight_actions row for
+ * `studentId` (M20-tasks.md Task 6 FILES). M19 columns per the contract in
+ * `.superpowers/sdd/M20-tasks/progress.md` § M19 contract — `signal` uses an
+ * existing enum value (M19 owns that check constraint; `mastery_gap` isn't
+ * one of its values yet, T12's problem, not this fixture's).
+ */
+export async function insertGapPlan(
+  inst: TestInstitution,
+  fx: MasteryFixture,
+  studentId: string,
+  status: "proposed" | "active" | "review" | "closed" = "proposed",
+): Promise<GapPlan> {
+  const [insight] = await sql`
+    insert into public.insights (
+      institution_id, signal, detector_version, dedupe_key, domain, kind, severity,
+      title, pattern, evidence, date_from, date_to, confidence, reviewer_role,
+      entity_type, entity_id
+    )
+    values (
+      ${inst.institutionId}, 'academics.marks_decline', 1, ${`mastery-gap-${crypto.randomUUID()}`},
+      'academics', 'diagnostic', 'warning', 'Learning gaps need support',
+      '2 units below 60% mastery; overall 45%', ${sql.json([{ label: "Gap units", value: 2 }])},
+      ${shiftFromToday(-30)}, ${shiftFromToday(0)}, 0.5, 'exam_controller', 'student', ${studentId}
+    )
+    returning id
+  `;
+
+  const [action] = await sql`
+    insert into public.insight_actions (
+      institution_id, insight_id, action, owner, rationale, expected_outcome, status, created_by,
+      kind, student_id, goal, steps, review_date, intervention_status, owner_staff_id
+    )
+    values (
+      ${inst.institutionId}, ${insight.id}, 'Intervention plan', 'Fixture Teacher',
+      'mastery_gap_v1: 2 gap units, overall 45%', 'Listed units at or above 60% mastery', 'planned',
+      ${inst.users.owner.id}, 'intervention', ${studentId}, 'Raise 2 gap units to 60% mastery',
+      ${sql.json([{ title: "Re-teach: Algebra basics (Maths)", due: shiftFromToday(7), done: false }])},
+      ${shiftFromToday(14)}, ${status}, ${fx.teacherStaffId}
+    )
+    returning id
+  `;
+
+  return { insightId: insight.id as string, actionId: action.id as string };
+}

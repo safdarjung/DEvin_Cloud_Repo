@@ -14,6 +14,7 @@ import { run as runExamSeating } from "./sections/exam-seating.ts";
 import { run as runExams } from "./sections/exams.ts";
 import { run as runFinance } from "./sections/finance.ts";
 import { run as runLibrary } from "./sections/library.ts";
+import { run as runMastery } from "./sections/mastery.ts";
 import { run as runNotifications } from "./sections/notifications.ts";
 import { run as runHomeroom } from "./sections/homeroom.ts";
 import { run as runOperations } from "./sections/operations.ts";
@@ -37,6 +38,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "admissions", run: runAdmissions },
   { name: "finance", run: runFinance },
   { name: "exams", run: runExams },
+  // M20-T13: after exams — compute_mastery reads exam_papers.unit_ids + marks exams.ts just wrote.
+  { name: "mastery", run: runMastery },
   // X06-T10: after exams (own exam/papers) and timetable (rooms) — both already earlier.
   { name: "exam_seating", run: runExamSeating },
   { name: "website", run: runWebsite },

@@ -1649,14 +1649,14 @@ isOneToOne: false
                   ]
                 },"insight_actions": {
                   Row: {
-                    "action": string,"actual_outcome": string | null,"created_at": string,"created_by": string,"decided_at": string,"expected_outcome": string,"id": string,"insight_id": string,"institution_id": string,"measured_at": string | null,"owner": string,"rationale": string,"status": string,"supersedes_id": string | null,"updated_at": string
+                    "action": string,"actual_outcome": string | null,"created_at": string,"created_by": string,"decided_at": string,"expected_outcome": string,"goal": string | null,"id": string,"insight_id": string,"institution_id": string,"intervention_status": string | null,"kind": string,"measured_at": string | null,"owner": string,"owner_staff_id": string | null,"rationale": string,"review_date": string | null,"status": string,"steps": Json | null,"student_id": string | null,"supersedes_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "action": string,"actual_outcome"?: string | null,"created_at"?: string,"created_by": string,"decided_at"?: string,"expected_outcome": string,"id"?: string,"insight_id": string,"institution_id": string,"measured_at"?: string | null,"owner": string,"rationale": string,"status": string,"supersedes_id"?: string | null,"updated_at"?: string
+                    "action": string,"actual_outcome"?: string | null,"created_at"?: string,"created_by": string,"decided_at"?: string,"expected_outcome": string,"goal"?: string | null,"id"?: string,"insight_id": string,"institution_id": string,"intervention_status"?: string | null,"kind"?: string,"measured_at"?: string | null,"owner": string,"owner_staff_id"?: string | null,"rationale": string,"review_date"?: string | null,"status": string,"steps"?: Json | null,"student_id"?: string | null,"supersedes_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "action"?: string,"actual_outcome"?: string | null,"created_at"?: string,"created_by"?: string,"decided_at"?: string,"expected_outcome"?: string,"id"?: string,"insight_id"?: string,"institution_id"?: string,"measured_at"?: string | null,"owner"?: string,"rationale"?: string,"status"?: string,"supersedes_id"?: string | null,"updated_at"?: string
+                    "action"?: string,"actual_outcome"?: string | null,"created_at"?: string,"created_by"?: string,"decided_at"?: string,"expected_outcome"?: string,"goal"?: string | null,"id"?: string,"insight_id"?: string,"institution_id"?: string,"intervention_status"?: string | null,"kind"?: string,"measured_at"?: string | null,"owner"?: string,"owner_staff_id"?: string | null,"rationale"?: string,"review_date"?: string | null,"status"?: string,"steps"?: Json | null,"student_id"?: string | null,"supersedes_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -1676,6 +1676,18 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_owner_staff_id_fkey"
+      columns: ["owner_staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "insight_actions_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "insight_actions_supersedes_id_fkey"
@@ -2584,6 +2596,20 @@ isOneToOne: false
       referencedRelation: "students"
       referencedColumns: ["id"]
     }
+                  ]
+                },"platform_leads": {
+                  Row: {
+                    "created_at": string,"email": string,"id": string,"institution_name": string | null,"kind": string,"message": string | null,"name": string,"phone": string | null,"role": string | null,"source_ip_hash": string,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"email": string,"id"?: string,"institution_name"?: string | null,"kind": string,"message"?: string | null,"name": string,"phone"?: string | null,"role"?: string | null,"source_ip_hash": string,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"email"?: string,"id"?: string,"institution_name"?: string | null,"kind"?: string,"message"?: string | null,"name"?: string,"phone"?: string | null,"role"?: string | null,"source_ip_hash"?: string,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
                   ]
                 },"profiles": {
                   Row: {
@@ -4323,13 +4349,20 @@ isOneToOne: true
 "created_by": string,
 "decided_at": string,
 "expected_outcome": string,
+"goal": string | null,
 "id": string,
 "insight_id": string,
 "institution_id": string,
+"intervention_status": string | null,
+"kind": string,
 "measured_at": string | null,
 "owner": string,
+"owner_staff_id": string | null,
 "rationale": string,
+"review_date": string | null,
 "status": string,
+"steps": Json | null,
+"student_id": string | null,
 "supersedes_id": string | null,
 "updated_at": string
             }

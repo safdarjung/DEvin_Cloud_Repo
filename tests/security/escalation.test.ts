@@ -87,6 +87,8 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "exam.recheck.review": { permission: "exam.recheck.review", input: () => ({ requestId: U() }) },
   "exam.recheck.decide": { permission: "exam.recheck.decide", input: () => ({ requestId: U(), decision: "reject" }) },
   "exam.remark.save": { permission: "exam.marks.enter", input: () => ({ resultId: U(), remark: "Probe remark." }) },
+  "exam.paper.setUnits": { permission: "exam.manage", input: () => ({ paperId: U(), unitIds: [] }) },
+  "mastery.intervention.update": { permission: "mastery.review", input: () => ({ id: U(), status: "active" }) },
   "examSeating.generate": {
     permission: "exam.manage",
     input: () => ({ examId: U(), slotStart: "2026-11-16T04:00:00.000Z", rooms: [{ roomId: U() }] }),
