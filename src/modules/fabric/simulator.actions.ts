@@ -52,12 +52,15 @@ export const updateScenario = defineAction({
       throw new AppError("validation_failed", "No fields to update.");
     }
     const supabase = await createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("simulation_scenarios")
       .update(patch)
       .eq("id", id)
-      .eq("institution_id", ctx.institution.id);
+      .eq("institution_id", ctx.institution.id)
+      .select("id")
+      .maybeSingle();
     if (error) throwMapped(error);
+    if (!data) throw new AppError("not_found", "Scenario not found.");
     return { id };
   },
 });
@@ -73,12 +76,15 @@ export const decideScenario = defineAction({
       throw new AppError("forbidden", "Only the owner or principal can approve or reject a scenario.");
     }
     const supabase = await createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("simulation_scenarios")
       .update({ status: decision })
       .eq("id", id)
-      .eq("institution_id", ctx.institution.id);
+      .eq("institution_id", ctx.institution.id)
+      .select("id")
+      .maybeSingle();
     if (error) throwMapped(error);
+    if (!data) throw new AppError("not_found", "Scenario not found.");
     return { id, status: decision };
   },
 });
@@ -90,12 +96,15 @@ export const deleteScenario = defineAction({
   permission: "scenario.manage",
   handler: async ({ id }, ctx) => {
     const supabase = await createClient();
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("simulation_scenarios")
       .delete()
       .eq("id", id)
-      .eq("institution_id", ctx.institution.id);
+      .eq("institution_id", ctx.institution.id)
+      .select("id")
+      .maybeSingle();
     if (error) throwMapped(error);
+    if (!data) throw new AppError("not_found", "Scenario not found.");
     return { id };
   },
 });

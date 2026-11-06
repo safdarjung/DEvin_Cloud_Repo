@@ -29,6 +29,16 @@ export const SubmitStudioRequestSchema = z
   .strict();
 export type SubmitStudioRequestInput = z.infer<typeof SubmitStudioRequestSchema>;
 
+/** Shape of the `context` jsonb column, for `studio.queries.ts` to re-validate rows read back from the DB. */
+export const StudioRequestContextSchema = z
+  .object({
+    userRoles: z.array(z.string()).max(10).optional(),
+    existingSystems: z.array(z.string()).max(10).optional(),
+    integrations: z.array(z.string()).max(10).optional(),
+    constraints: z.string().max(1000).optional(),
+  })
+  .strict();
+
 export const StudioRequestIdSchema = z.object({ requestId: uuid }).strict();
 export type StudioRequestIdInput = z.infer<typeof StudioRequestIdSchema>;
 

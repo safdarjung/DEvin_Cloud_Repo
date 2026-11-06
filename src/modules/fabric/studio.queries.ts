@@ -5,7 +5,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import type { Database } from "@/lib/db/types";
-import type { StudioProposalInput } from "./studio.schemas";
+import { StudioProposalSchema, StudioRequestContextSchema, type StudioProposalInput } from "./studio.schemas";
 
 type StudioRequestRow = Database["public"]["Tables"]["studio_requests"]["Row"];
 
@@ -30,6 +30,8 @@ export interface StudioRequestRecord {
 }
 
 function toRecord(row: StudioRequestRow): StudioRequestRecord {
+  const contextParsed = StudioRequestContextSchema.safeParse(row.context ?? {});
+  const proposalParsed = row.proposal ? StudioProposalSchema.safeParse(row.proposal) : null;
   return {
     id: row.id,
     institutionId: row.institution_id,
@@ -38,10 +40,10 @@ function toRecord(row: StudioRequestRow): StudioRequestRecord {
     title: row.title,
     problem: row.problem,
     desiredOutcome: row.desired_outcome,
-    context: (row.context ?? {}) as StudioRequestRecord["context"],
+    context: contextParsed.success ? contextParsed.data : {},
     terms: (row.terms ?? {}) as StudioRequestRecord["terms"],
     status: row.status as StudioRequestStatus,
-    proposal: (row.proposal as unknown as StudioProposalInput | null) ?? null,
+    proposal: proposalParsed?.success ? proposalParsed.data : null,
     notes: row.notes ?? [],
     createdBy: row.created_by,
     decidedBy: row.decided_by,

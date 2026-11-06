@@ -14,6 +14,7 @@ import type { TenantContext } from "@/lib/auth/types";
 import { peopleCounts } from "@/modules/people/counts.queries";
 import { collectionReport } from "@/modules/finance/queries";
 import { BASELINE_FACTS, runScenario, sensitivity, type BaselineFacts } from "@/modules/fabric/demo/simulator";
+import { ScenarioAssumptionsSchema } from "@/modules/fabric/simulator.schemas";
 import type { ScenarioAssumptions, ScenarioStatus } from "@/modules/fabric/types";
 
 export { runScenario, sensitivity, type BaselineFacts };
@@ -94,13 +95,16 @@ export interface SavedScenario {
   updatedAt: string;
 }
 
-function mapScenarioRow(row: Record<string, unknown>): SavedScenario {
+/** Returns `null` when `assumptions` doesn't match `ScenarioAssumptionsSchema` — caller skips the row. */
+function mapScenarioRow(row: Record<string, unknown>): SavedScenario | null {
+  const parsed = ScenarioAssumptionsSchema.safeParse(row.assumptions);
+  if (!parsed.success) return null;
   return {
     id: row.id as string,
     name: row.name as string,
     rationale: row.rationale as string,
     status: row.status as ScenarioStatus,
-    assumptions: row.assumptions as ScenarioAssumptions,
+    assumptions: parsed.data as ScenarioAssumptions,
     createdBy: row.created_by as string,
     decidedBy: (row.decided_by as string | null) ?? null,
     decidedAt: (row.decided_at as string | null) ?? null,
@@ -120,10 +124,10 @@ export async function listScenarios(ctx: TenantContext): Promise<SavedScenario[]
     .eq("institution_id", ctx.institution.id)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map(mapScenarioRow);
+  return (data ?? []).map(mapScenarioRow).filter((row): row is SavedScenario => row !== null);
 }
 
-/** A single saved scenario, or null if it doesn't exist / isn't visible to the caller (RLS). */
+/** A single saved scenario, or null if it doesn't exist / isn't visible to the caller (RLS) / has invalid assumptions. */
 export async function getScenario(ctx: TenantContext, id: string): Promise<SavedScenario | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -135,3 +139,4 @@ export async function getScenario(ctx: TenantContext, id: string): Promise<Saved
   if (error) throw error;
   return data ? mapScenarioRow(data) : null;
 }
+

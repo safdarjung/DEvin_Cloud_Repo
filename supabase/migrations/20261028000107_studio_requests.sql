@@ -72,9 +72,11 @@ begin
     new.proposal := null;
     new.decided_by := null;
     new.decided_at := null;
-    new.notes := coalesce(new.notes, '{}');
-    if not v_trusted then
+    if v_trusted then
+      new.notes := coalesce(new.notes, '{}');
+    else
       new.created_by := app.current_user_id();
+      new.notes := '{}';
     end if;
     return new;
   end if;
@@ -94,6 +96,10 @@ begin
   v_old_notes_len := coalesce(array_length(old.notes, 1), 0);
   if new.notes[1:v_old_notes_len] is distinct from old.notes then
     raise exception 'code:invalid_state' using detail = 'notes can only be appended to';
+  end if;
+
+  if exists (select 1 from unnest(new.notes[v_old_notes_len + 1:]) as n where length(n) > 500) then
+    raise exception 'code:validation_failed' using detail = 'each note must be at most 500 characters';
   end if;
 
   if old.status = 'submitted' and new.status = 'proposed' then
@@ -154,6 +160,22 @@ declare
 begin
   if v_uid is null then
     raise exception 'code:unauthenticated' using detail = 'sign-in required';
+  end if;
+
+  if jsonb_typeof(p_proposal) <> 'object'
+    or octet_length(p_proposal::text) > 20000
+    or not (
+      p_proposal ? 'resolution' and p_proposal ? 'interpretation' and p_proposal ? 'features'
+      and p_proposal ? 'costEstimatePaise' and p_proposal ? 'timelineWeeks' and p_proposal ? 'acceptanceCriteria'
+    )
+    or jsonb_typeof(p_proposal -> 'resolution') <> 'string'
+    or jsonb_typeof(p_proposal -> 'interpretation') <> 'string'
+    or jsonb_typeof(p_proposal -> 'features') <> 'array'
+    or jsonb_typeof(p_proposal -> 'costEstimatePaise') <> 'number'
+    or jsonb_typeof(p_proposal -> 'timelineWeeks') <> 'number'
+    or jsonb_typeof(p_proposal -> 'acceptanceCriteria') <> 'array'
+  then
+    raise exception 'code:validation_failed' using detail = 'proposal shape invalid';
   end if;
 
   select * into v_row from public.studio_requests where id = p_request_id for update;

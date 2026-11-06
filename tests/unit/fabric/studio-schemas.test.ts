@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DecideStudioRequestSchema,
   StudioProposalSchema,
+  StudioRequestContextSchema,
   SubmitStudioRequestSchema,
 } from "@/modules/fabric/studio.schemas";
 
@@ -88,5 +89,29 @@ describe("StudioProposalSchema (runStructured output)", () => {
   it("requires at least one feature and one acceptance criterion", () => {
     expect(StudioProposalSchema.safeParse({ ...valid, features: [] }).success).toBe(false);
     expect(StudioProposalSchema.safeParse({ ...valid, acceptanceCriteria: [] }).success).toBe(false);
+  });
+});
+
+// M1: studio.queries.ts re-validates the `context` jsonb column read back
+// from the DB with this schema, falling back to {} on failure.
+describe("StudioRequestContextSchema", () => {
+  it("accepts the empty object and a fully populated context", () => {
+    expect(StudioRequestContextSchema.safeParse({}).success).toBe(true);
+    expect(
+      StudioRequestContextSchema.safeParse({
+        userRoles: ["warden"],
+        existingSystems: ["Core"],
+        integrations: [],
+        constraints: "No new vendors.",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects an unknown (injected) field — .strict()", () => {
+    expect(StudioRequestContextSchema.safeParse({ injected: true }).success).toBe(false);
+  });
+
+  it("rejects a non-string constraints value", () => {
+    expect(StudioRequestContextSchema.safeParse({ constraints: 123 }).success).toBe(false);
   });
 });

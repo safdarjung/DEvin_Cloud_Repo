@@ -127,6 +127,9 @@ export function RequestWizard({ institutionSlug, base }: { institutionSlug: stri
               <div>
                 <Label htmlFor="sr-problem">Problem</Label>
                 <Textarea id="sr-problem" rows={3} value={form.problem} maxLength={2000} required onChange={(e) => setForm((f) => ({ ...f, problem: e.target.value }))} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Don&apos;t include student or parent names — this text is sent to a cloud AI provider.
+                </p>
               </div>
               <div>
                 <Label htmlFor="sr-outcome">Desired outcome</Label>
@@ -159,6 +162,9 @@ export function RequestWizard({ institutionSlug, base }: { institutionSlug: stri
               <div>
                 <Label htmlFor="sr-constraints">Constraints</Label>
                 <Textarea id="sr-constraints" rows={2} value={form.constraints} maxLength={1000} onChange={(e) => setForm((f) => ({ ...f, constraints: e.target.value }))} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Don&apos;t include student or parent names — this text is sent to a cloud AI provider.
+                </p>
               </div>
             </div>
           )}

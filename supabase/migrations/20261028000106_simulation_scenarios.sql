@@ -17,7 +17,7 @@ create table public.simulation_scenarios (
   institution_id uuid not null references public.institutions (id),
   name text not null check (length(name) between 1 and 80),
   rationale text not null default '' check (length(rationale) <= 500),
-  assumptions jsonb not null check (jsonb_typeof(assumptions) = 'object'),
+  assumptions jsonb not null check (jsonb_typeof(assumptions) = 'object' and octet_length(assumptions::text) <= 2000),
   status text not null default 'draft' check (status in ('draft', 'proposed', 'approved', 'rejected')),
   created_by uuid not null references public.profiles (id),
   decided_by uuid references public.profiles (id),
@@ -73,6 +73,13 @@ begin
     or new.created_by is distinct from old.created_by
     or new.created_at is distinct from old.created_at then
     raise exception 'code:forbidden' using detail = 'institution_id, created_by and created_at are immutable';
+  end if;
+
+  if old.status <> 'draft'
+    and (new.name is distinct from old.name
+      or new.rationale is distinct from old.rationale
+      or new.assumptions is distinct from old.assumptions) then
+    raise exception 'code:invalid_state' using detail = 'name, rationale and assumptions can only change while draft';
   end if;
 
   if old.status in ('approved', 'rejected') and new.status is distinct from old.status then

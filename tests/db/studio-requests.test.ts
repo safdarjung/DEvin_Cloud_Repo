@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeRolesHelper, createTestInstitution } from "../helpers/roles";
 
@@ -8,6 +8,10 @@ import { closeRolesHelper, createTestInstitution } from "../helpers/roles";
 // definers. Mirrors tests/db/workflows-rls.test.ts / workflows-run-actions.test.ts.
 
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 5 });
+
+function serviceClient(): SupabaseClient {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SECRET_KEY as string);
+}
 
 afterAll(async () => {
   await sql.end();
@@ -182,6 +186,97 @@ describe("studio_requests table + write guard + RLS (0107)", () => {
         p_decision: "approve",
       });
       expect(error?.message).toContain("code:invalid_state");
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  // M1: propose_studio_request validates p_proposal's shape in SQL before
+  // writing it (jsonb_typeof object, required keys present with the
+  // expected jsonb type, octet_length cap) — defense in depth behind the
+  // caller's Zod-validated runStructured output.
+  it("propose_studio_request rejects a malformed proposal shape (M1)", async () => {
+    const inst = await createTestInstitution("studio-propose-bad-shape");
+    try {
+      const created = await insertRequest(inst.clientAs("owner"), inst.institutionId);
+
+      const notAnObject = await inst.clientAs("owner").rpc("propose_studio_request", {
+        p_request_id: created.id,
+        p_proposal: "not an object",
+      });
+      expect(notAnObject.error?.message).toContain("code:validation_failed");
+
+      const missingKeys = await inst.clientAs("owner").rpc("propose_studio_request", {
+        p_request_id: created.id,
+        p_proposal: { resolution: "new_module" },
+      });
+      expect(missingKeys.error?.message).toContain("code:validation_failed");
+
+      const wrongType = await inst.clientAs("owner").rpc("propose_studio_request", {
+        p_request_id: created.id,
+        // features must be an array, not a string.
+        p_proposal: { ...MINIMAL_PROPOSAL, features: "Leave request form" },
+      });
+      expect(wrongType.error?.message).toContain("code:validation_failed");
+
+      const tooLarge = await inst.clientAs("owner").rpc("propose_studio_request", {
+        p_request_id: created.id,
+        p_proposal: { ...MINIMAL_PROPOSAL, interpretation: "x".repeat(20_001) },
+      });
+      expect(tooLarge.error?.message).toContain("code:validation_failed");
+
+      // A valid proposal still goes through.
+      const ok = await inst.clientAs("owner").rpc("propose_studio_request", {
+        p_request_id: created.id,
+        p_proposal: MINIMAL_PROPOSAL,
+      });
+      expect(ok.error).toBeNull();
+      expect(ok.data.status).toBe("proposed");
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  // M5: notes is always forced to '{}' on insert for a non-trusted (regular
+  // authenticated) caller, and the guard trigger itself rejects an appended
+  // note over 500 chars (defense in depth behind decide_studio_request's
+  // own p_note length check).
+  it("notes is forced empty on insert for a non-trusted caller (M5)", async () => {
+    const inst = await createTestInstitution("studio-notes-insert-guard");
+    try {
+      const inserted = await inst
+        .clientAs("owner")
+        .from("studio_requests")
+        .insert(requestRow(inst.institutionId, { notes: ["sneaked in"] }))
+        .select("notes")
+        .single();
+      expect(inserted.error).toBeNull();
+      expect(inserted.data!.notes).toEqual([]);
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  it("the guard trigger rejects an appended note over 500 chars even on a direct trusted update (M5)", async () => {
+    const inst = await createTestInstitution("studio-notes-update-guard");
+    try {
+      const created = await insertRequest(inst.clientAs("owner"), inst.institutionId);
+      await inst.clientAs("owner").rpc("propose_studio_request", { p_request_id: created.id, p_proposal: MINIMAL_PROPOSAL });
+
+      // decide_studio_request's own p_note check already rejects a note this
+      // long; bypass it with a direct service-role update (service_role has
+      // an UPDATE grant on this table) to exercise the guard trigger's own
+      // per-item length check.
+      const { error } = await serviceClient()
+        .from("studio_requests")
+        .update({
+          status: "approved",
+          decided_by: inst.users.owner.id,
+          decided_at: new Date().toISOString(),
+          notes: ["x".repeat(501)],
+        })
+        .eq("id", created.id);
+      expect(error?.message).toContain("code:validation_failed");
     } finally {
       await inst.cleanup();
     }
