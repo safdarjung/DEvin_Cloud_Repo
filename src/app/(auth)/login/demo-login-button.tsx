@@ -1,14 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "cn";
-import { demoLogin } from "./actions";
 
 /**
  * One tap, no typing: signs in as a named demo account. The password is
- * never sent to or known by the browser (demoLogin reads it server-side).
+ * never sent to or known by the browser (/api/public/demo-login signs in
+ * passwordless server-side; a full-page POST, see that route for why).
  *
  * `icon` is a rendered element, not a component reference — a Server
  * Component can only pass plain, serializable values to a Client
@@ -29,10 +29,10 @@ export function DemoLoginButton({
   icon: ReactNode;
   next?: string;
 }) {
-  const [state, formAction, pending] = useActionState(demoLogin, null);
+  const [pending, setPending] = useState(false);
 
   return (
-    <form action={formAction} className="contents">
+    <form method="post" action="/api/public/demo-login" onSubmit={() => setPending(true)} className="contents">
       <input type="hidden" name="email" value={email} />
       <input type="hidden" name="next" value={next ?? ""} />
       <button
@@ -54,11 +54,6 @@ export function DemoLoginButton({
           <span className="truncate text-[11px] leading-tight text-muted-foreground">{role}</span>
         </span>
       </button>
-      {state && !state.ok && (
-        <p role="alert" className="col-span-full -mt-1 text-xs text-destructive">
-          {state.error.message}
-        </p>
-      )}
     </form>
   );
 }

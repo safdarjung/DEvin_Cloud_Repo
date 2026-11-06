@@ -1,15 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { demoLogin } from "@/app/(auth)/login/actions";
 
-/** One role = one allow-listed demo account; demoLogin re-checks the email server-side. */
+/** One role = one allow-listed demo account; /api/public/demo-login re-checks the email server-side. */
 export function RoleCard({ email, role, note }: { email: string; role: string; note: string }) {
-  const [state, formAction, pending] = useActionState(demoLogin, null);
+  const [pending, setPending] = useState(false);
   return (
     <li>
-      <form action={formAction}>
+      <form method="post" action="/api/public/demo-login" onSubmit={() => setPending(true)}>
         <input type="hidden" name="email" value={email} />
         <button
           type="submit"
@@ -26,9 +25,6 @@ export function RoleCard({ email, role, note }: { email: string; role: string; n
             <ArrowRight className="size-4 text-(color:--mk-accent) transition-transform group-hover:translate-x-1 motion-reduce:transition-none" aria-hidden />
           )}
         </button>
-        {state && !state.ok && (
-          <p role="alert" className="pb-3 text-sm text-destructive">{state.error.message}</p>
-        )}
       </form>
     </li>
   );
