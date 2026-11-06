@@ -33,7 +33,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
-    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable",
+    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
   ],
   principal: [
     ...FABRIC_HREFS,
@@ -51,7 +51,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
-    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable",
+    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
   ],
   admin: [
     ...FABRIC_HREFS,
@@ -68,13 +68,13 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
-    "/diary", "/lesson-plans", "/ptm", "/timetable",
+    "/diary", "/lesson-plans", "/ptm", "/timetable", "/assistant", "/messages",
   ],
-  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/timetable"],
-  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT, "/timetable"],
+  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/timetable", "/assistant"],
+  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT, "/timetable", "/assistant"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, "/question-bank", "/timetable"],
-  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable"],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, "/question-bank", "/timetable", "/assistant"],
+  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   student: ["/notifications", "/portal"],

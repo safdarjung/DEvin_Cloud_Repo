@@ -18,6 +18,8 @@ import {
   GraduationCap,
   LayoutDashboard,
   Lightbulb,
+  MessageSquare,
+  MessagesSquare,
   ListChecks,
   NotebookPen,
   NotebookText,
@@ -60,6 +62,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // No dedicated "portal.view" permission exists (07 §2.2); exam.recheck.request
   // is the only row granted to exactly {student, guardian} and no staff role,
   // which is exactly who the portal link is for.
+  { href: "/assistant", label: "Ask the data", icon: MessageSquare, permission: "dashboard.view", group: "Overview", module: "ai_teacher" },
   { href: "/portal", label: "Portal", icon: UserCircle, permission: "exam.recheck.request", group: "Overview" },
   { href: "/students", label: "Students", icon: Users, permission: "student.read", group: "Academics" },
   { href: "/attendance", label: "Attendance", icon: CalendarCheck, permission: "attendance.read", group: "Academics" },
@@ -78,6 +81,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // see this link too (the page itself shows "not available yet" for them).
   { href: "/ai", label: "AI Assistant", icon: Bot, permission: "ai.generate", group: "Communication", module: "ai_teacher" },
   { href: "/notifications", label: "Notifications", icon: Bell, permission: "notification.read", group: "Communication" },
+  { href: "/messages", label: "Messages", icon: MessagesSquare, permission: "message.read", group: "Communication", module: "messaging" },
   { href: "/diary", label: "Class diary", icon: NotebookPen, permission: "diary.write", group: "Communication", module: "diary" },
   // One page, two jobs: admins schedule meeting days, teachers open their slots (deduped by href below).
   { href: "/ptm", label: "Parent meetings", icon: CalendarClock, permission: "ptm.manage", group: "Communication", module: "ptm" },
