@@ -7,7 +7,7 @@ import { computeStreak, subjectAverages, type SubjectAverage } from "@/modules/p
 
 const ATTEMPT_LIMIT = 100;
 // Streaks are capped by this look-back window (days).
-const STREAK_WINDOW_DAYS = 90;
+export const STREAK_WINDOW_DAYS = 90;
 
 export interface PracticeAttemptSummary {
   id: string;
