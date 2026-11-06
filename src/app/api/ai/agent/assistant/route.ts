@@ -22,7 +22,7 @@ import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 import { UIMessageRequestSchema, latestUserText, stripToText } from "@/lib/ai/ui-message-schema";
 import { redact } from "@/lib/ai/redact";
 import { streamAgent } from "@/lib/ai/gateway";
-import { streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
+import { cloudStreamErrorText, streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
 import { buildAssistantTools } from "@/modules/ai/assistant/tools";
 import { ASSISTANT_CATALOG_VERSION, pickAssistantProvider } from "@/modules/ai/assistant/catalog";
 
@@ -181,6 +181,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   return result.stream.toUIMessageStreamResponse({
+    onError: cloudStreamErrorText,
     messageMetadata: ({ part }) =>
       part.type === "finish"
         ? { provider, catalogVersion: ASSISTANT_CATALOG_VERSION, sources: sources.list() }

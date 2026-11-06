@@ -19,7 +19,7 @@ import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { requirePermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { pickAgentProvider } from "@/modules/ai/agent/provider-routing";
-import { streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
+import { cloudStreamErrorText, streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
 import { teacherTools } from "@/modules/ai/agent/teacher-tools";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 import { UIMessageRequestSchema, latestUserText } from "@/lib/ai/ui-message-schema";
@@ -180,5 +180,5 @@ export async function POST(request: Request): Promise<Response> {
     return json(fail(cloudResult.error.code, cloudResult.error.message));
   }
 
-  return cloudResult.stream.toUIMessageStreamResponse();
+  return cloudResult.stream.toUIMessageStreamResponse({ onError: cloudStreamErrorText });
 }

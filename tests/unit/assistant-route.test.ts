@@ -19,7 +19,7 @@ const buildAssistantToolsMock = vi.fn(async () => ({
 
 vi.mock("@/lib/auth/context", () => ({ getTenantContext: getTenantContextMock }));
 vi.mock("@/lib/ai/gateway", () => ({ streamAgent: streamAgentMock }));
-vi.mock("@/modules/ai/agent/cloud-stream", () => ({ streamCloudAgent: streamCloudAgentMock }));
+vi.mock("@/modules/ai/agent/cloud-stream", () => ({ streamCloudAgent: streamCloudAgentMock, cloudStreamErrorText: () => "x" }));
 vi.mock("@/modules/ai/assistant/tools", () => ({ buildAssistantTools: buildAssistantToolsMock }));
 
 const { POST } = await import("@/app/api/ai/agent/assistant/route");

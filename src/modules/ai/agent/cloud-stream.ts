@@ -5,7 +5,7 @@ import "server-only";
 // (the M24 school-wide assistant, T6) shares it instead of re-copying it.
 // The caller keeps its own gates (parse, role/feature checks, tool
 // building, message conversion) — this module starts at `checkLimits`.
-import { stepCountIs, streamText, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
+import { APICallError, stepCountIs, streamText, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import type { ErrorCode } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
@@ -178,4 +178,18 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
     .finally(() => releaseConcurrencySlot(concurrencyId, "cloud"));
 
   return { ok: true, modelId, stream };
+}
+
+/**
+ * Stream `onError` for the cloud agent routes: the SDK default sends a bare "An error
+ * occurred.". Returns a category only, never the provider's message (it can echo request data).
+ */
+export function cloudStreamErrorText(error: unknown): string {
+  const cause = (error as { lastError?: unknown } | null)?.lastError ?? error; // RetryError wraps the last attempt
+  const status = APICallError.isInstance(cause) ? cause.statusCode : undefined;
+  console.error("[ai-stream] provider error", { name: cause instanceof Error ? cause.name : typeof cause, status });
+  if (status === 401 || status === 403) return "The AI provider rejected the configured API key.";
+  if (status === 404) return "The configured AI model was not found.";
+  if (status === 429) return "The AI provider is rate-limiting requests; try again in a minute.";
+  return "The AI provider could not answer right now; please try again.";
 }
