@@ -141,8 +141,10 @@ Assumptions: financial year April–March; receipts numbered per financial year.
 | F-INT-03 | Natural-language questions over school data (policy-bounded) | Access | 3 | planned | P3 | F-AI-01, F-INT-01 | ai | conf | — |
 | F-INT-04 | Scheduled reports (attendance, finance defaulters) with cron and in-app delivery | Automation, export | 1 | impl | P1 | F-ATT-05, F-FIN-07 | reports | int | — |
 | F-INT-05 | Fee collection and attendance rate forecasting (baseline: moving average + seasonal naive, backtested MAPE shown) | Principal insight | 1 | limited | P1 | F-FIN-04, F-ATT-01 | forecasts | int | — |
+| F-INT-06 | Daily briefings: role-wide summaries (approvals, attendance, insights, fees, admissions, staff, timetable) + optional AI headline | Executive glance | 1 | limited (rules + AI headline via Ollama when available; one per role per day, frozen after first generation; guardians/students see fixture) | P0 | F-INT-00, F-AI-02 | insights | int | tests/db/briefings-acceptance.test.ts |
+| F-INT-07 | Timetable fill suggestions: read-only deterministic proposals (subject deficit, teacher load, room availability); applied via `timetable.saveDraft` | Time saver | 1 | limited (rule-based v1 only; no storage, re-computed per request) | P1 | F-ACA-07 | timetable | int | tests/db/timetable-suggest.test.ts |
 
-Assumptions: the only AI prompt in the demo is built from curriculum text, never from student records.
+Assumptions: the only AI prompt in the demo is built from curriculum text, never from student records. Briefings are frozen once generated (no refresh). Timetable suggestions are ephemeral proposals, not stored as insight rows.
 
 ### G. Services and campus
 

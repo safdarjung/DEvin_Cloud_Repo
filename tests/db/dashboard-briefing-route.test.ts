@@ -227,4 +227,49 @@ describe("POST /api/ai/dashboard-briefing (M25-T7)", () => {
       await inst.cleanup();
     }
   });
+
+  // Security review LOW (M25): lost-narration-race branch had no dedicated
+  // test — `setBriefingHeadline`'s `provider is null` CAS loses when a row
+  // gets narrated between this call's `ensureBriefing` read and its own
+  // `setBriefingHeadline` write. Force that ordering deterministically by
+  // racing the row's `provider` inside the gateway mock itself, between
+  // `ensureBriefing` (already ran) and `setBriefingHeadline` (about to run).
+  it("lost narration race: setBriefingHeadline loses the provider-is-null CAS -> route re-reads and returns the winning row, model null", async () => {
+    const inst = await createTestInstitution("briefing-route-lost-race");
+    try {
+      runStructuredMock.mockImplementationOnce(async () => {
+        await sql`
+          update public.briefings
+          set provider = 'cloud', headline = 'Other narrator won.'
+          where institution_id = ${inst.institutionId} and role = 'principal'
+        `;
+        return {
+          ok: true,
+          data: {
+            data: { headline: "This call's own headline (discarded)." },
+            provider: "local",
+            model: "qwen3:4b-instruct-2507-q4_K_M",
+            fallback: false,
+          },
+        };
+      });
+
+      actingAs(inst, "principal");
+      const { POST } = await import("@/app/api/ai/dashboard-briefing/route");
+      const res = await POST(briefingRequest(bodyFor(inst.slug)));
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.data.summary).toBe("Other narrator won.");
+      expect(body.data.provider).toBe("cloud");
+      expect(body.data.model).toBeNull();
+      expect(body.data.fallback).toBe(false);
+
+      const row = await latestBriefingRow(inst.institutionId, "principal");
+      expect(row?.headline).toBe("Other narrator won.");
+      expect(row?.provider).toBe("cloud");
+    } finally {
+      await inst.cleanup();
+    }
+  });
 });
