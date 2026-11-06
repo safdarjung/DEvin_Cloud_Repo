@@ -363,6 +363,12 @@ describe("mapSqlError (C-03 criterion 3)", () => {
     if (!result.ok) expect(result.error.message).not.toMatch(/x_fkey/);
   });
 
+  it("maps SQLSTATE 23514 (check violation) to validation_failed", () => {
+    const result = mapSqlError({ code: "23514", message: "new row violates check constraint \"x_cap_check\"" });
+    expect(result).toMatchObject({ ok: false, error: { code: "validation_failed" } });
+    if (!result.ok) expect(result.error.message).not.toMatch(/x_cap_check/);
+  });
+
   it("maps an unknown error to internal", () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const result = mapSqlError(new Error("relation does not exist"));
