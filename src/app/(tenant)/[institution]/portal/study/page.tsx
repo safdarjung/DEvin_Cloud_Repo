@@ -80,6 +80,7 @@ export default async function PortalStudyPage({
         initialMessages={initialMessages}
         resumedChatId={resumedChatId}
         backHref={basePath}
+        aiMode={process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY ? "cloud" : "local"}
       />
     </div>
   );

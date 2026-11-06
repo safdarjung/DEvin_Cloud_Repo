@@ -36,6 +36,8 @@ interface StudyChatProps {
   resumedChatId?: string;
   /** Where the page header's back link goes. */
   backHref?: string;
+  /** Which engine answers (server decides from configured keys) — drives the disclosure line. */
+  aiMode?: "cloud" | "local";
 }
 
 const TOOL_LABELS: Record<string, string> = {
@@ -172,7 +174,7 @@ function MessageParts({ message, institutionSlug, resumedChatId }: { message: UI
   );
 }
 
-export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMessages, resumedChatId, backHref }: StudyChatProps) {
+export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMessages, resumedChatId, backHref, aiMode = "local" }: StudyChatProps) {
   const router = useRouter();
   const [input, setInput] = useState("");
   const { messages, sendMessage, status, error } = useChat({
@@ -236,7 +238,9 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
               internet" overstated it — a hosted deployment can run the
               local model through a tunnel (04-architecture.md topology B),
               so only "sent there" is actually guaranteed. */}
-          Local AI on your school&apos;s server. What you type is sent there. Don&apos;t share personal details.
+          {aiMode === "cloud"
+            ? "AI help from Google Gemini or Groq (cloud). What you type is sent to that provider. Don't share personal details."
+            : "Local AI on your school's server. What you type is sent there. Don't share personal details."}{" "}
           AI can be wrong; check your textbook or teacher.
           </p>
         </div>

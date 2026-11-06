@@ -20,14 +20,17 @@ import "server-only";
 // request's own echoed history, not a rebuild from stored state.
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { convertToModelMessages, stepCountIs } from "ai";
+import { convertToModelMessages, stepCountIs, type ToolSet, type UIMessage } from "ai";
 import { AppError, fail, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { requirePermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { streamAgent } from "@/lib/ai/gateway";
-import { UIMessageRequestSchema, stripToText } from "@/lib/ai/ui-message-schema";
+import { redact } from "@/lib/ai/redact";
+import { UIMessageRequestSchema, latestUserText, stripToText } from "@/lib/ai/ui-message-schema";
+import { cloudStreamErrorText, streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
+import { pickAgentProvider } from "@/modules/ai/agent/provider-routing";
 import { composeStudentInstructions } from "@/modules/ai/prompts/student-skills";
 import { getStudentPreferences } from "@/modules/ai/student-preferences";
 import { studentTools } from "@/modules/ai/agent/student-tools";
@@ -135,6 +138,22 @@ export async function POST(request: Request): Promise<Response> {
     return json(fail("validation_failed", "No readable text in this message."));
   }
 
+  // Owner decision 2026-11-07 (D32 amended): with a Groq/Gemini key the study helper runs in the cloud
+  // like the teacher agent, user text redacted; local Ollama stays the path on a keyless install.
+  const cloud = Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+  let redactions = 0;
+  const outgoing = cloud
+    ? (strippedMessages.map((message) => ({
+        ...message,
+        parts: message.parts.map((part) => {
+          if (part.type !== "text") return part;
+          const result = redact(part.text);
+          redactions += result.count;
+          return { ...part, text: result.text };
+        }),
+      })) as UIMessage[])
+    : strippedMessages;
+
   let preferences: Awaited<ReturnType<typeof getStudentPreferences>>;
   let tools: Awaited<ReturnType<typeof studentTools>>;
   let modelMessages: Awaited<ReturnType<typeof convertToModelMessages>>;
@@ -143,12 +162,29 @@ export async function POST(request: Request): Promise<Response> {
     [preferences, tools, modelMessages] = await Promise.all([
       getStudentPreferences(ctx),
       studentTools(ctx, { visualsEnabled }),
-      convertToModelMessages(strippedMessages),
+      convertToModelMessages(outgoing),
     ]);
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] /api/ai/agent/student failed to prepare the request`, err);
     return json(internalError(correlationId));
+  }
+
+  if (cloud) {
+    const cloudStreamed = await streamCloudAgent({
+      ctx,
+      feature: FEATURE,
+      provider: pickAgentProvider(latestUserText(input.messages)),
+      system: composeStudentInstructions(preferences.skills, preferences.style),
+      messages: modelMessages,
+      // studentTools' optional visuals tool makes its type a union; the shape is a ToolSet at runtime.
+      tools: tools as ToolSet,
+      abortSignal: request.signal,
+      redactions,
+      notConfiguredMessage: "The study helper is not configured. Ask your school.",
+    });
+    if (!cloudStreamed.ok) return json(fail(cloudStreamed.error.code, cloudStreamed.error.message));
+    return cloudStreamed.stream.toUIMessageStreamResponse({ onError: cloudStreamErrorText });
   }
 
   const streamed = await streamAgent({

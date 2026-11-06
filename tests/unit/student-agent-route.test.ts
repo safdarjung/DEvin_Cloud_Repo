@@ -4,11 +4,12 @@
 // permission/dataClass — not the quota/concurrency/provider logic itself,
 // which belongs to ai-gateway.test.ts. Same style as
 // tests/unit/teacher-agent-route.test.ts.
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/lib/auth/types";
 
 const getTenantContextMock = vi.fn();
 const streamAgentMock = vi.fn();
+const streamCloudAgentMock = vi.fn();
 const studentToolsMock = vi.fn(async () => ({}));
 const getStudentPreferencesMock = vi.fn(async () => ({
   skills: ["terse"],
@@ -17,6 +18,7 @@ const getStudentPreferencesMock = vi.fn(async () => ({
 
 vi.mock("@/lib/auth/context", () => ({ getTenantContext: getTenantContextMock }));
 vi.mock("@/lib/ai/gateway", () => ({ streamAgent: streamAgentMock }));
+vi.mock("@/modules/ai/agent/cloud-stream", () => ({ streamCloudAgent: streamCloudAgentMock, cloudStreamErrorText: () => "x" }));
 vi.mock("@/modules/ai/agent/student-tools", () => ({ studentTools: studentToolsMock }));
 vi.mock("@/modules/ai/student-preferences", () => ({ getStudentPreferences: getStudentPreferencesMock }));
 
@@ -50,7 +52,18 @@ async function json(res: Response) {
   return res.json();
 }
 
+// Each test starts keyless (local path); the cloud test sets GROQ_API_KEY itself.
+const savedCloudKeys = { GROQ_API_KEY: process.env.GROQ_API_KEY, GEMINI_API_KEY: process.env.GEMINI_API_KEY };
+beforeEach(() => {
+  delete process.env.GROQ_API_KEY;
+  delete process.env.GEMINI_API_KEY;
+});
+
 afterEach(() => {
+  for (const [k, v] of Object.entries(savedCloudKeys)) {
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
   vi.clearAllMocks();
   getStudentPreferencesMock.mockResolvedValue({
     skills: ["terse"],
@@ -59,6 +72,25 @@ afterEach(() => {
 });
 
 describe("POST /api/ai/agent/student", () => {
+  it("with a Groq key: streams via the cloud agent (D32 amended), redacts a phone number, never the local path", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    getTenantContextMock.mockResolvedValueOnce({
+      ...studentCtx(),
+      institution: { ...studentCtx().institution, settings: { features: { student_ai_study: true } } },
+    });
+    const streamResponse = new Response("stream");
+    streamCloudAgentMock.mockResolvedValueOnce({ ok: true, modelId: "groq", stream: { toUIMessageStreamResponse: () => streamResponse } });
+    const res = await POST(
+      request({ institutionSlug: "demo", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "My number is 9876543210, explain fractions" }] }] }),
+    );
+    expect(res).toBe(streamResponse);
+    expect(streamAgentMock).not.toHaveBeenCalled();
+    const call = streamCloudAgentMock.mock.calls[0][0];
+    expect(call.provider).toBe("groq");
+    expect(call.redactions).toBeGreaterThanOrEqual(1);
+    expect(JSON.stringify(call.messages)).not.toContain("9876543210");
+  });
+
   it("refuses a cross-site request", async () => {
     const res = await POST(request(validBody(), { origin: "https://evil.example" }));
     expect(res.status).toBe(403);
