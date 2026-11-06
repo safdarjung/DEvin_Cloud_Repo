@@ -24,6 +24,10 @@ const at = "2026-10-01T09:00:00.000Z";
 const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown> }> = {
   "core.feature.set": { permission: "institution.settings.manage", input: () => ({ key: "teacher_ai_agent", enabled: true }) },
   "core.module.set": { permission: "institution.settings.manage", input: () => ({ key: "timetable", enabled: true }) },
+  "agent.run": { permission: "agent.run", input: () => ({ slug: "finance", task: "x" }) },
+  "agent.definition.setEnabled": { permission: "agent.approve", input: () => ({ slug: "finance", enabled: true }) },
+  "agent.approve": { permission: "agent.run", input: () => ({ runId: U() }) },
+  "agent.reject": { permission: "agent.run", input: () => ({ runId: U() }) },
   "ai.study.chat.save": {
     permission: "ai.study",
     input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }),
@@ -78,19 +82,9 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "exam.recheck.review": { permission: "exam.recheck.review", input: () => ({ requestId: U() }) },
   "exam.recheck.decide": { permission: "exam.recheck.decide", input: () => ({ requestId: U(), decision: "reject" }) },
   "exam.remark.save": { permission: "exam.marks.enter", input: () => ({ resultId: U(), remark: "Probe remark." }) },
-  "feePlans.lateFeeRule.upsert": {
-    permission: "finance.plan.manage",
-    input: () => ({ feeStructureId: U(), kind: "flat", amount: 100, cap: null }),
-  },
-  "feePlans.instalments.set": {
-    permission: "finance.plan.manage",
-    input: () => ({
-      invoiceId: U(),
-      parts: [
-        { dueOn: "2026-11-10", amount: 100 },
-        { dueOn: "2026-12-10", amount: 100 },
-      ],
-    }),
+  "examSeating.generate": {
+    permission: "exam.manage",
+    input: () => ({ examId: U(), slotStart: "2026-11-16T04:00:00.000Z", rooms: [{ roomId: U() }] }),
   },
   "finance.structure.upsert": {
     permission: "finance.structure.manage",
@@ -212,6 +206,19 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "people.leave.approve": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
   "people.leave.reject": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
   "people.leave.cancel": { permission: "leave.request", input: () => ({ leaveId: U() }) },
+  "studentLeave.request": {
+    permission: "student_leave.request",
+    input: () => ({ studentId: U(), startDate: "2026-11-09", endDate: "2026-11-10", reason: "Probe reason" }),
+  },
+  "studentLeave.approve": { permission: "student_leave.approve", input: () => ({ leaveId: U() }) },
+  "studentLeave.reject": { permission: "student_leave.approve", input: () => ({ leaveId: U() }) },
+  "studentLeave.cancel": { permission: "student_leave.request", input: () => ({ leaveId: U() }) },
+  "diary.entry.post": {
+    permission: "diary.write",
+    input: () => ({ classSectionId: U(), entryDate: "2026-11-09", body: "Probe entry" }),
+  },
+  "diary.entry.delete": { permission: "diary.write", input: () => ({ entryId: U() }) },
+  "diary.acknowledge": { permission: "assignment.read", input: () => ({ entryId: U(), studentId: U() }) },
   "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
   "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
   "people.guardian.link": {
@@ -304,11 +311,78 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   },
   "transport.assign": { permission: "transport.manage", input: () => ({ studentId: U(), stopId: U() }) },
   "transport.unassign": { permission: "transport.manage", input: () => ({ studentId: U() }) },
+  "insight.review": { permission: "insight.review", input: () => ({ insightId: U() }) },
+  "insight.action": {
+    permission: "insight.review",
+    input: () => ({ insightId: U(), action: "Probe action", owner: "Probe owner", rationale: "Probe rationale.", expectedOutcome: "Probe outcome." }),
+  },
+  "insight.resolve": { permission: "insight.review", input: () => ({ insightId: U(), note: "Probe resolution note." }) },
+  "insight.dismiss": { permission: "insight.review", input: () => ({ insightId: U(), note: "Probe dismissal note." }) },
+  // Gate is `insight.read` (every role here passes it except student/guardian),
+  // but the handler's own `ai.generate` check (07 §2 — accountant/exam_controller
+  // lack it) is what actually decides forbidden vs. past-the-gate here.
+  "insight.explain": { permission: "ai.generate", input: () => ({ insightId: U() }) },
+  "visitors.checkIn": { permission: "visitor.manage", input: () => ({ fullName: "Probe Visitor", phone: "9876543210", purpose: "Probe", meetingWith: "Office" }) },
+  "visitors.checkOut": { permission: "visitor.manage", input: () => ({ id: U() }) },
+  "visitors.gatePass.create": { permission: "gatepass.manage", input: () => ({ studentId: U(), reason: "Probe reason.", guardianId: U() }) },
+  "visitors.gatePass.setStatus": { permission: "gatepass.manage", input: () => ({ id: U(), status: "approved" }) },
+  "visitors.pickup.add": {
+    permission: "pickup.manage",
+    input: () => ({ studentId: U(), fullName: "Probe Person", relation: "driver", phone: "9876543210" }),
+  },
+  "visitors.pickup.remove": { permission: "pickup.manage", input: () => ({ id: U() }) },
+  "visitors.purge": { permission: "visitor.manage", input: () => ({}) },
   "report.schedule.save": {
     permission: "report.schedule",
     input: () => ({ name: "Probe Report", source: "attendance.daily", cron: "0 20 * * *", recipientRoles: ["principal"] }),
   },
   "report.schedule.setStatus": { permission: "report.schedule", input: () => ({ id: U(), status: "paused" }) },
+  "certificate.issue": {
+    permission: "certificate.manage",
+    input: () => ({ studentId: U(), kind: "bonafide", purpose: "Passport application" }),
+  },
+  "ptm.event.create": {
+    permission: "ptm.manage",
+    input: () => ({
+      title: "Probe",
+      eventDate: "2026-11-21",
+      dayStartsAt: "09:00",
+      dayEndsAt: "13:00",
+      slotMinutes: 10,
+      bookingClosesAt: "2026-11-20T18:00:00+05:30",
+      classSectionIds: [U()],
+    }),
+  },
+  "ptm.event.publish": { permission: "ptm.manage", input: () => ({ eventId: U() }) },
+  "ptm.slots.add": { permission: "ptm.slot.manage", input: () => ({ eventId: U(), from: "10:00", to: "10:30" }) },
+  "ptm.slot.remove": { permission: "ptm.slot.manage", input: () => ({ slotId: U() }) },
+  "ptm.booking.create": { permission: "ptm.book", input: () => ({ slotId: U(), studentId: U() }) },
+  "ptm.booking.cancel": { permission: "ptm.book", input: () => ({ bookingId: U() }) },
+  "survey.create": {
+    permission: "survey.manage",
+    input: () => ({
+      title: "Probe",
+      closesAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      questions: [{ type: "text", prompt: "Probe?" }],
+      audiences: [{ type: "school" }],
+    }),
+  },
+  "survey.close": { permission: "survey.manage", input: () => ({ surveyId: U() }) },
+  "survey.respond": { permission: "survey.respond", input: () => ({ surveyId: U(), answers: ["Probe answer"] }) },
+  "feePlans.lateFeeRule.upsert": {
+    permission: "finance.plan.manage",
+    input: () => ({ feeStructureId: U(), kind: "flat", amount: 100, cap: null }),
+  },
+  "feePlans.instalments.set": {
+    permission: "finance.plan.manage",
+    input: () => ({
+      invoiceId: U(),
+      parts: [
+        { dueOn: "2026-11-10", amount: 100 },
+        { dueOn: "2026-12-10", amount: 100 },
+      ],
+    }),
+  },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

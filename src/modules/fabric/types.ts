@@ -90,6 +90,14 @@ export type InsightDomain = "attendance" | "academics" | "finance" | "admissions
 export type InsightSeverity = "info" | "watch" | "warning" | "critical";
 export type InsightKind = "descriptive" | "diagnostic" | "predictive" | "prescriptive";
 export type InsightStatus = "new" | "reviewing" | "actioned" | "resolved" | "dismissed";
+export interface InsightExplanation {
+  what: string;
+  why: string;
+  next_steps: string[];
+  provider: "local" | "cloud";
+  model: string;
+  explained_at: ISODate;
+}
 export interface Insight extends BaseRow {
   title: string;
   domain: InsightDomain;
@@ -107,6 +115,9 @@ export interface Insight extends BaseRow {
   approval_required: boolean;
   status: InsightStatus;
   entity_ref: { type: "section" | "student" | "staff" | "route" | "fee_structure" | "department"; id: Id; label: string } | null;
+  signal?: string; // M19 CONTRACT
+  detector_version?: number; // M19 CONTRACT
+  explanation?: InsightExplanation | null; // M19 CONTRACT
 }
 export interface InsightAction extends BaseRow {
   insight_id: Id;

@@ -1,0 +1,10 @@
+Packet: M22-T7 Actions agent.run, agent.definition.setEnabled + service-role caller
+Files changed: src/modules/agents/actions.ts (new), src/modules/agents/service-role.ts (new), src/lib/supabase/admin.ts (+"agents" caller), eslint.config.mjs (+override), src/app/api/v1/actions/all-actions.ts (+import), tests/security/escalation.test.ts (+2 C-03 fixtures), tests/security/allow-list.test.ts (+allow-list entry), tests/db/agents-run-action.test.ts (new)
+Behavior implemented: agent.run (ensure 6 defs -> read own def -> not_found/invalid_state -> insert running row -> executeAgentRun in try/catch/finally (unexpected throw -> default failed outcome, never rethrows) -> persist status/risk_class/summary/log/proposals, finished_at only for done|failed (guard needs null for awaiting_approval) -> audit agent.run {slug,status,proposals:n} -> return). agent.definition.setEnabled (ensure defs -> update is_enabled via user client/RLS -> not_found on 0 rows -> audit -> return). agentsAdmin()/ensureAgentDefinitions in service-role.ts (upsert 6 slugs, onConflict ignoreDuplicates).
+Tests run: pnpm test:db tests/db/agents-run-action.test.ts -> 9/9 pass. pnpm test:security tests/security/escalation.test.ts tests/security/module-gate.test.ts tests/security/allow-list.test.ts -> 1343/1343 pass. pnpm test tests/unit/action-names-unique.test.ts -> 6/6 pass. pnpm lint -> clean. pnpm typecheck -> clean.
+Tests not run and why: full test:db/test:security (brief: own file only, no --).
+Limitations / honesty label: none (T12 records the LimitedBadge).
+Security / integration risks: audit() action string for setEnabled is "agent.definition.enabled_set" (lowercase), not the camelCase registry name "agent.definition.setEnabled" -- record_audit_event rejects camelCase (20261028000013 regex). Registry/permission name unchanged, only the audit log string differs.
+Follow-ups: T8 (approve/reject) builds on this file; T9 queries read agent_runs/agent_definitions.
+New dependencies (justification): none.
+Assumptions made: executeAgentRun's documented "never throws" contract is defended anyway (catch -> default failed outcome) per brief's try/finally wording.

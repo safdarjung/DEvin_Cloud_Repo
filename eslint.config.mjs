@@ -50,6 +50,15 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  {
+    // M22-T7: agent_runs/agent_definitions have no authenticated write path
+    // (07 §4, `agents` caller) — this factory and ensureAgentDefinitions are
+    // its only callers, from src/modules/agents/actions.ts.
+    files: ["src/modules/agents/service-role.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

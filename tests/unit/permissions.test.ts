@@ -54,6 +54,7 @@ const MATRIX: Row[] = [
   ["exam.recheck.request", false, false, false, false, false, false, false, true, true],
   ["exam.recheck.review", true, true, false, false, false, true, false, false, false],
   ["exam.recheck.decide", true, true, false, false, false, true, false, false, false],
+  ["exam.seating.read", true, true, true, false, false, true, false, true, true],
   ["assignment.manage", true, true, false, false, false, false, true, false, false],
   ["assignment.read", true, true, true, false, false, false, true, true, true],
   ["assignment.submit", false, false, false, false, false, false, false, true, false],
@@ -79,12 +80,32 @@ const MATRIX: Row[] = [
   ["staff.attendance.mark", true, true, true, true, true, true, true, false, false],
   ["leave.request", true, true, true, true, true, true, true, false, false],
   ["leave.approve", true, true, true, false, false, false, false, false, false],
+  ["certificate.manage", true, true, true, true, false, false, false, false, false],
   ["facilities.manage", true, true, true, false, false, false, false, false, false],
   ["transport.manage", true, true, true, false, false, false, false, false, false],
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["agent.run", true, true, true, false, false, false, false, false, false],
+  ["agent.approve", true, true, false, false, false, false, false, false, false],
+  ["insight.read", true, true, true, true, true, true, true, false, false],
+  ["insight.review", true, true, true, true, true, true, false, false, false],
+  ["forecast.read", true, true, true, false, true, true, true, false, false],
+  ["visitor.manage", true, true, true, false, false, false, false, false, false],
+  ["gatepass.manage", true, true, true, false, false, false, true, false, false],
+  ["pickup.manage", true, true, true, false, false, false, false, false, true],
   ["report.schedule", true, true, true, false, false, false, false, false, false],
   ["workflow.read", true, true, true, false, false, false, false, false, false],
   ["workflow.manage", true, true, false, false, false, false, false, false, false],
+  ["student_leave.request", false, false, false, false, false, false, false, false, true],
+  ["student_leave.approve", true, true, true, false, false, false, true, false, false],
+  ["diary.write", true, true, true, false, false, false, true, false, false],
+  ["facilities.manage", true, true, true, false, false, false, false, false, false],
+  ["transport.manage", true, true, true, false, false, false, false, false, false],
+  ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["ptm.manage", true, true, true, false, false, false, false, false, false],
+  ["ptm.slot.manage", true, true, true, false, false, false, true, false, false],
+  ["ptm.book", true, true, true, false, false, false, false, false, true],
+  ["survey.manage", true, true, true, false, false, false, false, false, false],
+  ["survey.respond", true, true, true, true, true, true, true, false, true],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {
@@ -124,6 +145,11 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
     expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
   });
 
+  it("certificate.manage is held by exactly owner, principal, admin, admissions", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("certificate.manage"));
+    expect(holders.sort()).toEqual(["admin", "admissions", "owner", "principal"].sort());
+  });
+
   it("maintenance.request is held by all 7 staff roles", () => {
     const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("maintenance.request"));
     expect(holders.sort()).toEqual(["accountant", "admin", "admissions", "exam_controller", "owner", "principal", "teacher"].sort());
@@ -149,6 +175,37 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
     expect(permissionsFor("admin").includes("facilities.manage")).toBe(true);
     expect(permissionsFor("admin").includes("transport.manage")).toBe(true);
     expect(permissionsFor("admin").includes("maintenance.request")).toBe(true);
+  });
+
+  it("teacher has insight.read but not insight.review", () => {
+    expect(permissionsFor("teacher").includes("insight.read")).toBe(true);
+    expect(permissionsFor("teacher").includes("insight.review")).toBe(false);
+  });
+
+  it("accountant has both insight.read and insight.review", () => {
+    expect(permissionsFor("accountant").includes("insight.read")).toBe(true);
+    expect(permissionsFor("accountant").includes("insight.review")).toBe(true);
+  });
+
+  it("guardian and student have neither insight.read nor insight.review", () => {
+    expect(permissionsFor("guardian").includes("insight.read")).toBe(false);
+    expect(permissionsFor("guardian").includes("insight.review")).toBe(false);
+    expect(permissionsFor("student").includes("insight.read")).toBe(false);
+    expect(permissionsFor("student").includes("insight.review")).toBe(false);
+  });
+
+  it("insight.read is held by owner, principal, admin, admissions, accountant, exam_controller, teacher", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("insight.read"));
+    expect(holders.sort()).toEqual(
+      ["accountant", "admin", "admissions", "exam_controller", "owner", "principal", "teacher"].sort()
+    );
+  });
+
+  it("insight.review is held by owner, principal, admin, admissions, accountant, exam_controller", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("insight.review"));
+    expect(holders.sort()).toEqual(
+      ["accountant", "admin", "admissions", "exam_controller", "owner", "principal"].sort()
+    );
   });
 
   it("guardian holds finance.payment.online, not finance.payment.void", () => {
@@ -182,5 +239,26 @@ describe("ROLE_PERMISSIONS (C-03 snapshot of 07 §2.2)", () => {
       expect(permissionsFor(role as Role).includes("workflow.read")).toBe(false);
       expect(permissionsFor(role as Role).includes("workflow.manage")).toBe(false);
     }
+  });
+
+  it("agent.run is held by owner, principal, and admin", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("agent.run"));
+    expect(holders.sort()).toEqual(["admin", "owner", "principal"].sort());
+  });
+
+  it("agent.approve is held by owner and principal only", () => {
+    const holders = ROLE_ORDER.filter((role) => permissionsFor(role).includes("agent.approve"));
+    expect(holders.sort()).toEqual(["owner", "principal"].sort());
+  });
+
+  it("agent.run and agent.approve are not held by teacher, accountant, guardian, or student", () => {
+    expect(permissionsFor("teacher").includes("agent.run")).toBe(false);
+    expect(permissionsFor("teacher").includes("agent.approve")).toBe(false);
+    expect(permissionsFor("accountant").includes("agent.run")).toBe(false);
+    expect(permissionsFor("accountant").includes("agent.approve")).toBe(false);
+    expect(permissionsFor("guardian").includes("agent.run")).toBe(false);
+    expect(permissionsFor("guardian").includes("agent.approve")).toBe(false);
+    expect(permissionsFor("student").includes("agent.run")).toBe(false);
+    expect(permissionsFor("student").includes("agent.approve")).toBe(false);
   });
 });

@@ -12,13 +12,17 @@ import type { Database } from "@/lib/db/types";
 // "payments_webhook" (M12-T12): public.record_online_payment is granted to
 // service_role only (07 §4, 20261028000083) — the Razorpay webhook route is
 // its sole caller, after its own HMAC signature verification.
-const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test", "ai", "public_enquiry", "payments_webhook"]);
+// "agents" (M22-T7): agent_definitions/agent_runs have no authenticated
+// insert/update path (07 §4, 20261028000095) — src/modules/agents/actions.ts
+// writes through src/modules/agents/service-role.ts after its own
+// permission + module checks, institution_id always from ctx.
+const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test", "ai", "public_enquiry", "payments_webhook", "agents"]);
 
 export function createAdminClient() {
   const caller = process.env.SERVICE_ROLE_CALLER;
   if (!caller || !ALLOWED_CALLERS.has(caller)) {
     throw new Error(
-      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/test",
+      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/agents/test",
     );
   }
 

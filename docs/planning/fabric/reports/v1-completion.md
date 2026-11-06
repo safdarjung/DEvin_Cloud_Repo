@@ -23,12 +23,12 @@ Source: `docs/planning/fabric/07-master-plan-v1-v2.md` §3 Workstream A (M1–M1
 | 13 | M13 | Guardian sees own child's route stop only; holiday blocks attendance session creation | met | `tests/db/facilities-actions.test.ts` — `it("teacher raises a request, open with raised_by = teacher; admin assigns, closes; done is terminal", ...)`; `tests/db/transport-queries.test.ts`, `tests/db/calendar-queries.test.ts`; migration `20261028000075_operations.sql`; commit `5605727` |
 | 14 | M14 | Promoted student's enrolment history has both rows; withdrawn student loses portal access (membership inactive) | met | `tests/db/lifecycle-acceptance.test.ts` — `it("admin promotes one mapped section (idempotent re-run) and reads lifecycle.history for the promoted student; ...", ...)`; migration `20261028000076_student_lifecycle.sql`; commit `7e4e1cb` |
 | 15 | M15 | Nightly attendance report lands as a document readable by principal only | met | `tests/db/scheduled-reports-rls.test.ts` — `it("'0 20 * * *' after 13:00Z fires same day at 14:30Z", ...)`; migration `20261028000077_scheduled_reports.sql`; commits `b6da3ea`, `dabb8b1`. Hosted push for 0077 still owed (see Open debt below) |
-| 16 | M16 | `e2e/j13-dashboard.spec.ts` passes with fixtures removed; perf test on seeded tenant < 1.5 s per dashboard query | pending M16 | No code yet — migration `20261028000078_dashboard_attendance_counts.sql` not present in `supabase/migrations/`; none of the task's new test files exist. Task file `docs/planning/fabric/06-backend-packets/M16-tasks.md` will add: `tests/unit/dashboard-schemas.test.ts` (T1), `tests/db/attendance-daily-counts.test.ts` (T3), `tests/db/attendance-trend.test.ts` (T4), `tests/db/approvals-pending.test.ts` (T5), extended `tests/db/timetable-queries.test.ts` (T6), `tests/db/dashboard-leader.test.ts` (T7), `tests/db/dashboard-office.test.ts` (T8), `tests/db/dashboard-member.test.ts` (T9), `e2e/j13-dashboard.spec.ts` extension (T10), `e2e/j06-attendance.spec.ts` extension (T11), `e2e/j07-guardian-portal.spec.ts` extension (T12), `tests/db/dashboard-perf.test.ts` (T14, the < 1.5 s budget) |
+| 16 | M16 | `e2e/j13-dashboard.spec.ts` passes with fixtures removed; perf test on seeded tenant < 1.5 s per dashboard query | met | `tests/db/attendance-daily-counts.test.ts` — `it("the principal gets counts for both sections over 3 dates, excluding a period session", ...)`; `tests/db/dashboard-perf.test.ts` — `it("principal: dashboard.principal", ...)` (perf < 1500 ms); `e2e/j13-dashboard.spec.ts` — `it("attendance, collections, funnel and grade distribution are all non-zero", ...)`; migration `20261028000078_dashboard_attendance_counts.sql`; commit `ba6e266` |
 | 17 | M17 | Unit test with mocked fetch; manual send once on hosted | met | `tests/unit/resend-channel.test.ts` — `it("is false and simulated when RESEND_API_KEY is unset", ...)`; commit `3c9a7e0`. "Manual send once on hosted" not independently verified in this doc pass — see Open debt |
 | 18 | M18 | Restore into a fresh local DB passes `pnpm test:db` | met | Commit `1f83537` message records: local drill backup 16 s / start 50 s / restore 11 s / `test:db` 27.5 min, 887/894 (5 timeouts under load, pass alone) — i.e. restore-then-gate was run and green modulo the known DBT-46 flake class. `11-operations.md` §6 RPO/RTO + drill log added; hosted drill row still blank (owner-run, not yet filled) |
 | 19 | MOD | Disabling a module hides its permissions' actions (dispatcher returns `forbidden`); SQL/TS drift test; typecheck with `module` required | met | `tests/security/module-gate.test.ts` — `it("registered at least one optional-module and one core-module name", ...)`; `tests/db/module-enabled-sql.test.ts` (drift), `tests/unit/modules-catalog.test.ts`; migration `20261028000084_module_enabled.sql`; commit `d3afd4c` |
 
-**Count: 17 met, 1 met-limited, 1 pending M16.**
+**Count: 18 met, 1 met-limited.**
 
 ## Open debt touching V1 (`12-decision-log.md` §3, still open)
 
@@ -44,16 +44,18 @@ Grouped by area; `DBT-40` is explicitly closed (M12-T2) and excluded.
 - **Finance/payments:** DBT-66 (`listDefaulters` same unpaginated-`max_rows` class as the closed DBT-40), DBT-67 (refund is books-only, no Razorpay refund API call), DBT-68 (webhook returns 2xx on module-disabled, Razorpay won't retry), DBT-69 (fee-reminder job not chunked/scheduled), DBT-70 (unreconciled online captures have no UI to resolve, HIGH from M12 security review), DBT-71 (webhook has no rate limit), DBT-72 (`db-backup.ts` leaks DB password via argv on shared hosts).
 - **Scheduled reports:** DBT-73 (no delete, pause only), DBT-74 (no document retention/cleanup), DBT-75 (in-app delivery only, no email/SMS), DBT-76 (`?format=csv` not globally gated on `data.export`), DBT-77 (closed 2-source allowlist), DBT-78 (hardcoded 10 MB/20k-row cap), DBT-79 (module-disabled report jobs are lost, not backfilled), DBT-80 (report source RPCs not module-checked).
 - **Backup/restore:** DBT-81 (storage object bytes not in DB dump — metadata only), DBT-82 (hosted backups are manual/owner-run, no CI automation).
+- **API/data leakage:** DBT-83 (tenant notFound returns 200 body — no data leak, but obscures 404 vs auth boundary).
+- **M16 post-merge debt:** DBT-84 (dashboard query memory under load), DBT-85 (attendance_daily_counts materialization schedule), DBT-86 (approval workflow webhook notifications), DBT-87 (dashboard permission scope per role narrower than query RLS), DBT-88 (hosted push of 0078 still owed).
 
 ## Hosted push still owed by the owner
 
-Migrations `0074`, `0077`, `0082`, `0083` are built, tested locally, and merged to `main`, but **not yet applied to the hosted Supabase project**. Per `docs/planning/fabric/HANDOFF.md`, hosted pushes are owner-run (the auto-mode classifier blocks them as production deploys):
+Migrations `0074`, `0077`, `0078`, `0082`, `0083` are built, tested locally, and merged to `main`, but **not yet applied to the hosted Supabase project**. Per `docs/planning/fabric/HANDOFF.md`, hosted pushes are owner-run (the auto-mode classifier blocks them as production deploys):
 
 ```
 pnpm exec supabase db push --linked --include-all
 ```
 
-`--include-all` is required because `0064`–`0068` sort below the already-applied `0079`. Until this runs, the hosted demo is migrated only through `0079`; M12 (finance void/reminders/online payments) and M15 (scheduled reports) are verified locally but not live on the hosted tenant.
+`--include-all` is required because `0064`–`0068` sort below the already-applied `0079`. Until this runs, the hosted demo is migrated only through `0079`; M12 (finance void/reminders/online payments), M15 (scheduled reports), and M16 (dashboard attendance counts + approvals) are verified locally but not live on the hosted tenant.
 
 ## Not covered by this pass
 

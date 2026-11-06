@@ -51,6 +51,7 @@ export type Permission =
   | "exam.recheck.request"
   | "exam.recheck.review"
   | "exam.recheck.decide"
+  | "exam.seating.read"
   | "assignment.manage"
   | "assignment.read"
   | "assignment.submit"
@@ -73,14 +74,31 @@ export type Permission =
   | "staff.attendance.mark"
   | "leave.request"
   | "leave.approve"
+  | "certificate.manage"
   | "facilities.manage"
   | "transport.manage"
   | "maintenance.request"
+  | "agent.run"
+  | "agent.approve"
   | "report.schedule"
   | "workflow.read"
   | "workflow.manage"
   | "library.manage"
-  | "library.read";
+  | "library.read"
+  | "insight.read"
+  | "insight.review"
+  | "visitor.manage"
+  | "gatepass.manage"
+  | "pickup.manage"
+  | "forecast.read"
+  | "student_leave.request"
+  | "student_leave.approve"
+  | "diary.write"
+  | "ptm.manage"
+  | "ptm.slot.manage"
+  | "ptm.book"
+  | "survey.manage"
+  | "survey.respond";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -118,6 +136,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "mastery.review",
     "exam.recheck.review",
     "exam.recheck.decide",
+    "exam.seating.read",
     "assignment.manage",
     "assignment.read",
     "ai.generate",
@@ -137,15 +156,31 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "certificate.manage",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
+    "insight.read",
+    "insight.review",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
     "data.export",
     "report.schedule",
     "workflow.read",
     "workflow.manage",
     "library.manage",
     "library.read",
+    "student_leave.approve",
+    "diary.write",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   principal: [
     "institution.settings.manage",
@@ -182,6 +217,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "mastery.review",
     "exam.recheck.review",
     "exam.recheck.decide",
+    "exam.seating.read",
     "assignment.manage",
     "assignment.read",
     "ai.generate",
@@ -201,15 +237,31 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "certificate.manage",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
+    "insight.read",
+    "insight.review",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
     "data.export",
     "report.schedule",
     "workflow.read",
     "workflow.manage",
     "library.manage",
     "library.read",
+    "student_leave.approve",
+    "diary.write",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   admin: [
     "institution.settings.manage",
@@ -234,6 +286,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.result.read",
     "mastery.read",
     "mastery.review",
+    "exam.seating.read",
     "assignment.read",
     "ai.generate",
     "ai.usage.read",
@@ -251,14 +304,29 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "leave.approve",
+    "certificate.manage",
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "insight.read",
+    "insight.review",
+    "visitor.manage",
+    "gatepass.manage",
+    "pickup.manage",
+    "forecast.read",
     "data.export",
     "report.schedule",
     "workflow.read",
     "library.manage",
     "library.read",
+    "student_leave.approve",
+    "diary.write",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   admissions: [
     "dashboard.view",
@@ -281,8 +349,12 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "staff.attendance.mark",
     "leave.request",
+    "certificate.manage",
     "maintenance.request",
     "library.read",
+    "insight.read",
+    "insight.review",
+    "survey.respond",
   ],
   accountant: [
     "dashboard.view",
@@ -303,8 +375,12 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "staff.attendance.mark",
     "leave.request",
     "maintenance.request",
+    "insight.read",
+    "insight.review",
+    "forecast.read",
     "data.export",
     "library.read",
+    "survey.respond",
   ],
   exam_controller: [
     "dashboard.view",
@@ -320,6 +396,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "mastery.review",
     "exam.recheck.review",
     "exam.recheck.decide",
+    "exam.seating.read",
     "notification.read",
     "question.manage",
     "document.read",
@@ -328,6 +405,10 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "leave.request",
     "maintenance.request",
     "library.read",
+    "insight.read",
+    "insight.review",
+    "forecast.read",
+    "survey.respond",
   ],
   teacher: [
     "student.read",
@@ -349,8 +430,15 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "staff.attendance.mark",
     "leave.request",
+    "student_leave.approve",
+    "diary.write",
     "maintenance.request",
     "library.read",
+    "insight.read",
+    "gatepass.manage",
+    "forecast.read",
+    "ptm.slot.manage",
+    "survey.respond",
   ],
   student: [
     "student.read",
@@ -360,6 +448,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.result.read",
     "mastery.read",
     "exam.recheck.request",
+    "exam.seating.read",
     "assignment.read",
     "assignment.submit",
     "notification.read",
@@ -380,11 +469,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.result.read",
     "mastery.read",
     "exam.recheck.request",
+    "exam.seating.read",
     "assignment.read",
     "notification.read",
     "document.read",
     "timetable.read",
     "library.read",
+    "pickup.manage",
+    "ptm.book",
+    "survey.respond",
+    "student_leave.request",
   ],
 };
 

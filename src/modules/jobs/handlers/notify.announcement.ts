@@ -108,7 +108,7 @@ async function activelyEnrolledStudentIds(
 }
 
 /** Guardians (with portal access) + the students themselves, for a resolved student_id list. */
-async function guardiansAndStudents(
+export async function guardiansAndStudents(
   admin: SupabaseClient<Database>,
   institutionId: string,
   studentIds: readonly string[],
@@ -160,7 +160,7 @@ async function guardiansAndStudents(
   return recipients;
 }
 
-async function resolveRecipients(
+export async function resolveRecipients(
   admin: SupabaseClient<Database>,
   institutionId: string,
   audiences: readonly AudienceRow[],
