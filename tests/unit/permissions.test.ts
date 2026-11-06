@@ -84,6 +84,8 @@ const MATRIX: Row[] = [
   ["facilities.manage", true, true, true, false, false, false, false, false, false],
   ["transport.manage", true, true, true, false, false, false, false, false, false],
   ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["agent.run", true, true, true, false, false, false, false, false, false],
+  ["agent.approve", true, true, false, false, false, false, false, false, false],
   ["insight.read", true, true, true, true, true, true, true, false, false],
   ["insight.review", true, true, true, true, true, true, false, false, false],
   ["forecast.read", true, true, true, false, true, true, true, false, false],
@@ -95,6 +97,18 @@ const MATRIX: Row[] = [
   ["report.schedule", true, true, true, false, false, false, false, false, false],
   ["workflow.read", true, true, true, false, false, false, false, false, false],
   ["workflow.manage", true, true, false, false, false, false, false, false, false],
+  ["report.schedule", true, true, true, false, false, false, false, false, false],
+  ["student_leave.request", false, false, false, false, false, false, false, false, true],
+  ["student_leave.approve", true, true, true, false, false, false, true, false, false],
+  ["diary.write", true, true, true, false, false, false, true, false, false],
+  ["facilities.manage", true, true, true, false, false, false, false, false, false],
+  ["transport.manage", true, true, true, false, false, false, false, false, false],
+  ["maintenance.request", true, true, true, true, true, true, true, false, false],
+  ["ptm.manage", true, true, true, false, false, false, false, false, false],
+  ["ptm.slot.manage", true, true, true, false, false, false, true, false, false],
+  ["ptm.book", true, true, true, false, false, false, false, false, true],
+  ["survey.manage", true, true, true, false, false, false, false, false, false],
+  ["survey.respond", true, true, true, true, true, true, true, false, true],
 ];
 
 function expectedPermissionsForRole(role: Role): Permission[] {

@@ -34,7 +34,14 @@ async function insertRun(
   institutionId: string,
   agentId: string,
   requestedBy: string,
-  overrides: Partial<{ status: string; riskClass: string; catalogVersion: string; finishedAt: string | null }> = {},
+  overrides: Partial<{
+    status: string;
+    riskClass: string;
+    catalogVersion: string;
+    finishedAt: string | null;
+    decidedBy: string | null;
+    decidedAt: string | null;
+  }> = {},
 ): Promise<string> {
   const { data, error } = await serviceClient()
     .from("agent_runs")
@@ -48,6 +55,8 @@ async function insertRun(
       catalog_version: overrides.catalogVersion ?? "agents_v1",
       started_at: new Date().toISOString(),
       finished_at: overrides.finishedAt ?? null,
+      decided_by: overrides.decidedBy ?? null,
+      decided_at: overrides.decidedAt ?? null,
     })
     .select("id")
     .single();
@@ -154,6 +163,37 @@ describe("agents migration (0095) RLS + grants", () => {
       await expect(insertRun(inst.institutionId, agentId, inst.users.owner.id, { riskClass: "prohibited" })).rejects.toMatchObject({
         code: "23514",
       });
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  // Security review LOW: agent_runs_rejected_decided_check required decided_by
+  // alone; decided_at could stay null on a terminal `rejected` row via a
+  // direct INSERT (guard trigger only covers UPDATE). Fixed to require both.
+  it("check constraint: rejected with decided_by but no decided_at is 23514; both set is ok", async () => {
+    const inst = await createTestInstitution("agents-guard-rejected-decided");
+    try {
+      const agentId = await insertDefinition(inst.institutionId);
+
+      await expect(
+        insertRun(inst.institutionId, agentId, inst.users.owner.id, {
+          status: "rejected",
+          riskClass: "human_approved",
+          finishedAt: new Date().toISOString(),
+          decidedBy: inst.users.owner.id,
+          decidedAt: null,
+        }),
+      ).rejects.toMatchObject({ code: "23514" });
+
+      const okRunId = await insertRun(inst.institutionId, agentId, inst.users.owner.id, {
+        status: "rejected",
+        riskClass: "human_approved",
+        finishedAt: new Date().toISOString(),
+        decidedBy: inst.users.owner.id,
+        decidedAt: new Date().toISOString(),
+      });
+      expect(okRunId).toBeTruthy();
     } finally {
       await inst.cleanup();
     }

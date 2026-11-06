@@ -5,13 +5,16 @@ import {
   feeReminder,
   generateTermInvoices,
   insightsDetect,
+  forecastRun,
   notifyAnnouncement,
   notifyAttendanceAbsence,
+  notifyDiaryEntry,
   notifyEnquiryReceived,
   notifyEnrolmentWelcome,
   notifyGatePass,
   notifyRecheckDecided,
   notifyResultsPublished,
+  notifyStudentLeaveDecided,
 } from "./handlers/index.ts";
 
 // MOD-T11 — job type -> owning module (rulings "Jobs"). Core job types
@@ -24,9 +27,12 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "notify.enrolment_welcome": "admissions",
   "notify.announcement": "announcements",
   "notify.gate_pass": "visitors",
+  "notify.student_leave_decided": "student_leave",
+  "notify.diary_entry": "diary",
   "finance.fee_reminder": "finance_plus",
   "report.generate": "scheduled_reports",
   "insights.detect": "insights",
+  "forecast.run": "forecasts",
 };
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
@@ -40,10 +46,13 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "notify.enrolment_welcome": notifyEnrolmentWelcome,
   "notify.announcement": notifyAnnouncement,
   "notify.gate_pass": notifyGatePass,
+  "notify.student_leave_decided": notifyStudentLeaveDecided,
+  "notify.diary_entry": notifyDiaryEntry,
   "finance.generate_term_invoices": generateTermInvoices,
   "report.generate": generateReport,
   "finance.fee_reminder": feeReminder,
   "insights.detect": insightsDetect,
+  "forecast.run": forecastRun,
 };
 
 export function resolveHandler(type: string): JobHandler | undefined {

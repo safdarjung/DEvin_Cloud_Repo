@@ -6,7 +6,7 @@ import "server-only";
 // "Catalog is code, not rows") — definition name/tools/risk always come
 // from AGENT_CATALOG/ACTION_RISK, never a DB column.
 import { createClient } from "@/lib/supabase/server";
-import { AppError } from "@/lib/actions/result";
+import { AppError, mapSqlError } from "@/lib/actions/result";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import type { AgentDefinition, AgentRun, AgentRunStatus, RiskClass } from "@/modules/fabric/types";
@@ -21,6 +21,14 @@ const USD_TO_PAISE = 8_400;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 // shortcut: TS sums under the 1000-row max_rows; move to SQL if runs_30d nears it.
 const MAX_ROWS = 1000;
+
+// Mirrors website/queries.ts, finance/queries.ts: map a raw SQL error to its
+// ErrorCode (conflict/forbidden/...) instead of a bare "internal" (review LOW).
+function throwMapped(error: unknown): never {
+  const mapped = mapSqlError(error);
+  if (mapped.ok) throw new AppError("internal", "Unexpected error.");
+  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
 
 export interface AgentRunDetail {
   run: AgentRun;
@@ -38,7 +46,7 @@ export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinit
     .from("agent_definitions")
     .select("id, slug, is_enabled, created_at, updated_at")
     .eq("institution_id", ctx.institution.id);
-  if (defError) throw defError;
+  if (defError) throwMapped(defError);
   const bySlug = new Map((defRows ?? []).map((row) => [row.slug, row]));
 
   const since = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
@@ -48,7 +56,7 @@ export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinit
     .eq("institution_id", ctx.institution.id)
     .gte("created_at", since)
     .limit(MAX_ROWS);
-  if (runError) throw runError;
+  if (runError) throwMapped(runError);
 
   const agentIdByRunId = new Map<string, string>();
   const statsByAgentId = new Map<string, { total: number; failed: number; costUsd: number }>();
@@ -67,7 +75,7 @@ export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinit
     .not("agent_run_id", "is", null)
     .gte("created_at", since)
     .limit(MAX_ROWS);
-  if (usageError) throw usageError;
+  if (usageError) throwMapped(usageError);
   for (const usage of usageRows ?? []) {
     const agentId = usage.agent_run_id ? agentIdByRunId.get(usage.agent_run_id) : undefined;
     const stat = agentId ? statsByAgentId.get(agentId) : undefined;
@@ -131,7 +139,7 @@ async function hydrateRuns(ctx: TenantContext, rows: RunRow[]): Promise<AgentRun
   const approverNames = new Map<string, string>();
   if (decidedByIds.length > 0) {
     const { data: profiles, error } = await supabase.from("profiles").select("id, full_name").in("id", decidedByIds);
-    if (error) throw error;
+    if (error) throwMapped(error);
     for (const p of profiles ?? []) {
       if (p.full_name) approverNames.set(p.id, p.full_name);
     }
@@ -146,7 +154,7 @@ async function hydrateRuns(ctx: TenantContext, rows: RunRow[]): Promise<AgentRun
     .eq("institution_id", ctx.institution.id)
     .in("agent_run_id", runIds)
     .limit(MAX_ROWS);
-  if (usageError) throw usageError;
+  if (usageError) throwMapped(usageError);
   for (const usage of usageRows ?? []) {
     if (!usage.agent_run_id) continue;
     costByRunId.set(usage.agent_run_id, (costByRunId.get(usage.agent_run_id) ?? 0) + usage.cost_estimate_usd);
@@ -187,7 +195,7 @@ export async function agentRuns(ctx: TenantContext, input: AgentRunsQueryInput):
   if (input.status) query = query.eq("status", input.status);
 
   const { data, error } = await query;
-  if (error) throw error;
+  if (error) throwMapped(error);
   return hydrateRuns(ctx, data ?? []);
 }
 
@@ -199,7 +207,7 @@ export async function agentRunDetail(ctx: TenantContext, input: AgentRunDetailIn
     .eq("institution_id", ctx.institution.id)
     .eq("id", input.runId)
     .maybeSingle();
-  if (error) throw error;
+  if (error) throwMapped(error);
   if (!row) throw new AppError("not_found", "Agent run not found.");
 
   const [run] = await hydrateRuns(ctx, [row]);
@@ -209,7 +217,7 @@ export async function agentRunDetail(ctx: TenantContext, input: AgentRunDetailIn
     .select("full_name")
     .eq("id", row.requested_by)
     .maybeSingle();
-  if (profileError) throw profileError;
+  if (profileError) throwMapped(profileError);
 
   return {
     run,

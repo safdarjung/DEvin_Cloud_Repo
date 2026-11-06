@@ -81,6 +81,8 @@ export type Permission =
   | "report.schedule"
   | "workflow.read"
   | "workflow.manage"
+  | "agent.run"
+  | "agent.approve"
   | "library.manage"
   | "library.read"
   | "insight.read"
@@ -89,9 +91,14 @@ export type Permission =
   | "gatepass.manage"
   | "pickup.manage"
   | "forecast.read"
-  | "agent.run"
-  | "agent.approve"
-  | "report.schedule";
+  | "student_leave.request"
+  | "student_leave.approve"
+  | "diary.write"
+  | "ptm.manage"
+  | "ptm.slot.manage"
+  | "ptm.book"
+  | "survey.manage"
+  | "survey.respond";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -153,20 +160,27 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
     "insight.read",
     "insight.review",
     "visitor.manage",
     "gatepass.manage",
     "pickup.manage",
     "forecast.read",
-    "agent.run",
-    "agent.approve",
     "data.export",
     "report.schedule",
     "workflow.read",
     "workflow.manage",
     "library.manage",
     "library.read",
+    "student_leave.approve",
+    "diary.write",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   principal: [
     "institution.settings.manage",
@@ -227,20 +241,27 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
+    "agent.approve",
     "insight.read",
     "insight.review",
     "visitor.manage",
     "gatepass.manage",
     "pickup.manage",
     "forecast.read",
-    "agent.run",
-    "agent.approve",
     "data.export",
     "report.schedule",
     "workflow.read",
     "workflow.manage",
     "library.manage",
     "library.read",
+    "student_leave.approve",
+    "diary.write",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   admin: [
     "institution.settings.manage",
@@ -287,18 +308,25 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "facilities.manage",
     "transport.manage",
     "maintenance.request",
+    "agent.run",
     "insight.read",
     "insight.review",
     "visitor.manage",
     "gatepass.manage",
     "pickup.manage",
     "forecast.read",
-    "agent.run",
     "data.export",
     "report.schedule",
     "workflow.read",
     "library.manage",
     "library.read",
+    "student_leave.approve",
+    "diary.write",
+    "ptm.manage",
+    "ptm.slot.manage",
+    "ptm.book",
+    "survey.manage",
+    "survey.respond",
   ],
   admissions: [
     "dashboard.view",
@@ -326,6 +354,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "library.read",
     "insight.read",
     "insight.review",
+    "survey.respond",
   ],
   accountant: [
     "dashboard.view",
@@ -351,6 +380,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "forecast.read",
     "data.export",
     "library.read",
+    "survey.respond",
   ],
   exam_controller: [
     "dashboard.view",
@@ -378,6 +408,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "insight.read",
     "insight.review",
     "forecast.read",
+    "survey.respond",
   ],
   teacher: [
     "student.read",
@@ -399,11 +430,15 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "staff.attendance.mark",
     "leave.request",
+    "student_leave.approve",
+    "diary.write",
     "maintenance.request",
     "library.read",
     "insight.read",
     "gatepass.manage",
     "forecast.read",
+    "ptm.slot.manage",
+    "survey.respond",
   ],
   student: [
     "student.read",
@@ -441,6 +476,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "library.read",
     "pickup.manage",
+    "ptm.book",
+    "survey.respond",
+    "student_leave.request",
   ],
 };
 

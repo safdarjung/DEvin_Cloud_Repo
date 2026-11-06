@@ -206,6 +206,19 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "people.leave.approve": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
   "people.leave.reject": { permission: "leave.approve", input: () => ({ leaveId: U() }) },
   "people.leave.cancel": { permission: "leave.request", input: () => ({ leaveId: U() }) },
+  "studentLeave.request": {
+    permission: "student_leave.request",
+    input: () => ({ studentId: U(), startDate: "2026-11-09", endDate: "2026-11-10", reason: "Probe reason" }),
+  },
+  "studentLeave.approve": { permission: "student_leave.approve", input: () => ({ leaveId: U() }) },
+  "studentLeave.reject": { permission: "student_leave.approve", input: () => ({ leaveId: U() }) },
+  "studentLeave.cancel": { permission: "student_leave.request", input: () => ({ leaveId: U() }) },
+  "diary.entry.post": {
+    permission: "diary.write",
+    input: () => ({ classSectionId: U(), entryDate: "2026-11-09", body: "Probe entry" }),
+  },
+  "diary.entry.delete": { permission: "diary.write", input: () => ({ entryId: U() }) },
+  "diary.acknowledge": { permission: "assignment.read", input: () => ({ entryId: U(), studentId: U() }) },
   "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
   "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
   "people.guardian.link": {
@@ -328,6 +341,34 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     permission: "certificate.manage",
     input: () => ({ studentId: U(), kind: "bonafide", purpose: "Passport application" }),
   },
+  "ptm.event.create": {
+    permission: "ptm.manage",
+    input: () => ({
+      title: "Probe",
+      eventDate: "2026-11-21",
+      dayStartsAt: "09:00",
+      dayEndsAt: "13:00",
+      slotMinutes: 10,
+      bookingClosesAt: "2026-11-20T18:00:00+05:30",
+      classSectionIds: [U()],
+    }),
+  },
+  "ptm.event.publish": { permission: "ptm.manage", input: () => ({ eventId: U() }) },
+  "ptm.slots.add": { permission: "ptm.slot.manage", input: () => ({ eventId: U(), from: "10:00", to: "10:30" }) },
+  "ptm.slot.remove": { permission: "ptm.slot.manage", input: () => ({ slotId: U() }) },
+  "ptm.booking.create": { permission: "ptm.book", input: () => ({ slotId: U(), studentId: U() }) },
+  "ptm.booking.cancel": { permission: "ptm.book", input: () => ({ bookingId: U() }) },
+  "survey.create": {
+    permission: "survey.manage",
+    input: () => ({
+      title: "Probe",
+      closesAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      questions: [{ type: "text", prompt: "Probe?" }],
+      audiences: [{ type: "school" }],
+    }),
+  },
+  "survey.close": { permission: "survey.manage", input: () => ({ surveyId: U() }) },
+  "survey.respond": { permission: "survey.respond", input: () => ({ surveyId: U(), answers: ["Probe answer"] }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

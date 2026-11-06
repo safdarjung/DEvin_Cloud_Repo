@@ -61,3 +61,20 @@ Remaining: M07–M18 (12), V1-GATE, M19–M27 (9), then Workstream D (UI integra
 - Two lanes: main tree + worktree `../coolschool-b` (branch `lane-b`) with its own Supabase stack (`project_id = "coolschool_b"`, ports 544xx, studio/realtime/smtp/edge/analytics off; `config.toml` marked `--skip-worktree`, `.env.local` copied with ports rewritten). Lanes merge into main, then one full gate.
 - Workflow scripts (controller session dir): milestone runner = Opus planner → Haiku/Sonnet tasks scheduled by deps with DB-exclusive tasks run alone → Sonnet security review → Sonnet fix → gate. Traps found: the `security-reviewer` agent type cannot write files (pass findings inline to the fixer); gate agents' 10-min command limit kills `test:db` (run it in background); fixtures must compute "today" in the institution timezone (UTC breaks 00:00–05:30 IST).
 - Hosted DB: owner runs `pnpm exec supabase db push --linked --include-all`. Once pushed, a migration is frozen — fixes go into a new number (BRIEF-COMMON HOSTED-APPLIED rule).
+
+## Paused 2026-11-05 — resume here
+
+**On main + hosted + Vercel (e6b64c2):** V1 complete (M01–M18, MOD; report `docs/planning/fabric/reports/v1-completion.md`), M19 insights, M21 forecasts, M22 agents, X01 student leave + diary, X02 certificates + ID cards, X03 library, X05 WhatsApp, X06 exam seating, X07 visitors + gate pass, X08 PTM + surveys. Hosted Supabase holds every migration on main (0087, 0093, 0096 are not written to main yet).
+
+**Unfinished, saved on remote branches (WIP commits, NOT gated — finish, review, gate, then merge):**
+| Branch | Milestone(s) | Done | Notes |
+|---|---|---|---|
+| `lane-i` | X04 late fees + instalments (0087), M25-T8 `timetable.suggest` | X04 9/12 | built on main + lane-b; T4–T6/T9 were blocked by a relayed "agents are stopped" message, rerun them |
+| `lane-g` | M23 workflow automation (0096) | 11/22 | built on M22 checkpoint; merge `main` first (M22 final changed 0095 CHECK constraint) |
+| `lane-c` | M20 mastery (0093), M25 T4/T5/T7 | M20 4/15, M25 5/10 | M24 moved out to lane-j |
+| `lane-j` | M24 school-aware assistant | 8/8 tasks, no review/gate yet | saved M27-T4 commit on branch `m27-t4` |
+| — | M27 seed + security + V2 gate | plan written (`06-backend-packets/M27-tasks.md`), T4 on `m27-t4` | runs after all above merge |
+
+**How to resume:** worktrees `../coolschool-{c,g,i,j}` exist with own Supabase stacks (ports 545xx, 549xx, 559xx, 552xx); `git merge main` into each lane first. Lane runner scripts (tiered Haiku/Sonnet/Opus, skip-done, DB-exclusive scheduling) live in the controller session dir `workflows/scripts/milestone-lane-tiered*.js`. Hosted DB pushes: `pnpm exec supabase db push --linked --include-all` (owner-run or with explicit owner go-ahead).
+
+**Merge lessons (cost hours this phase):** shared registries (`permissions.ts`, `jobs/{types,registry,runner}.ts`, `templates.ts`, `rls-expectations.ts`, `escalation.test.ts`, `grants.test.ts`, `scripts/seed/index.ts`, `12-decision-log.md`) conflict on every lane merge; never auto-concatenate code hunks — check typecheck + the sorted `grants.test.ts` list after each merge. Debt-row IDs collide across lanes: keep main's numbers, renumber the lane's (map in `.superpowers/sdd/dbt-renumber-2026-11-05.md`; M22 → DBT-125..130). Under 6+ parallel stacks vitest's 5 s timeout fails spuriously: rerun with `--testTimeout=30000` before diagnosing.
