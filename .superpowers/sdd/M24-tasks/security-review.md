@@ -1,123 +1,34 @@
-# M24 security review — findings and outcomes
+# M24 security review — School-aware assistant
 
-Reviewer is read-only; this file is written by the fix task before any edit, then
-appended with outcomes after.
+Independent review (read-only; no edits made outside this file). Scope:
+`src/modules/ai/assistant/{tools,catalog}.ts`, `src/modules/ai/agent/cloud-stream.ts`,
+`src/app/api/ai/agent/assistant/route.ts`, `src/modules/agents/tools.ts`
+(`buildReadTools`), `src/lib/ai/ui-message-schema.ts`, their unit/db tests, and
+the M24 doc edits (`07-security-and-ai-governance.md`, `12-decision-log.md`,
+`03-roadmap-and-tracker.md`). Verified against the spec
+(`docs/planning/fabric/06-backend-packets/M24-tasks.md`) and
+`.superpowers/sdd/10-backlog-index/BRIEF-COMMON.md`.
 
-## HIGH — cloud redaction only scrubs `role === 'user'` text; prior local-turn
-assistant text (full 38-query catalog, incl. PII) resent verbatim once a later
-turn routes to cloud
+A prior fix pass (recorded in this same file before this review, now
+superseded below) found and fixed two HIGH + one LOW issue; both fixes were
+independently re-verified in code (not just trusted from that file) and hold:
+`redactUserText` in `route.ts` now maps every message's text parts through
+`redact()` regardless of role (lines 77-89), and `07-security-and-ai-governance.md`
+§5 no longer overclaims name redaction. Those are not re-listed below.
 
-File: `src/app/api/ai/agent/assistant/route.ts`
+## Findings
 
-`redactUserText()` only scrubs role==='user' text parts before a cloud call;
-assistant-role text from an earlier turn answered by the LOCAL provider (full
-38-query catalog, including finance/attendance/student PII) is resent
-verbatim as conversation history on a later turn once `pickAssistantProvider`
-switches to cloud (`cloud_allowed` + `AI_CLOUD_ENABLED=true` routes to cloud
-whenever `latestUserText` is non-empty; sending one turn with an
-empty/whitespace-only text part trivially forces `'local'` for that turn).
-This breaches the stated cloud invariant "no per-person row leaves the
-server" (07 §5 L2-02) since a prior local answer can carry real
-student/finance data into the unredacted history sent to Groq/Gemini.
+- MEDIUM | `docs/planning/coolskool/12-decision-log.md` | T8 added "### D46 — Staff-wide assistant..." (line 293) but D46 was already used by "### D46 — Agents execute in-request as the caller..." (M22, line 303) — duplicate ADR ID breaks traceability (any future reference to "D46" is ambiguous). Fix: renumber the M24 entry to the actual next free D-number (D47) and fix any cross-references.
+- LOW | `src/modules/ai/assistant/catalog.ts` / `src/modules/ai/assistant/tools.ts` | `aggregate` flags are reviewed judgement only, not machine-checked (acknowledged as a "not built" debt item, DBT-101) — spot-checked `finance.collectionReport` (groupBy term/grade/mode only, no student rows) and `insights.riskIndicators` (domain-level counts + opaque insight id) and both are correctly aggregate; no miscategorization found in this pass, but nothing in CI would catch a future one. No code change requested; confirms DBT-101 is the right tracking item.
+- LOW | `src/modules/ai/agent/cloud-stream.ts` | `console.error` on stream failure logs the caught `err` object (line 163), which for an AI-SDK/provider error can embed the request's redacted message text or a provider error body; acceptable risk (text is already redacted before reaching here on the cloud path, and this mirrors the pre-existing teacher-route pattern) but worth a one-line debt note if a future error type starts including raw history.
+- INFO | all reviewed paths | No new CRITICAL/HIGH found. Verified independently (not just re-trusting the file's own "Outcomes" section): `ai.generate` permission matrix matches spec exactly (owner/principal/admin/admissions/teacher; accountant/exam_controller/student/guardian excluded); `pickAssistantProvider` never calls cloud for `local_only`/`local_with_cloud_fallback`, and `streamCloudAgent`/`getGroqModel`/`getGeminiModel` are only reachable on the cloud branch (rule 6 — local never instantiates a cloud provider); `buildReadTools` re-checks `hasPermission` + `isModuleEnabled` per tool, function-typed permissions excluded (fail closed); `navigate` enum is built only from `navItemsFor`, output href is always `/${slug}${item.href}` (no open redirect); `createTask` only `safeParse`s `RecordInsightActionSchema` with `status: "planned"` and never calls an action; `stopWhen: stepCountIs(6)`, `maxOutputTokens: 1024`, `toolCallConcurrency: 1` present on both local and cloud branches; `checkLimits`/`logUsage`/concurrency-slot accounting preserved verbatim in the extracted `cloud-stream.ts`; `UIMessagePartSchema` caps text parts at 4000 chars and 50 parts/50 messages, denies `file`/`source-url`/`source-document`/`reasoning-file`/`data-*` parts (forged tool-result injection blocked); nonce-delimited `<data-{nonce}>` wrapping present; sources are code-built only (`SourceLog`, never model text) and only attached on the `finish` part; student assistant route untouched, stays separate and local-only (D32); route gate order matches spec exactly (cross-site → body cap → Zod → tenant context → `ai.generate` → module → provider → tools → stream).
 
-Fix: redact every message role's text (not just `'user'`) before the cloud
-branch, or stop recomputing provider per-turn from message text and instead
-pin/validate that no tool-sourced personal data ever entered history under a
-different provider (e.g. tag messages with the provider that produced them
-and refuse/strip any non-aggregate-tagged assistant text before a cloud
-call).
+## Counts
 
-## HIGH — governance doc claims "section roster names" are redacted; code never
-passes `denyNames`
+CRITICAL: 0 · HIGH: 0 (2 found+fixed in a prior pass, re-verified fixed) · MEDIUM: 1 · LOW: 2
 
-File: `docs/planning/coolskool/07-security-and-ai-governance.md`
+Known, not a finding: `tests/unit/assistant-catalog.test.ts` → "every catalog name is a defined query" fails on `mastery.heatmapBySection` until M20 merges into this lane.
 
-§5 "Staff assistant (M24)" bullet claims cloud-path redaction covers "phone,
-email, Aadhaar, section roster names", but `redactUserText()` in
-`src/app/api/ai/agent/assistant/route.ts` calls `redact(part.text)` with no
-`denyNames` argument, so student/staff names are never redacted — only
-email/phone/12-digit-ID regexes run. This overstates the actual PII
-protection in a governance doc (CLAUDE.md rule 7: docs and UI must agree) and
-could mislead a DPDP-Act compliance review.
-
-Fix: either build and pass a real `denyNames` list (e.g. section roster) into
-`redact()` for the cloud path, or correct the doc bullet to drop the false
-"section roster names" claim.
-
-## LOW — `buildAssistantTools` fixed tool names (`navigate`/`createTask`) can
-be silently shadowed by a future catalog entry of the same name
-
-File: `src/modules/ai/assistant/tools.ts`
-
-`buildAssistantTools` spreads `buildReadTools()`'s tool map first, then
-unconditionally overwrites `tools.navigate` / `tools.createTask`; a future
-registered query literally named `navigate` or `createTask` (no dot, so
-`toolNameFor` leaves it unchanged) would silently collide and be shadowed
-with no test guarding against it.
-
-Fix: assert no registry name collides with the two fixed tool names (e.g. a
-static test like the existing `TOOL_NAME` regex check), or namespace the
-fixed tools so collision is structurally impossible.
-
----
-
-## Outcomes
-
-- **HIGH (redaction scoped to `role==='user'` only) — FIXED.** `redactUserText()`
-  in `src/app/api/ai/agent/assistant/route.ts` now maps every message's text
-  parts through `redact()` regardless of role, before the cloud branch, so
-  an earlier local-turn assistant answer carrying PII is scrubbed the same as
-  the latest user turn before it is ever sent to Groq/Gemini on a later
-  cloud-routed turn. New failing-first test:
-  `tests/unit/assistant-route.test.ts` — "cloud_allowed + AI_CLOUD_ENABLED=true:
-  redacts a prior assistant-role text part too (L2-02, not just the latest
-  user turn)" (RED before the fix: `redactions` was 0 and the phone number
-  passed through verbatim; GREEN after).
-
-- **HIGH (doc overstates redaction to include "section roster names") — FIXED
-  (doc corrected, not the smaller of the two offered fixes but the honest
-  one).** `docs/planning/coolskool/07-security-and-ai-governance.md` §5 no
-  longer claims names are redacted; it now says redaction is phone/email/
-  Aadhaar-like-ID only and explicitly notes `redact()` is called with no
-  `denyNames`, so names are not pattern-matched. Building a real roster-based
-  `denyNames` list was out of scope for this fix task (the route has no
-  per-section context to scope a roster to, and a school-wide name list is a
-  real new feature, not a surgical fix) — tracked as a follow-up below.
-
-- **LOW (`navigate`/`createTask` collision with a future catalog name) —
-  FIXED.** Added a static guard test,
-  `tests/unit/assistant-catalog.test.ts` — "no catalog name collides, after
-  toolNameFor, with buildAssistantTools' fixed names" — asserting no
-  `ASSISTANT_QUERIES` key maps (via the same `.`→`_` substitution
-  `toolNameFor` does) to `navigate` or `createTask`. Passes today (no
-  existing collision); it will fail the moment anyone adds a colliding
-  catalog entry, which is the structural guard the finding asked for. Did
-  not namespace the fixed tool names themselves (e.g. `assistant_navigate`)
-  since that would be a breaking change to the tool contract the model and
-  any caller already see, for a risk that is currently zero and now
-  mechanically caught.
-
-### Pre-existing, out-of-scope failure noticed while rerunning the suite
-
-`tests/unit/assistant-catalog.test.ts` → "every catalog name is a defined
-query" fails on `mastery.heatmapBySection` — this is the known lane gap
-recorded in `task-5-report.md`/`task-7-report.md`: M20 (which registers
-`mastery.*` queries) is not merged into lane-j yet. Confirmed present before
-and after this fix task's changes; not one of the three findings and not
-touched here.
-
-### Tests rerun
-
-- `pnpm test tests/unit/assistant-route.test.ts tests/unit/assistant-catalog.test.ts tests/unit/assistant-tools.test.ts tests/unit/agents-tools.test.ts tests/unit/cloud-stream.test.ts tests/unit/teacher-agent-route.test.ts tests/unit/agent-provider-routing.test.ts` → 100 passed, 1 failed (the pre-existing M20 lane gap above).
-- `pnpm test:db tests/db/assistant-acceptance.test.ts` → 5 passed, 0 failed.
-- `pnpm test:security tests/security/grants.test.ts` → 9 passed, 0 failed.
-- `pnpm lint` (touched files) → clean.
-- `pnpm typecheck` (repo-wide, per project convention) → clean.
-
-### Follow-ups
-
-- New debt row for `12-decision-log.md` §Debt: build a real section-roster
-  `denyNames` list for the cloud assistant path (needs a way to scope "this
-  school's names" without per-section context in this route), then pass it
-  into `redact()` for the cloud branch — restores the originally-intended
-  name redaction instead of the corrected (narrower) doc claim.
+## Outcomes (controller)
+- MEDIUM duplicate ADR id: fixed — M24 decision renumbered D46 -> D47 (decision log header, DBT-99 reference, task-8 report). M22 keeps D46.
+- LOW x2: accepted, no change (aggregate flag is human-judged, tracked as DBT-101; cloud-stream logs an already-redacted error, same as the existing teacher route).
