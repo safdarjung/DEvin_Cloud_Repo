@@ -102,19 +102,22 @@
   --card-foreground: #0e1a2b;
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.13 0.02 250);
-  --primary: #0f766e;
-  --primary-foreground: oklch(0.98 0 0);
+  --primary: #582cff;
+  --primary-foreground: #ffffff;
   --secondary: #eeeee9;
   --secondary-foreground: #0e1a2b;
   --muted: #eeeee9;
   --muted-foreground: #4a5565;
-  --accent: #e4eeec;
+  --accent: #ece9fb;
   --accent-foreground: #0e1a2b;
   --destructive: oklch(0.58 0.24 25);
   --border: #e2e1da;
   --input: #d6d5cd;
-  --ring: #0f766e;
+  --ring: #582cff;
   --radius: 0.75rem;
+  --glass: #ffffff;
+  --glass-border: #e2e1da;
+  --brand-glow: 0 8px 24px -10px rgb(88 44 255 / 0.35);
 
   /* Chart colors — validated categorical order: blue, orange, aqua, yellow, magenta.
      Adjacent CVD dE >= 9.1, normal dE >= 19.6. Aqua/yellow/magenta are < 3:1 on white:
@@ -147,44 +150,47 @@
   /* Sidebar — lighter than dark theme */
   --sidebar: #fbfaf7;
   --sidebar-foreground: #0e1a2b;
-  --sidebar-primary: #0f766e;
+  --sidebar-primary: #582cff;
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: #eaeeea;
+  --sidebar-accent: #ece9fb;
   --sidebar-accent-foreground: #0e1a2b;
   --sidebar-border: #e6e5de;
-  --sidebar-ring: #0f766e;
+  --sidebar-ring: #582cff;
 }
 
 .dark {
-  --background: oklch(0.155 0.02 255);
-  --foreground: oklch(0.96 0.005 90);
-  --card: oklch(0.205 0.018 250);
-  --card-foreground: oklch(0.96 0.005 90);
-  --popover: oklch(0.205 0.018 250);
-  --popover-foreground: oklch(0.96 0.005 90);
-  --primary: oklch(0.77 0.1 190);
-  --primary-foreground: oklch(0.17 0.03 200);
-  --secondary: oklch(0.27 0.02 250);
-  --secondary-foreground: oklch(0.96 0.005 90);
-  --muted: oklch(0.27 0.02 250);
-  --muted-foreground: oklch(0.72 0.02 250);
-  --accent: oklch(0.27 0.02 250);
-  --accent-foreground: oklch(0.96 0.005 90);
+  /* Vision UI navy + brand violet (#582CFF) */
+  --background: #0b1030;
+  --foreground: #f4f5fb;
+  --card: #111a45;
+  --card-foreground: #f4f5fb;
+  --popover: #0f1638;
+  --popover-foreground: #f4f5fb;
+  --primary: #6f4dff;
+  --primary-foreground: #ffffff;
+  --secondary: #1a2352;
+  --secondary-foreground: #f4f5fb;
+  --muted: #161e4a;
+  --muted-foreground: #a0aec0;
+  --accent: #1f2a63;
+  --accent-foreground: #f4f5fb;
   --destructive: oklch(0.7 0.19 22);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.77 0.1 190);
-  --radius: 0.5rem;
+  --border: rgb(255 255 255 / 9%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: #876cea;
+  --radius: 0.9rem;
+  --glass: linear-gradient(127deg, rgb(6 11 40 / 0.94) 19%, rgb(10 14 35 / 0.49) 76%);
+  --glass-border: rgb(255 255 255 / 10%);
+  --brand-glow: 0 8px 28px -8px rgb(88 44 255 / 0.55);
 
-  /* Dark steps of the same hues, validated on #1a1a19: all >= 3:1, adjacent CVD dE >= 8.4 */
-  --chart-1: #3987e5;
-  --chart-2: #d95926;
-  --chart-3: #199e70;
-  --chart-4: #c98500;
-  --chart-5: #d55181;
-  --chart-positive: #0ca30c;
-  --chart-negative: #d03b3b;
-  --chart-neutral: #383835;
+  --chart-1: #6f4dff;
+  --chart-2: #2cd9ff;
+  --chart-3: #21d4a0;
+  --chart-4: #f5a623;
+  --chart-5: #e87ba4;
+  --chart-positive: #01b574;
+  --chart-negative: #e31a1a;
+  --chart-neutral: #2a3470;
 
   --success: oklch(0.7 0.17 160);
   --success-foreground: oklch(0.15 0.04 160);
@@ -198,14 +204,14 @@
   --shadow-md: 0 4px 8px -2px oklch(0 0 0 / 0.45), 0 2px 4px -2px oklch(0 0 0 / 0.3);
   --shadow-lg: 0 12px 24px -6px oklch(0 0 0 / 0.55), 0 4px 8px -4px oklch(0 0 0 / 0.35);
 
-  --sidebar: oklch(0.19 0.017 250);
-  --sidebar-foreground: oklch(0.96 0.005 90);
-  --sidebar-primary: oklch(0.77 0.1 190);
-  --sidebar-primary-foreground: oklch(0.17 0.03 200);
-  --sidebar-accent: oklch(0.27 0.02 250);
-  --sidebar-accent-foreground: oklch(0.96 0.005 90);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.77 0.1 190);
+  --sidebar: #080d2b;
+  --sidebar-foreground: #f4f5fb;
+  --sidebar-primary: #6f4dff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 8%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-ring: #876cea;
 }
 
 @layer base {
@@ -214,6 +220,10 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  .dark body {
+    background-image: radial-gradient(1200px 600px at 85% -10%, rgb(88 44 255 / 0.16), transparent 60%), radial-gradient(900px 500px at -10% 110%, rgb(44 217 255 / 0.07), transparent 60%);
+    background-attachment: fixed;
   }
   html {
     @apply font-sans antialiased;

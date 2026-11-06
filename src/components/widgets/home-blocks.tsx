@@ -37,8 +37,8 @@ function CampusArt() {
           <stop offset="1" stopColor="#eef3ff" />
         </linearGradient>
         <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#7c8cf5" />
-          <stop offset="1" stopColor="#4f46e5" />
+          <stop offset="0" stopColor="#876cea" />
+          <stop offset="1" stopColor="#582cff" />
         </linearGradient>
       </defs>
       <rect width="460" height="176" fill="url(#sky)" />
@@ -164,7 +164,7 @@ export function HomeKpi({
   const up = (delta ?? 0) >= 0;
   const DeltaIcon = up ? ArrowUpRight : ArrowDownRight;
   const inner = (
-    <Card className="h-full gap-3 p-0 transition-[box-shadow,transform] duration-(--duration-fast) ease-(--ease-out) hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgb(79_70_229/0.10)] dark:hover:shadow-none">
+    <Card className="h-full gap-3 p-0 transition-[box-shadow,transform] duration-(--duration-fast) ease-(--ease-out) hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgb(88_44_255/0.18)] dark:hover:shadow-none">
       <div className="flex h-full flex-col justify-between gap-3 p-4">
         <div className="flex items-start justify-between">
           <span className={cn("flex size-10 items-center justify-center rounded-xl [&_svg]:size-5", TONE[tone].badge)}>{icon}</span>

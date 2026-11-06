@@ -33,7 +33,7 @@ export function TenantHeader({
   bell?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/90 px-3 backdrop-blur-md sm:px-4">
+    <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl sm:px-4">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav items={navItems} />
         <span className="hidden truncate font-semibold min-[400px]:inline">{institutionName}</span>

@@ -93,14 +93,14 @@ function NavLinks({
                   aria-current={active ? "page" : undefined}
                   aria-label={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex min-h-10 items-center gap-3 overflow-hidden rounded-xl px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-(--ease-out)",
+                    "group/nav flex min-h-11 items-center gap-3 overflow-hidden rounded-[15px] px-2.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-(--ease-out)",
                     focusRing,
                     active
-                      ? "bg-primary font-semibold text-primary-foreground shadow-[0_2px_8px_rgb(79_70_229/0.25)]"
+                      ? "bg-sidebar-accent font-semibold text-sidebar-accent-foreground shadow-[0_7px_11px_rgb(0_0_0/0.08)] dark:backdrop-blur-xl"
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >
-                  {item.icon}
+                  <span className={cn("grid size-8 shrink-0 place-items-center rounded-[11px] transition-colors duration-(--duration-fast)", active ? "bg-primary text-primary-foreground shadow-(--brand-glow)" : "bg-sidebar-accent text-primary group-hover/nav:bg-primary/15")}>{item.icon}</span>
                   <motion.span initial={false} className="whitespace-nowrap" {...labelFade(collapsed, reduce)}>
                     {item.label}
                   </motion.span>
@@ -129,8 +129,8 @@ function NavLinks({
 function Wordmark({ collapsed = false }: { collapsed?: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <span className="relative flex h-10 w-full items-center overflow-hidden text-lg font-semibold tracking-tight text-primary">
-      <motion.span initial={false} className="whitespace-nowrap px-3" {...labelFade(collapsed, reduce)}>
+    <span className="relative flex h-10 w-full items-center overflow-hidden text-lg font-bold tracking-tight text-primary">
+      <motion.span initial={false} className="whitespace-nowrap bg-linear-to-r from-foreground from-70% to-foreground/30 bg-clip-text px-3 text-transparent" {...labelFade(collapsed, reduce)}>
         CoolSkool
       </motion.span>
       <motion.span
@@ -171,7 +171,7 @@ export function TenantSidebar({
       initial={false}
       animate={{ width: collapsed ? 64 : 240 }}
       transition={reduce ? { duration: 0 } : { duration: MOTION.duration.normal, ease: MOTION.ease.out }}
-      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r bg-sidebar p-3 text-sidebar-foreground lg:flex"
+      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-sidebar-border bg-sidebar p-3 dark:bg-[linear-gradient(111.84deg,rgb(6_11_38/0.94)_59.3%,rgb(26_31_55/0)_100%)] dark:backdrop-blur-md text-sidebar-foreground lg:flex"
     >
       <div className="flex min-h-10 items-center">
         <Wordmark collapsed={collapsed} />
