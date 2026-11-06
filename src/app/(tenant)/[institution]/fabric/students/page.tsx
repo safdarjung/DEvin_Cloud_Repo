@@ -1,21 +1,41 @@
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
-import { demoFixturesEnabled } from "@/modules/core/demo/fixtures";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
-import { PlannedWorkspace } from "@/modules/fabric/components/planned-workspace";
+import { StudentRoster } from "@/modules/fabric/components/success/roster";
+import { studentInterventionPlans, studentSuccessRoster, studentSuccessSections } from "@/modules/fabric/students.queries";
+
+const RISK_FILTERS = new Set(["watch", "support"]);
 
 export default async function StudentSuccessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ institution: string }>;
+  searchParams: Promise<{ section?: string; risk?: string; topic?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
+  const { section, risk, topic } = await searchParams;
   const ctx = await getTenantContext(institutionSlug);
-  requirePermission(ctx, "dashboard.view");
+  requirePermission(ctx, "mastery.read");
+
+  const [sections, rows, plans] = await Promise.all([
+    studentSuccessSections(ctx),
+    studentSuccessRoster(ctx),
+    studentInterventionPlans(ctx),
+  ]);
 
   return (
-    <FabricPage title="Student success" ws="students">
-      <PlannedWorkspace demo={demoFixturesEnabled(ctx)} packet="F-UI-04" name="Student success" base={`/${institutionSlug}`} />
+    <FabricPage title="Student success" description="Roster, risk signals, and intervention plans from live records." ws="students">
+      <StudentRoster
+        institutionSlug={institutionSlug}
+        rows={rows}
+        sections={sections}
+        plans={plans}
+        canReview={hasPermission(ctx, "mastery.review")}
+        initialSection={section ?? "all"}
+        initialRisk={risk && RISK_FILTERS.has(risk) ? (risk as "watch" | "support") : "all"}
+        initialSearch={topic ?? ""}
+      />
     </FabricPage>
   );
 }

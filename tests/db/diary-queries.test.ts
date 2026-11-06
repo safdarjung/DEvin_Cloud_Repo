@@ -115,6 +115,7 @@ describe("diary queries (X01-T9)", () => {
         expect(rows[0]).toEqual({
           id: newer,
           entryDate: "2026-07-03",
+          isMine: false, // the guardian did not author it
           subject: null,
           body: "Newer entry",
           dueDate: null,

@@ -1,8 +1,8 @@
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
-import { demoFixturesEnabled } from "@/modules/core/demo/fixtures";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
-import { PlannedWorkspace } from "@/modules/fabric/components/planned-workspace";
+import { TwinWorkspace } from "@/modules/fabric/components/twin/twin-workspace";
+import { twinHasHistorical, twinSnapshot } from "@/modules/fabric/twin.queries";
 
 export default async function DigitalTwinPage({
   params,
@@ -13,9 +13,15 @@ export default async function DigitalTwinPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "dashboard.view");
 
+  const hasHistorical = await twinHasHistorical(ctx);
+  const [current, historical] = await Promise.all([
+    twinSnapshot(ctx, "current"),
+    hasHistorical ? twinSnapshot(ctx, "historical") : Promise.resolve(null),
+  ]);
+
   return (
     <FabricPage title="Digital twin" ws="twin">
-      <PlannedWorkspace demo={demoFixturesEnabled(ctx)} packet="F-UI-09" name="Digital twin" base={`/${institutionSlug}`} />
+      <TwinWorkspace base={`/${institutionSlug}`} current={current} historical={historical} hasHistorical={hasHistorical} />
     </FabricPage>
   );
 }

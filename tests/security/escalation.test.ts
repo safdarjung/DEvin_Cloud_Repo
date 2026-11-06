@@ -428,6 +428,42 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
       ],
     }),
   },
+  "fabric.simulator.create": {
+    permission: "scenario.manage",
+    input: () => ({
+      name: "Probe scenario",
+      assumptions: {
+        enrolment_delta_pct: 0,
+        staff_delta: 0,
+        fee_change_pct: 0,
+        cost_change_pct: 0,
+        periods_per_day: 8,
+        horizon_months: 12,
+      },
+    }),
+  },
+  "fabric.simulator.update": { permission: "scenario.manage", input: () => ({ id: U(), name: "Probe scenario 2" }) },
+  // Gate is `scenario.manage` (owner/principal/admin); approve/reject is
+  // further restricted to owner/principal by the handler (M106 rulings).
+  "fabric.simulator.decide": {
+    permission: "scenario.manage",
+    input: () => ({ id: U(), decision: "approved" }),
+    rolesForbidden: ["admin"],
+  },
+  "fabric.simulator.delete": { permission: "scenario.manage", input: () => ({ id: U() }) },
+  "studio.request.submit": {
+    permission: "studio.request",
+    input: () => ({
+      title: "Probe",
+      problem: "Probe problem.",
+      desiredOutcome: "Probe outcome.",
+      budgetRange: "under_50k",
+      timeline: "1 month",
+      successCriteria: "Probe criteria.",
+    }),
+  },
+  "studio.request.propose": { permission: "studio.request", input: () => ({ requestId: U() }) },
+  "studio.request.decide": { permission: "studio.approve", input: () => ({ requestId: U(), decision: "approve" }) },
 };
 
 type CallableAction = (slug: string, raw: unknown, overrideCtx: TenantContext) => Promise<ActionResult<unknown>>;

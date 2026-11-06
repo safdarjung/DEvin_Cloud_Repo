@@ -73,6 +73,13 @@ Fixes made during the gate: `compute_mastery` rewritten as one aggregation pass 
 - **C-06** (`grants.test.ts`): `PUBLIC_INVOKER_AUTHENTICATED` 11 names, `SERVICE_ONLY` 27 names. The M27-T6 report: 12/12.
 - **C-07** (`fabric-perf.test.ts`): 45 `NEW_TABLES`. Only `mastery_snapshots` is big (44,164 demo rows). Medians: `count(*)` 12.7–22.0 ms; `mastery.heatmapBySection` 123.4 ms (principal) and 34.5 ms (teacher); `mastery.studentSuccessRows` 64.0 ms; `mastery.gapsForStudent` 17.8 ms and 14.1 ms. Budget: 1500 ms. The M27-T7 report: 10/10, run without a fresh `db:reset`.
 
+## Post-gate changes (2026-11-06)
+
+- Five Fabric workspaces ship with real data (no fixtures): Student success (F-UI-04, `/fabric/students`), What-if simulator (F-UI-08, migration `0106` + `simulation_scenarios` table), Digital twin (F-UI-09), Marketplace (F-UI-11, real module catalog + `setModuleEnabled` action), Custom Studio (F-UI-12, migration `0107` + `studio_requests` table, AI proposal via `agentCloud`).
+- Dashboard/Today now render real insights/priorities/risks/forecasts on demo tenant; portal sample family insights removed.
+- AI: gateway features opt into Groq/Gemini via `runStructured` agentCloud (D28 amendment); student study chat remains local-only (D32).
+- Migrations `0104` (compute_mastery single-pass aggregation) and `0105` (PTM guardian guard fix) applied to hosted; demo-login is a plain form POST to `/api/public/demo-login`; PWA no longer reloads on first service-worker install.
+
 ## Honesty labels (UI badges land in Workstream D; docs carry them now)
 
 - Insights (M19): real detections, so no badge. The explanation is an AI draft and shows a provider badge. Matrix F-INT-00: "limited (v1 rules)".

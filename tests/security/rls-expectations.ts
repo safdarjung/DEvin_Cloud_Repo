@@ -978,4 +978,27 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: [],
   },
+
+  // 0106 (live-fabric "simulator") — simulation_scenarios: owner/principal/
+  // admin read + insert/update every row (table-level RLS). Approve/reject
+  // (status -> approved/rejected) is further restricted to owner/principal
+  // only by the guard trigger, not by this table-level policy — proved in
+  // tests/db/simulator-scenarios.test.ts, not by the generated suite's
+  // plain own-institution probe.
+  simulation_scenarios: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 20261028000107 (live-fabric studio lane) — studio_requests: leadership
+  // (owner/principal/admin) read and INSERT directly; every status
+  // transition (propose/approve/reject) is server-only via
+  // propose_studio_request/decide_studio_request (no UPDATE grant to
+  // authenticated at all) — decide further narrows to owner/principal
+  // inside that definer, proved in tests/db/studio-requests.test.ts.
+  studio_requests: {
+    classes: ["A"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
 };

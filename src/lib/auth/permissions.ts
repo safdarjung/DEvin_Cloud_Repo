@@ -101,7 +101,10 @@ export type Permission =
   | "survey.respond"
   | "message.read"
   | "message.send"
-  | "practice.attempt";
+  | "practice.attempt"
+  | "scenario.manage"
+  | "studio.request"
+  | "studio.approve";
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -186,6 +189,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "survey.respond",
     "message.read",
     "message.send",
+    "scenario.manage",
+    "studio.request",
+    "studio.approve",
   ],
   principal: [
     "institution.settings.manage",
@@ -269,6 +275,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "survey.respond",
     "message.read",
     "message.send",
+    "scenario.manage",
+    "studio.request",
+    "studio.approve",
   ],
   admin: [
     "institution.settings.manage",
@@ -336,6 +345,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "survey.respond",
     "message.read",
     "message.send",
+    "scenario.manage",
+    "studio.request",
   ],
   admissions: [
     "dashboard.view",
