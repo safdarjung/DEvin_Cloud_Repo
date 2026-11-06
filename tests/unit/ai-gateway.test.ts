@@ -124,7 +124,7 @@ describe("runStructured", () => {
     expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "openai/gpt-oss-120b" } });
     expect(generateTextMock.mock.calls[0][0]).toMatchObject({
       model: "groq-model-handle",
-      providerOptions: { groq: { reasoningEffort: "low" } },
+      providerOptions: { groq: { reasoningEffort: "low", strictJsonSchema: false } },
     });
     expect(providers.getGeminiModel).not.toHaveBeenCalled();
     expect(providers.getLocalModel).not.toHaveBeenCalled();

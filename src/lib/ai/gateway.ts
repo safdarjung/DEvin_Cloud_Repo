@@ -157,8 +157,9 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
           timeout: TIMEOUT_MS[step],
           // gpt-oss on Groq is a reasoning model: reasoning tokens count against the cap and a
           // truncated JSON comes back as an API error, so keep reasoning low and the cap >= 1024.
+          // Strict mode rejects any schema with optional/defaulted keys; Zod still validates the output.
           maxOutputTokens: agentModel === "groq" && maxOutputTokens ? Math.max(maxOutputTokens, 1024) : maxOutputTokens,
-          providerOptions: agentModel === "groq" ? { groq: { reasoningEffort: "low" } } : undefined,
+          providerOptions: agentModel === "groq" ? { groq: { reasoningEffort: "low", strictJsonSchema: false } } : undefined,
         });
 
       let result;
