@@ -21,6 +21,7 @@ import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures"
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { listMyNotifications } from "@/modules/notifications/queries";
+import { GuardianOverview } from "@/modules/people/components/GuardianOverview";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
 import { resolvePortalSelection } from "@/modules/people/portal";
@@ -78,6 +79,15 @@ export default async function PortalOverviewPage({
   requirePermission(ctx, "assignment.read");
 
   const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal`);
+  // String() keeps TS from narrowing `role` away, so the shared code below still compiles for both roles.
+  if (String(ctx.membership.role) === "guardian") {
+    return (
+      <>
+        <PortalNav institutionSlug={institutionSlug} role="guardian" selection={selection} activeHref="" />
+        <GuardianOverview ctx={ctx} institutionSlug={institutionSlug} selection={selection} />
+      </>
+    );
+  }
   const profile = await getStudentProfile(ctx, selection.studentId);
   const termId = profile?.enrolment ? await getCurrentTermId(ctx, profile.enrolment.academicYearId) : null;
 

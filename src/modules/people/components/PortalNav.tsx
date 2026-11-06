@@ -12,8 +12,13 @@ const TABS = [
   { href: "/results", label: "Results" },
   { href: "/assignments", label: "Assignments" },
   { href: "/meetings", label: "Meetings" },
+  { href: "/updates", label: "Updates" },
+  { href: "/leave", label: "Leave" },
+  { href: "/surveys", label: "Surveys" },
   { href: "/notifications", label: "Notifications" },
 ] as const;
+
+const GUARDIAN_ONLY = new Set<string>(["/meetings", "/updates", "/leave", "/surveys"]);
 
 export type PortalTabHref = (typeof TABS)[number]["href"];
 
@@ -44,7 +49,7 @@ export function PortalNav({
         actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
       />
       <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
-        {TABS.filter((tab) => tab.href !== "/meetings" || role === "guardian").map((tab) => (
+        {TABS.filter((tab) => !GUARDIAN_ONLY.has(tab.href) || role === "guardian").map((tab) => (
           <Link
             key={tab.href}
             href={`${basePath}${tab.href}?student=${selection.studentId}`}
