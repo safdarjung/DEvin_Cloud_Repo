@@ -907,4 +907,9 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: [],
   },
+  mastery_snapshots: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
 };

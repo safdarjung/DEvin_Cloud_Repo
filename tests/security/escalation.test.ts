@@ -21,7 +21,12 @@ const ROLES: Role[] = ["owner", "principal", "admin", "admissions", "accountant"
 const U = () => crypto.randomUUID();
 const at = "2026-10-01T09:00:00.000Z";
 
-const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown> }> = {
+// `rolesForbidden` is for the rare action whose own handler has a second,
+// role-based (not permission-based) restriction the gate permission can't
+// express (e.g. briefing.generate's brief-role map, M25 rulings) — those
+// roles are expected `forbidden` past the gate even though they hold the
+// listed permission.
+const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown>; rolesForbidden?: Role[] }> = {
   "core.feature.set": { permission: "institution.settings.manage", input: () => ({ key: "teacher_ai_agent", enabled: true }) },
   "core.module.set": { permission: "institution.settings.manage", input: () => ({ key: "timetable", enabled: true }) },
   "agent.run": { permission: "agent.run", input: () => ({ slug: "finance", task: "x" }) },
@@ -322,6 +327,10 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   // but the handler's own `ai.generate` check (07 §2 — accountant/exam_controller
   // lack it) is what actually decides forbidden vs. past-the-gate here.
   "insight.explain": { permission: "ai.generate", input: () => ({ insightId: U() }) },
+  // `insight.read` gates the action, but exam_controller (which has it) has
+  // no brief role (rulings "Brief role") — ensureBriefing's own check forbids
+  // it before any createClient() call, so it is never "past the gate".
+  "briefing.generate": { permission: "insight.read", input: () => ({}), rolesForbidden: ["exam_controller"] },
   "visitors.checkIn": { permission: "visitor.manage", input: () => ({ fullName: "Probe Visitor", phone: "9876543210", purpose: "Probe", meetingWith: "Office" }) },
   "visitors.checkOut": { permission: "visitor.manage", input: () => ({ id: U() }) },
   "visitors.gatePass.create": { permission: "gatepass.manage", input: () => ({ studentId: U(), reason: "Probe reason.", guardianId: U() }) },
@@ -440,7 +449,7 @@ describe("C-03: action registry walk", () => {
 
     it.each(ROLES)("as %s: forbidden exactly when the role lacks the permission", async (role) => {
       const result = await action("escalation", fixture.input(), ctxFor(role));
-      const allowed = permissionsFor(role).includes(fixture.permission);
+      const allowed = permissionsFor(role).includes(fixture.permission) && !fixture.rolesForbidden?.includes(role);
       expect(result.ok).toBe(false);
       if (result.ok) return;
       if (allowed) {

@@ -25,6 +25,7 @@ import "@/modules/finance/reminders.actions";
 import "@/modules/finance/reversals.actions";
 import "@/modules/imports/actions";
 import "@/modules/insights/actions";
+import "@/modules/insights/briefing.actions";
 import "@/modules/insights/explain.actions";
 import "@/modules/jobs/actions";
 import "@/modules/library/actions";

@@ -42,6 +42,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     enqueueDueInsights: vi.fn(async () => 0),
     enqueueDueForecasts: vi.fn(async () => {}),
     enqueueDueLateFees: vi.fn(async () => 0),
+    enqueueMasteryCompute: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -213,6 +214,47 @@ describe("runOnceCore (dispatch/backoff/budget logic — DB-level claim concurre
 
     expect(enqueueDueForecasts).toHaveBeenCalledTimes(1);
     expect(calls).toEqual(["enqueueDueReports", "enqueueDueForecasts", "claimJob"]);
+  });
+
+  it("sweeps for mastery exactly once, after the report sweep, before insights and the first claimJob", async () => {
+    const calls: string[] = [];
+    const enqueueDueReports = vi.fn(async () => {
+      calls.push("enqueueDueReports");
+      return 0;
+    });
+    const enqueueMasteryCompute = vi.fn(async () => {
+      calls.push("enqueueMasteryCompute");
+      return 1;
+    });
+    const enqueueDueInsights = vi.fn(async () => {
+      calls.push("enqueueDueInsights");
+      return 0;
+    });
+    const claimJob = vi.fn(async () => {
+      calls.push("claimJob");
+      return null;
+    });
+    const ports = fakePorts({ enqueueDueReports, enqueueMasteryCompute, enqueueDueInsights, claimJob });
+
+    await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(enqueueMasteryCompute).toHaveBeenCalledTimes(1);
+    expect(calls).toEqual(["enqueueDueReports", "enqueueMasteryCompute", "enqueueDueInsights", "claimJob"]);
+  });
+
+  it("still claims jobs and leaves the summary unchanged when the mastery sweep rejects", async () => {
+    const job = makeJob();
+    const claimJob = vi.fn().mockResolvedValueOnce(job).mockResolvedValueOnce(null);
+    const completeJob = vi.fn(async () => {});
+    const enqueueMasteryCompute = vi.fn(async () => {
+      throw new Error("mastery sweep boom");
+    });
+    const ports = fakePorts({ claimJob, completeJob, enqueueMasteryCompute });
+
+    const summary = await runOnceCore({ workerId: "w1" }, ports);
+
+    expect(summary).toEqual({ claimed: 1, succeeded: 1, requeued: 0, dead: 0 });
+    expect(completeJob).toHaveBeenCalledWith(job.id, true);
   });
 
   it("sweeps for due late fees exactly once, before the first claimJob", async () => {

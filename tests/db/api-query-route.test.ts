@@ -215,6 +215,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "insights.priorityActions": {},
         "insights.riskIndicators": {},
         "insights.cards": {},
+        "briefings.today": {},
         "people.getCurrentTermId": { academicYearId: UUID },
         "people.listMyChildren": {},
         "people.getMyStudent": {},

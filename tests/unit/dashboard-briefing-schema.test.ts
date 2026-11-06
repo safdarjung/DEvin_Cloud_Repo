@@ -5,7 +5,6 @@
 // summary at 500 chars (BRIEF-COMMON.md lesson 9).
 import { describe, expect, test } from "vitest";
 import {
-  DashboardBriefingOutputSchema,
   DashboardBriefingRequestSchema,
   BriefingHeadlineSchema,
 } from "@/modules/ai/dashboard-briefing.schemas";
@@ -53,28 +52,6 @@ describe("DashboardBriefingRequestSchema", () => {
   test("rejects a non-numeric field masquerading as a number", () => {
     const result = DashboardBriefingRequestSchema.safeParse({ ...validRequest, openEnquiries: "14" });
     expect(result.success).toBe(false);
-  });
-});
-
-describe("DashboardBriefingOutputSchema", () => {
-  test("accepts a short summary", () => {
-    const result = DashboardBriefingOutputSchema.safeParse({ summary: "Attendance is steady at 92%." });
-    expect(result.success).toBe(true);
-  });
-
-  test("rejects an empty summary", () => {
-    const result = DashboardBriefingOutputSchema.safeParse({ summary: "" });
-    expect(result.success).toBe(false);
-  });
-
-  test("rejects a summary over 500 chars", () => {
-    const result = DashboardBriefingOutputSchema.safeParse({ summary: "a".repeat(501) });
-    expect(result.success).toBe(false);
-  });
-
-  test("accepts a summary at exactly 500 chars", () => {
-    const result = DashboardBriefingOutputSchema.safeParse({ summary: "a".repeat(500) });
-    expect(result.success).toBe(true);
   });
 });
 

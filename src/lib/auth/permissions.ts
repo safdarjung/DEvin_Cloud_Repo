@@ -78,11 +78,11 @@ export type Permission =
   | "facilities.manage"
   | "transport.manage"
   | "maintenance.request"
-  | "agent.run"
-  | "agent.approve"
   | "report.schedule"
   | "workflow.read"
   | "workflow.manage"
+  | "agent.run"
+  | "agent.approve"
   | "library.manage"
   | "library.read"
   | "insight.read"
@@ -287,6 +287,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "mastery.read",
     "mastery.review",
     "exam.seating.read",
+    "exam.seating.read",
+    "mastery.read",
+    "mastery.review",
     "assignment.read",
     "ai.generate",
     "ai.usage.read",
