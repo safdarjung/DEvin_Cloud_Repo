@@ -90,7 +90,7 @@ export function CommandPalette({
         variant="outline"
         onClick={() => setOpen(true)}
         aria-label="Search"
-        className="size-10 px-0 text-muted-foreground sm:h-9 sm:w-56 sm:justify-start sm:gap-2 sm:px-3 sm:font-normal lg:w-64"
+        className="size-10 px-0 text-muted-foreground sm:h-10 sm:w-56 sm:justify-start sm:gap-2 sm:rounded-[15px] sm:border sm:border-(--glass-border) sm:bg-white/5 sm:px-4 sm:font-normal lg:w-72"
       >
         <Search className="size-4" aria-hidden />
         <span className="hidden flex-1 text-left sm:inline">Search…</span>

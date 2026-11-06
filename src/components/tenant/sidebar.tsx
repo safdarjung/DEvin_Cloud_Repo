@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import { useState, type ReactNode } from "react";
-import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { MOTION } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -169,18 +169,26 @@ export function TenantSidebar({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: collapsed ? 64 : 240 }}
+      animate={{ width: collapsed ? 76 : 264 }}
       transition={reduce ? { duration: 0 } : { duration: MOTION.duration.normal, ease: MOTION.ease.out }}
-      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r border-sidebar-border bg-sidebar p-3 dark:bg-[linear-gradient(111.84deg,rgb(6_11_38/0.94)_59.3%,rgb(26_31_55/0)_100%)] dark:backdrop-blur-md text-sidebar-foreground lg:flex"
+      className="sticky top-4 hidden h-[calc(100dvh-2rem)] shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden rounded-[20px] border border-sidebar-border shadow-[0_20px_27px_rgb(0_0_0/0.08)] bg-sidebar p-3 dark:bg-[linear-gradient(111.84deg,rgb(6_11_38/0.94)_59.3%,rgb(26_31_55/0)_100%)] dark:backdrop-blur-md text-sidebar-foreground lg:flex"
     >
-      <div className="flex min-h-10 items-center">
+      <div className="flex min-h-10 flex-col items-center gap-4">
         <Wordmark collapsed={collapsed} />
+        <hr aria-hidden className="h-px w-full border-0 bg-linear-to-r from-transparent via-white/30 to-transparent" />
       </div>
       <nav aria-label="Primary" className="flex-1">
         <TooltipProvider>
           <NavLinks items={items} collapsed={collapsed} />
         </TooltipProvider>
       </nav>
+      {!collapsed && (
+        <div className="relative overflow-hidden rounded-[20px] bg-linear-to-br from-[#582cff] via-[#4a25d0] to-[#1c0377] p-4 text-white shadow-(--brand-glow)">
+          <span aria-hidden className="mb-3 grid size-9 place-items-center rounded-[12px] bg-white text-[#582cff]"><Search className="size-4" /></span>
+          <p className="text-sm font-bold">Need to find something?</p>
+          <p className="mt-0.5 text-xs text-white/70">Press {"\u2318"}K to search pages, students and actions.</p>
+        </div>
+      )}
       <Button
         type="button"
         variant="ghost"

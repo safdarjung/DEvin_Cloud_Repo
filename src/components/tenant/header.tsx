@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CommandPalette, type QuickAction } from "@/components/tenant/command-palette";
+import { HeaderCrumb } from "@/components/tenant/header-crumb";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { MobileNav, type NavLinkItem } from "@/components/tenant/sidebar";
 import { UserMenu } from "@/components/tenant/user-menu";
@@ -33,10 +34,10 @@ export function TenantHeader({
   bell?: ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl sm:px-4">
+    <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b border-border/60 bg-background/70 px-3 backdrop-blur-xl sm:px-4 lg:top-4 lg:h-16 lg:rounded-[20px] lg:border lg:border-(--glass-border) lg:bg-card/60 lg:px-6 lg:shadow-[0_20px_27px_rgb(0_0_0/0.05)]">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav items={navItems} />
-        <span className="hidden truncate font-semibold min-[400px]:inline">{institutionName}</span>
+        <HeaderCrumb institutionName={institutionName} />
         <RoleBadge role={role} />
         {isDemo && (
           <span className="hidden rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-foreground sm:inline">Demo mode · sample data</span>

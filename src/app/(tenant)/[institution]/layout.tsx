@@ -82,36 +82,38 @@ export default async function TenantLayout({
       >
         Skip to content
       </a>
-      <TenantHeader
-        institutionSlug={ctx.institution.slug}
-        institutionName={ctx.institution.name}
-        role={ctx.membership.role}
-        userName={ctx.user.profile.fullName ?? userEmail ?? "Account"}
-        userEmail={userEmail}
-        isDemo={ctx.institution.is_demo}
-        navItems={navItems}
-        quickActions={quickActions}
-        canSearchStudents={!isPortalUser && hasPermission(ctx, "student.read")}
-        notificationsHref={hasNotifications ? `/${ctx.institution.slug}/notifications` : undefined}
-        bell={
-          hasNotifications && (
-            <Suspense
-              fallback={<Bell href={`/${ctx.institution.slug}/notifications`} unreadCount={0} institutionSlug={ctx.institution.slug} notifications={[]} />}
-            >
-              <BellLoader ctx={ctx} href={`/${ctx.institution.slug}/notifications`} />
-            </Suspense>
-          )
-        }
-      />
-      <div className="flex flex-1">
+      <div className="flex flex-1 lg:gap-4 lg:p-4">
         <TenantSidebar items={navItems} defaultCollapsed={sidebarCollapsed} />
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-6">
-          <div className="mx-auto w-full max-w-7xl">
-            <FabricProvider seed={fabricSeed({ now: startOfToday(), institutionId: ctx.institution.id }, ctx.user.id)}>
-              {children}
-            </FabricProvider>
-          </div>
-        </main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TenantHeader
+            institutionSlug={ctx.institution.slug}
+            institutionName={ctx.institution.name}
+            role={ctx.membership.role}
+            userName={ctx.user.profile.fullName ?? userEmail ?? "Account"}
+            userEmail={userEmail}
+            isDemo={ctx.institution.is_demo}
+            navItems={navItems}
+            quickActions={quickActions}
+            canSearchStudents={!isPortalUser && hasPermission(ctx, "student.read")}
+            notificationsHref={hasNotifications ? `/${ctx.institution.slug}/notifications` : undefined}
+            bell={
+              hasNotifications && (
+                <Suspense
+                  fallback={<Bell href={`/${ctx.institution.slug}/notifications`} unreadCount={0} institutionSlug={ctx.institution.slug} notifications={[]} />}
+                >
+                  <BellLoader ctx={ctx} href={`/${ctx.institution.slug}/notifications`} />
+                </Suspense>
+              )
+            }
+          />
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-2 lg:pb-6">
+            <div className="mx-auto w-full max-w-7xl">
+              <FabricProvider seed={fabricSeed({ now: startOfToday(), institutionId: ctx.institution.id }, ctx.user.id)}>
+                {children}
+              </FabricProvider>
+            </div>
+          </main>
+        </div>
       </div>
       <BottomNav items={navItems} />
     </div>

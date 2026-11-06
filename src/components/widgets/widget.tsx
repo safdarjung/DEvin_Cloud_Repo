@@ -25,7 +25,7 @@ export function Widget({ title, description, action, icon, children, empty, isEm
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <CardTitle className="flex items-center gap-2 text-base font-bold">
                 {icon && <span className="text-muted-foreground [&_svg]:size-4">{icon}</span>}
                 {title}
               </CardTitle>
