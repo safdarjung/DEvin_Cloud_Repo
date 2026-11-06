@@ -47,12 +47,17 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   },
   terms: {
     classes: ["S"],
-    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    // 20261028000051: a second permissive policy (terms_select_member)
+    // grants any institution member SELECT (dates aren't sensitive) —
+    // widens the staff-only 0003 policy to guardian/student too.
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "guardian", "student"],
     write: ["owner", "principal", "admin"],
   },
   memberships: {
     classes: ["O"],
-    read: ["owner", "principal", "admin"],
+    // memberships_select (0002): own row (any role) OR owner/principal/admin
+    // read all — class O's self-row scope, same shape as `profiles` below.
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin"],
   },
   institution_sequences: {

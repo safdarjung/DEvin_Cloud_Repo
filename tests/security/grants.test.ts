@@ -136,6 +136,56 @@ const PUBLIC_AUTHENTICATED = [
   "public.void_payment",
 ];
 
+// M27-T6: public security-invoker, non-trigger functions `authenticated` may
+// execute — the RLS-bound aggregates (each still filters under the caller's
+// own RLS; no row escapes the normal policy).
+export const PUBLIC_INVOKER_AUTHENTICATED = [
+  "public.attendance_daily_counts",
+  "public.commit_import_batch",
+  "public.finance_collection_report",
+  "public.invoice_instalment_status",
+  "public.ledger_totals",
+  "public.ledger_voucher_lines",
+  "public.mastery_heatmap",
+  "public.mastery_student_stats",
+  "public.report_attendance_daily",
+  "public.report_fee_defaulters",
+  "public.term_collection_totals",
+].sort();
+
+// M27-T6: public non-trigger functions only `service_role` may execute —
+// replaces the old 4(+13)-name ad-hoc loop with an exact-set check so a new
+// function can't silently join this bucket (or silently leave it).
+export const SERVICE_ONLY = [
+  "public.apply_late_fees",
+  "public.assert_forecast_window",
+  "public.compute_mastery",
+  "public.emit_workflow_event",
+  "public.enqueue_due_forecasts",
+  "public.enqueue_due_late_fees",
+  "public.enqueue_due_reports",
+  "public.enqueue_due_workflows",
+  "public.enqueue_insight_detection",
+  "public.enqueue_mastery_compute",
+  "public.forecast_attendance_series",
+  "public.forecast_fee_series",
+  "public.insight_src_admissions",
+  "public.insight_src_attendance",
+  "public.insight_src_fees",
+  "public.insight_src_marks",
+  "public.insight_src_room_capacity",
+  "public.insight_src_rooms",
+  "public.insight_src_submissions",
+  "public.insight_src_workload",
+  "public.jobs_claim",
+  "public.jobs_complete",
+  "public.record_insights",
+  "public.record_online_payment",
+  "public.submit_platform_lead",
+  "public.submit_public_enquiry",
+  "public.workflow_metric",
+].sort();
+
 describe("grants audit (07 §4, T-042 AC3)", () => {
   it("every security definer pins search_path to ''", () => {
     expect(names((r) => r.security === "definer" && r.search_path !== 'search_path=""')).toEqual([]);
@@ -159,6 +209,25 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
 
   it("authenticated may execute exactly the 07 §4 public RPCs", () => {
     expect(names((r) => r.schema === "public" && r.security === "definer" && r.authenticated)).toEqual(PUBLIC_AUTHENTICATED);
+  });
+
+  it("authenticated may execute exactly the declared public invoker functions", () => {
+    expect(names((r) => r.schema === "public" && r.security === "invoker" && !r.is_trigger && r.authenticated)).toEqual(
+      PUBLIC_INVOKER_AUTHENTICATED,
+    );
+  });
+
+  it("service_role-only public functions are exactly SERVICE_ONLY", () => {
+    expect(
+      names((r) => r.schema === "public" && !r.is_trigger && r.service_role && !r.anon && !r.authenticated),
+    ).toEqual(SERVICE_ONLY);
+  });
+
+  it("every user- or service-callable definer is named in 07 §4", () => {
+    const doc = fs.readFileSync(path.join(process.cwd(), "docs/planning/coolskool/07-security-and-ai-governance.md"), "utf8");
+    const bare = (qualified: string) => qualified.split(".")[1]!;
+    const missing = [...PUBLIC_AUTHENTICATED, ...SERVICE_ONLY].filter((qualified) => !doc.includes(bare(qualified)));
+    expect(missing).toEqual([]);
   });
 
   it("DBT-34: no function casts request.jwt.claims to jsonb without nullif('')", async () => {
@@ -192,26 +261,10 @@ describe("grants audit (07 §4, T-042 AC3)", () => {
   });
 
   it("service-role-only RPCs are not callable by anon/authenticated", () => {
-    const serviceOnly = [
-      "jobs_claim",
-      "jobs_complete",
-      "submit_public_enquiry",
-      "submit_platform_lead",
-      "record_online_payment",
-      "apply_late_fees",
-      "enqueue_due_late_fees",
-      // M21-T3: service-role-only series sources + sweep (rulings "Series sources").
-      "assert_forecast_window",
-      "forecast_fee_series",
-      "forecast_attendance_series",
-      "enqueue_due_forecasts",
-      // M20-T5 — rulings "Algorithm"/"Scheduling": compute_mastery is
-      // security invoker but only the job handler's/sweep's admin client
-      // ever calls it; enqueue_mastery_compute is the definer sweep.
-      "compute_mastery",
-      "enqueue_mastery_compute",
-    ];
-    for (const name of serviceOnly) {
+    // M27-T6: the per-name array is now the SERVICE_ONLY exact-set test
+    // above; this keeps the per-row {anon,authenticated,service_role} shape.
+    for (const qualified of SERVICE_ONLY) {
+      const name = qualified.split(".")[1]!;
       const row = rows.find((r) => r.schema === "public" && r.name === name)!;
       expect({ name, anon: row.anon, authenticated: row.authenticated, service_role: row.service_role }).toEqual({
         name,
