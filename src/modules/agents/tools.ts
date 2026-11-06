@@ -70,7 +70,15 @@ function describeInput(schema: z.ZodType) {
   );
 }
 
-function readTool(ctx: TenantContext, name: string, description: string, query: AnyAction, meta: ActionMeta, nonce: string) {
+function readTool(
+  ctx: TenantContext,
+  name: string,
+  description: string,
+  query: AnyAction,
+  meta: ActionMeta,
+  nonce: string,
+  onOk?: (query: string, params: unknown) => void,
+) {
   return tool({
     description,
     inputSchema: describeInput(meta.schema),
@@ -78,6 +86,7 @@ function readTool(ctx: TenantContext, name: string, description: string, query: 
       try {
         const result = (await query(ctx.institution.slug, input)) as ActionResult<unknown>;
         if (!result.ok) return `Query failed: ${result.error.code}`;
+        onOk?.(name, input);
         const payload = (JSON.stringify(result.data) ?? "null").slice(0, MAX_TOOL_RESULT_CHARS);
         return `<data-${nonce}>${payload}</data-${nonce}>`;
       } catch (err) {
@@ -86,6 +95,32 @@ function readTool(ctx: TenantContext, name: string, description: string, query: 
       }
     },
   });
+}
+
+// Shared by buildAgentTools (M22) and the M24 assistant (T4): a registry
+// name → description catalog becomes scoped read tools. Unregistered or
+// unpermitted names are skipped, never thrown. `onOk` runs once a query
+// returns ok, before the result is wrapped (assistant source logging).
+export async function buildReadTools(
+  ctx: TenantContext,
+  catalog: Readonly<Record<string, string>>,
+  nonce: string,
+  onOk?: (query: string, params: unknown) => void,
+): Promise<{ tools: ToolSet; registryNameOf: ReadonlyMap<string, string> }> {
+  await loadManifests();
+  const tools: ToolSet = {};
+  const registryNameOf = new Map<string, string>();
+
+  for (const [name, description] of Object.entries(catalog)) {
+    const query = getRegisteredQueries().get(name);
+    const meta = getQueryMeta().get(name);
+    if (!query || !meta || typeof meta.permission !== "string") continue;
+    if (!hasPermission(ctx, meta.permission) || !moduleOn(ctx, meta)) continue;
+    tools[toolNameFor(name)] = readTool(ctx, name, description, query, meta, nonce, onOk);
+    registryNameOf.set(toolNameFor(name), name);
+  }
+
+  return { tools, registryNameOf };
 }
 
 function proposalTool(sink: ProposalSink, action: string, description: string, risk: ProposalRisk, meta: ActionMeta) {
@@ -107,17 +142,9 @@ export async function buildAgentTools(
 ): Promise<{ tools: ToolSet; registryNameOf: ReadonlyMap<string, string> }> {
   await loadManifests();
   const spec = AGENT_CATALOG[slug];
-  const tools: ToolSet = {};
-  const registryNameOf = new Map<string, string>();
-
-  for (const [name, description] of Object.entries(spec.tools)) {
-    const query = getRegisteredQueries().get(name);
-    const meta = getQueryMeta().get(name);
-    if (!query || !meta || typeof meta.permission !== "string") continue;
-    if (!hasPermission(ctx, meta.permission) || !moduleOn(ctx, meta)) continue;
-    tools[toolNameFor(name)] = readTool(ctx, name, description, query, meta, nonce);
-    registryNameOf.set(toolNameFor(name), name);
-  }
+  const { tools: readTools, registryNameOf: readRegistryNameOf } = await buildReadTools(ctx, spec.tools, nonce);
+  const tools: ToolSet = { ...readTools };
+  const registryNameOf = new Map<string, string>(readRegistryNameOf);
 
   // Permission is not checked here: execution goes through the action registry, which re-checks it.
   for (const [name, description] of Object.entries(spec.actions)) {

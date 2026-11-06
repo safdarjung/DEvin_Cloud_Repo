@@ -7,7 +7,7 @@ import { permissionsFor, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
 import { allModulesOn } from "@/lib/modules/catalog";
 import { AGENT_SLUGS } from "@/modules/agents/catalog";
-import { agentPermissions, buildAgentTools, createProposalSink, toolNameFor } from "@/modules/agents/tools";
+import { agentPermissions, buildAgentTools, buildReadTools, createProposalSink, toolNameFor } from "@/modules/agents/tools";
 
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
@@ -137,6 +137,37 @@ describe("agent tool builder", () => {
     expect(match).not.toBeNull();
     expect(match![1]).toHaveLength(4_000);
     expect(match![1].startsWith('{"rows":"yyy')).toBe(true);
+  });
+
+  it("buildReadTools calls onOk once with the query name and input on ok, never on failure", async () => {
+    const onOk = vi.fn();
+    fakeEntry(getRegisteredQueries(), "finance.listDefaulters", async () => ok({ rows: [] }));
+    const { tools } = await buildReadTools(ctxFor("owner"), { "finance.listDefaulters": "x" }, NONCE, onOk);
+    await run(tools, "finance_listDefaulters", { termId: TERM });
+    expect(onOk).toHaveBeenCalledTimes(1);
+    expect(onOk).toHaveBeenCalledWith("finance.listDefaulters", { termId: TERM });
+
+    onOk.mockClear();
+    fakeEntry(getRegisteredQueries(), "finance.listDefaulters", async () => fail("forbidden", "nope"));
+    const { tools: failingTools } = await buildReadTools(ctxFor("owner"), { "finance.listDefaulters": "x" }, NONCE, onOk);
+    await run(failingTools, "finance_listDefaulters", { termId: TERM });
+    expect(onOk).not.toHaveBeenCalled();
+  });
+
+  it("buildReadTools skips a catalog name that is not registered, without throwing", async () => {
+    const { tools, registryNameOf } = await buildReadTools(ctxFor("owner"), { "no.such.query": "x" }, NONCE);
+    expect(tools).toEqual({});
+    expect(registryNameOf.size).toBe(0);
+  });
+
+  it("buildReadTools yields exactly the tool name for a single catalog entry", async () => {
+    const { tools, registryNameOf } = await buildReadTools(
+      ctxFor("owner"),
+      { "attendance.sectionsBelowThreshold": "x" },
+      NONCE,
+    );
+    expect(Object.keys(tools)).toEqual(["attendance_sectionsBelowThreshold"]);
+    expect(registryNameOf.get("attendance_sectionsBelowThreshold")).toBe("attendance.sectionsBelowThreshold");
   });
 
   it("agentPermissions lists the sorted unique permissions of catalog tools and actions", async () => {

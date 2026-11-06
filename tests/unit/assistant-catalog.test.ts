@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 import {
   ASSISTANT_CATALOG_VERSION,
@@ -97,6 +99,57 @@ describe("assistant catalog", () => {
         expect(ASSISTANT_QUERIES).toHaveProperty(name);
         expect(ASSISTANT_QUERIES[name].aggregate).not.toBe(true);
       });
+    });
+  });
+
+  describe("Registry validation", () => {
+    it("every catalog name is a defined query", () => {
+      const SRC_DIR = path.join(process.cwd(), "src");
+      const DEFINE_QUERY_NAME = /defineQuery\s*(?:<[^>]*>)?\s*\(\s*\{\s*name:\s*["'`]([A-Za-z0-9_.]+)["'`]/g;
+
+      function walk(dir: string): string[] {
+        return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory() && !entry.name.startsWith(".")) return walk(full);
+          return /\.tsx?$/.test(entry.name) ? [full] : [];
+        });
+      }
+
+      const queries = new Set<string>();
+      for (const file of walk(SRC_DIR)) {
+        if (file.endsWith(path.join("lib", "actions", "define-query.ts"))) continue;
+        const content = fs.readFileSync(file, "utf8");
+        for (const match of content.matchAll(DEFINE_QUERY_NAME)) {
+          queries.add(match[1]);
+        }
+      }
+
+      for (const catalogName of Object.keys(ASSISTANT_QUERIES)) {
+        expect(queries, `catalog query ${catalogName} is not defined`).toContain(catalogName);
+      }
+    });
+
+    it("no catalog name matches excluded patterns", () => {
+      const excludedPattern =
+        /^(ai\.|documents?\.|imports\.|data\.|core\.(audit|modules)\.|agents?\.|reports?\.|notifications\.listMy|people\.(getMy|listMy)|exams\.reportCardHtml|website\.get)|Study/;
+
+      for (const name of Object.keys(ASSISTANT_QUERIES)) {
+        expect(name, `catalog name ${name} matches excluded pattern`).not.toMatch(excludedPattern);
+      }
+    });
+
+    it("no catalog name collides, after toolNameFor, with buildAssistantTools' fixed names", () => {
+      // buildAssistantTools (src/modules/ai/assistant/tools.ts) spreads the
+      // read tools built from this catalog, then unconditionally overwrites
+      // `navigate` / `createTask`. A catalog name with no dot maps to itself
+      // (toolNameFor only replaces "."), so either literal name here would
+      // be silently shadowed with no error.
+      for (const name of Object.keys(ASSISTANT_QUERIES)) {
+        const toolName = name.replace(/\./g, "_");
+        expect(["navigate", "createTask"], `catalog name ${name} collides with a fixed tool`).not.toContain(
+          toolName,
+        );
+      }
     });
   });
 
