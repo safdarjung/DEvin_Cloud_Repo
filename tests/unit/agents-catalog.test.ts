@@ -44,10 +44,10 @@ function walk(dir: string): string[] {
 describe("Agent catalog", () => {
   describe("Catalog exports", () => {
     it("exports version constant", () => {
-      expect(AGENT_CATALOG_VERSION).toBe("agents_v1");
+      expect(AGENT_CATALOG_VERSION).toBe("agents_v2");
     });
 
-    it("exports 6 agent slugs in correct order", () => {
+    it("exports 11 agent slugs in correct order", () => {
       expect(AGENT_SLUGS).toEqual([
         "academic",
         "attendance",
@@ -55,8 +55,13 @@ describe("Agent catalog", () => {
         "finance",
         "communication",
         "administrative",
+        "exams",
+        "student_success",
+        "staff_hr",
+        "operations",
+        "library",
       ]);
-      expect(AGENT_SLUGS).toHaveLength(6);
+      expect(AGENT_SLUGS).toHaveLength(11);
     });
 
     it("exports 6 agent run statuses", () => {
@@ -97,8 +102,8 @@ describe("Agent catalog", () => {
       }
     });
 
-    it("exports full AGENT_CATALOG with 6 entries", () => {
-      expect(Object.keys(AGENT_CATALOG)).toHaveLength(6);
+    it("exports full AGENT_CATALOG with 11 entries", () => {
+      expect(Object.keys(AGENT_CATALOG)).toHaveLength(11);
       expect(Object.keys(AGENT_CATALOG)).toEqual(AGENT_SLUGS);
     });
   });
@@ -117,6 +122,28 @@ describe("Agent catalog", () => {
         expect(spec.roleDescription.length).toBeLessThanOrEqual(400);
         expect(typeof spec.tools).toBe("object");
         expect(typeof spec.actions).toBe("object");
+      }
+    });
+
+    it("each agent has a non-empty summary ≤ 120 chars with no raw tool/action names", () => {
+      for (const spec of Object.values(AGENT_CATALOG)) {
+        expect(typeof spec.summary).toBe("string");
+        expect(spec.summary.length).toBeGreaterThan(0);
+        expect(spec.summary.length).toBeLessThanOrEqual(120);
+        expect(spec.summary).not.toMatch(/[a-z]+\.[a-zA-Z]+/);
+      }
+    });
+
+    it("each agent has 2-3 example tasks, each ≤ 90 chars", () => {
+      for (const spec of Object.values(AGENT_CATALOG)) {
+        expect(Array.isArray(spec.examples)).toBe(true);
+        expect(spec.examples.length).toBeGreaterThanOrEqual(2);
+        expect(spec.examples.length).toBeLessThanOrEqual(3);
+        for (const example of spec.examples) {
+          expect(typeof example).toBe("string");
+          expect(example.length).toBeGreaterThan(0);
+          expect(example.length).toBeLessThanOrEqual(90);
+        }
       }
     });
 

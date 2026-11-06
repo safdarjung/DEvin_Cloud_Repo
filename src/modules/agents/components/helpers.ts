@@ -18,6 +18,16 @@ export const RISK_LABEL: Record<RiskClass, string> = {
   prohibited: "Prohibited",
 };
 
+// Plain-language approval tag per action risk, shown next to each "Can suggest" item
+// (RISK_LABEL above stays for the card's single "Highest risk" summary line).
+export const APPROVAL_TAG: Record<RiskClass, string> = {
+  read_only: "just looks, never changes anything",
+  low_risk_reversible: "runs automatically, can be undone",
+  user_confirmed: "you confirm",
+  human_approved: "needs principal approval",
+  prohibited: "never runs",
+};
+
 export type RunBadgeVariant = "warning" | "success" | "destructive" | "secondary" | "info";
 
 export function runStatusVariant(s: AgentRunStatus): RunBadgeVariant {

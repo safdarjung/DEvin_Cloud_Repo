@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { ACTION_RISK, AGENT_CATALOG, type AgentSlug } from "@/modules/agents/catalog";
 import { agentDefinitions, agentRunDetail, agentRuns } from "@/modules/agents/queries";
 import { AgentCard } from "@/modules/agents/components/agent-controls";
 import { RunDetailPanel, RunsTable } from "@/modules/agents/components/agent-view";
@@ -98,26 +99,35 @@ export default async function AgentsPage({
               <ErrorState title="Could not load agents" description="Reload the page to try again." />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {defs.map((d) => (
-                  <AgentCard
-                    key={d.slug}
-                    institutionSlug={slug}
-                    runsBase={base}
-                    canRun={canRun}
-                    canToggle={hasPermission(ctx, "agent.approve")}
-                    agent={{
-                      slug: d.slug,
-                      name: d.name,
-                      role: d.role_description,
-                      tools: d.tools,
-                      maxRisk: d.max_risk_class,
-                      enabled: d.is_enabled,
-                      runs30d: d.runs_30d,
-                      errorRatePct: d.error_rate_pct,
-                      costPaise30d: d.cost_paise_30d,
-                    }}
-                  />
-                ))}
+                {defs.map((d) => {
+                  const spec = AGENT_CATALOG[d.slug as AgentSlug];
+                  return (
+                    <AgentCard
+                      key={d.slug}
+                      institutionSlug={slug}
+                      runsBase={base}
+                      canRun={canRun}
+                      canToggle={hasPermission(ctx, "agent.approve")}
+                      agent={{
+                        slug: d.slug,
+                        name: d.name,
+                        role: d.role_description,
+                        summary: spec.summary,
+                        toolDescriptions: Object.values(spec.tools),
+                        cardActions: Object.entries(spec.actions).map(([action, description]) => ({
+                          description,
+                          risk: ACTION_RISK[action],
+                        })),
+                        examples: [...spec.examples],
+                        maxRisk: d.max_risk_class,
+                        enabled: d.is_enabled,
+                        runs30d: d.runs_30d,
+                        errorRatePct: d.error_rate_pct,
+                        costPaise30d: d.cost_paise_30d,
+                      }}
+                    />
+                  );
+                })}
               </div>
             )}
           </section>

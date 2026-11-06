@@ -21,13 +21,21 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { AgentSlug } from "@/modules/agents/catalog";
 import { approveAgentRun, rejectAgentRun, runAgent, setAgentEnabled } from "@/modules/agents/actions";
-import { RISK_LABEL, formatPaise, runHref } from "./helpers";
+import { APPROVAL_TAG, RISK_LABEL, formatPaise, runHref } from "./helpers";
+
+export interface AgentCardAction {
+  description: string;
+  risk: keyof typeof RISK_LABEL;
+}
 
 export interface AgentCardData {
   slug: string;
   name: string;
   role: string;
-  tools: string[];
+  summary: string;
+  toolDescriptions: string[];
+  cardActions: AgentCardAction[];
+  examples: string[];
   maxRisk: keyof typeof RISK_LABEL;
   enabled: boolean;
   runs30d: number;
@@ -86,6 +94,11 @@ export function AgentCard({
     });
   }
 
+  function runExample(example: string) {
+    setTask(example);
+    setOpen(true);
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -95,7 +108,8 @@ export function AgentCard({
           </CardTitle>
           <Badge variant={agent.enabled ? "success" : "secondary"}>{agent.enabled ? "Enabled" : "Disabled"}</Badge>
         </div>
-        <p className="text-sm text-muted-foreground">{agent.role}</p>
+        <p className="text-sm font-medium">{agent.summary}</p>
+        <p className="text-xs text-muted-foreground">{agent.role}</p>
       </CardHeader>
       <CardContent className="space-y-3">
         <dl className="grid grid-cols-3 gap-2 text-sm">
@@ -103,9 +117,50 @@ export function AgentCard({
           <div><dt className="text-xs text-muted-foreground">Errors</dt><dd className="font-medium">{agent.errorRatePct}%</dd></div>
           <div><dt className="text-xs text-muted-foreground">Cost (30d)</dt><dd className="font-medium">{formatPaise(agent.costPaise30d)}</dd></div>
         </dl>
-        <p className="text-xs text-muted-foreground">
-          Highest risk: {RISK_LABEL[agent.maxRisk]} · Tools: {agent.tools.join(", ") || "none"}
-        </p>
+        <p className="text-xs text-muted-foreground">Highest risk: {RISK_LABEL[agent.maxRisk]}</p>
+
+        <div>
+          <p className="text-xs font-medium">Looks at</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+            {agent.toolDescriptions.length === 0 && <li>Nothing yet</li>}
+            {agent.toolDescriptions.map((desc) => (
+              <li key={desc}>{desc}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <p className="text-xs font-medium">Can suggest</p>
+          <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
+            {agent.cardActions.length === 0 && <li>Nothing yet</li>}
+            {agent.cardActions.map((a) => (
+              <li key={a.description}>
+                {a.description} <span className="text-muted-foreground/80">({APPROVAL_TAG[a.risk]})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {agent.examples.length > 0 && (
+          <div>
+            <p className="text-xs font-medium">Try asking</p>
+            <ul className="m-0 flex list-none flex-wrap gap-2 pl-0">
+              {agent.examples.map((example) => (
+                <li key={example}>
+                  <button
+                    type="button"
+                    disabled={!agent.enabled || pending}
+                    onClick={() => runExample(example)}
+                    className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50"
+                  >
+                    {example}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
           {canRun && (
             <Button type="button" disabled={!agent.enabled || pending} onClick={() => setOpen(true)}>
