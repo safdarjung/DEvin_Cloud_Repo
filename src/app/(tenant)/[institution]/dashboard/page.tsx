@@ -1,17 +1,16 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, Banknote, BarChart3, CalendarCheck, CheckCircle2, ClipboardList, GraduationCap, MessageSquare, UserPlus, Users } from "lucide-react";
+import { Banknote, CalendarCheck, GraduationCap, UserPlus } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
-import { ApprovalsWidget } from "@/components/widgets/approvals-widget";
-import { HomeActivity, HomeHero, HomeKpi, HomePerformance, HomeQuickActions, HomeSchedule, type ActivityItem, type HeroChip, type HomeQuickAction, type ScheduleItem } from "@/components/widgets/home-blocks";
 import { InsightCarousel, type CarouselInsight } from "@/components/widgets/insight-carousel";
 import { KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
 import { StaffAvailabilityWidget } from "@/components/widgets/staff-availability-widget";
+import { TrendWidget } from "@/components/widgets/trend-widget";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -19,15 +18,20 @@ import { humanize, inr } from "@/lib/format";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listEnquiriesByStage } from "@/modules/admissions/queries";
 import { attendanceTrend } from "@/modules/attendance/queries";
+import { repeatedAbsentees, sectionAttendanceToday } from "@/modules/attendance/command.queries";
+import { calendarForRole } from "@/modules/calendar/queries";
 import { pendingApprovals } from "@/modules/core/approvals.queries";
-import { AttendanceChart } from "@/modules/core/components/dashboard/AttendanceChart";
+import { buildApprovalQueue } from "@/modules/core/approval-queue";
+import { ApprovalsQueue } from "@/modules/core/components/dashboard/ApprovalsQueue";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
+import { Feed, Panel, PanelEmpty, SectionBars, StatStrip, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { demoFixturesEnabled, demoInsights, type InsightRole } from "@/modules/core/demo/fixtures";
-import { listExams, listRecheckQueue } from "@/modules/exams/queries";
+import { listExams, listRecheckQueue, listSectionOptions } from "@/modules/exams/queries";
+import { upcomingExamPapers } from "@/modules/exams/upcoming.queries";
 import { forecastCards as realForecastCards } from "@/modules/forecasts/queries";
 import { insightCards, priorityActions as realPriorityActions, riskIndicators as realRiskIndicators } from "@/modules/insights/derived";
 import { CommandGrid, type GridCard } from "@/modules/fabric/components/command/command-grid";
@@ -42,6 +46,8 @@ import { insights as fabricInsights } from "@/modules/fabric/demo/insights";
 import { examStatusVariant, recheckStatusVariant } from "@/modules/exams/status";
 import { listDefaulters } from "@/modules/finance/queries";
 import { staffAvailabilityToday } from "@/modules/people/hr.queries";
+import { peopleCounts } from "@/modules/people/counts.queries";
+import { studentLeaveRequests } from "@/modules/student-leave/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 import { cn } from "cn";
 
@@ -49,7 +55,6 @@ const TZ = "Asia/Kolkata";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" });
 const longDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", year: "numeric" });
 const shortDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, day: "numeric", month: "short" });
-const dayLabel = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "short" });
 const eventDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 // 12-col desktop grid, 2-col tablet, 1-col phone. Pairs are 7/5 or 6/6.
@@ -76,14 +81,6 @@ function FailedWidget({ title, className }: { title: string; className?: string 
       <ErrorState title={`Couldn't load ${title.toLowerCase()}`} description="The rest of the dashboard is unaffected. Refresh to try again." />
     </Widget>
   );
-}
-
-interface Attention {
-  key: string;
-  count: number;
-  label: string;
-  href: string;
-  tone: "warning" | "destructive" | "muted";
 }
 
 function Insights({ items, className }: { items: ReturnType<typeof demoInsights>; className?: string }) {
@@ -156,12 +153,19 @@ export default async function DashboardPage({
     isLeader && canAttendance ? attendanceTrend(ctx, { days: 42 }) : skip,
     isLeader ? pendingApprovals(ctx) : skip,
     isLeader && hasPermission(ctx, "staff.read") && isModuleEnabled(ctx, "staff_attendance") ? staffAvailabilityToday(ctx) : skip,
+    isLeader && canAttendance ? sectionAttendanceToday(ctx) : skip,
+    isLeader && hasPermission(ctx, "student.read") && hasPermission(ctx, "staff.read") ? peopleCounts(ctx) : skip,
+    isLeader ? listSectionOptions(ctx).then((r) => r.length) : skip,
+    isLeader && hasPermission(ctx, "student_leave.approve") && isModuleEnabled(ctx, "student_leave") ? studentLeaveRequests(ctx, { status: "pending", limit: 50 }) : skip,
+    isLeader && canResults && isModuleEnabled(ctx, "exams") ? upcomingExamPapers(ctx, new Date().toISOString(), 5) : skip,
+    isLeader && hasPermission(ctx, "academics.read") && isModuleEnabled(ctx, "calendar") ? calendarForRole(ctx, {}) : skip,
+    isLeader && role !== "admin" && canAttendance ? repeatedAbsentees(ctx, { days: 14, minAbsences: 3, limit: 5 }) : skip,
   ]);
   const data = await getDashboardData(ctx);
   const termId = data.collections?.termId;
   const [defaultersR] = await Promise.allSettled([(isLeader || role === "accountant") && termId ? listDefaulters(ctx, { termId }) : skip]);
-  const [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR] = await extrasP;
-  for (const r of [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, defaultersR]) {
+  const [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, sectionAttR, countsR, sectionCountR, studentLeaveR, upcomingExamsR, calendarR, absenteesR] = await extrasP;
+  for (const r of [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, sectionAttR, countsR, sectionCountR, studentLeaveR, upcomingExamsR, calendarR, absenteesR, defaultersR]) {
     if (r.status === "rejected") console.error("dashboard widget fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
   }
 
@@ -258,19 +262,6 @@ export default async function DashboardPage({
     />
   );
 
-  const atRisk = canAttendance && (
-    <ListWidget
-      title="Sections below threshold today"
-      emptyTitle="All sections above threshold"
-      rows={data.sectionsAtRisk.map((s) => ({
-        id: s.classSectionId,
-        title: s.label,
-        href: `${basePath}/attendance/${s.classSectionId}`,
-        badge: { label: `${s.percentage}%`, variant: "warning" },
-      }))}
-      className={NARROW}
-    />
-  );
   const collectionsChart = (className: string) =>
     collections && (
       <Widget title="Fee collection this term" action={{ href: `${basePath}/finance`, label: "Finance" }} className={className}>
@@ -478,86 +469,148 @@ export default async function DashboardPage({
       </>
     );
   } else {
-    const attention: Attention[] = [];
-    if (canAttendance && data.sectionsAtRisk.length > 0) {
-      const n = data.sectionsAtRisk.length;
-      attention.push({ key: "att", count: n, label: `${n === 1 ? "section" : "sections"} below attendance threshold`, href: `${basePath}/attendance`, tone: "warning" });
-    }
-    if (defaultersFailed) attention.push({ key: "fees", count: 0, label: "Overdue invoices unavailable", href: `${basePath}/finance/defaulters`, tone: "muted" });
-    else if (overdue.length > 0) attention.push({ key: "fees", count: overdue.length, label: `overdue ${overdue.length === 1 ? "invoice" : "invoices"}`, href: `${basePath}/finance/defaulters`, tone: "destructive" });
-    if (failed(rechecksR)) attention.push({ key: "rc", count: 0, label: "Recheck requests unavailable", href: `${basePath}/exams/rechecks`, tone: "muted" });
-    else if (rechecks && rechecks.length > 0) attention.push({ key: "rc", count: rechecks.length, label: `recheck ${rechecks.length === 1 ? "request" : "requests"} waiting`, href: `${basePath}/exams/rechecks`, tone: "warning" });
-
-    // Fabric widgets run on deterministic demo fixtures, so they only exist for the demo tenant.
-    const fOpts = { now: startOfToday(), institutionId: ctx.institution.id };
+    // Leader command center (owner / principal / admin). Operational first:
+    // KPI strip, approvals, class attendance, activity, upcoming. Every figure
+    // comes from a query above; a missing permission/module drops the tile.
+    const isAdminRole = role === "admin";
     showHeader = false;
 
     const trendPts = value(trendR) ?? [];
-    const deltaOf = (s?: number[]) => (s && s.length > 1 && s[0] !== 0 ? ((s[s.length - 1] - s[0]) / s[0]) * 100 : undefined);
-    const sparkAtt = trendPts.length ? trendPts.slice(-20).map((p) => p.value) : undefined;
+    const sectionAtt = value(sectionAttR);
+    const counts = value(countsR);
+    const sectionCount = value(sectionCountR);
+    const studentLeaves = value(studentLeaveR);
+    const upcomingExams = value(upcomingExamsR);
+    const calendar = value(calendarR);
+    const absentees = value(absenteesR);
+    const approvalRows = value(approvalsR);
+    const queue = approvalRows || studentLeaves ? buildApprovalQueue(approvalRows ?? [], studentLeaves ?? [], now.getTime()) : null;
+    const marked = data.attendanceToday.totalInDenominator;
+    const inrWhole = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 
-    const chips: HeroChip[] = [];
-    if (canAttendance) chips.push({ key: "att", icon: <Users />, tone: "info", label: `Today's attendance: ${data.attendanceToday.percentage}%` });
-    for (const a of attention) {
-      chips.push({ key: a.key, href: a.href, icon: a.tone === "destructive" ? <AlertTriangle /> : <ClipboardList />, tone: a.tone === "destructive" ? "destructive" : "warning", label: a.count ? `${a.count} ${a.label}` : a.label });
+    const tiles: StatTileProps[] = [];
+    if (counts) {
+      tiles.push({ label: "Students", value: counts.students.toLocaleString("en-IN"), href: `${basePath}/students` });
+      tiles.push({ label: "Staff", value: counts.staff.toLocaleString("en-IN") });
     }
-    if (attention.length === 0) chips.push({ key: "clear", icon: <CheckCircle2 />, tone: "success", label: "All clear — nothing is waiting on you" });
-
-    const sentence = [
-      canAttendance && `attendance is at ${data.attendanceToday.percentage}% today`,
-      canEnquiries && isModuleEnabled(ctx, "admissions") && `${openEnquiries} ${openEnquiries === 1 ? "enquiry is" : "enquiries are"} open`,
-      collections && `${formatINR(outstandingPaise)} in fees is outstanding`,
-    ].filter(Boolean) as string[];
-    const description = sentence.length ? `Here is where ${ctx.institution.name} stands: ${sentence.join(", ")}.` : `Here is what is happening at ${ctx.institution.name} today.`;
-
-    const homeKpis = [
-      canAttendance && (
-        <HomeKpi key="att" icon={<CalendarCheck />} tone="info" label="Attendance today" value={`${data.attendanceToday.percentage}%`} animateTo={data.attendanceToday.percentage} format="percent" delta={deltaOf(sparkAtt)} spark={sparkAtt} footLeft={`${data.attendanceToday.totalInDenominator} students marked`} footRight={data.sectionsAtRisk.length ? `${data.sectionsAtRisk.length} sections at risk` : "All sections on track"} href={`${basePath}/attendance`} />
-      ),
-      canEnquiries && isModuleEnabled(ctx, "admissions") && (
-        <HomeKpi key="enq" icon={<UserPlus />} tone="primary" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} footLeft={`${enrolledCount} enrolled this year`} footRight="Pipeline" href={`${basePath}/admissions`} />
-      ),
-      collections && (
-        <HomeKpi key="fee" icon={<Banknote />} tone="success" label="Collected this term" value={formatINR(collections.collectedPaise)} animateTo={collections.collectedPaise / 100} format="inr" footLeft={`of ${formatINR(collections.duePaise)} due`} footRight={collectionPct === null ? undefined : `${collectionPct}% collected`} href={`${basePath}/finance`} />
-      ),
-      canResults && isModuleEnabled(ctx, "exams") && (
-        <HomeKpi key="res" icon={<GraduationCap />} tone="warning" label="Published results" value={String(gd?.total ?? 0)} animateTo={gd?.total ?? 0} footLeft={gd ? gd.examName : "No published exam yet"} footRight="Exams" href={`${basePath}/exams`} />
-      ),
-    ].filter(Boolean);
-
-    // Six weekly averages of the school-wide attendance trend; the last bar is "now".
-    let bars: { label: string; value: number }[] | undefined;
-    if (trendPts.length) {
-      const size = Math.ceil(trendPts.length / 6);
-      bars = Array.from({ length: 6 }, (_, i) => trendPts.slice(i * size, (i + 1) * size)).filter((c) => c.length).map((c) => ({ label: c[c.length - 1].label, value: Math.round((c.reduce((t, p) => t + p.value, 0) / c.length) * 10) / 10 }));
+    if (sectionCount !== null) tiles.push({ label: "Sections", value: String(sectionCount) });
+    if (canAttendance) {
+      tiles.push({
+        label: "Attendance today",
+        value: marked > 0 ? `${data.attendanceToday.percentage}%` : "—",
+        sub: marked > 0 ? `${marked} students marked` : "Not marked yet",
+        href: `${basePath}/attendance`,
+      });
+      if (sectionAtt) tiles.push({ label: "Absent today", value: marked > 0 ? String(sectionAtt.absentTotal) : "—", sub: marked > 0 ? `${data.sectionsAtRisk.length} sections below threshold` : undefined });
     }
+    if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : undefined });
+    if (collections) tiles.push({ label: "Collected this term", value: inrWhole(collections.collectedPaise), sub: `of ${inrWhole(collections.duePaise)} due`, href: `${basePath}/finance` });
+    if (defaulters) tiles.push({ label: "Overdue invoices", value: String(overdue.length), href: `${basePath}/finance/defaulters` });
+    if (canEnquiries && isModuleEnabled(ctx, "admissions")) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled this year`, href: `${basePath}/admissions` });
+    if (upcomingExams) tiles.push({ label: "Upcoming exams", value: String(upcomingExams.total), sub: upcomingExams.papers[0] ? `Next ${shortDate.format(new Date(upcomingExams.papers[0].scheduledAt))}` : undefined, href: `${basePath}/exams` });
 
-    const activityItems: ActivityItem[] = (data.recentActivity ?? []).slice(0, 8).map((e) => ({
-      id: e.id,
-      icon: <MessageSquare />,
-      tone: "primary",
-      title: e.renderedBody,
-      meta: humanize(e.channel),
-      time: ago(e.attemptedAt, now),
-    }));
+    // ---- panels ----
+    const approvalsPanel = failed(approvalsR) ? (
+      <FailedWidget title="Pending approvals" />
+    ) : (
+      queue && (
+        <Panel title="Pending approvals" count={queue.total ? String(queue.total) : undefined}>
+          {queue.items.length === 0 ? (
+            <PanelEmpty title="No approvals waiting" hint="Leave and recheck requests that need a decision appear here." />
+          ) : (
+            <ApprovalsQueue
+              institutionSlug={institutionSlug}
+              items={queue.items}
+              total={queue.total}
+              canDecideStaffLeave={hasPermission(ctx, "leave.approve")}
+              canDecideStudentLeave={hasPermission(ctx, "student_leave.approve")}
+            />
+          )}
+        </Panel>
+      )
+    );
 
-    const activityHasSimulated = (data.recentActivity ?? []).slice(0, 8).some((e) => e.status === "simulated");
-    const tones = ["primary", "info", "success", "warning"] as const;
-    const homeActions: HomeQuickAction[] = quickActions.map((a, i) => ({ href: a.href, label: a.label, icon: a.icon, tone: tones[i % tones.length] }));
-    const scheduleItems: ScheduleItem[] = (events ?? []).map((e) => ({ id: e.id, time: shortDate.format(new Date(e.startsAt)), title: e.title, meta: [eventDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · ") }));
+    const sectionPanel = canAttendance && (
+      failed(sectionAttR) ? (
+        <FailedWidget title="Section attendance" />
+      ) : (
+        <Panel title="Section attendance" count="lowest first" action={{ href: `${basePath}/attendance`, label: "Attendance" }}>
+          {!sectionAtt || sectionAtt.sections.length === 0 ? (
+            <PanelEmpty
+              title="No attendance marked today"
+              hint="Sections appear once a class teacher submits today's register."
+              action={hasPermission(ctx, "attendance.mark") ? { href: `${basePath}/attendance`, label: "Mark attendance" } : undefined}
+            />
+          ) : (
+            <SectionBars
+              threshold={75}
+              rows={sectionAtt.sections.slice(0, 7).map((s) => ({ id: s.classSectionId, label: s.label, percentage: s.percentage, absent: s.absent, href: `${basePath}/attendance/${s.classSectionId}` }))}
+            />
+          )}
+        </Panel>
+      )
+    );
 
-    const carousel: CarouselInsight[] = demo
-      ? fabricInsights(fOpts).slice(0, 4).map((i) => ({ id: i.id, title: i.title, body: i.pattern, severityLabel: SEVERITY[i.severity].label, confidence: i.confidence, href: `${basePath}/fabric/insights?id=${i.id}` }))
-      : [];
+    const activityPanel = data.recentActivity !== null && (
+      <Panel title="Recent activity" action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "Message log" } : undefined}>
+        {data.recentActivity.length === 0 ? (
+          <PanelEmpty title="No messages sent yet" hint="Attendance and fee notifications are logged here." />
+        ) : (
+          <>
+            {data.recentActivity.slice(0, 6).some((e) => e.status === "simulated") && <SimulatedBadge />}
+            <Feed items={data.recentActivity.slice(0, 6).map((e) => ({ id: e.id, title: e.renderedBody, meta: humanize(e.channel), time: ago(e.attemptedAt, now) }))} />
+          </>
+        )}
+      </Panel>
+    );
 
-    // Everything below the hero/KPIs/split stays available as a customisable grid.
+    const upcomingItems: (FeedItem & { date: string })[] = [
+      ...(upcomingExams?.papers ?? []).map((p) => ({ id: `paper-${p.id}`, date: p.scheduledAt, title: `${p.examName}: ${p.subjectName}`, meta: `${p.section} · Exam`, time: shortDate.format(new Date(p.scheduledAt)), href: `${basePath}/exams/${p.examId}` })),
+      ...(calendar ?? [])
+        .filter((e) => e.kind !== "holiday")
+        .map((e) => ({ id: `cal-${e.id}`, date: e.startsOn, title: e.title, meta: humanize(e.kind), time: shortDate.format(new Date(e.startsOn)) })),
+      ...(calendar ? [] : (events ?? []).map((e) => ({ id: `evt-${e.id}`, date: e.startsAt, title: e.title, meta: [eventDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · "), time: shortDate.format(new Date(e.startsAt)) }))),
+    ]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 6);
+    const upcomingPanel = (
+      <Panel title="Upcoming events and exams" action={canEditWebsite ? { href: `${basePath}/website/events`, label: "Manage events" } : undefined}>
+        {upcomingItems.length === 0 ? (
+          <PanelEmpty title="Nothing scheduled" hint="Exam papers and calendar events show here once they are scheduled." />
+        ) : (
+          <Feed items={upcomingItems} />
+        )}
+      </Panel>
+    );
+
+    const quickPanel = quickActions.length > 0 && <QuickActions actions={quickActions} />;
+
+    const absenteesPanel = !isAdminRole && canAttendance && (
+      failed(absenteesR) ? (
+        <FailedWidget title="Repeated absentees" />
+      ) : (
+        <Panel title="Repeated absentees" count="last 14 days">
+          {!absentees || absentees.length === 0 ? (
+            <PanelEmpty title="No repeated absences" hint="Students absent 3 or more days in the last 14 appear here." />
+          ) : (
+            <Feed items={absentees.map((s) => ({ id: s.studentId, title: s.name, meta: s.classSection, time: `${s.absences} days`, href: `${basePath}/students/${s.studentId}` }))} />
+          )}
+        </Panel>
+      )
+    );
+
+    // Lower grid: everything that is not first-screen, still reorderable.
     const cards: GridCard[] = [];
     const add = (id: string, title: string, span: string, node: ReactNode) => node && cards.push({ id, title, span, node });
+    // Fabric widgets run on deterministic demo fixtures, so they only exist for the demo tenant.
+    const fOpts = { now: startOfToday(), institutionId: ctx.institution.id };
     if (demo) {
       add("brief", "Today's brief", WIDE, <DailyBriefWidget brief={dailyBrief(fOpts, "principal")} base={basePath} />);
       add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts).slice(0, 5)} base={basePath} />);
       add("forecasts", "Forecasts", FULL, <ForecastCards cards={forecastCards(fOpts)} base={basePath} />);
       add("risks", "Risks", NARROW, <RiskIndicators risks={riskIndicators(fOpts)} base={basePath} />);
+      const carousel: CarouselInsight[] = fabricInsights(fOpts).slice(0, 4).map((i) => ({ id: i.id, title: i.title, body: i.pattern, severityLabel: SEVERITY[i.severity].label, confidence: i.confidence, href: `${basePath}/fabric/insights?id=${i.id}` }));
+      add("carousel", "Insight highlights", NARROW, <InsightCarousel items={carousel} allHref={`${basePath}/fabric/insights`} />);
     }
     if (canInsights || canForecasts) {
       const off = (title: string, d: string) => (
@@ -578,24 +631,20 @@ export default async function DashboardPage({
         add("forecasts", "Forecasts", FULL, !forecastsOn ? off("Forecasts", PLAN_OFF) : failed(forecastR) ? <FailedWidget title="Forecasts" /> : fc && fc.length > 0 ? <ForecastCards cards={fc} base={basePath} /> : off("Forecasts", "Forecasts appear once enough history is recorded."));
       }
     }
-    add("atRisk", "Sections at risk", NARROW, atRisk);
+    if (canAttendance) {
+      add(
+        "attendance-performance",
+        "Attendance performance",
+        WIDE,
+        <TrendWidget title="Attendance performance" description="School-wide attendance by school day" unit="percent" data={trendPts} />,
+      );
+    }
     add("funnel", "Admissions funnel", WIDE, funnel(""));
     add("collections", "Fee collection", NARROW, collectionsChart(""));
-    const approvalRows = value(approvalsR);
-    add("approvals", "Approvals", WIDE, failed(approvalsR) ? <FailedWidget title="Pending approvals" /> : approvalRows && <ApprovalsWidget title="Pending approvals" rows={approvalRows} />);
     const staffToday = value(staffR);
-    add(
-      "staff",
-      "Staff today",
-      NARROW,
-      failed(staffR) ? (
-        <FailedWidget title="Staff today" />
-      ) : (
-        staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />
-      ),
-    );
-    add("grades", "Grades", NARROW, grades(""));
-    add("assistant", "AI briefing", NARROW, briefing);
+    add("staff", "Staff today", NARROW, failed(staffR) ? <FailedWidget title="Staff today" /> : staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />);
+    if (isAdminRole) add("grades", "Grades", NARROW, grades(""));
+    if (isAdminRole) add("assistant", "AI briefing", NARROW, briefing);
     add(
       "notices",
       "Latest notices",
@@ -615,49 +664,45 @@ export default async function DashboardPage({
 
     body = (
       <div className={cn(FULL, "space-y-4")}>
-        <HomeHero eyebrow={dayLabel.format(now)} updated="Updated just now" title={firstName ? `${greeting}, ${firstName}` : greeting} description={description} chips={chips} />
-        {homeKpis.length > 0 && (
-          <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {homeKpis.map((k, i) => (
-              <StaggerItem key={i} className="min-w-0">
-                {k}
-              </StaggerItem>
-            ))}
-          </Stagger>
-        )}
+        <header>
+          <h1 className="text-2xl font-semibold tracking-tight text-balance">{firstName ? `${greeting}, ${firstName}` : greeting}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {longDate.format(now)} · {ctx.institution.name}
+          </p>
+        </header>
+        <StatStrip tiles={tiles} />
         <div className="grid gap-4 lg:grid-cols-12">
-          <div className="min-w-0 space-y-4 lg:col-span-8">
-            {/* Admin = work first (activity, tasks); principal = trend first. */}
-            {role === "admin" ? (
-              <>
-            <HomeActivity title="Recent activity" items={activityItems} badge={activityHasSimulated ? <SimulatedBadge /> : undefined} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
-            {canAttendance && (
-              <HomePerformance title="Attendance performance" description="School-wide attendance, week by week" icon={<BarChart3 />} bars={bars} footer={bars ? "Weekly average of daily attendance" : undefined}>
-                <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
-              </HomePerformance>
-            )}
-              </>
-            ) : (
-              <>
-            {canAttendance && (
-              <HomePerformance title="Attendance performance" description="School-wide attendance, week by week" icon={<BarChart3 />} bars={bars} footer={bars ? "Weekly average of daily attendance" : undefined}>
-                <AttendanceChart presentWeighted={data.attendanceToday.presentWeighted} totalInDenominator={data.attendanceToday.totalInDenominator} />
-              </HomePerformance>
-            )}
-            <HomeActivity title="Recent activity" items={activityItems} badge={activityHasSimulated ? <SimulatedBadge /> : undefined} action={ctx.permissions.has("notification.log.read") ? { href: `${basePath}/notifications/log`, label: "View message log" } : undefined} empty="No messages sent yet." />
-              </>
-            )}
-          </div>
-          <div className="min-w-0 space-y-4 lg:col-span-4">
-            {role === "admin" && <HomeQuickActions actions={homeActions} />}
-            {carousel.length > 0 && <InsightCarousel items={carousel} allHref={`${basePath}/fabric/insights`} />}
-            {role !== "admin" && <HomeQuickActions actions={homeActions} />}
-            <HomeSchedule title="Upcoming events" count={`${scheduleItems.length} upcoming`} items={scheduleItems} action={canEditWebsite ? { href: `${basePath}/website/events`, label: "Manage" } : undefined} empty="No upcoming public events." />
-          </div>
+          {isAdminRole ? (
+            <>
+              <div className="min-w-0 space-y-4 lg:col-span-7">
+                {approvalsPanel}
+                {activityPanel}
+              </div>
+              <div className="min-w-0 space-y-4 lg:col-span-5">
+                {quickPanel}
+                {sectionPanel}
+                {upcomingPanel}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="min-w-0 space-y-4 lg:col-span-7">
+                {approvalsPanel}
+                {activityPanel}
+              </div>
+              <div className="min-w-0 space-y-4 lg:col-span-5">
+                {sectionPanel}
+                {upcomingPanel}
+              </div>
+              {absenteesPanel && <div className="min-w-0 lg:col-span-5">{absenteesPanel}</div>}
+              {canResults && isModuleEnabled(ctx, "exams") && <div className="min-w-0 lg:col-span-7">{grades("")}</div>}
+              {briefing && <div className="min-w-0 lg:col-span-12">{briefing}</div>}
+            </>
+          )}
         </div>
         {cards.length > 0 && (
           <section aria-labelledby="more-h" className="space-y-3 pt-2">
-            <h2 id="more-h" className="text-[17px] font-semibold tracking-[-0.01em]">
+            <h2 id="more-h" className="text-base font-semibold">
               More from your school
             </h2>
             <CommandGrid layoutKey="command-more" defaultOrder={cards.map((c) => c.id)} cards={cards} />

@@ -8,6 +8,8 @@ import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { QuizContentView } from "@/modules/academics/components/QuizContentView";
 import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getAssignment } from "@/modules/academics/assignments.queries";
+import { SubmissionsPanel } from "@/modules/academics/components/SubmissionsPanel";
+import { submissionsForAssignment } from "@/modules/academics/submissions.queries";
 
 export default async function AssignmentDetailPage({
   params,
@@ -24,9 +26,11 @@ export default async function AssignmentDetailPage({
 
   const canManage = hasPermission(ctx, "assignment.manage");
   const canEdit = canManage && assignment.status === "draft";
+  // RLS narrows the roster to the caller's taught sections; drafts have no submissions.
+  const roster = canManage && assignment.status !== "draft" ? await submissionsForAssignment(ctx, id) : null;
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-3xl space-y-4">
       <PageHeader
         title={assignment.title}
         description={assignment.dueAt ? `Due ${new Date(assignment.dueAt).toLocaleDateString()}` : undefined}
@@ -69,6 +73,7 @@ export default async function AssignmentDetailPage({
         </Card>
       ) : null}
 
+      {roster && <SubmissionsPanel institutionSlug={institutionSlug} rows={roster} canGrade />}
     </div>
   );
 }

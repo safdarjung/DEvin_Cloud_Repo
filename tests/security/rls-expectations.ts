@@ -950,4 +950,32 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "exam_controller", "teacher", "student", "guardian"],
     write: [],
   },
+
+  // 0102 — message_threads/messages: owner/principal/admin read every row of
+  // the institution; a guardian reads threads where they are the guardian and
+  // the student is their child; a teacher reads threads addressed to them for
+  // a student they teach. No insert/update/delete policy: writes are the
+  // start_message_thread/send_message/mark_thread_read definer RPCs only
+  // (explicit participant scoping proved in tests/db/messaging-rls.test.ts,
+  // not by the generated suite's plain own-institution probe).
+  message_threads: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+  },
+  messages: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+  },
+
+  // 0103 — practice_attempts: leaders read all; student and linked guardians
+  // read own/child rows (app.my_student_ids); teachers read taught students
+  // (app.my_taught_student_ids). Insert only via submit_practice_attempt;
+  // immutable (guard trigger). Scoping proved in tests/db/practice-rls.test.ts.
+  practice_attempts: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+  },
 };

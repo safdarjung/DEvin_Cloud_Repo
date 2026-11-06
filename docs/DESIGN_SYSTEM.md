@@ -7,7 +7,7 @@ Tailwind v4 (CSS-first, tokens in src/app/globals.css), shadcn/ui + radix-ui (sr
 Plus Jakarta Sans (`--font-jakarta`, sans and heading) and Geist Mono (`--font-geist-mono`) via next/font/google in src/app/layout.tsx.
 
 ## App tokens (globals.css)
-Semantic CSS variables: background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring, chart-1..5, sidebar-*. Light: background #f8f9ff, foreground #0b1c30, primary #4f46e5, `--radius` 0.75rem. Dark (`.dark`) uses oklch backgrounds and `--radius` 0.5rem. Radius scale derived from `--radius`.
+Semantic CSS variables: background, foreground, card, popover, primary, secondary, muted, accent, destructive, border, input, ring, chart-1..5, sidebar-*. Vision UI look. Light: background #f7f6f2, foreground #0e1a2b, primary #582cff, `--radius` 0.75rem. Dark (default, `.dark`): navy #0b1030 background, glass cards (`--glass`), primary #6f4dff, `--radius` 0.9rem. `--brand-glow` is the violet shadow on primary buttons and active chips. Radius scale derived from `--radius`.
 
 ## Marketing tokens (src/components/marketing/marketing.css)
 Scoped to `.fabric-mk`: --mk-bg, fg, muted, line, surface, accent (#0f6f68 light, #5bbfb3 dark), accent-soft, blue. Dark values switch with the `.dark` class. Components: components/marketing/ui.tsx (PageHero, Section, Rows, CtaBand, ButtonLink), site-header, site-footer, theme-toggle, lead-form.

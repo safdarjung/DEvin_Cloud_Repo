@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission, requireModule } from "@/lib/auth/require";
+import { requirePermission, requireModule, hasPermission } from "@/lib/auth/require";
 import { ReportCard } from "@/modules/exams/components/ReportCard";
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -29,6 +29,7 @@ export default async function PortalResultsPage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/results"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
 
       {results.length === 0 ? (

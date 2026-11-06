@@ -11,8 +11,19 @@ const TABS = [
   { href: "/fees", label: "Fees" },
   { href: "/results", label: "Results" },
   { href: "/assignments", label: "Assignments" },
+  { href: "/subjects", label: "Subjects" },
+  { href: "/study", label: "Study" },
+  { href: "/practice", label: "Practice" },
+  { href: "/meetings", label: "Meetings" },
+  { href: "/updates", label: "Updates" },
+  { href: "/messages", label: "Messages" },
+  { href: "/assistant", label: "Ask" },
+  { href: "/leave", label: "Leave" },
+  { href: "/surveys", label: "Surveys" },
   { href: "/notifications", label: "Notifications" },
 ] as const;
+
+const GUARDIAN_ONLY = new Set<string>(["/meetings", "/updates", "/messages", "/assistant", "/leave", "/surveys"]);
 
 export type PortalTabHref = (typeof TABS)[number]["href"];
 
@@ -27,11 +38,14 @@ export function PortalNav({
   role,
   selection,
   activeHref,
+  canStudy = false,
 }: {
   institutionSlug: string;
   role: "guardian" | "student";
   selection: PortalSelection;
   activeHref: PortalTabHref;
+  /** Student holds `ai.study` (pass from the page); the Study tab is student-only. */
+  canStudy?: boolean;
 }) {
   const basePath = `/${institutionSlug}/portal`;
 
@@ -43,7 +57,12 @@ export function PortalNav({
         actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
       />
       <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
-        {TABS.map((tab) => (
+        {TABS.filter((tab) => {
+          if (GUARDIAN_ONLY.has(tab.href)) return role === "guardian";
+          if (tab.href === "/subjects") return role === "student";
+          if (tab.href === "/study" || tab.href === "/practice") return role === "student" && canStudy;
+          return true;
+        }).map((tab) => (
           <Link
             key={tab.href}
             href={`${basePath}${tab.href}?student=${selection.studentId}`}

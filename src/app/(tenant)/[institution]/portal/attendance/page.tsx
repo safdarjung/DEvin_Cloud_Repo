@@ -1,6 +1,6 @@
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { StudentAttendanceSummary } from "@/modules/attendance/components/StudentAttendanceSummary";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
@@ -29,6 +29,7 @@ export default async function PortalAttendancePage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/attendance"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
       {termId ? (
         <StudentAttendanceSummary ctx={ctx} studentId={selection.studentId} termId={termId} studentName={selection.studentName} />

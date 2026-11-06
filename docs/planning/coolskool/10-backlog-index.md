@@ -117,6 +117,9 @@ flowchart TD
 - `20261028000097` · **freed — M27 is TS/test only: seed sections are TypeScript, audits are tests; fixes from M27 findings take ≥ 0100**.
 - `20261028000098` · **freed — M27 is TS/test only: seed sections are TypeScript, audits are tests; fixes from M27 findings take ≥ 0100**.
 - `20261028000052`–`20261028000063` · **Fabric (D39), reserved for Phase 2** · `0052` `marketplace_modules` (global) + `module_installs` · `0053` `scenarios` · `0054` built (M19 Insights, 2026-11-05) — V2 renumbered to 0092 · `0055` `agent_definitions` + `agent_runs` + guard `app.guard_agent_run_update` + `ai_usage_events.agent_run_id` — module `agents` (M22, built 2026-11-05 — `20261028000095_agents.sql`) · `0056` freed — V2 renumbered to 0096 (2026-11-02) · `0057` `studio_requests` + `studio_proposals` · `0058` `personal_memories` + `personal_goals` (user-scoped, class O) · `0059` `connectors` + `connector_syncs` · `0060` `twin_snapshots` · `0061` `dashboard_layouts` · `0062` freed — V2 renumbered to 0097 (2026-11-02) · `0063` freed — V2 renumbered to 0098 (2026-11-02). Column plan: `src/modules/fabric/types.ts`; RLS plan: `docs/planning/fabric/02-architecture.md` §4.
+- `20261028000100`–`20261028000101` · UI session (hosted) · `platform_leads`; reserved marketing slugs.
+- `20261028000102` · Education OS redesign (backend session, claimed 2026-11-06) · `message_threads` + `messages` (guardian–teacher messaging, append-only body, `read_at` only mutable), notify on new message — module `messaging`.
+- `20261028000103` · Education OS redesign (backend session, claimed 2026-11-06) · `practice_attempts` (student self-practice quizzes, server-scored, immutable) — module `practice`.
 
 ## 4. Review requirements
 

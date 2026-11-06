@@ -42,7 +42,7 @@ interface CoverageRow extends CurriculumCoverage {
  */
 export async function curriculumCoverageBySection(
   ctx: TenantContext,
-  filter: { classSectionId?: string; subjectId?: string } = {},
+  filter: { classSectionId?: string; subjectId?: string; teacherId?: string } = {},
 ): Promise<CurriculumCoverage[]> {
   if (ctx.membership.role === "guardian" || ctx.membership.role === "student") {
     throw new AppError("forbidden", "Coverage pacing is a staff-only view.");
@@ -77,6 +77,8 @@ export async function curriculumCoverageBySection(
     .eq("institution_id", ctx.institution.id)
     .in("class_section_id", sectionIds);
   if (filter.subjectId) assignmentsQuery = assignmentsQuery.eq("subject_id", filter.subjectId);
+  // Teacher dashboard: only the (section, subject) pairs this staff member teaches.
+  if (filter.teacherId) assignmentsQuery = assignmentsQuery.eq("teacher_id", filter.teacherId);
   const { data: assignmentRows, error: assignmentsError } = await assignmentsQuery;
   if (assignmentsError) throw assignmentsError;
 

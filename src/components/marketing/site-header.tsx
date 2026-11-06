@@ -43,7 +43,13 @@ export function SiteHeader() {
         </nav>
         <div className="ml-auto flex items-center gap-1">
           <ThemeToggle />
-          <ButtonLink href="/contact" className="hidden sm:inline-flex">
+          <Link href="/login?switch=1" className={cn(link("/login"), "hidden sm:inline-flex")}>
+            Sign in
+          </Link>
+          <ButtonLink href="/demo" variant="secondary" className="hidden sm:inline-flex">
+            Try a demo
+          </ButtonLink>
+          <ButtonLink href="/contact" className="hidden md:inline-flex">
             Book a Demo
           </ButtonLink>
           <Sheet>
@@ -67,7 +73,17 @@ export function SiteHeader() {
                   </SheetClose>
                 ))}
                 <SheetClose asChild>
-                  <ButtonLink href="/contact" className="mt-4">
+                  <ButtonLink href="/demo" className="mt-4">
+                    Try a demo
+                  </ButtonLink>
+                </SheetClose>
+                <SheetClose asChild>
+                  <ButtonLink href="/login?switch=1" variant="secondary" className="mt-2">
+                    Sign in
+                  </ButtonLink>
+                </SheetClose>
+                <SheetClose asChild>
+                  <ButtonLink href="/contact" variant="secondary" className="mt-2">
                     Book a Demo
                   </ButtonLink>
                 </SheetClose>

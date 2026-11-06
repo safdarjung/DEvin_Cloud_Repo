@@ -763,3 +763,36 @@ export async function examGradeDistribution(ctx: TenantContext, examId?: string)
 
   return { examId: resolvedExamId, examName, distribution, total: data?.length ?? 0 };
 }
+
+export interface StudentUpcomingExamPaper {
+  examId: string;
+  examName: string;
+  paperId: string;
+  subjectName: string;
+  scheduledAt: string;
+  durationMinutes: number;
+}
+
+/**
+ * Scheduled papers (next 60 days, non-draft exams) for one student's active
+ * section. Students and guardians cannot read exams under RLS, so this calls
+ * the definer RPC `my_upcoming_exam_papers`, which returns rows only for the
+ * student themself or a linked guardian.
+ */
+export async function upcomingExamsForStudent(
+  _ctx: TenantContext,
+  studentId: string,
+  days = 60,
+): Promise<StudentUpcomingExamPaper[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_upcoming_exam_papers", { p_student_id: studentId, p_days: days });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    examId: r.exam_id,
+    examName: r.exam_name,
+    paperId: r.paper_id,
+    subjectName: r.subject_name,
+    scheduledAt: r.scheduled_at,
+    durationMinutes: r.duration_minutes,
+  }));
+}

@@ -1,6 +1,7 @@
 import { BarChart3, GraduationCap, ShieldCheck, Sparkles } from "lucide-react";
 import { DEMO_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
+import { BrandVisual } from "./brand-visual";
 import { LoginForm } from "./login-form";
 import { DemoLoginButton } from "./demo-login-button";
 
@@ -31,6 +32,9 @@ export default async function LoginPage({
           </defs>
           <rect width="100%" height="100%" fill="url(#grid)" />
         </svg>
+        <div className="pointer-events-none absolute -right-16 -bottom-16 size-[30rem] opacity-70">
+          <BrandVisual />
+        </div>
         <div aria-hidden className="pointer-events-none absolute -right-24 -bottom-24 size-[26rem] rounded-full bg-[oklch(0.77_0.1_190)]/15 blur-3xl" />
         <div className="relative flex items-center gap-2.5 text-lg font-semibold tracking-tight">
           <span className="flex size-9 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">

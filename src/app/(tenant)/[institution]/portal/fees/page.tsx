@@ -2,7 +2,7 @@ import { inr } from "@/lib/format";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { StudentInvoices } from "@/modules/finance/components/StudentInvoices";
 import { listReceiptsForStudent } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
@@ -31,10 +31,13 @@ export default async function PortalFeesPage({
         role={ctx.membership.role as "guardian" | "student"}
         selection={selection}
         activeHref="/fees"
+        canStudy={hasPermission(ctx, "ai.study")}
       />
 
       <div className="space-y-4">
-        <StudentInvoices ctx={ctx} institutionSlug={institutionSlug} studentId={selection.studentId} />
+        <StudentInvoices ctx={ctx} institutionSlug={institutionSlug} studentId={selection.studentId}
+          payOnline={ctx.membership.role === "guardian" && hasPermission(ctx, "finance.payment.online")}
+        />
 
         {receipts.length > 0 && (
           <Card>

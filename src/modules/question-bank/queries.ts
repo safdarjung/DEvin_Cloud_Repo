@@ -6,6 +6,7 @@ import "server-only";
 // core/audit.queries.ts's listAuditEvents.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import type { Difficulty, QuestionListInput, QuestionType } from "@/modules/question-bank/schemas";
 
 export interface QuestionBankItem {
@@ -84,4 +85,43 @@ export async function listQuestions(ctx: TenantContext, filters: QuestionListInp
   });
 
   return { items, total: count ?? 0 };
+}
+
+export interface TeachingPair {
+  gradeId: string;
+  gradeCode: string;
+  subjectId: string;
+  subjectName: string;
+}
+
+/** Distinct (grade, subject) pairs the caller may author questions for: their taught sections' grades x subjects (owner/principal: all). RLS on question_bank re-checks on write. */
+export async function listTeachingPairs(ctx: TenantContext): Promise<TeachingPair[]> {
+  const sections = await listTeachableSections(ctx);
+  if (sections.length === 0) return [];
+  const supabase = await createClient();
+  const { data: grades, error } = await supabase
+    .from("grades")
+    .select("id, code, sort_key")
+    .eq("institution_id", ctx.institution.id)
+    .in("id", [...new Set(sections.map((s) => s.gradeId))]);
+  if (error) throw error;
+  const gradeById = new Map((grades ?? []).map((g) => [g.id, g]));
+  const subjectLists = await Promise.all(sections.map((s) => listSectionSubjects(ctx, s.id)));
+
+  const pairs = new Map<string, TeachingPair & { sort: number }>();
+  sections.forEach((section, i) => {
+    const grade = gradeById.get(section.gradeId);
+    for (const subject of subjectLists[i]) {
+      pairs.set(`${section.gradeId}:${subject.id}`, {
+        gradeId: section.gradeId,
+        gradeCode: grade?.code ?? "?",
+        subjectId: subject.id,
+        subjectName: subject.name,
+        sort: grade?.sort_key ?? 0,
+      });
+    }
+  });
+  return [...pairs.values()]
+    .sort((a, b) => a.sort - b.sort || a.subjectName.localeCompare(b.subjectName))
+    .map(({ gradeId, gradeCode, subjectId, subjectName }) => ({ gradeId, gradeCode, subjectId, subjectName }));
 }

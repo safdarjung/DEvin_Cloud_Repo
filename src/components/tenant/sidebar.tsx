@@ -68,7 +68,7 @@ function NavLinks({
             <motion.p
               initial={false}
               aria-hidden
-              className="absolute inset-x-3 bottom-1 truncate text-[11px] font-semibold tracking-wider text-muted-foreground uppercase"
+              className="absolute inset-x-2.5 bottom-1 truncate text-xs text-muted-foreground"
               {...labelFade(collapsed, reduce)}
             >
               {section.group}
@@ -93,14 +93,14 @@ function NavLinks({
                   aria-current={active ? "page" : undefined}
                   aria-label={collapsed ? item.label : undefined}
                   className={cn(
-                    "flex min-h-10 items-center gap-3 overflow-hidden rounded-xl px-3 text-sm font-medium transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-(--ease-out)",
+                    "flex min-h-9 items-center gap-2.5 overflow-hidden rounded-md px-2.5 text-sm transition-[background-color,color] duration-(--duration-fast) ease-(--ease-out)",
                     focusRing,
                     active
-                      ? "bg-primary font-semibold text-primary-foreground shadow-[0_2px_8px_rgb(79_70_229/0.25)]"
+                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >
-                  {item.icon}
+                  <span className={cn("grid size-4 shrink-0 place-items-center [&_svg]:size-4", active ? "text-foreground" : "text-muted-foreground")}>{item.icon}</span>
                   <motion.span initial={false} className="whitespace-nowrap" {...labelFade(collapsed, reduce)}>
                     {item.label}
                   </motion.span>
@@ -126,21 +126,23 @@ function NavLinks({
   );
 }
 
+/** Product mark: an open book drawn as two pages meeting at the spine, in the data hue. */
+function Mark() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden className="size-5 shrink-0 text-(--chart-1)">
+      <path d="M10 5.2C8.4 4 6.2 3.5 3 3.6v11.2c3.2-.1 5.4.4 7 1.6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M10 5.2c1.6-1.2 3.8-1.7 7-1.6v11.2c-3.2-.1-5.4.4-7 1.6V5.2Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 function Wordmark({ collapsed = false }: { collapsed?: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <span className="relative flex h-10 w-full items-center overflow-hidden text-lg font-semibold tracking-tight text-primary">
-      <motion.span initial={false} className="whitespace-nowrap px-3" {...labelFade(collapsed, reduce)}>
+    <span className="flex h-10 w-full items-center gap-2 overflow-hidden px-2 text-[15px] font-semibold tracking-tight text-foreground">
+      <Mark />
+      <motion.span initial={false} className="whitespace-nowrap" {...labelFade(collapsed, reduce)}>
         CoolSkool
-      </motion.span>
-      <motion.span
-        initial={false}
-        aria-hidden
-        className="absolute inset-0 grid place-items-center"
-        animate={{ opacity: collapsed ? 1 : 0 }}
-        transition={labelFade(!collapsed, reduce).transition}
-      >
-        CS
       </motion.span>
     </span>
   );
@@ -171,9 +173,9 @@ export function TenantSidebar({
       initial={false}
       animate={{ width: collapsed ? 64 : 240 }}
       transition={reduce ? { duration: 0 } : { duration: MOTION.duration.normal, ease: MOTION.ease.out }}
-      className="sticky top-14 hidden h-[calc(100dvh-3.5rem)] shrink-0 flex-col gap-4 overflow-y-auto overflow-x-hidden border-r bg-sidebar p-3 text-sidebar-foreground lg:flex"
+      className="sticky top-0 hidden h-dvh shrink-0 flex-col gap-3 overflow-y-auto overflow-x-hidden border-r border-sidebar-border bg-sidebar px-3 pb-3 text-sidebar-foreground lg:flex"
     >
-      <div className="flex min-h-10 items-center">
+      <div className="-mx-3 flex h-14 shrink-0 items-center border-b border-sidebar-border px-3">
         <Wordmark collapsed={collapsed} />
       </div>
       <nav aria-label="Primary" className="flex-1">
@@ -212,7 +214,7 @@ export function MobileNav({ items, trigger }: { items: NavLinkItem[]; trigger?: 
       </SheetTrigger>
       <SheetContent side="left" className="gap-0 p-3">
         <div className="flex min-h-10 items-center px-3">
-          <SheetTitle className="text-lg font-semibold tracking-tight text-primary">CoolSkool</SheetTitle>
+          <SheetTitle className="flex items-center gap-2 text-[15px] font-semibold tracking-tight"><Mark />CoolSkool</SheetTitle>
           <SheetDescription className="sr-only">Site navigation</SheetDescription>
         </div>
         <nav aria-label="Primary" className="mt-4 overflow-y-auto">

@@ -2461,6 +2461,120 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"message_threads": {
+                  Row: {
+                    "created_at": string,"created_by": string,"guardian_id": string,"id": string,"institution_id": string,"last_message_at": string,"student_id": string,"subject": string,"teacher_staff_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"guardian_id": string,"id"?: string,"institution_id": string,"last_message_at"?: string,"student_id": string,"subject": string,"teacher_staff_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"guardian_id"?: string,"id"?: string,"institution_id"?: string,"last_message_at"?: string,"student_id"?: string,"subject"?: string,"teacher_staff_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "message_threads_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "message_threads_guardian_id_fkey"
+      columns: ["guardian_id"]
+isOneToOne: false
+      referencedRelation: "guardians"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "message_threads_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "message_threads_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "message_threads_teacher_staff_id_fkey"
+      columns: ["teacher_staff_id"]
+isOneToOne: false
+      referencedRelation: "staff"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"messages": {
+                  Row: {
+                    "body": string,"created_at": string,"id": string,"institution_id": string,"read_at": string | null,"sender_profile_id": string,"thread_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"created_at"?: string,"id"?: string,"institution_id": string,"read_at"?: string | null,"sender_profile_id": string,"thread_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "body"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"read_at"?: string | null,"sender_profile_id"?: string,"thread_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "messages_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "messages_sender_profile_id_fkey"
+      columns: ["sender_profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "messages_thread_id_fkey"
+      columns: ["thread_id"]
+isOneToOne: false
+      referencedRelation: "message_threads"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"practice_attempts": {
+                  Row: {
+                    "answers": Json,"created_at": string,"curriculum_unit_id": string,"difficulty": string,"id": string,"institution_id": string,"max_score": number,"questions": Json,"score": number,"student_id": string,"subject_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answers": Json,"created_at"?: string,"curriculum_unit_id": string,"difficulty": string,"id"?: string,"institution_id": string,"max_score": number,"questions": Json,"score": number,"student_id": string,"subject_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "answers"?: Json,"created_at"?: string,"curriculum_unit_id"?: string,"difficulty"?: string,"id"?: string,"institution_id"?: string,"max_score"?: number,"questions"?: Json,"score"?: number,"student_id"?: string,"subject_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "practice_attempts_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "practice_attempts_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "practice_attempts_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "practice_attempts_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"notifications": {
                   Row: {
                     "body": string,"created_at": string,"data": Json | null,"id": string,"institution_id": string,"read_at": string | null,"recipient_user_id": string,"title": string,"type": string,"updated_at": string
@@ -4458,6 +4572,81 @@ isOneToOne: false
                            },
 "link_guardian":
 { Args: { "p_email"?: string,"p_full_name"?: string,"p_guardian_id"?: string,"p_is_primary"?: boolean,"p_phone"?: string,"p_relationship": string,"p_student_id": string }; Returns: Json
+                           },
+"mark_thread_read":
+{ Args: { "p_thread_id": string }; Returns: number
+                           },
+"my_upcoming_exam_papers":
+{ Args: { "p_days"?: number,"p_student_id": string }; Returns: {
+              "duration_minutes": number,"exam_id": string,"exam_name": string,"paper_id": string,"scheduled_at": string,"subject_name": string
+            }[]
+                           },
+"send_message":
+{ Args: { "p_body": string,"p_thread_id": string }; Returns: {
+              "body": string
+,"created_at": string
+,"id": string
+,"institution_id": string
+,"read_at": string | null
+,"sender_profile_id": string
+,"thread_id": string
+,"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "messages"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"start_message_thread":
+{ Args: { "p_body": string,"p_counterpart_id": string,"p_institution_id": string,"p_student_id": string,"p_subject": string }; Returns: {
+              "created_at": string
+,"created_by": string
+,"guardian_id": string
+,"id": string
+,"institution_id": string
+,"last_message_at": string
+,"student_id": string
+,"subject": string
+,"teacher_staff_id": string
+,"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "message_threads"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"submit_practice_attempt":
+{ Args: { "p_answers": Json,"p_curriculum_unit_id": string,"p_difficulty": string,"p_institution_id": string,"p_questions": Json,"p_student_id": string }; Returns: {
+              "answers": Json
+,"created_at": string
+,"curriculum_unit_id": string
+,"difficulty": string
+,"id": string
+,"institution_id": string
+,"max_score": number
+,"questions": Json
+,"score": number
+,"student_id": string
+,"subject_id": string
+,"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "practice_attempts"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"message_thread_names":
+{ Args: { "p_thread_ids": (string)[] }; Returns: {
+              "guardian_name": string,"teacher_name": string,"thread_id": string
+            }[]
+                           },
+"messageable_teachers":
+{ Args: { "p_institution_id": string,"p_student_id": string }; Returns: {
+              "full_name": string,"is_class_teacher": boolean,"staff_id": string,"subject_names": (string)[]
+            }[]
                            },
 "mark_period_attendance":
 { Args: { "p_class_section_id": string,"p_date": string,"p_institution_id": string,"p_period_id": string,"p_records": Json }; Returns: {

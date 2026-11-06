@@ -61,6 +61,7 @@ Verified = typecheck + `pnpm build` passed. Nothing below was exercised in a bro
 | Tokens: warm off-white / graphite-navy, muted teal primary; polish (tabular numbers, balanced text, press feedback, linked-card hover) | `src/app/globals.css` | built, not eyeballed in light/dark |
 | Shared `VARIANTS` + `Reveal` motion helpers; "Demo mode" header badge; dashboard/today skeletons | `motion.tsx`, `header.tsx`, `*/loading.tsx` | typechecked |
 
-Not done (needs backend or a separate pass): teacher lesson-plan/materials/grading/quiz-attempt UI; student self-practice quiz and curriculum topic level; community (no tables/RLS/moderation exist); PTM page (backend exists, no page); per-role dashboard split for admin; three.js visual (not installed, skipped); full login-page redesign.
+Not done (needs backend or a separate pass): teacher lesson-plan/materials/grading/quiz-attempt UI; student self-practice quiz and curriculum topic level; community (no tables/RLS/moderation exist); per-role dashboard split for admin; three.js visual (not installed, skipped); full login-page redesign.
 
 Last verified: 2026-11-06 against branch feat/fabric-public-wave1
+Added after: parent "Meetings" portal tab (list open PTM slots per teacher, book/cancel; guardian only, `ptm.book`) — `portal/meetings/page.tsx`, `modules/ptm/components/PtmSlotButton.tsx`, `PortalNav.tsx`. Typechecked + linted, untested at runtime.

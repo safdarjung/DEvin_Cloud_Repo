@@ -7,6 +7,8 @@ import {
   Bot,
   Briefcase,
   CalendarCheck,
+  CalendarDays,
+  CalendarClock,
   ClipboardList,
   Cog,
   Cpu,
@@ -16,6 +18,11 @@ import {
   GraduationCap,
   LayoutDashboard,
   Lightbulb,
+  MessageSquare,
+  MessagesSquare,
+  ListChecks,
+  NotebookPen,
+  NotebookText,
   Palette,
   Puzzle,
   Shield,
@@ -24,7 +31,6 @@ import {
   Sun,
   Target,
   TrendingUp,
-  User,
   UserCircle,
   Users,
   Zap,
@@ -56,6 +62,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // No dedicated "portal.view" permission exists (07 §2.2); exam.recheck.request
   // is the only row granted to exactly {student, guardian} and no staff role,
   // which is exactly who the portal link is for.
+  { href: "/assistant", label: "Ask the data", icon: MessageSquare, permission: "dashboard.view", group: "Overview", module: "ai_teacher" },
   { href: "/portal", label: "Portal", icon: UserCircle, permission: "exam.recheck.request", group: "Overview" },
   { href: "/students", label: "Students", icon: Users, permission: "student.read", group: "Academics" },
   { href: "/attendance", label: "Attendance", icon: CalendarCheck, permission: "attendance.read", group: "Academics" },
@@ -64,6 +71,9 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // T-020: owner/principal/exam_controller only (07 §2.2 exam.recheck.review
   // excludes admin, unlike exam.result.read above).
   { href: "/exams/rechecks", label: "Rechecks", icon: ClipboardList, permission: "exam.recheck.review", group: "Academics", module: "exams" },
+  { href: "/lesson-plans", label: "Lesson plans", icon: NotebookText, permission: "diary.write", group: "Academics", module: "lesson_plans" },
+  { href: "/question-bank", label: "Question bank", icon: ListChecks, permission: "question.manage", group: "Academics", module: "question_bank" },
+  { href: "/timetable", label: "Timetable", icon: CalendarDays, permission: "timetable.read", group: "Academics", module: "timetable" },
   { href: "/admissions", label: "Admissions", icon: ClipboardList, permission: "admissions.enquiry.read", group: "Operations", module: "admissions" },
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read", group: "Operations" },
   { href: "/website", label: "Website", icon: Globe, permission: "website.edit", group: "Operations", module: "website" },
@@ -71,6 +81,11 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // see this link too (the page itself shows "not available yet" for them).
   { href: "/ai", label: "AI Assistant", icon: Bot, permission: "ai.generate", group: "Communication", module: "ai_teacher" },
   { href: "/notifications", label: "Notifications", icon: Bell, permission: "notification.read", group: "Communication" },
+  { href: "/messages", label: "Messages", icon: MessagesSquare, permission: "message.read", group: "Communication", module: "messaging" },
+  { href: "/diary", label: "Class diary", icon: NotebookPen, permission: "diary.write", group: "Communication", module: "diary" },
+  // One page, two jobs: admins schedule meeting days, teachers open their slots (deduped by href below).
+  { href: "/ptm", label: "Parent meetings", icon: CalendarClock, permission: "ptm.manage", group: "Communication", module: "ptm" },
+  { href: "/ptm", label: "Parent meetings", icon: CalendarClock, permission: "ptm.slot.manage", group: "Communication", module: "ptm" },
   { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read", group: "Admin" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage", group: "Admin" },
   { href: "/settings/modules", label: "Modules", icon: Puzzle, permission: "institution.settings.manage", group: "Admin" },
@@ -86,7 +101,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/fabric/studio", label: "Custom Studio", icon: Palette, permission: "dashboard.view", group: "Fabric", demoOnly: true },
   { href: "/fabric/data", label: "Data & integrations", icon: Database, permission: "dashboard.view", group: "Fabric" },
   { href: "/fabric/trust", label: "Trust & governance", icon: Shield, permission: "dashboard.view", group: "Fabric" },
-  { href: "/me", label: "Personal AI", icon: User, permission: "ai.generate", group: "Personal" },
 ] as const;
 
 // Portal users (the same exam.recheck.request marker as the Portal link) hold
@@ -97,7 +111,9 @@ const PORTAL_NAV_HREFS = new Set(["/portal", "/notifications"]);
 export function navItemsFor(permissions: ReadonlySet<Permission>, settings?: Record<string, unknown>, _isDemo = false): NavItem[] {
   const isPortalUser = permissions.has("exam.recheck.request");
   const hasDashboard = permissions.has("dashboard.view");
+  const seen = new Set<string>();
   return NAV_ITEMS.filter((item) => {
+    if (seen.has(item.href)) return false;
     if (!permissions.has(item.permission)) return false;
     if (isPortalUser && !PORTAL_NAV_HREFS.has(item.href)) return false;
     if (item.href === "/today" && hasDashboard) return false;
@@ -105,6 +121,7 @@ export function navItemsFor(permissions: ReadonlySet<Permission>, settings?: Rec
     // Fabric pages themselves require dashboard.view; hide the link from roles that would get a 403.
     if (item.group === "Fabric" && !hasDashboard) return false;
     if (item.module && settings && !isModuleEnabled({ institution: { settings } }, item.module)) return false;
+    seen.add(item.href);
     return true;
   });
 }

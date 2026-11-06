@@ -33,6 +33,8 @@ import "@/modules/library/actions";
 import "@/modules/library/circulation.actions";
 import "@/modules/lifecycle/actions";
 import "@/modules/mastery/actions";
+import "@/modules/messaging/actions";
+import "@/modules/practice/actions";
 import "@/modules/notifications/actions";
 import "@/modules/notifications/announcements.actions";
 import "@/modules/people/actions";
