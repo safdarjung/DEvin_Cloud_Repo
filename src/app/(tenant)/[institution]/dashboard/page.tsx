@@ -5,7 +5,6 @@ import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
-import { InsightCarousel, type CarouselInsight } from "@/components/widgets/insight-carousel";
 import { KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
@@ -29,20 +28,14 @@ import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing
 import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
-import { demoFixturesEnabled, demoInsights, type InsightRole } from "@/modules/core/demo/fixtures";
 import { listExams, listRecheckQueue, listSectionOptions } from "@/modules/exams/queries";
 import { upcomingExamPapers } from "@/modules/exams/upcoming.queries";
 import { forecastCards as realForecastCards } from "@/modules/forecasts/queries";
 import { insightCards, priorityActions as realPriorityActions, riskIndicators as realRiskIndicators } from "@/modules/insights/derived";
 import { CommandGrid, type GridCard } from "@/modules/fabric/components/command/command-grid";
-import { DailyBriefWidget } from "@/modules/fabric/components/command/daily-brief";
 import { ForecastCards } from "@/modules/fabric/components/command/forecast-cards";
 import { PriorityActionsWidget } from "@/modules/fabric/components/command/priority-actions";
 import { RiskIndicators } from "@/modules/fabric/components/command/risk-indicators";
-import { SEVERITY } from "@/modules/fabric/components/command/severity";
-import { startOfToday } from "@/modules/fabric/components/fabric-page";
-import { dailyBrief, forecastCards, priorityActions, riskIndicators } from "@/modules/fabric/demo/command";
-import { insights as fabricInsights } from "@/modules/fabric/demo/insights";
 import { examStatusVariant, recheckStatusVariant } from "@/modules/exams/status";
 import { listDefaulters } from "@/modules/finance/queries";
 import { staffAvailabilityToday } from "@/modules/people/hr.queries";
@@ -83,7 +76,7 @@ function FailedWidget({ title, className }: { title: string; className?: string 
   );
 }
 
-function Insights({ items, className }: { items: ReturnType<typeof demoInsights>; className?: string }) {
+function Insights({ items, className }: { items: Awaited<ReturnType<typeof insightCards>>; className?: string }) {
   return (
     <section aria-labelledby="insights" className={cn("min-w-0 space-y-3", className)}>
       <h2 id="insights" className="text-sm font-medium">
@@ -172,7 +165,6 @@ export default async function DashboardPage({
   const now = new Date();
   const basePath = `/${institutionSlug}`;
   const todayIso = now.toLocaleDateString("en-CA", { timeZone: TZ });
-  const demo = demoFixturesEnabled(ctx);
 
   const hour = Number(hourFmt.format(now));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -193,10 +185,10 @@ export default async function DashboardPage({
     ?.filter((e) => (e.endsAt ?? e.startsAt) >= now.toISOString())
     .slice(0, 4);
 
-  // Real (non-demo) insight/forecast data. Gated on permission + module flag; a
+  // Insight/forecast data (demo tenant included). Gated on permission + module flag; a
   // rejected query becomes a FailedWidget, never a fabricated number.
-  const canInsights = !demo && hasPermission(ctx, "insight.read");
-  const canForecasts = !demo && hasPermission(ctx, "forecast.read");
+  const canInsights = hasPermission(ctx, "insight.read");
+  const canForecasts = hasPermission(ctx, "forecast.read");
   const insightsOn = canInsights && isModuleEnabled(ctx, "insights");
   const forecastsOn = canForecasts && isModuleEnabled(ctx, "forecasts");
   const [prioR, riskR, cardsR, forecastR] = await Promise.allSettled([
@@ -210,19 +202,7 @@ export default async function DashboardPage({
   }
   const realCards = value(cardsR);
 
-  const insightRole: InsightRole = isLeader ? "principal" : role === "admissions" || role === "accountant" ? role : "exam_controller";
-  const insights = demo
-    ? demoInsights(insightRole, {
-        attendancePct: canAttendance ? data.attendanceToday.percentage : undefined,
-        lowAttendanceSections: canAttendance ? data.sectionsAtRisk.length : undefined,
-        openEnquiries: canEnquiries ? openEnquiries : undefined,
-        outstandingFees: collections ? outstandingPaise / 100 : undefined,
-        overdueInvoices: defaulters ? overdue.length : undefined,
-        basePath,
-      })
-    : realCards && realCards.length > 0
-      ? realCards
-      : null;
+  const insights = realCards && realCards.length > 0 ? realCards : null;
 
   const icon = "size-4";
   const quickActions = (
@@ -602,16 +582,6 @@ export default async function DashboardPage({
     // Lower grid: everything that is not first-screen, still reorderable.
     const cards: GridCard[] = [];
     const add = (id: string, title: string, span: string, node: ReactNode) => node && cards.push({ id, title, span, node });
-    // Fabric widgets run on deterministic demo fixtures, so they only exist for the demo tenant.
-    const fOpts = { now: startOfToday(), institutionId: ctx.institution.id };
-    if (demo) {
-      add("brief", "Today's brief", WIDE, <DailyBriefWidget brief={dailyBrief(fOpts, "principal")} base={basePath} />);
-      add("priorities", "Priorities", NARROW, <PriorityActionsWidget actions={priorityActions(fOpts).slice(0, 5)} base={basePath} />);
-      add("forecasts", "Forecasts", FULL, <ForecastCards cards={forecastCards(fOpts)} base={basePath} />);
-      add("risks", "Risks", NARROW, <RiskIndicators risks={riskIndicators(fOpts)} base={basePath} />);
-      const carousel: CarouselInsight[] = fabricInsights(fOpts).slice(0, 4).map((i) => ({ id: i.id, title: i.title, body: i.pattern, severityLabel: SEVERITY[i.severity].label, confidence: i.confidence, href: `${basePath}/fabric/insights?id=${i.id}` }));
-      add("carousel", "Insight highlights", NARROW, <InsightCarousel items={carousel} allHref={`${basePath}/fabric/insights`} />);
-    }
     if (canInsights || canForecasts) {
       const off = (title: string, d: string) => (
         <Widget title={title}>

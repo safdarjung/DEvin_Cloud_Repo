@@ -20,7 +20,6 @@ import { curriculumCoverageBySection } from "@/modules/academics/curriculum.quer
 import { submissionsForAssignment } from "@/modules/academics/submissions.queries";
 import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getSession, getTodaySectionsForTeacher } from "@/modules/attendance/queries";
-import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
 import { getMyPapers } from "@/modules/exams/queries";
 import { insightCards } from "@/modules/insights/derived";
 import { examStatusVariant } from "@/modules/exams/status";
@@ -121,17 +120,15 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
   const pending = sections.filter((s) => s.status !== "submitted");
   const registerHref = (sectionId: string) => `${basePath}/attendance/${sectionId}?date=${today}`;
 
-  const demo = demoFixturesEnabled(ctx);
-  // Real insights (RLS narrows a teacher to their taught sections). Non-demo only;
-  // a failed query shows nothing rather than invented cards.
-  const realInsights =
-    !demo && hasPermission(ctx, "insight.read") && isModuleEnabled(ctx, "insights")
+  // Real insights (RLS narrows a teacher to their taught sections); a failed query
+  // shows nothing rather than invented cards.
+  const insights =
+    hasPermission(ctx, "insight.read") && isModuleEnabled(ctx, "insights")
       ? await insightCards(ctx, { limit: 3 }).catch((e: unknown) => {
           console.error("today insights fetch failed:", e instanceof Error ? e.message : e);
           return [];
         })
       : [];
-  const insights = demo ? demoInsights("teacher", { pendingMarks: papers.length, basePath }) : realInsights;
 
   const quickActions: QuickAction[] = [
     ...(canManageAssignments ? [{ href: `${basePath}/assignments/new`, label: "New assignment", icon: <FilePlus2 className="size-4" /> }] : []),

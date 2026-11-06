@@ -6,7 +6,6 @@ import { AnimatedNumber, Stagger, StaggerItem } from "@/components/motion";
 import { ErrorState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
-import { AIInsightCard } from "@/components/widgets/ai-insight-card";
 import { KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
@@ -18,7 +17,6 @@ import { listStudentAssignments } from "@/modules/academics/assignments.queries"
 import { mySubmissions } from "@/modules/academics/submissions.queries";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { attendanceTrend, getStudentAttendanceSummary } from "@/modules/attendance/queries";
-import { demoFixturesEnabled, demoInsights } from "@/modules/core/demo/fixtures";
 import { UpcomingExams } from "@/modules/exams/components/UpcomingExams";
 import { listResultsForStudent, upcomingExamsForStudent } from "@/modules/exams/queries";
 import { streakText } from "@/modules/practice/components/PracticeHistory";
@@ -158,15 +156,6 @@ export default async function PortalOverviewPage({
   const unpaid = invoices.filter((inv) => inv.total - inv.paidTotal > 0);
   const nextDue = unpaid.map((inv) => inv.dueOn).filter((d): d is string => d !== null).sort()[0];
 
-  // CLAUDE.md rule 7 demo exception: fixtures render unbadged, demo tenant only.
-  const demo = demoFixturesEnabled(ctx);
-  const insights = demo
-    ? demoInsights(isGuardian ? "guardian" : "student", { attendancePct, outstandingFees: outstanding, basePath: `/${institutionSlug}` }).map((i) => ({
-        ...i,
-        suggestedAction: { ...i.suggestedAction, href: i.suggestedAction.href && `${i.suggestedAction.href}${q}` },
-      }))
-    : null;
-
   const feesHref = `${basePath}/fees${q}`;
   const kpis = [
     <KpiTile
@@ -248,15 +237,6 @@ export default async function PortalOverviewPage({
   const latestResults = (
     <ListWidget key="res" title="Recent results" icon={<GraduationCap />} action={{ href: `${basePath}/results${q}`, label: "All results" }} rows={resultRows} emptyTitle="No published results yet" />
   );
-  const insightCards = insights && (
-    <Widget key="ins" title={isGuardian ? `Insights about ${firstName}` : "Study insights"} icon={<Sparkles />}>
-      <div className="grid gap-3">
-        {insights.map((i) => (
-          <AIInsightCard key={i.title} {...i} />
-        ))}
-      </div>
-    </Widget>
-  );
   // GU-08 — ai.study is student-only (D32); a guardian never has it, so the
   // card simply doesn't render for them.
   const studyHelper = hasPermission(ctx, "ai.study") && (
@@ -332,8 +312,8 @@ export default async function PortalOverviewPage({
   );
 
   const sections = isGuardian
-    ? [feesDue, attendanceTrendWidget, latestResults, homework, timetable, announcements, insightCards, schoolEvents, notificationFeed]
-    : [timetable, homework, upcomingExams, announcements, attendanceTrendWidget, latestResults, schoolEvents, notificationFeed, studyHelper, insightCards];
+    ? [feesDue, attendanceTrendWidget, latestResults, homework, timetable, announcements, schoolEvents, notificationFeed]
+    : [timetable, homework, upcomingExams, announcements, attendanceTrendWidget, latestResults, schoolEvents, notificationFeed, studyHelper];
 
   return (
     <>
