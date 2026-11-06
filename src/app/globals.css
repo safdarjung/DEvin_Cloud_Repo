@@ -279,7 +279,7 @@ a:focus-visible > [data-slot="card"] {
   box-shadow: var(--shadow-md);
 }
 a > [data-slot="card"] {
-  transition-property: border-color, box-shadow;
+  transition-property: border-color, box-shadow, transform;
   transition-duration: var(--duration-normal);
   transition-timing-function: var(--ease-out);
 }
@@ -287,4 +287,19 @@ a > [data-slot="card"] {
 @keyframes draw {
   from { stroke-dashoffset: 1; }
   to { stroke-dashoffset: 0; }
+}
+
+/* Page entrance: subtle rise, staggered; zeroed by the reduced-motion block. */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+#main-content > * {
+  animation: rise var(--duration-slow) var(--ease-out) both;
+}
+#main-content > :nth-child(2) { animation-delay: 40ms; }
+#main-content > :nth-child(3) { animation-delay: 80ms; }
+#main-content > :nth-child(n+4) { animation-delay: 120ms; }
+a > [data-slot="card"]:hover {
+  transform: translateY(-2px);
 }
