@@ -38,6 +38,9 @@ export function TenantHeader({
         <MobileNav items={navItems} />
         <span className="hidden truncate font-semibold min-[400px]:inline">{institutionName}</span>
         <RoleBadge role={role} />
+        {isDemo && (
+          <span className="hidden rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-foreground sm:inline">Demo mode · sample data</span>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <CommandPalette

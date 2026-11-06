@@ -9,6 +9,10 @@ const FABRIC_HREFS = [
   "/fabric/simulator", "/fabric/twin", "/fabric/agents", "/fabric/marketplace", "/fabric/studio",
   "/fabric/data", "/fabric/trust",
 ];
+// Permission-gated links (insight.read / forecast.read / agent.run): staff roles
+// without them don't get dead pages. Demo tenant, no module settings.
+const NO_FORECAST_AGENT = FABRIC_HREFS.filter((h) => h !== "/fabric/finance-intel" && h !== "/fabric/agents");
+const NO_AGENT = FABRIC_HREFS.filter((h) => h !== "/fabric/agents");
 const EXPECTED_HREFS: Record<Role, string[]> = {
   owner: [
     ...FABRIC_HREFS, "/me",
@@ -60,9 +64,9 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/jobs",
     "/settings/modules",
   ],
-  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...FABRIC_HREFS, "/me"],
-  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...FABRIC_HREFS],
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...FABRIC_HREFS],
+  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, "/me"],
+  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_AGENT],
   teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/me"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
@@ -73,7 +77,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
 describe("navItemsFor", () => {
   for (const role of Object.keys(EXPECTED_HREFS) as Role[]) {
     it(`matches the expected link set for ${role}`, () => {
-      const hrefs = navItemsFor(new Set(permissionsFor(role))).map((item) => item.href);
+      const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true).map((item) => item.href);
       expect(new Set(hrefs)).toEqual(new Set(EXPECTED_HREFS[role]));
     });
   }

@@ -1,7 +1,8 @@
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { demoFixturesEnabled } from "@/modules/core/demo/fixtures";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
-import { WorkspaceSkeleton } from "@/modules/fabric/components/workspace-skeleton";
+import { PlannedWorkspace } from "@/modules/fabric/components/planned-workspace";
 
 export default async function StudentSuccessPage({
   params,
@@ -14,7 +15,7 @@ export default async function StudentSuccessPage({
 
   return (
     <FabricPage title="Student success" ws="students">
-      <WorkspaceSkeleton packet="F-UI-04" />
+      <PlannedWorkspace demo={demoFixturesEnabled(ctx)} packet="F-UI-04" name="Student success" base={`/${institutionSlug}`} />
     </FabricPage>
   );
 }

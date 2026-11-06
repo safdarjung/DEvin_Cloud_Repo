@@ -1,9 +1,11 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
 import { Banknote, CalendarCheck, FilePlus, GraduationCap, UserPlus } from "lucide-react";
 import type { QuickAction } from "@/components/tenant/command-palette";
 import { BellLoader } from "@/components/tenant/bell-loader";
 import { Bell } from "@/modules/notifications/components/Bell";
+import { BottomNav } from "@/components/tenant/bottom-nav";
 import { TenantHeader } from "@/components/tenant/header";
 import { SIDEBAR_COOKIE, TenantSidebar } from "@/components/tenant/sidebar";
 import { getTenantContext } from "@/lib/auth/context";
@@ -13,6 +15,8 @@ import { getClaims } from "@/lib/supabase/server";
 import { startOfToday } from "@/modules/fabric/components/fabric-page";
 import { FabricProvider } from "@/modules/fabric/components/fabric-provider";
 import { fabricSeed } from "@/modules/fabric/components/fabric-seed";
+
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
 export default async function TenantLayout({
   children,
@@ -24,7 +28,7 @@ export default async function TenantLayout({
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
   const hasNotifications = ctx.permissions.has("notification.read");
-  const navItems = navItemsFor(ctx.permissions, ctx.institution.settings).map(({ href, label, icon: Icon, group }) => ({
+  const navItems = navItemsFor(ctx.permissions, ctx.institution.settings, ctx.institution.is_demo).map(({ href, label, icon: Icon, group }) => ({
     href: `/${ctx.institution.slug}${href}`,
     label,
     icon: <Icon className="size-4 shrink-0" aria-hidden />,
@@ -101,7 +105,7 @@ export default async function TenantLayout({
       />
       <div className="flex flex-1">
         <TenantSidebar items={navItems} defaultCollapsed={sidebarCollapsed} />
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 outline-none sm:px-6 lg:px-8">
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-6">
           <div className="mx-auto w-full max-w-7xl">
             <FabricProvider seed={fabricSeed({ now: startOfToday(), institutionId: ctx.institution.id }, ctx.user.id)}>
               {children}
@@ -109,6 +113,7 @@ export default async function TenantLayout({
           </div>
         </main>
       </div>
+      <BottomNav items={navItems} />
     </div>
   );
 }
