@@ -1,15 +1,17 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { humanize } from "@/lib/format";
+import { sectionLabel } from "@/components/breadcrumbs";
 
-/** Vision-style navbar caption: "Pages / <section>" over the institution name. */
+/** Topbar breadcrumb: "<school> / <section>". Deeper trails live in PageHeader. */
 export function HeaderCrumb({ institutionName }: { institutionName: string }) {
-  const section = usePathname().split("/")[2];
+  const label = sectionLabel(usePathname() ?? "");
   return (
-    <span className="hidden min-w-0 flex-col leading-tight min-[400px]:flex">
-      <span className="truncate text-xs text-muted-foreground">Pages / {section ? humanize(section) : "Home"}</span>
-      <span className="truncate text-sm font-bold">{institutionName}</span>
-    </span>
+    <nav aria-label="Location" className="hidden min-w-0 items-center gap-1 text-sm min-[400px]:flex">
+      <span className="hidden truncate text-muted-foreground sm:inline">{institutionName}</span>
+      <ChevronRight className="hidden size-3.5 shrink-0 text-muted-foreground sm:inline" aria-hidden />
+      <span className="truncate font-semibold text-foreground">{label}</span>
+    </nav>
   );
 }

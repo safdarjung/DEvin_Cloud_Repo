@@ -2,7 +2,7 @@
 // the honesty labels (CLAUDE.md rule 7) for a simulated/limited figure.
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { AnimatedNumber, type NumberFormat } from "@/components/motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "cn";
@@ -28,11 +28,11 @@ export interface KpiTileProps {
 
 function DeltaChip({ value, label, positiveIsGood = true }: KpiDelta) {
   const tone = value === 0 ? "neutral" : value > 0 === positiveIsGood ? "good" : "bad";
-  const Icon = value === 0 ? Minus : value > 0 ? ArrowUpRight : ArrowDownRight;
+  const Icon = value === 0 ? Minus : value > 0 ? ArrowUp : ArrowDown;
   return (
     <span
       className={cn(
-        "mt-2 inline-flex items-center gap-1 text-xs font-medium tabular-nums",
+        "mt-2 inline-flex items-center gap-1 text-xs font-semibold tabular-nums",
         tone === "good" && "text-success",
         tone === "bad" && "text-destructive",
         tone === "neutral" && "text-muted-foreground",
@@ -47,13 +47,13 @@ function DeltaChip({ value, label, positiveIsGood = true }: KpiDelta) {
 
 export function KpiTile({ label, value, animateTo, format, sub, href, badge, delta }: KpiTileProps) {
   const card = (
-    <Card className={cn("h-full", href && "group-hover/kpi:border-foreground/20")}>
+    <Card className={cn("h-full", href && "group-hover/kpi:border-ring/60 group-hover/kpi:shadow-sm")}>
       <CardContent className="flex flex-col">
-        <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
+        <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           {label}
           {badge}
         </p>
-        <p className="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums">
+        <p className="mt-1.5 text-[26px] leading-tight font-bold tracking-tight tabular-nums break-words sm:text-[28px] 2xl:text-[32px]">
           {animateTo === undefined ? value : <AnimatedNumber value={animateTo} format={format} />}
         </p>
         {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}
@@ -63,7 +63,7 @@ export function KpiTile({ label, value, animateTo, format, sub, href, badge, del
   );
 
   return href ? (
-    <Link href={href} className="group/kpi block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    <Link href={href} className="group/kpi block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
       {card}
     </Link>
   ) : (
@@ -73,3 +73,24 @@ export function KpiTile({ label, value, animateTo, format, sub, href, badge, del
 
 /** Named alias: the KPI tile with its optional `delta` chip. */
 export const KpiWidget = KpiTile;
+
+/**
+ * Kit `tile_count` row: tiles share one card, split by 2px vertical dividers
+ * (clipped on the first tile of each row). Children are `KpiTile`/`KpiWidget`.
+ * Usage: `<KpiStrip><KpiTile label="Students" value="412" /> ...</KpiStrip>`
+ */
+export function KpiStrip({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn("overflow-hidden rounded-lg border bg-card", className)}>
+      <div
+        className={cn(
+          "-mt-px -ml-0.5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6",
+          "*:border-t *:border-l-2 *:border-border",
+          "[&_[data-slot=card]]:rounded-none [&_[data-slot=card]]:border-0 [&_[data-slot=card]]:bg-transparent",
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}

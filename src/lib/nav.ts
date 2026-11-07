@@ -4,11 +4,14 @@ import {
   BarChart3,
   Bell,
   Book,
+  BookOpen,
+  BookText,
   Bot,
   Briefcase,
   CalendarCheck,
   CalendarDays,
   CalendarClock,
+  CalendarOff,
   ClipboardList,
   Cog,
   Cpu,
@@ -18,6 +21,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Lightbulb,
+  Megaphone,
   MessageSquare,
   MessagesSquare,
   ListChecks,
@@ -35,11 +39,14 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import type { Permission } from "@/lib/auth/permissions";
+import type { Permission, Role } from "@/lib/auth/permissions";
 import type { ModuleKey } from "@/lib/modules/catalog";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 
-export type NavGroup = "Overview" | "Academics" | "Operations" | "Communication" | "Admin" | "Fabric" | "Personal";
+export type NavGroup =
+  | "Overview" | "Academics" | "Operations" | "Communication" | "Admin" | "Fabric" | "Personal"
+  // Portal-only sections (student / guardian sidebars).
+  | "My child" | "Learning" | "Academic" | "Updates";
 
 export interface NavItem {
   href: string;
@@ -76,6 +83,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/timetable", label: "Timetable", icon: CalendarDays, permission: "timetable.read", group: "Academics", module: "timetable" },
   { href: "/admissions", label: "Admissions", icon: ClipboardList, permission: "admissions.enquiry.read", group: "Operations", module: "admissions" },
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read", group: "Operations" },
+  // The page requires finance.structure.manage (owner/principal/admin), not finance.read.
+  { href: "/finance/ledger", label: "Ledger", icon: BookText, permission: "finance.structure.manage", group: "Operations" },
   { href: "/website", label: "Website", icon: Globe, permission: "website.edit", group: "Operations", module: "website" },
   // T-0NN: teacher-only tool-calling agent (D28); other `ai.generate` roles
   // see this link too (the page itself shows "not available yet" for them).
@@ -106,17 +115,65 @@ export const NAV_ITEMS: readonly NavItem[] = [
 
 // Portal users (the same exam.recheck.request marker as the Portal link) hold
 // read permissions for their own child's data, but the staff module pages
-// aren't built for them — the portal tabs are. UI only; RLS still governs data.
-const PORTAL_NAV_HREFS = new Set(["/portal", "/notifications"]);
+// aren't built for them. Their sidebar is the portal's own page set (formerly
+// the PortalNav tab strip), same visibility rules the tabs had. UI only; RLS
+// still governs data. Module keys mirror what each portal page enforces.
+const P = "exam.recheck.request" as const;
+const portal = (href: string, label: string, icon: LucideIcon, group: NavGroup, module?: ModuleKey): NavItem => ({
+  href: `/portal${href}`,
+  label,
+  icon,
+  permission: P,
+  group,
+  module,
+});
 
-export function navItemsFor(permissions: ReadonlySet<Permission>, settings?: Record<string, unknown>, _isDemo = false): NavItem[] {
-  const isPortalUser = permissions.has("exam.recheck.request");
+export const GUARDIAN_NAV: readonly NavItem[] = [
+  portal("", "Overview", UserCircle, "My child"),
+  portal("/attendance", "Attendance", CalendarCheck, "My child", "attendance"),
+  portal("/results", "Results", GraduationCap, "My child", "exams"),
+  portal("/assignments", "Assignments", FileText, "My child", "assignments"),
+  portal("/updates", "Updates", Megaphone, "My child"),
+  portal("/fees", "Fees", Banknote, "My child", "fees"),
+  portal("/messages", "Messages", MessagesSquare, "Communication", "messaging"),
+  portal("/meetings", "Meetings", CalendarClock, "Communication", "ptm"),
+  portal("/assistant", "Ask AI", Bot, "Communication"),
+  portal("/leave", "Leave", CalendarOff, "Communication"),
+  portal("/surveys", "Surveys", ClipboardList, "Communication"),
+  portal("/notifications", "Notifications", Bell, "Communication"),
+];
+
+export const STUDENT_NAV: readonly NavItem[] = [
+  portal("", "Overview", UserCircle, "Overview"),
+  portal("/subjects", "Subjects", Book, "Learning"),
+  { ...portal("/study", "Study", BookOpen, "Learning"), permission: "ai.study" },
+  { ...portal("/practice", "Practice", Target, "Learning", "practice"), permission: "ai.study" },
+  portal("/assignments", "Assignments", FileText, "Academic", "assignments"),
+  portal("/results", "Results", GraduationCap, "Academic", "exams"),
+  portal("/attendance", "Attendance", CalendarCheck, "Academic", "attendance"),
+  portal("/fees", "Fees", Banknote, "Academic", "fees"),
+  portal("/notifications", "Notifications", Bell, "Updates"),
+];
+
+/**
+ * `role` picks the portal list for student/guardian members. Omitted, it is
+ * inferred from `assignment.submit`, which only students hold.
+ */
+export function navItemsFor(
+  permissions: ReadonlySet<Permission>,
+  settings?: Record<string, unknown>,
+  _isDemo = false,
+  role?: Role,
+): NavItem[] {
+  const isPortalUser = permissions.has(P);
   const hasDashboard = permissions.has("dashboard.view");
+  const portalRole = role ?? (permissions.has("assignment.submit") ? "student" : "guardian");
+  const source = isPortalUser ? (portalRole === "student" ? STUDENT_NAV : GUARDIAN_NAV) : NAV_ITEMS;
   const seen = new Set<string>();
-  return NAV_ITEMS.filter((item) => {
+  return source.filter((item) => {
     if (seen.has(item.href)) return false;
+    // Portal Overview/Notifications are gated by the marker only; Study/Practice also need ai.study.
     if (!permissions.has(item.permission)) return false;
-    if (isPortalUser && !PORTAL_NAV_HREFS.has(item.href)) return false;
     if (item.href === "/today" && hasDashboard) return false;
     if (item.demoOnly) return false;
     // Fabric pages themselves require dashboard.view; hide the link from roles that would get a 403.

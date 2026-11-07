@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Bell, LogOut, Monitor, Moon, Sun, Users } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
 import { demoLogin } from "@/app/(auth)/login/actions";
 import { DEMO_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { RoleBadge } from "@/components/tenant/role-badge";
@@ -37,6 +37,7 @@ export function UserMenu({
   role,
   notificationsHref,
   isDemo,
+  isPlatformAdmin,
 }: {
   name: string;
   email?: string;
@@ -45,6 +46,8 @@ export function UserMenu({
   notificationsHref?: string;
   /** Demo tenants only: shows the role switcher. */
   isDemo?: boolean;
+  /** Shows the "Platform console" link (/platform). */
+  isPlatformAdmin?: boolean;
 }) {
   const { theme, setTheme } = useTheme();
   const [switching, startSwitch] = useTransition();
@@ -63,11 +66,13 @@ export function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Account menu"
-        className="flex min-h-10 min-w-10 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex min-h-10 min-w-10 items-center justify-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring md:pr-2"
       >
         <Avatar>
           <AvatarFallback className="text-xs font-medium">{initials(name)}</AvatarFallback>
         </Avatar>
+        <span className="hidden max-w-32 truncate text-sm font-medium md:inline">{name}</span>
+        <ChevronDown className="hidden size-3.5 text-muted-foreground md:inline" aria-hidden />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64">
         <div className="space-y-1 px-1.5 py-1.5">
@@ -77,15 +82,12 @@ export function UserMenu({
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuRadioGroup value={theme ?? "system"} onValueChange={setTheme}>
+        <DropdownMenuRadioGroup value={theme ?? "light"} onValueChange={setTheme}>
           <DropdownMenuRadioItem value="light" className={item}>
             <Sun aria-hidden /> Light
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem value="dark" className={item}>
             <Moon aria-hidden /> Dark
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system" className={item}>
-            <Monitor aria-hidden /> System
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         {isDemo && (
@@ -112,6 +114,13 @@ export function UserMenu({
           <DropdownMenuItem asChild className={item}>
             <Link href={notificationsHref}>
               <Bell aria-hidden /> Notifications
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {isPlatformAdmin && (
+          <DropdownMenuItem asChild className={item}>
+            <Link href="/platform">
+              <ShieldCheck aria-hidden /> Platform console
             </Link>
           </DropdownMenuItem>
         )}

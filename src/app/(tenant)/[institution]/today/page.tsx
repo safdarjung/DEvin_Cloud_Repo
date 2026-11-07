@@ -1,13 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BookOpenCheck, CalendarDays, ClipboardCheck, ClipboardList, FilePlus2, FileCheck2, Megaphone, PenLine } from "lucide-react";
-import { Stagger, StaggerItem } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
-import { KpiTile } from "@/components/widgets/kpi-widget";
+import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
@@ -189,7 +188,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     isModuleEnabled(ctx, "timetable") &&
     settled(
       timetableR,
-      (periods) => <TimetableWidget className="lg:order-first" title="Today's timetable" description={dayLabel.format(now)} periods={periods} />,
+      (periods) => <TimetableWidget title="Today's timetable" description={dayLabel.format(now)} periods={periods} />,
       "Today's timetable",
     );
 
@@ -403,39 +402,37 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
         }
       />
 
-      <Stagger className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-        {kpis.map((k) => (
-          <StaggerItem key={k.label}>
-            <KpiTile label={k.label} value={k.n === undefined ? "—" : String(k.n)} animateTo={k.n} href={k.href} />
-          </StaggerItem>
-        ))}
-      </Stagger>
+      {kpis.length > 0 && (
+        <KpiStrip>
+          {kpis.map((k) => (
+            <KpiTile key={k.label} label={k.label} value={k.n === undefined ? "—" : String(k.n)} animateTo={k.n} href={k.href} />
+          ))}
+        </KpiStrip>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-        <div className="flex min-w-0 flex-col gap-6">
-          {timetableWidget}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           {sectionsWidget}
+          {timetableWidget}
         </div>
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="flex min-w-0 flex-col gap-4">
           {papersWidget}
           {submissionsWidget}
           {leaveWidget}
         </div>
-        <div className="flex min-w-0 flex-col gap-6">
-          {ptmWidget}
-          {coverageWidget}
-          {assignmentsWidget}
-          <QuickActions actions={quickActions} />
-          {insights.map((insight) => (
-            <AIInsightCard key={insight.title} {...insight} />
-          ))}
-        </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {notificationsWidget}
-        {noticesWidget}
-        {eventsWidget}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {[
+          ptmWidget,
+          coverageWidget,
+          assignmentsWidget,
+          quickActions.length > 0 && <QuickActions actions={quickActions} />,
+          ...insights.map((insight) => <AIInsightCard key={insight.title} {...insight} />),
+          notificationsWidget,
+          noticesWidget,
+          eventsWidget,
+        ].map((node, i) => node && <div key={i} className="min-w-0 [&>*]:h-full">{node}</div>)}
       </div>
     </div>
   );

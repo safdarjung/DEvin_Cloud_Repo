@@ -31,6 +31,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/exams",
     "/exams/rechecks",
     "/finance",
+    "/finance/ledger",
     "/website",
     "/ai",
     "/ai/usage",
@@ -51,6 +52,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/exams",
     "/exams/rechecks",
     "/finance",
+    "/finance/ledger",
     "/website",
     "/ai",
     "/ai/usage",
@@ -70,6 +72,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/assignments",
     "/exams",
     "/finance",
+    "/finance/ledger",
     "/website",
     "/ai",
     "/ai/usage",
@@ -80,20 +83,28 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/diary", "/lesson-plans", "/ptm", "/timetable", "/assistant", "/messages",
   ],
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
-  accountant: ["/dashboard", "/students", "/finance", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
+  accountant: ["/dashboard", "/students", "/finance", "/finance/ledger", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
   exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/timetable", "/assistant"],
   teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
-  student: ["/notifications", "/portal"],
-  guardian: ["/notifications", "/portal"],
+  // They get the portal's own sidebar (formerly PortalNav's tab strip).
+  student: [
+    "/portal", "/portal/subjects", "/portal/study", "/portal/practice", "/portal/assignments",
+    "/portal/results", "/portal/attendance", "/portal/fees", "/portal/notifications",
+  ],
+  guardian: [
+    "/portal", "/portal/attendance", "/portal/results", "/portal/assignments", "/portal/updates",
+    "/portal/fees", "/portal/messages", "/portal/meetings", "/portal/assistant", "/portal/leave",
+    "/portal/surveys", "/portal/notifications",
+  ],
 };
 
 describe("navItemsFor", () => {
   for (const role of Object.keys(EXPECTED_HREFS) as Role[]) {
     it(`matches the expected link set for ${role}`, () => {
-      const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true).map((item) => item.href);
+      const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true, role).map((item) => item.href);
       expect(new Set(hrefs)).toEqual(new Set(EXPECTED_HREFS[role]));
     });
   }
@@ -121,8 +132,40 @@ describe("navItemsFor", () => {
     expect(groups).toEqual([...groups].sort((a, b) => a - b));
   });
 
+  it("guardian sidebar has no student-only Study link", () => {
+    const hrefs = navItemsFor(new Set(permissionsFor("guardian")), undefined, false, "guardian").map((i) => i.href);
+    for (const h of ["/portal/study", "/portal/practice", "/portal/subjects"]) expect(hrefs).not.toContain(h);
+  });
+
+  it("student sidebar has no guardian-only Messages link", () => {
+    const hrefs = navItemsFor(new Set(permissionsFor("student")), undefined, false, "student").map((i) => i.href);
+    for (const h of ["/portal/messages", "/portal/meetings", "/portal/updates", "/portal/assistant", "/portal/leave", "/portal/surveys"]) {
+      expect(hrefs).not.toContain(h);
+    }
+  });
+
+  it("student without ai.study loses Study and Practice", () => {
+    const perms = new Set(permissionsFor("student"));
+    perms.delete("ai.study");
+    const hrefs = navItemsFor(perms, undefined, false, "student").map((i) => i.href);
+    expect(hrefs).not.toContain("/portal/study");
+    expect(hrefs).not.toContain("/portal/practice");
+  });
+
+  it("portal links are only visible to portal users", () => {
+    for (const role of ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"] as Role[]) {
+      const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true, role).map((i) => i.href);
+      expect(hrefs.filter((h) => h.startsWith("/portal"))).toEqual([]);
+    }
+  });
+
+  it("portal modules follow settings (assignments off hides Assignments)", () => {
+    const hrefs = navItemsFor(new Set(permissionsFor("guardian")), { modules: { assignments: false } }, false, "guardian").map((i) => i.href);
+    expect(hrefs).not.toContain("/portal/assignments");
+  });
+
   it("guardian sees only the Portal-facing links", () => {
-    const hrefs = navItemsFor(new Set(permissionsFor("guardian"))).map((item) => item.href);
+    const hrefs = navItemsFor(new Set(permissionsFor("guardian")), undefined, false, "guardian").map((item) => item.href);
     expect(hrefs).toContain("/portal");
     expect(hrefs).not.toContain("/settings");
     expect(hrefs).not.toContain("/dashboard");

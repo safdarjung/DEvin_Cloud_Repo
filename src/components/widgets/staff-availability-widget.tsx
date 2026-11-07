@@ -23,7 +23,7 @@ export function StaffAvailabilityWidget({
     <Widget {...frame}>
       <dl className="grid grid-cols-3 gap-2 text-center">
         {counts.map((c) => (
-          <div key={c.label} className="rounded-lg bg-muted/50 px-2 py-2">
+          <div key={c.label} className="rounded-lg bg-secondary px-2 py-2">
             <dd className={`text-xl font-semibold tabular-nums ${c.tone}`}>{c.n}</dd>
             <dt className="text-xs text-muted-foreground">{c.label}</dt>
           </div>

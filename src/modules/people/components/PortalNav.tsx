@@ -1,54 +1,42 @@
-import Link from "next/link";
-import { cn } from "cn";
-import { LayoutPill } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { ChildSwitcher } from "./ChildSwitcher";
 import type { PortalSelection } from "@/modules/people/portal";
 
-const TABS = [
-  { href: "", label: "Overview" },
-  { href: "/attendance", label: "Attendance" },
-  { href: "/fees", label: "Fees" },
-  { href: "/results", label: "Results" },
-  { href: "/assignments", label: "Assignments" },
-  { href: "/subjects", label: "Subjects" },
-  { href: "/study", label: "Study" },
-  { href: "/practice", label: "Practice" },
-  { href: "/meetings", label: "Meetings" },
-  { href: "/updates", label: "Updates" },
-  { href: "/messages", label: "Messages" },
-  { href: "/assistant", label: "Ask" },
-  { href: "/leave", label: "Leave" },
-  { href: "/surveys", label: "Surveys" },
-  { href: "/notifications", label: "Notifications" },
-] as const;
-
-const GUARDIAN_ONLY = new Set<string>(["/meetings", "/updates", "/messages", "/assistant", "/leave", "/surveys"]);
-
-export type PortalTabHref = (typeof TABS)[number]["href"];
+/** Section hrefs under /portal; kept so page callers still compile. */
+export type PortalTabHref =
+  | ""
+  | "/attendance"
+  | "/fees"
+  | "/results"
+  | "/assignments"
+  | "/subjects"
+  | "/study"
+  | "/practice"
+  | "/meetings"
+  | "/updates"
+  | "/messages"
+  | "/assistant"
+  | "/leave"
+  | "/surveys"
+  | "/notifications";
 
 /**
- * T-034 — the portal chrome (child switcher + tabs), rendered by every
- * portal page (not the layout — see layout.tsx's comment on why). Every
- * tab link carries `?student=<selection.studentId>` so the selected child
- * survives a tab change.
+ * Portal page chrome: title + child switcher. Section navigation lives in the
+ * app sidebar (src/lib/nav.ts GUARDIAN_NAV / STUDENT_NAV), which carries
+ * `?student=` on every portal link so the selected child survives navigation.
+ * `activeHref` and `canStudy` are no longer used here; they stay in the props
+ * so the ~20 portal pages need no edits.
  */
 export function PortalNav({
-  institutionSlug,
   role,
   selection,
-  activeHref,
-  canStudy = false,
 }: {
-  institutionSlug: string;
+  institutionSlug?: string;
   role: "guardian" | "student";
   selection: PortalSelection;
-  activeHref: PortalTabHref;
-  /** Student holds `ai.study` (pass from the page); the Study tab is student-only. */
+  activeHref?: PortalTabHref;
   canStudy?: boolean;
 }) {
-  const basePath = `/${institutionSlug}/portal`;
-
   return (
     <div className="mb-6">
       <PageHeader
@@ -56,27 +44,6 @@ export function PortalNav({
         compact
         actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
       />
-      <nav aria-label="Portal tabs" className="flex gap-1 overflow-x-auto border-b border-border pb-1">
-        {TABS.filter((tab) => {
-          if (GUARDIAN_ONLY.has(tab.href)) return role === "guardian";
-          if (tab.href === "/subjects") return role === "student";
-          if (tab.href === "/study" || tab.href === "/practice") return role === "student" && canStudy;
-          return true;
-        }).map((tab) => (
-          <Link
-            key={tab.href}
-            href={`${basePath}${tab.href}?student=${selection.studentId}`}
-            aria-current={tab.href === activeHref ? "page" : undefined}
-            className={cn(
-              "relative inline-flex min-h-10 shrink-0 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors duration-(--duration-fast) hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              tab.href === activeHref && "font-semibold text-foreground",
-            )}
-          >
-            {tab.href === activeHref && <LayoutPill layoutId="portal-tab" className="absolute inset-0 rounded-md bg-muted" />}
-            <span className="relative">{tab.label}</span>
-          </Link>
-        ))}
-      </nav>
     </div>
   );
 }

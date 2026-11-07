@@ -51,7 +51,7 @@ export function Bell({
         >
           <BellIcon className="size-5" aria-hidden />
           {unreadCount > 0 && (
-            <Badge variant="destructive" className="absolute -right-1 -top-1 h-5 min-w-5 justify-center px-1 text-xs">
+            <Badge variant="destructive" className="absolute -right-1 -top-1 h-5 min-w-4 justify-center rounded-full bg-[#1ABB9C] px-1.5 text-[10px] text-white">
               {unreadCount > 99 ? "99+" : unreadCount}
             </Badge>
           )}

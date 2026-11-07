@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { Role } from "@/lib/auth/permissions";
 
-const ROLE_LABELS: Record<Role, string> = {
+export const ROLE_LABELS: Record<Role, string> = {
   owner: "Owner",
   principal: "Principal",
   admin: "Admin",

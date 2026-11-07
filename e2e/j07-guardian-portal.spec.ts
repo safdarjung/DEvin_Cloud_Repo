@@ -42,7 +42,7 @@ export class GuardianPortalPage {
   }
 
   get tabsNav() {
-    return this.page.getByRole("navigation", { name: "Portal tabs" });
+    return this.page.getByRole("navigation", { name: "Primary" });
   }
 
   get childSwitcherNav() {

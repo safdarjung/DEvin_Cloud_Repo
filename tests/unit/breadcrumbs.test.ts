@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { crumbsFor } from "@/components/breadcrumbs";
+import { readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { PAGE_PATHS, crumbsFor } from "@/components/breadcrumbs";
 
 describe("crumbsFor (F-BE-01)", () => {
   it("renders an intermediate segment with no page.tsx as text, not a link", () => {
@@ -16,5 +18,21 @@ describe("crumbsFor (F-BE-01)", () => {
     const invoices = crumbs.find((c) => c.label === "Invoices");
     expect(invoices).toBeDefined();
     expect(invoices?.isLink).toBe(true);
+  });
+});
+
+describe("PAGE_PATHS", () => {
+  it("lists every page.tsx under (tenant)/[institution]", () => {
+    const root = join(process.cwd(), "src/app/(tenant)/[institution]");
+    const found: string[] = [];
+    const walk = (dir: string, rel: string[]) => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        if (statSync(full).isDirectory()) walk(full, [...rel, /^\[.+\]$/.test(name) ? "*" : name]);
+        else if (name === "page.tsx" && rel.length > 0) found.push(rel.join("/"));
+      }
+    };
+    walk(root, []);
+    expect(found.filter((p) => !PAGE_PATHS.has(p))).toEqual([]);
   });
 });
