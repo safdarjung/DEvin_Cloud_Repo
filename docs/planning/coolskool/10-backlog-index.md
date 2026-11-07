@@ -120,6 +120,11 @@ flowchart TD
 - `20261028000100`–`20261028000101` · UI session (hosted) · `platform_leads`; reserved marketing slugs.
 - `20261028000102` · Education OS redesign (backend session, claimed 2026-11-06) · `message_threads` + `messages` (guardian–teacher messaging, append-only body, `read_at` only mutable), notify on new message — module `messaging`.
 - `20261028000103` · Education OS redesign (backend session, claimed 2026-11-06) · `practice_attempts` (student self-practice quizzes, server-scored, immutable) — module `practice`.
+- `20261028000104` · `compute_mastery` in one aggregation pass — 0093's two-CTE join (score aggregate ⋈ evidence) could pick a nested loop on tenant-sized data, turning a full-tenant compute into minutes instead of ~2s; folds `evidence` into the same GROUP BY with a FILTERed `jsonb_agg`, output unchanged.
+- `20261028000105` · Fix the guardian guard in 0099's PTM definers (X08) — `p_student_id <> any(array(...))` is true when the student differs from ANY child (wrongly refusing a guardian with 2+ children) and vacuously true for a guardian with no linked child (wrongly passing for any student); corrected to `not (x = any(...))`.
+- `20261028000106` · live-fabric lane "simulator" (F-UI-08) · `simulation_scenarios` — saved what-if scenarios for `/fabric/simulator`, replacing the `src/modules/fabric/demo/simulator.ts` fixture's `SAVED_SCENARIOS`; owner/principal/admin read/insert/update, approve/reject restricted to owner/principal by a guard trigger.
+- `20261028000107` · live-fabric studio lane (F-UI-12) · `studio_requests` — Custom Studio intake, AI proposal (embedded jsonb, no separate versioned row), owner/principal decision via `propose_studio_request`/`decide_studio_request`; no UPDATE grant to `authenticated`.
+- `20261028000108` · T3b (ai-roles, DB owner) · `ai_usage_events.role text` + index `(institution_id, role, created_at)`, no backfill (table blocks UPDATE) — per-role daily quota check in `checkLimits` and the new `ai.usageByRole` query (30-day tokens/cost_paise per role).
 
 ## 4. Review requirements
 

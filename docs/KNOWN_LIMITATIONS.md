@@ -7,18 +7,16 @@
 - Hosted-DB state is taken from HANDOFF.md, not checked live.
 
 ## Deployment gaps
-- Migration 0100 (platform_leads) not on hosted; /api/public/lead returns an error until the owner pushes it.
-- Wave 1 files are uncommitted/untracked on this branch.
 - No health endpoint, no error monitoring, no custom security headers (CSP, HSTS).
 - No rollback automation beyond Vercel redeploy; DB has no down migrations.
 
 ## Product gaps
 - Email: simulated until RESEND_API_KEY. WhatsApp: simulated until MSG91 keys (always simulated for demo institutions). SMS: simulated only.
 - Razorpay: test mode only; live mode unproven.
-- 12 /fabric/* pages are fixture-backed UI, not real data.
-- Unmerged WIP: M20 mastery, M23 workflows, M24 assistant, X04 late fees (lanes c/g/j/i). M27 V2 gate not run.
+- 5 /fabric/* pages (Student success, Simulator, Digital twin, Marketplace, Studio) are fixture-backed UI with LimitedBadge; others complete and tested per HANDOFF.md.
 - No AI credits wallet, BYOK, speech, or scenario engine.
-- Local AI quality depends on the Ollama model; Gemini teacher-agent path sits outside institution AI policy.
+- Per-role AI settings: `institutions.ai_policy` governs only Anthropic (DBT-157); pre-0108 usage rows have null role (DBT-158); usage sums via PostgREST cap at 1000 rows, fix with SQL aggregate functions (DBT-159).
+- Local AI quality depends on the Ollama model; cloud routing follows per-role config (D50) not institution policy alone.
 - Pricing is quote-based; no self-serve billing.
 - Hosted demo may auto-login visitors (DEMO_AUTO_LOGIN); ensure off for real tenants.
 
@@ -34,4 +32,4 @@ DBT-02 per-process AI concurrency; DBT-36 OLLAMA_BASE_URL not asserted private; 
 ## Test-flakiness notes
 Under parallel stacks vitest 5 s timeout fails spuriously (HANDOFF); rerun with --testTimeout=30000. DBT-46 flaky invoice chunk test.
 
-Last verified: 2026-11-06 against branch feat/fabric-public-wave1
+Last verified: 2026-11-07 against branch ai-roles
