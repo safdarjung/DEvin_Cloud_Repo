@@ -11,6 +11,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
 import { agentDefinitionsQuery, agentRunDetailQuery, agentRunsQuery } from "@/modules/agents/query-defs";
+import { AGENT_SLUGS } from "@/modules/agents/catalog";
 import { callAs, closeActionsHelper } from "../helpers/actions";
 import { closeRolesHelper, createTestInstitution, withTwoInstitutions } from "../helpers/roles";
 
@@ -68,21 +69,13 @@ async function financeId(ownerResult: { ok: true; data: { slug: string; id: stri
 }
 
 describe("M22-T9 agents.definitions", () => {
-  it("6 rows in catalog order; finance has no exams.* tool, human_approved max risk, local tier, null quality", async () => {
+  it("one row per catalog agent, in catalog order; finance has no exams.* tool, human_approved max risk, local tier, null quality", async () => {
     const inst = await createTestInstitution("agents-q-definitions");
     try {
       const result = await callAs(inst, "owner", agentDefinitionsQuery, {});
       expect(result.ok).toBe(true);
       if (!result.ok) throw new Error("unreachable");
-      expect(result.data).toHaveLength(6);
-      expect(result.data.map((d) => d.slug)).toEqual([
-        "academic",
-        "attendance",
-        "admissions",
-        "finance",
-        "communication",
-        "administrative",
-      ]);
+      expect(result.data.map((d) => d.slug)).toEqual([...AGENT_SLUGS]);
 
       const finance = result.data.find((d) => d.slug === "finance")!;
       expect(finance.tools.some((t) => t.startsWith("exams."))).toBe(false);
@@ -93,7 +86,7 @@ describe("M22-T9 agents.definitions", () => {
       expect(finance.error_rate_pct).toBe(0);
 
       const rows = await sql`select count(*)::int as n from public.agent_definitions where institution_id = ${inst.institutionId}::uuid`;
-      expect(rows[0].n).toBe(6);
+      expect(rows[0].n).toBe(AGENT_SLUGS.length);
     } finally {
       await inst.cleanup();
     }

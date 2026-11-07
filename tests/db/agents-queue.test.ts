@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeRolesHelper, createTestInstitution } from "../helpers/roles";
 import { queueWorkflowAgentRun } from "../../src/modules/agents/queue.ts";
+import { AGENT_CATALOG_VERSION, AGENT_SLUGS } from "../../src/modules/agents/catalog.ts";
 
 // Direct service-role client (supabase-js): exercises real table/column
 // grants, same shape as tests/db/agents-rls.test.ts and workflows-rls.test.ts.
@@ -62,7 +63,7 @@ async function definitionRows(institutionId: string): Promise<{ slug: string; is
 }
 
 describe("queueWorkflowAgentRun (M23-T10)", () => {
-  it("queues a run, materialises all 6 definitions, is idempotent, and respects disabled/unknown slugs", async () => {
+  it("queues a run, materialises every catalog definition, is idempotent, and respects disabled/unknown slugs", async () => {
     const inst = await createTestInstitution("agents-queue");
     try {
       const admin = serviceClient();
@@ -83,10 +84,7 @@ describe("queueWorkflowAgentRun (M23-T10)", () => {
       if (first.status !== "queued") throw new Error("expected queued");
 
       const defs = await definitionRows(inst.institutionId);
-      expect(defs).toHaveLength(6);
-      expect(defs.map((d) => d.slug).sort()).toEqual(
-        ["academic", "admissions", "administrative", "attendance", "communication", "finance"].sort(),
-      );
+      expect(defs.map((d) => d.slug).sort()).toEqual([...AGENT_SLUGS].sort());
 
       const { data: row, error } = await admin
         .from("agent_runs")
@@ -99,7 +97,7 @@ describe("queueWorkflowAgentRun (M23-T10)", () => {
         workflow_run_id: runId,
         requested_by: inst.users.principal.id,
         risk_class: "read_only",
-        catalog_version: "agents_v1",
+        catalog_version: AGENT_CATALOG_VERSION,
       });
 
       // Second call for the same (workflow_run_id, agent) is idempotent.
