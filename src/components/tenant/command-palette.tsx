@@ -34,7 +34,6 @@ const NAV_SYNONYMS: Record<string, string[]> = {
   "AI workforce": ["agents", "automation"],
   Simulator: ["scenario", "what if"],
   Marketplace: ["modules", "install", "store"],
-  "Personal AI": ["assistant", "memory"],
 };
 
 export function CommandPalette({

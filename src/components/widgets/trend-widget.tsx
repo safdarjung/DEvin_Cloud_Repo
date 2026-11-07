@@ -50,9 +50,9 @@ export function TrendWidget({
             stroke="var(--chart-1)"
             strokeWidth={2}
             fill="var(--chart-1)"
-            fillOpacity={0.12}
+            fillOpacity={0.25}
             isAnimationActive={!reduce}
-            animationDuration={400}
+            animationDuration={600}
           />
         </AreaChart>
       </ChartFrame>

@@ -26,7 +26,7 @@ export const chartAxis = {
   tick: { fill: "var(--muted-foreground)", style: { fontSize: "var(--text-xs)" } },
 } as const;
 
-export const chartGrid = { stroke: "var(--border)", strokeDasharray: "3 3" } as const;
+export const chartGrid = { stroke: "var(--border)", strokeOpacity: 0.6, strokeDasharray: "3 3" } as const;
 
 export const chartTooltip = {
   cursor: { fill: "var(--muted)", opacity: 0.5 },
@@ -35,7 +35,7 @@ export const chartTooltip = {
     color: "var(--popover-foreground)",
     border: "1px solid var(--border)",
     borderRadius: "var(--radius)",
-    boxShadow: "var(--shadow-md)",
+    boxShadow: "none",
     fontSize: "var(--text-sm)",
   },
 } as const;

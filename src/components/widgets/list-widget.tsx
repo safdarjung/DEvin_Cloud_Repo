@@ -34,7 +34,7 @@ export function ListWidget({
           return (
             <StaggerItem key={r.id}>
               {r.href ? (
-                <Link href={r.href} className="block rounded-md outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring">
+                <Link href={r.href} className="block rounded-md outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
                   {body}
                 </Link>
               ) : (

@@ -13,15 +13,15 @@ export function SectionSwitcher({
 }) {
   if (sections.length < 2) return null;
   return (
-    <nav aria-label="Section" className="mb-4 flex flex-wrap gap-2">
+    <nav aria-label="Section" className="mb-4 flex flex-wrap gap-1 border-b-2 border-border">
       {sections.map((s) => (
         <Link
           key={s.id}
           href={`${basePath}?section=${s.id}`}
           aria-current={s.id === activeId ? "page" : undefined}
           className={cn(
-            "inline-flex min-h-9 items-center rounded-md border px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            s.id === activeId ? "border-foreground bg-muted font-medium" : "text-muted-foreground hover:bg-muted/50",
+            "-mb-0.5 inline-flex min-h-10 items-center border-b-2 px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            s.id === activeId ? "border-ring font-semibold text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
           {s.label}

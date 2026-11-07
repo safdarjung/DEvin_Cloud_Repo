@@ -1,10 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CalendarDays, ClipboardList, Megaphone, NotebookPen, Wallet } from "lucide-react";
-import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState, ErrorState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
-import { KpiTile } from "@/components/widgets/kpi-widget";
+import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
 import { TrendWidget } from "@/components/widgets/trend-widget";
@@ -155,29 +154,28 @@ export async function GuardianOverview({
         <p className="mt-0.5 text-sm text-muted-foreground">{[longDate.format(now), classLabel].filter(Boolean).join(" · ")}</p>
       </div>
 
-      <Stagger className="grid gap-3 min-[375px]:grid-cols-2 lg:grid-cols-4">
-        <StaggerItem>
-          <KpiTile label="Attendance today" value={todayStatus} sub={todaySub} href={`${basePath}/attendance${q}`} />
-        </StaggerItem>
-        <StaggerItem>
-          <KpiTile label="Attendance, 30-day rate" value={attendanceKpi.value} animateTo={attendanceKpi.animateTo} format="percent" sub={attendanceKpi.sub} delta={attendanceKpi.delta} href={`${basePath}/attendance${q}`} />
-        </StaggerItem>
-        <StaggerItem>
-          <KpiTile
-            label="Fees due"
-            value={inr(outstanding)}
-            animateTo={outstanding}
-            format="inr"
-            sub={unpaid.length ? `${unpaid.length} unpaid invoice${unpaid.length === 1 ? "" : "s"}${nextDue ? ` · next due ${shortDate.format(new Date(nextDue))}` : ""}` : "All paid"}
-            href={`${basePath}/fees${q}`}
-          />
-        </StaggerItem>
-        <StaggerItem>
-          <KpiTile label="Homework due" value={String(upcoming.length)} animateTo={upcoming.length} sub={`${asg.length} published in total`} href={`${basePath}/assignments${q}`} />
-        </StaggerItem>
-      </Stagger>
+      <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
+        <KpiTile label="Attendance today" value={todayStatus} sub={todaySub} href={`${basePath}/attendance${q}`} />
+        <KpiTile label="Attendance, 30-day rate" value={attendanceKpi.value} animateTo={attendanceKpi.animateTo} format="percent" sub={attendanceKpi.sub} delta={attendanceKpi.delta} href={`${basePath}/attendance${q}`} />
+        <KpiTile
+          label="Fees due"
+          value={inr(outstanding)}
+          animateTo={outstanding}
+          format="inr"
+          sub={unpaid.length ? `${unpaid.length} unpaid invoice${unpaid.length === 1 ? "" : "s"}${nextDue ? ` · next due ${shortDate.format(new Date(nextDue))}` : ""}` : "All paid"}
+          href={`${basePath}/fees${q}`}
+        />
+        <KpiTile label="Homework due" value={String(upcoming.length)} animateTo={upcoming.length} sub={`${asg.length} published in total`} href={`${basePath}/assignments${q}`} />
+      </KpiStrip>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {on("timetable") &&
+          (timetable.status === "fulfilled" ? (
+            <TimetableWidget className="lg:col-span-2" title={`${firstName}'s timetable today`} description={classLabel ?? undefined} icon={<CalendarDays />} periods={timetable.value} />
+          ) : (
+            <Failed title="Today's timetable" icon={<CalendarDays />} />
+          ))}
+
         {on("diary") &&
           (diary.status === "fulfilled" ? (
             <Widget
@@ -224,13 +222,6 @@ export async function GuardianOverview({
           rows={homeworkRows}
           emptyTitle="No homework due"
         />
-
-        {on("timetable") &&
-          (timetable.status === "fulfilled" ? (
-            <TimetableWidget title={`${firstName}'s timetable today`} description={classLabel ?? undefined} icon={<CalendarDays />} periods={timetable.value} />
-          ) : (
-            <Failed title="Today's timetable" icon={<CalendarDays />} />
-          ))}
 
         {on("attendance") &&
           (trend.status === "fulfilled" ? (

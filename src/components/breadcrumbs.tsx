@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { NAV_ITEMS } from "@/lib/nav";
+import { GUARDIAN_NAV, NAV_ITEMS, STUDENT_NAV } from "@/lib/nav";
 import { humanize } from "@/lib/format";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const NAV_LABELS = new Map(NAV_ITEMS.map((item) => [item.href, item.label]));
+const NAV_LABELS = new Map([...NAV_ITEMS, ...GUARDIAN_NAV, ...STUDENT_NAV].map((item) => [item.href, item.label]));
 
 // Static-segment paths (after `/<institution>`) that have a page.tsx; `*`
 // stands in for a dynamic `[id]` segment. Regenerate by hand when adding a
 // route: `find "src/app/(tenant)/[institution]" -name page.tsx`.
-const PAGE_PATHS = new Set([
+export const PAGE_PATHS = new Set([
   "admissions",
   "admissions/applications",
   "admissions/applications/*",
@@ -23,9 +23,11 @@ const PAGE_PATHS = new Set([
   "assignments/*",
   "assignments/new",
   "assignments/units/*",
+  "assistant",
   "attendance",
   "attendance/*",
   "dashboard",
+  "diary",
   "exams",
   "exams/*",
   "exams/new",
@@ -56,21 +58,39 @@ const PAGE_PATHS = new Set([
   "finance/structures",
   "finance/structures/*",
   "jobs",
+  "lesson-plans",
   "me",
+  "messages",
+  "messages/*",
   "notifications",
   "notifications/log",
   "portal",
   "portal/assignments",
+  "portal/assignments/*",
+  "portal/assistant",
   "portal/attendance",
   "portal/fees",
   "portal/fees/receipts/*",
+  "portal/leave",
+  "portal/meetings",
+  "portal/messages",
+  "portal/messages/*",
   "portal/notifications",
+  "portal/practice",
   "portal/results",
   "portal/study",
   "portal/study/notebook",
   "portal/study/notebook/*",
+  "portal/subjects",
+  "portal/surveys",
+  "portal/updates",
+  "ptm",
+  "question-bank",
+  "settings/ai",
+  "settings/modules",
   "students",
   "students/*",
+  "timetable",
   "today",
   "website",
   "website/events",
@@ -108,6 +128,15 @@ export function crumbsFor(pathname: string, current?: string): Crumb[] {
       (UUID.test(segment) ? "Details" : humanize(decodeURIComponent(segment).replace(/-/g, " ")));
     return { href: `/${slug}${sub}`, label, isLast, isLink: !isLast && hasPage(subSegments) };
   });
+}
+
+/** Topbar caption: label of the section (first segment after `/<institution>`), or of the exact portal page. */
+export function sectionLabel(pathname: string): string {
+  const [, ...rest] = (pathname ?? "").split("/").filter(Boolean);
+  if (rest.length === 0) return "Home";
+  const exact = NAV_LABELS.get(`/${rest.join("/")}`);
+  if (exact) return exact;
+  return NAV_LABELS.get(`/${rest[0]}`) ?? humanize(decodeURIComponent(rest[0]).replace(/-/g, " "));
 }
 
 /** Crumbs from the path after `/<institution>`; hidden on top-level pages (a single crumb adds nothing). */

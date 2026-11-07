@@ -6,8 +6,9 @@ import type { QuickAction } from "@/components/tenant/command-palette";
 import { BellLoader } from "@/components/tenant/bell-loader";
 import { Bell } from "@/modules/notifications/components/Bell";
 import { BottomNav } from "@/components/tenant/bottom-nav";
+import { ROLE_LABELS } from "@/components/tenant/role-badge";
 import { TenantHeader } from "@/components/tenant/header";
-import { SIDEBAR_COOKIE, TenantSidebar } from "@/components/tenant/sidebar";
+import { SIDEBAR_COOKIE, TenantSidebar, type SidebarUser } from "@/components/tenant/sidebar";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
@@ -28,7 +29,7 @@ export default async function TenantLayout({
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
   const hasNotifications = ctx.permissions.has("notification.read");
-  const navItems = navItemsFor(ctx.permissions, ctx.institution.settings, ctx.institution.is_demo).map(({ href, label, icon: Icon, group }) => ({
+  const navItems = navItemsFor(ctx.permissions, ctx.institution.settings, ctx.institution.is_demo, ctx.membership.role).map(({ href, label, icon: Icon, group }) => ({
     href: `/${ctx.institution.slug}${href}`,
     label,
     icon: <Icon className="size-4 shrink-0" aria-hidden />,
@@ -72,6 +73,13 @@ export default async function TenantLayout({
   // Email lives only in the JWT claims (not in TenantContext); it's the caller's own.
   const claims = await getClaims();
   const userEmail = typeof claims?.email === "string" ? claims.email : undefined;
+  const sidebarUser: SidebarUser = {
+    name: ctx.user.profile.fullName ?? userEmail ?? "Account",
+    roleLabel: ROLE_LABELS[ctx.membership.role],
+    institutionName: ctx.institution.name,
+    // Same permission /settings/modules requires.
+    settingsHref: hasPermission(ctx, "institution.settings.manage") ? `${base}/settings/modules` : undefined,
+  };
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
 
   return (
@@ -83,16 +91,18 @@ export default async function TenantLayout({
         Skip to content
       </a>
       <div className="flex flex-1">
-        <TenantSidebar items={navItems} defaultCollapsed={sidebarCollapsed} />
+        <TenantSidebar items={navItems} user={sidebarUser} defaultCollapsed={sidebarCollapsed} />
         <div className="flex min-w-0 flex-1 flex-col">
           <TenantHeader
             institutionSlug={ctx.institution.slug}
             institutionName={ctx.institution.name}
             role={ctx.membership.role}
-            userName={ctx.user.profile.fullName ?? userEmail ?? "Account"}
+            userName={sidebarUser.name}
             userEmail={userEmail}
             isDemo={ctx.institution.is_demo}
             navItems={navItems}
+            sidebarUser={sidebarUser}
+            isPlatformAdmin={ctx.user.profile.isPlatformAdmin}
             quickActions={quickActions}
             canSearchStudents={!isPortalUser && hasPermission(ctx, "student.read")}
             notificationsHref={hasNotifications ? `/${ctx.institution.slug}/notifications` : undefined}
@@ -115,7 +125,7 @@ export default async function TenantLayout({
           </main>
         </div>
       </div>
-      <BottomNav items={navItems} />
+      <BottomNav items={navItems} user={sidebarUser} />
     </div>
   );
 }

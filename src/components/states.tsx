@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 
 function StateBox({ icon, title, description, children }: { icon: ReactNode; title: string; description?: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed px-4 py-10 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-lg border bg-card px-4 py-10 text-center">
       <div className="text-muted-foreground">{icon}</div>
-      <p className="font-medium">{title}</p>
+      <p className="text-sm font-semibold">{title}</p>
       {description && <p className="max-w-prose text-sm text-muted-foreground">{description}</p>}
       {children}
     </div>
@@ -50,7 +50,7 @@ export function LoadingState({ rows = 3 }: { rows?: number }) {
       <span className="sr-only">Loading…</span>
       <div className="h-8 w-1/3 animate-pulse rounded-md bg-muted" />
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="h-20 animate-pulse rounded-xl bg-muted" />
+        <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />
       ))}
     </div>
   );

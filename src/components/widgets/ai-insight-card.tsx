@@ -19,7 +19,7 @@ export interface AIInsightCardProps {
 export function AIInsightCard({ title, detected, whyItMatters, evidence, suggestedAction, requiresApproval, confidence }: AIInsightCardProps) {
   return (
     <FadeIn className="min-w-0">
-      <article className="h-full space-y-3 rounded-xl border border-primary/25 bg-primary/[0.03] p-4 text-sm">
+      <article className="h-full space-y-3 rounded-lg border border-l-4 border-primary/25 border-l-ring bg-card p-4 text-sm">
         <header className="flex flex-wrap items-center gap-2">
           <Sparkles className="size-4 text-primary" aria-hidden />
           <h3 className="font-medium">{title}</h3>

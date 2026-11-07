@@ -18,6 +18,9 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-topbar: var(--topbar);
+  --color-topbar-border: var(--topbar-border);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -95,48 +98,47 @@
 }
 
 /*
-  CoolSkool design system. One product, two themes; dark is the default.
-  Neutral grounds, 1px rules, colour on data only (one data hue, --chart-1).
-  Primary is an inverted neutral fill (near-black on light, near-white on dark).
+  CoolSkool design system. Gentelella-derived: navy sidebar, light content, teal accent; light is the default.
+  Flat surfaces, 1px rules, teal for primary, focus and brand decor. Dark tokens live in .dark below.
 */
 :root {
-  --background: #fafafa;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  --secondary: #f2f2f2;
-  --secondary-foreground: #0a0a0a;
-  --muted: #f2f2f2;
-  --muted-foreground: #5f5f5f;
-  --accent: #ebebeb;
-  --accent-foreground: #0a0a0a;
-  --destructive: #c4242a;
-  --border: #e6e6e6;
-  --input: #d4d4d4;
-  --ring: #0a72ef;
-  --link: #0a64d6;
-  --radius: 0.5rem;
+  --background: #F7F7F7;
+  --foreground: #2A3F54;
+  --card: #FFFFFF;
+  --card-foreground: #2A3F54;
+  --popover: #FFFFFF;
+  --popover-foreground: #2A3F54;
+  --primary: #13846D;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F2F5F7;
+  --secondary-foreground: #2A3F54;
+  --muted: #F2F5F7;
+  --muted-foreground: #5A738E;
+  --accent: #EEF6F4;
+  --accent-foreground: #2A3F54;
+  --destructive: #C0392B;
+  --border: #E6E9ED;
+  --input: #D9DEE4;
+  --ring: #1ABB9C;
+  --link: #2878B8;
+  --radius: 0.25rem;
 
   /* One data hue first; the rest only for multi-series charts. */
-  --chart-1: #0a72ef;
-  --chart-2: #d97706;
-  --chart-3: #16a34a;
-  --chart-4: #8f8f8f;
-  --chart-5: #db2777;
-  --chart-positive: #247b50;
-  --chart-negative: #c4242a;
-  --chart-neutral: #ededed;
+  --chart-1: #26B99A;
+  --chart-2: #34495E;
+  --chart-3: #3498DB;
+  --chart-4: #9B59B6;
+  --chart-5: #E74C3C;
+  --chart-positive: #138A73;
+  --chart-negative: #C0392B;
+  --chart-neutral: #E6E9ED;
 
-  --success: #247b50;
-  --success-foreground: #04250e;
-  --warning: #b45309;
-  --warning-foreground: #451a03;
-  --info: #0a64d6;
-  --info-foreground: #04203f;
+  --success: #138A73;
+  --success-foreground: #FFFFFF;
+  --warning: #B9770E;
+  --warning-foreground: #FFFFFF;
+  --info: #2878B8;
+  --info-foreground: #FFFFFF;
 
   /* Z-layers (Tailwind v4 has no z namespace: use z-(--z-header)) */
   --z-sticky: 10;
@@ -146,67 +148,73 @@
   --z-modal: 50;
   --z-toast: 60;
 
-  --sidebar: #fafafa;
-  --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #171717;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #ebebeb;
-  --sidebar-accent-foreground: #0a0a0a;
-  --sidebar-border: #e6e6e6;
-  --sidebar-ring: #0a72ef;
+  --sidebar: #2A3F54;
+  --sidebar-foreground: #E7E7E7;
+  --sidebar-primary: #1ABB9C;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #334556;
+  --sidebar-accent-foreground: #F2F5F7;
+  --sidebar-border: #3E5367;
+  --sidebar-ring: #1ABB9C;
+  --topbar: #EDEDED;
+  --topbar-border: #D9DEE4;
+  --sidebar-muted: #C4CFDA;
 }
 
 .dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
-  --card: #111111;
-  --card-foreground: #ededed;
-  --popover: #161616;
-  --popover-foreground: #ededed;
-  --primary: #ededed;
-  --primary-foreground: #0a0a0a;
-  --secondary: #1c1c1c;
-  --secondary-foreground: #ededed;
-  --muted: #1a1a1a;
-  --muted-foreground: #a1a1a1;
-  --accent: #1f1f1f;
-  --accent-foreground: #ededed;
-  --destructive: #e5566f;
-  --border: #242424;
-  --input: #333333;
-  --ring: #52a8ff;
-  --link: #52a8ff;
-  --radius: 0.5rem;
+  --background: #1B2836;
+  --foreground: #ECF0F1;
+  --card: #22313F;
+  --card-foreground: #ECF0F1;
+  --popover: #22313F;
+  --popover-foreground: #ECF0F1;
+  --primary: #1ABB9C;
+  --primary-foreground: #0B1F1A;
+  --secondary: #2A3F54;
+  --secondary-foreground: #ECF0F1;
+  --muted: #2A3F54;
+  --muted-foreground: #A9B8C6;
+  --accent: #2C4257;
+  --accent-foreground: #ECF0F1;
+  --destructive: #E74C3C;
+  --border: #34495E;
+  --input: #3E5367;
+  --ring: #1ABB9C;
+  --link: #5DADE2;
+  --radius: 0.25rem;
 
-  --chart-1: #52a8ff;
-  --chart-2: #f5a524;
-  --chart-3: #3fc07a;
-  --chart-4: #8f8f8f;
-  --chart-5: #f075a8;
-  --chart-positive: #3fc07a;
-  --chart-negative: #e5566f;
-  --chart-neutral: #262626;
+  --chart-1: #26B99A;
+  --chart-2: #BDC3C7;
+  --chart-3: #3498DB;
+  --chart-4: #B370CF;
+  --chart-5: #E95E4F;
+  --chart-positive: #26B99A;
+  --chart-negative: #E74C3C;
+  --chart-neutral: #34495E;
 
-  --success: #3fc07a;
-  --success-foreground: #0d2416;
-  --warning: #f5a524;
-  --warning-foreground: #2b1c05;
-  --info: #52a8ff;
-  --info-foreground: #071a2e;
+  --success: #26B99A;
+  --success-foreground: #0B1F1A;
+  --warning: #F39C12;
+  --warning-foreground: #0B1F1A;
+  --info: #3498DB;
+  --info-foreground: #0B1F1A;
 
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.45);
   --shadow-md: 0 8px 24px -6px rgb(0 0 0 / 0.6);
   --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.7);
 
-  --sidebar: #0a0a0a;
-  --sidebar-foreground: #ededed;
-  --sidebar-primary: #ededed;
-  --sidebar-primary-foreground: #0a0a0a;
-  --sidebar-accent: #1f1f1f;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #242424;
-  --sidebar-ring: #52a8ff;
+  --sidebar: #172D44;
+  --sidebar-foreground: #E7E7E7;
+  --sidebar-primary: #1ABB9C;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #22384D;
+  --sidebar-accent-foreground: #F2F5F7;
+  --sidebar-border: #2A3F54;
+  --sidebar-ring: #1ABB9C;
+  --topbar: #22313F;
+  --topbar-border: #34495E;
+  --sidebar-muted: #C4CFDA;
 }
 
 @layer base {

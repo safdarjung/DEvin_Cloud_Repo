@@ -29,15 +29,19 @@ export function ActivityTimeline({
 }: Omit<WidgetProps, "children" | "empty" | "isEmpty"> & { events: TimelineEvent[]; now: Date }) {
   return (
     <Widget {...frame} isEmpty={events.length === 0} empty={<EmptyState title="No recent activity" />}>
-      <ol className="relative space-y-4 border-l pl-5">
+      <ol className="relative ml-1.5 space-y-4 border-l-2 border-border pl-5">
         {events.map((e) => (
           <li key={e.id} className="relative">
-            <span className="absolute top-1.5 -left-[25px] size-2 rounded-full bg-primary ring-4 ring-card" aria-hidden />
-            <p className="text-sm font-medium">{e.title}</p>
-            <p className="text-xs text-muted-foreground">
-              <time dateTime={e.time}>{formatEventTime(e.time, now)}</time>
-              {e.meta && ` · ${e.meta}`}
-            </p>
+            <span className="absolute top-1 -left-[27px] size-2.5 rounded-full border-2 border-ring bg-card" aria-hidden />
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{e.title}</p>
+                {e.meta && <p className="text-xs text-muted-foreground italic">{e.meta}</p>}
+              </div>
+              <time dateTime={e.time} className="shrink-0 text-xs text-muted-foreground">
+                {formatEventTime(e.time, now)}
+              </time>
+            </div>
           </li>
         ))}
       </ol>

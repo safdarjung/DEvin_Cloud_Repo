@@ -2,11 +2,11 @@ import { inr } from "@/lib/format";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Bell, CalendarDays, ClipboardList, GraduationCap, Megaphone, Sparkles, Wallet } from "lucide-react";
-import { AnimatedNumber, Stagger, StaggerItem } from "@/components/motion";
+import { AnimatedNumber } from "@/components/motion";
 import { ErrorState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
-import { KpiTile } from "@/components/widgets/kpi-widget";
+import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
 import { TrendWidget } from "@/components/widgets/trend-widget";
@@ -323,13 +323,25 @@ export default async function PortalOverviewPage({
         <p className="mt-0.5 text-sm text-muted-foreground">{[longDate.format(now), classLabel].filter(Boolean).join(" · ")}</p>
       </div>
 
-      <Stagger className="grid gap-3 min-[375px]:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => (
-          <StaggerItem key={k.key}>{k}</StaggerItem>
-        ))}
-      </Stagger>
+      <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">{kpis}</KpiStrip>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-2">{sections}</div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        {isGuardian ? (
+          sections.map((n, i) => n && <div key={i} className="min-w-0 [&>*]:h-full">{n}</div>)
+        ) : (
+          <>
+            <div className="min-w-0 [&>*]:h-full">{timetable}</div>
+            <div className="min-w-0 [&>*]:h-full">{homework}</div>
+            <div className="min-w-0 [&>*]:h-full">{attendanceTrendWidget}</div>
+            <div className="min-w-0 [&>*]:h-full">{latestResults}</div>
+          </>
+        )}
+      </div>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {!isGuardian &&
+          [studyHelper, upcomingExams, announcements, schoolEvents, notificationFeed].map((n, i) => n && <div key={i} className="min-w-0 [&>*]:h-full">{n}</div>)}
+      </div>
     </>
   );
 }

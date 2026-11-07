@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { Banknote, CalendarCheck, GraduationCap, UserPlus } from "lucide-react";
-import { Stagger, StaggerItem } from "@/components/motion";
 import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
-import { KpiTile } from "@/components/widgets/kpi-widget";
+import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
 import { StaffAvailabilityWidget } from "@/components/widgets/staff-availability-widget";
@@ -23,7 +22,7 @@ import { pendingApprovals } from "@/modules/core/approvals.queries";
 import { buildApprovalQueue } from "@/modules/core/approval-queue";
 import { ApprovalsQueue } from "@/modules/core/components/dashboard/ApprovalsQueue";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
-import { Feed, Panel, PanelEmpty, SectionBars, StatStrip, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
+import { Feed, Panel, PanelEmpty, SectionBars, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
@@ -93,15 +92,19 @@ function Insights({ items, className }: { items: Awaited<ReturnType<typeof insig
   );
 }
 
+// KpiStrip defaults to 6 columns on xl; fit the column count to the tiles shown.
+const STRIP_COLS: Record<number, string> = {
+  1: "md:[&>div]:grid-cols-1 xl:[&>div]:grid-cols-1",
+  2: "md:[&>div]:grid-cols-2 xl:[&>div]:grid-cols-2",
+  3: "md:[&>div]:grid-cols-3 xl:[&>div]:grid-cols-3",
+  4: "md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4",
+};
+
 function Kpis({ items }: { items: ReactNode[] }) {
+  const shown = items.filter(Boolean);
+  if (shown.length === 0) return null;
   return (
-    <Stagger className={cn(FULL, "grid gap-3 sm:grid-cols-2 lg:grid-cols-4")}>
-      {items.filter(Boolean).map((c, i) => (
-        <StaggerItem key={i} className="min-w-0">
-          {c}
-        </StaggerItem>
-      ))}
-    </Stagger>
+    <KpiStrip className={cn(FULL, STRIP_COLS[Math.min(shown.length, 4)])}>{shown}</KpiStrip>
   );
 }
 
@@ -339,23 +342,24 @@ export default async function DashboardPage({
           items={[
             enquiryKpi,
             canEnquiries && isModuleEnabled(ctx, "admissions") && <KpiTile label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
-            quickActions.length > 0 && actions("h-full"),
           ]}
         />
         {funnel(WIDE)}
-        {failed(enquiriesR) ? (
-          <FailedWidget title="Newest enquiries" className={NARROW} />
-        ) : (
-          canEnquiries && isModuleEnabled(ctx, "admissions") && (
-            <ListWidget
-              title="Newest enquiries"
-              action={{ href: `${basePath}/admissions`, label: "All enquiries" }}
-              emptyTitle="No enquiries yet"
-              rows={enquiryRows}
-              className={NARROW}
-            />
-          )
-        )}
+        <div className={cn("min-w-0 space-y-4", NARROW)}>
+          {quickActions.length > 0 && actions()}
+          {failed(enquiriesR) ? (
+            <FailedWidget title="Newest enquiries" />
+          ) : (
+            canEnquiries && isModuleEnabled(ctx, "admissions") && (
+              <ListWidget
+                title="Newest enquiries"
+                action={{ href: `${basePath}/admissions`, label: "All enquiries" }}
+                emptyTitle="No enquiries yet"
+                rows={enquiryRows}
+              />
+            )
+          )}
+        </div>
         {insights && <Insights items={insights} className={briefing ? WIDE : FULL} />}
         {briefing && <div className={insights ? NARROW : FULL}>{briefing}</div>}
         {website}
@@ -377,9 +381,9 @@ export default async function DashboardPage({
               format="percent"
               sub={`${collections.invoiceCount} invoices this term`}
             />,
-            quickActions.length > 0 && actions("h-full"),
           ]}
         />
+        {quickActions.length > 0 && actions(FULL)}
         {collectionsChart(NARROW)}
         {defaultersFailed ? (
           <FailedWidget title="Top defaulters" className={WIDE} />
@@ -563,6 +567,10 @@ export default async function DashboardPage({
       </Panel>
     );
 
+    const trendPanel = <TrendWidget title="Attendance performance" description="School-wide attendance by school day" unit="percent" data={trendPts} />;
+    const staffToday = value(staffR);
+    const staffPanel = failed(staffR) ? <FailedWidget title="Staff today" /> : staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />;
+
     const quickPanel = quickActions.length > 0 && <QuickActions actions={quickActions} />;
 
     const absenteesPanel = !isAdminRole && canAttendance && (
@@ -601,18 +609,8 @@ export default async function DashboardPage({
         add("forecasts", "Forecasts", FULL, !forecastsOn ? off("Forecasts", PLAN_OFF) : failed(forecastR) ? <FailedWidget title="Forecasts" /> : fc && fc.length > 0 ? <ForecastCards cards={fc} base={basePath} /> : off("Forecasts", "Forecasts appear once enough history is recorded."));
       }
     }
-    if (canAttendance) {
-      add(
-        "attendance-performance",
-        "Attendance performance",
-        WIDE,
-        <TrendWidget title="Attendance performance" description="School-wide attendance by school day" unit="percent" data={trendPts} />,
-      );
-    }
     add("funnel", "Admissions funnel", WIDE, funnel(""));
     add("collections", "Fee collection", NARROW, collectionsChart(""));
-    const staffToday = value(staffR);
-    add("staff", "Staff today", NARROW, failed(staffR) ? <FailedWidget title="Staff today" /> : staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />);
     if (isAdminRole) add("grades", "Grades", NARROW, grades(""));
     if (isAdminRole) add("assistant", "AI briefing", NARROW, briefing);
     add(
@@ -640,35 +638,34 @@ export default async function DashboardPage({
             {longDate.format(now)} · {ctx.institution.name}
           </p>
         </header>
-        <StatStrip tiles={tiles} />
-        <div className="grid gap-4 lg:grid-cols-12">
-          {isAdminRole ? (
-            <>
-              <div className="min-w-0 space-y-4 lg:col-span-7">
+        {tiles.length > 0 && (
+          <KpiStrip className={tiles.length > 6 ? "xl:[&>div]:grid-cols-5" : undefined}>
+            {tiles.map((t) => (
+              <KpiTile key={t.label} {...t} />
+            ))}
+          </KpiStrip>
+        )}
+        {(canAttendance || approvalsPanel || staffPanel) && (
+          <div className="grid gap-4 lg:grid-cols-3">
+            {canAttendance && <div className="min-w-0 lg:col-span-2">{trendPanel}</div>}
+            {(approvalsPanel || staffPanel) && (
+              <div className={cn("min-w-0 space-y-4", canAttendance ? "lg:col-span-1" : "lg:col-span-3")}>
                 {approvalsPanel}
-                {activityPanel}
+                {staffPanel}
               </div>
-              <div className="min-w-0 space-y-4 lg:col-span-5">
-                {quickPanel}
-                {sectionPanel}
-                {upcomingPanel}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="min-w-0 space-y-4 lg:col-span-7">
-                {approvalsPanel}
-                {activityPanel}
-              </div>
-              <div className="min-w-0 space-y-4 lg:col-span-5">
-                {sectionPanel}
-                {upcomingPanel}
-              </div>
-              {absenteesPanel && <div className="min-w-0 lg:col-span-5">{absenteesPanel}</div>}
-              {canResults && isModuleEnabled(ctx, "exams") && <div className="min-w-0 lg:col-span-7">{grades("")}</div>}
-              {briefing && <div className="min-w-0 lg:col-span-12">{briefing}</div>}
-            </>
-          )}
+            )}
+          </div>
+        )}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[
+            isAdminRole && quickPanel,
+            sectionPanel,
+            activityPanel,
+            upcomingPanel,
+            !isAdminRole && absenteesPanel,
+            !isAdminRole && canResults && isModuleEnabled(ctx, "exams") && grades(""),
+          ].map((node, i) => node && <div key={i} className="min-w-0">{node}</div>)}
+          {!isAdminRole && briefing && <div className="min-w-0 md:col-span-2 xl:col-span-3">{briefing}</div>}
         </div>
         {cards.length > 0 && (
           <section aria-labelledby="more-h" className="space-y-3 pt-2">

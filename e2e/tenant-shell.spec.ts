@@ -105,7 +105,7 @@ test.describe("tenant shell (J-00 subset)", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "Finance" })).toBeVisible();
-    await expect(page.getByText("Principal")).toBeVisible();
+    await expect(page.getByRole("banner").getByText("Principal", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -125,14 +125,14 @@ test.describe("tenant shell (J-00 subset)", () => {
     // "My school") — the page never had a literal "Portal" heading; only
     // the sidebar nav link to /portal is named that.
     await expect(page.getByRole("heading", { name: "My children" })).toBeVisible();
-    // Scoped to the portal tabs: the sidebar also has its own "Attendance"
-    // link (guardians hold attendance.read for their own child), so the
-    // unscoped locator is a strict-mode violation (2+ matches).
-    await expect(page.getByRole("navigation", { name: "Portal tabs" }).getByRole("link", { name: "Attendance" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Portal" })).toBeVisible();
+    // Portal sections live in the sidebar (navigation "Primary"); scope to it
+    // because the quick-nav bar and drawer also render links on small viewports.
+    const primary = page.getByRole("navigation", { name: "Primary" });
+    await expect(primary.getByRole("link", { name: "Attendance" })).toBeVisible();
+    await expect(primary.getByRole("link", { name: "Overview" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Jobs" })).toHaveCount(0);
-    await expect(page.getByText("Guardian")).toBeVisible();
+    await expect(page.getByRole("banner").getByText("Guardian", { exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });
 });
