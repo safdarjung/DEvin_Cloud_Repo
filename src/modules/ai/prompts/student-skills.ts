@@ -12,7 +12,7 @@ export type StudentSkill = "terse" | "eli5" | "anatomy";
 export interface StudentStyle {
   notesDensity: "brief" | "standard" | "detailed";
   notesFormat: "bullets" | "qa" | "paragraphs";
-  language: "en" | "hi" | "mixed";
+  language: "en" | "hi" | "mixed" | "ta" | "te" | "kn" | "ml" | "mr" | "bn" | "gu" | "pa" | "or";
   /** Free text, ≤300 chars (05 §4.1-style cap) — wrapped in the delimited data block below, never trusted as instructions. */
   myStyle?: string;
 }
@@ -39,6 +39,15 @@ const LANGUAGE_INSTRUCTIONS: Record<StudentStyle["language"], string> = {
   en: "Reply in English.",
   hi: "Reply in Hindi.",
   mixed: "Reply in a natural mix of Hindi and English (Hinglish), matching how the student writes.",
+  ta: "Answer in Tamil, using simple words; keep technical terms in English in brackets.",
+  te: "Answer in Telugu, using simple words; keep technical terms in English in brackets.",
+  kn: "Answer in Kannada, using simple words; keep technical terms in English in brackets.",
+  ml: "Answer in Malayalam, using simple words; keep technical terms in English in brackets.",
+  mr: "Answer in Marathi, using simple words; keep technical terms in English in brackets.",
+  bn: "Answer in Bengali, using simple words; keep technical terms in English in brackets.",
+  gu: "Answer in Gujarati, using simple words; keep technical terms in English in brackets.",
+  pa: "Answer in Punjabi, using simple words; keep technical terms in English in brackets.",
+  or: "Answer in Odia, using simple words; keep technical terms in English in brackets.",
 };
 
 const MAX_MY_STYLE_LENGTH = 300;

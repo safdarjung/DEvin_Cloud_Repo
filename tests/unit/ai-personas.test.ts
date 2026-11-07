@@ -3,11 +3,25 @@
 // lines, school instructions block) without ever letting school-authored
 // `instructions` text override the rules above it or forge its own data
 // block markers.
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { systemPromptFor } from "@/modules/ai/kernel/personas";
 import type { CapabilityKey } from "@/modules/ai/capabilities/catalog";
 
 const NONCE = "abc123";
+
+// P1 (ai-roles phase 3) — a fixture `instruction` on an existing capability,
+// not a real catalog addition (P3's job), so systemPromptFor's new
+// "one line per enabled capability's instruction" behavior is testable here.
+vi.mock("@/modules/ai/capabilities/catalog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/ai/capabilities/catalog")>();
+  return {
+    ...actual,
+    CAPABILITIES: {
+      ...actual.CAPABILITIES,
+      attendance_overview: { ...actual.CAPABILITIES.attendance_overview, instruction: "Give a short weekly recap first." },
+    },
+  };
+});
 
 describe("systemPromptFor", () => {
   it("includes the base rules with the data-nonce boundary and the mode line", () => {
@@ -71,6 +85,14 @@ describe("systemPromptFor", () => {
     expect(prompt).toContain("- Attendance:");
     expect(prompt).toContain("- Navigate:");
     expect(prompt).not.toContain("Quiz generator");
+  });
+
+  it("adds a capability's instruction line only when that capability is enabled", () => {
+    const on = systemPromptFor({ role: "owner", nonce: NONCE, mode: "local", capabilities: ["attendance_overview"], instructions: "" });
+    expect(on).toContain("Give a short weekly recap first.");
+
+    const off = systemPromptFor({ role: "owner", nonce: NONCE, mode: "local", capabilities: ["navigate"], instructions: "" });
+    expect(off).not.toContain("Give a short weekly recap first.");
   });
 
   it("omits the capability list entirely when nothing is enabled", () => {

@@ -16,6 +16,7 @@ import {
   listTeachableSections,
   listTeacherAssignments,
 } from "./assignments.queries";
+import { gradeSuggestions } from "./grade-suggestions.queries";
 import { mySubmissions, submissionsForAssignment } from "./submissions.queries";
 
 // permission: assignment.read — assignments/page.tsx:21 and
@@ -99,4 +100,16 @@ export const mySubmissionsQuery = defineQuery({
   schema: z.object({ studentId: uuid.optional() }).strict(),
   permission: "assignment.read",
   handler: (input, ctx) => mySubmissions(ctx, input.studentId),
+});
+
+// AI roles P4 — grade_suggestions capability (teacher). permission:
+// assignment.manage — same floor as gradeSubmission (submissions.actions.ts)
+// and the assignment_answer_keys RLS this reads; never calls the grade
+// action itself (rule 6: AI drafts, a human saves).
+export const gradeSuggestionsQuery = defineQuery({
+  name: "academics.gradeSuggestions",
+  module: "assignments",
+  schema: z.object({ assignmentId: uuid }).strict(),
+  permission: "assignment.manage",
+  handler: (input, ctx) => gradeSuggestions(ctx, input.assignmentId),
 });

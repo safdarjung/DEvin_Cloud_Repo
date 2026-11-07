@@ -69,6 +69,16 @@ function capabilityLines(capabilities: readonly CapabilityKey[]): string | null 
   return lines.length > 0 ? `You can use:\n${lines.join("\n")}` : null;
 }
 
+// P1 (ai-roles phase 3) — one or two plain sentences per enabled capability
+// that has an `instruction`, added after the capability lines.
+function instructionLines(capabilities: readonly CapabilityKey[]): string | null {
+  const lines = capabilities
+    .map((key) => CAPABILITIES[key])
+    .filter((cap) => cap.kind === "chat_tool" && cap.instruction)
+    .map((cap) => cap.instruction as string);
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
 // Same lookalike-delimiter defense as prompts/student-skills.ts's
 // sanitizeForDataBlock: school-authored instructions text could itself try
 // to forge the data block's own start/end markers.
@@ -93,6 +103,8 @@ export function systemPromptFor(input: SystemPromptInput): string {
   const parts = [baseRules(input.nonce, input.mode, input.role), personaFor(input.role, input.studentPrefs, input.childId)];
   const capLines = capabilityLines(input.capabilities);
   if (capLines) parts.push(capLines);
+  const instrLines = instructionLines(input.capabilities);
+  if (instrLines) parts.push(instrLines);
   const schoolBlock = schoolInstructionsBlock(input.instructions, input.nonce);
   if (schoolBlock) parts.push(schoolBlock);
   return parts.join("\n\n");

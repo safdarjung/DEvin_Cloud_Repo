@@ -23,6 +23,7 @@ import {
   listSubjectOptions,
   listTermOptions,
 } from "./queries";
+import { examMarkOutliers } from "./mark-outliers.queries";
 import { renderReportCardHtml } from "./report-card-html";
 import { examSchedule, examScheduleConflicts } from "./schedule.queries";
 
@@ -234,4 +235,17 @@ export const reportCardHtmlQuery = defineQuery({
     const remark = await getResultRemark(ctx, result.id);
     return { html: renderReportCardHtml({ institutionName: ctx.institution.name, result, remark }) };
   },
+});
+
+// AI roles P4 — mark_outlier_check capability (exam_controller/owner/
+// principal ceiling in the catalog). permission: exam.marks.enter — the
+// same permission getPaperMarksQuery/getMyPapersQuery use for reading
+// marks; RLS on marks/exam_papers (exam_write_roles + assigned teacher)
+// is what actually scopes a teacher's call down to their own papers.
+export const examMarkOutliersQuery = defineQuery({
+  name: "exams.markOutliers",
+  schema: z.object({ examId: uuid }).strict(),
+  module: "exams",
+  permission: "exam.marks.enter",
+  handler: (input, ctx) => examMarkOutliers(ctx, input.examId),
 });

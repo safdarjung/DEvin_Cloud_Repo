@@ -14,6 +14,15 @@ owner, principal, admin, admissions, accountant, exam_controller, teacher, stude
 - Student: portal (results, assignments, attendance, study items, AI study).
 - Guardian: portal for children (fees, results, attendance, notifications), PTM booking, leave.
 
+## What each role's AI can do (Phase 3)
+
+Each role has toggleable AI chat and capabilities (configured at `/settings/ai`; chat off by default for guardian, accountant, exam_controller). Draft cards let the AI fill in forms (lesson plans, messages, worksheets, fee reminders); the person reviews and saves via a "Save" button — the AI never writes marks, payments, access, or leave decisions.
+
+- **Teacher:** drafts lesson plans, parent messages; suggests differentiated worksheets; gives hints before full answers; suggests grades for objective homework.
+- **Student:** studies with hint mode and weak-area plans; asks in any Indian language (Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Odia) for simple explanations; reads exam prep and practice items.
+- **Guardian:** reads plain-language report-card explanations and last-week summaries of their child's attendance/homework/fees; translates notices; drafts leave requests and messages to staff.
+- **Admin/principal/owner:** drafts announcements, PTM events, and fee reminders per family; reviews weekly reports and attendance trends; checks exam mark outliers; builds question papers from the question bank; accesses all staff assistant reads (financials, admissions, timetable).
+
 ## Surfaces
 - Public marketing site: `/`, `/product`, `/modules`, `/ai`, `/security`, `/pricing`, `/how-it-works`, `/faq`, `/demo`, `/roles`, `/contact`, `/legal/*`.
 - `/select`: institution picker (auth-gated).

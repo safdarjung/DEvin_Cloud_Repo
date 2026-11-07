@@ -70,4 +70,12 @@ describe("getStudentPreferences", () => {
     expect(result.skills).toEqual(["terse"]);
     expect(result.style.notesDensity).toBe("standard");
   });
+
+  it.each([["ta"], ["te"], ["kn"], ["ml"], ["mr"], ["bn"], ["gu"], ["pa"], ["or"]])("accepts Indian language %s", async (lang) => {
+    createClientMock.mockResolvedValueOnce(
+      fakeSupabase({ skills: [], style: { notesDensity: "standard", notesFormat: "bullets", language: lang } }),
+    );
+    const result = await getStudentPreferences(ctx());
+    expect(result.style.language).toBe(lang);
+  });
 });

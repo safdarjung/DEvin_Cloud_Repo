@@ -5,11 +5,12 @@
 // answers. Answers stream in; the finish metadata lists the queries behind them.
 import { useState } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { Role } from "@/lib/auth/permissions";
 
@@ -71,7 +72,10 @@ export function AssistantPanel({
           {messages.map((message) => {
             const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
             const sources = message.role === "assistant" ? (message.metadata?.sources ?? []) : [];
-            if (!text && sources.length === 0) return null;
+            const draftParts = message.parts.filter(
+              (p) => isToolUIPart(p) && p.state === "output-available" && isDraftToolPartType(p.type),
+            );
+            if (!text && sources.length === 0 && draftParts.length === 0) return null;
             return (
               <div
                 key={message.id}
@@ -81,7 +85,28 @@ export function AssistantPanel({
                     : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"
                 }
               >
-                <p className="whitespace-pre-wrap">{text}</p>
+                {text && <p className="whitespace-pre-wrap">{text}</p>}
+                {draftParts.map((part, index) => {
+                  if (!isToolUIPart(part) || part.state !== "output-available") return null;
+                  const parsed = parseDraftToolOutput(part.output);
+                  if (!parsed) return null;
+                  if ("error" in parsed) {
+                    return (
+                      <p key={index} role="alert" className="text-sm text-destructive">
+                        {parsed.error}
+                      </p>
+                    );
+                  }
+                  return (
+                    <ActionDraftCard
+                      key={index}
+                      institutionSlug={institutionSlug}
+                      action={parsed.action}
+                      input={parsed.input}
+                      summary={parsed.summary}
+                    />
+                  );
+                })}
                 {sources.length > 0 && (
                   <ul className="space-y-0.5 border-t pt-2 text-xs text-muted-foreground">
                     {sources.map((s) => (

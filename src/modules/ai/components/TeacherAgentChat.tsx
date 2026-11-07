@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
+import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
 import type { QuizContent } from "@/modules/academics/assignments.schemas";
@@ -136,6 +137,33 @@ function MessageParts({ message, institutionSlug, aiPolicy, teachableSections }:
                 />
               </div>
             );
+          }
+
+          if (part.state === "output-available" && isDraftToolPartType(part.type)) {
+            const parsed = parseDraftToolOutput(part.output);
+            if (parsed && "error" in parsed) {
+              return (
+                <div key={index} className="space-y-2">
+                  {statusLine}
+                  <p role="alert" className="text-sm text-destructive">
+                    {parsed.error}
+                  </p>
+                </div>
+              );
+            }
+            if (parsed) {
+              return (
+                <div key={index} className="space-y-2">
+                  {statusLine}
+                  <ActionDraftCard
+                    institutionSlug={institutionSlug}
+                    action={parsed.action}
+                    input={parsed.input}
+                    summary={parsed.summary}
+                  />
+                </div>
+              );
+            }
           }
 
           return <div key={index}>{statusLine}</div>;

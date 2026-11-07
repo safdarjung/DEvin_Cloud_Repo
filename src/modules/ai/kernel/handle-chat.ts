@@ -25,6 +25,7 @@ import { streamChat } from "@/lib/ai/gateway";
 import { cloudStreamErrorText } from "@/lib/ai/cloud-stream";
 import { pickAgentProvider } from "@/modules/ai/agent/provider-routing";
 import { buildReadTools } from "@/modules/agents/tools";
+import { buildDraftTools } from "@/modules/ai/kernel/draft-tools";
 import { ASSISTANT_CATALOG_VERSION, ASSISTANT_QUERIES, createSourceLog } from "@/modules/ai/assistant/catalog";
 import { createTaskTool, navigateTool } from "@/modules/ai/assistant/tools";
 import { teacherTools } from "@/modules/ai/agent/teacher-tools";
@@ -103,7 +104,15 @@ function bindStudentId(tools: ToolSet, studentId: string): ToolSet {
     const execute = (toolDef as { execute?: (input: unknown, ...rest: unknown[]) => unknown }).execute;
     bound[name] =
       typeof execute === "function"
-        ? { ...toolDef, execute: (input: unknown, ...rest: unknown[]) => execute({ ...(input as Record<string, unknown>), studentId }, ...rest) }
+        ? {
+            ...toolDef,
+            // Pin only tools that take a student id: strict action schemas
+            // without one (messaging.send) would reject an added key.
+            execute: (input: unknown, ...rest: unknown[]) => {
+              const fields = input as Record<string, unknown>;
+              return execute("studentId" in fields ? { ...fields, studentId } : fields, ...rest);
+            },
+          }
         : toolDef;
   }
   return bound as ToolSet;
@@ -213,7 +222,8 @@ export async function handleAiChat(request: Request): Promise<Response> {
     }
   }
   const { tools: readTools } = await buildReadTools(ctx, queryCatalog, nonce, sources.add);
-  let tools: ToolSet = { ...readTools };
+  const draftTools = await buildDraftTools(ctx, capabilities.map((key) => CAPABILITIES[key]));
+  let tools: ToolSet = { ...readTools, ...draftTools };
   if (role === "guardian" && childId) tools = bindStudentId(tools, childId);
 
   const toolNames = new Set(capabilities.flatMap((key) => CAPABILITIES[key].tools ?? []));

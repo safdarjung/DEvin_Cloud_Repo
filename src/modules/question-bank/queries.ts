@@ -7,7 +7,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
-import type { Difficulty, QuestionListInput, QuestionType } from "@/modules/question-bank/schemas";
+import type { Difficulty, PaperDraftInput, QuestionListInput, QuestionType } from "@/modules/question-bank/schemas";
 
 export interface QuestionBankItem {
   id: string;
@@ -124,4 +124,80 @@ export async function listTeachingPairs(ctx: TenantContext): Promise<TeachingPai
   return [...pairs.values()]
     .sort((a, b) => a.sort - b.sort || a.subjectName.localeCompare(b.subjectName))
     .map(({ gradeId, gradeCode, subjectId, subjectName }) => ({ gradeId, gradeCode, subjectId, subjectName }));
+}
+
+export interface PaperDraftQuestion {
+  id: string;
+  subjectId: string;
+  curriculumUnitId: string | null;
+  type: QuestionType;
+  difficulty: Difficulty;
+  body: string;
+  marks: number;
+}
+
+export interface PaperDraftResult {
+  questions: PaperDraftQuestion[];
+  totalMarksRequested: number;
+  totalMarksSelected: number;
+  note: string;
+}
+
+const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+
+/**
+ * Deterministic paper draft (AI roles P4, `question_paper` capability): picks
+ * active questions from `unitIds` up to `totalMarks`, split across
+ * difficulties by `difficultyMix` (default: an even third each). Stable
+ * order (sorted by id, no randomness) — no paper table exists, this is a
+ * draft to copy/print, never saved.
+ */
+export async function paperDraft(ctx: TenantContext, input: PaperDraftInput): Promise<PaperDraftResult> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("question_bank")
+    .select("id, subject_id, curriculum_unit_id, type, difficulty, body, marks")
+    .eq("institution_id", ctx.institution.id)
+    .eq("is_active", true)
+    .in("curriculum_unit_id", input.unitIds)
+    .order("id", { ascending: true });
+  if (error) throw error;
+
+  const byDifficulty = new Map<Difficulty, NonNullable<typeof data>>();
+  for (const d of DIFFICULTIES) byDifficulty.set(d, []);
+  for (const row of data ?? []) {
+    byDifficulty.get(row.difficulty as Difficulty)?.push(row);
+  }
+
+  const mix = input.difficultyMix;
+  const targetFor = (d: Difficulty): number => (mix ? input.totalMarks * (mix[d] ?? 0) : input.totalMarks / DIFFICULTIES.length);
+
+  const questions: PaperDraftQuestion[] = [];
+  let totalSelected = 0;
+  for (const difficulty of DIFFICULTIES) {
+    const target = targetFor(difficulty);
+    let bucketTotal = 0;
+    for (const row of byDifficulty.get(difficulty) ?? []) {
+      if (bucketTotal >= target) break;
+      if (totalSelected + row.marks > input.totalMarks) continue;
+      questions.push({
+        id: row.id,
+        subjectId: row.subject_id,
+        curriculumUnitId: row.curriculum_unit_id,
+        type: row.type as QuestionType,
+        difficulty,
+        body: row.body,
+        marks: row.marks,
+      });
+      bucketTotal += row.marks;
+      totalSelected += row.marks;
+    }
+  }
+
+  return {
+    questions,
+    totalMarksRequested: input.totalMarks,
+    totalMarksSelected: totalSelected,
+    note: "Draft only — no paper is saved. Copy or print to use it.",
+  };
 }

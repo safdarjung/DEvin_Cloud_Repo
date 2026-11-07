@@ -52,6 +52,12 @@ describe("composeStudentInstructions", () => {
     expect(prompt).toMatch(/Hindi/);
   });
 
+  test.each([["ta"], ["te"], ["kn"], ["ml"], ["mr"], ["bn"], ["gu"], ["pa"], ["or"]] as const)("includes instruction for Indian language %s", (lang) => {
+    const prompt = composeStudentInstructions([], { notesDensity: "standard", notesFormat: "bullets", language: lang });
+    expect(prompt).toMatch(/simple words/i);
+    expect(prompt).toMatch(/technical terms/i);
+  });
+
   test("myStyle is wrapped in exactly one start/end marker pair sharing a nonce", () => {
     const prompt = composeStudentInstructions([], { ...baseStyle, myStyle: "Use lots of sports examples." });
     const { start, startEnd, end } = findMarkers(prompt);
