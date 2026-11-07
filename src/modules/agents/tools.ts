@@ -64,7 +64,9 @@ function isProposable(risk: RiskClass | undefined): risk is ProposalRisk {
 
 // Describe only: raw model input reaches the query/action, whose own Zod parse
 // is the single validation (same JSON Schema form as GET /api/v1/actions).
-function describeInput(schema: z.ZodType) {
+// Exported for draft-tools.ts (P1, phase3-tasks.md) — same describe-only
+// contract, reused rather than copied.
+export function describeInput(schema: z.ZodType) {
   return jsonSchema<unknown>(
     z.toJSONSchema(schema, { target: "draft-7", io: "input", unrepresentable: "any" }) as JSONSchema7,
   );

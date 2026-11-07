@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
 import { BlockSchema, type Block } from "@/modules/ai/blocks/schemas";
+import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { StudentSkill } from "@/modules/ai/prompts/student-skills";
 import { saveStudyChat, saveStudyNote } from "@/modules/ai/student-study.actions";
@@ -161,6 +162,33 @@ function MessageParts({ message, institutionSlug, resumedChatId }: { message: UI
                     <BlockRenderer key={blockIndex} block={block} />
                   ))}
                   <SaveAsNote institutionSlug={institutionSlug} blocks={parsed.data.blocks} sourceChatId={resumedChatId} />
+                </div>
+              );
+            }
+          }
+
+          if (part.state === "output-available" && isDraftToolPartType(part.type)) {
+            const parsed = parseDraftToolOutput(part.output);
+            if (parsed && "error" in parsed) {
+              return (
+                <div key={index} className="space-y-2">
+                  {statusLine}
+                  <p role="alert" className="text-sm text-destructive">
+                    {parsed.error}
+                  </p>
+                </div>
+              );
+            }
+            if (parsed) {
+              return (
+                <div key={index} className="space-y-2">
+                  {statusLine}
+                  <ActionDraftCard
+                    institutionSlug={institutionSlug}
+                    action={parsed.action}
+                    input={parsed.input}
+                    summary={parsed.summary}
+                  />
                 </div>
               );
             }

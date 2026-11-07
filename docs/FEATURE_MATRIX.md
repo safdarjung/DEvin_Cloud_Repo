@@ -33,6 +33,7 @@ Status vocabulary: Complete and tested / Implemented but unverified / Partially 
 | Forecasts (M21), Agents (M22) | Implemented but unverified | Pri/Own | agents requires ai_teacher; no separate gate file found for M21/M22 in .superpowers/sdd |
 | Mastery (M20), Workflows (M23), Assistant (M24), Late fees (X04) | Complete and tested | | merged to main 2026-11-06, see docs/planning/fabric/reports/v2-completion.md |
 | Per-role AI settings (/settings/ai) | Complete and tested | Own/Pri/Adm | D50 capabilities, role chat/cloud toggles, per-role quotas |
+| AI Phase 3 capabilities (per role, /settings/ai) | Complete and tested | Tch/Stu/Gdn/Own/Pri/Adm/Acc/Exc/Aso | lesson_plan_draft, parent_message_draft, differentiated_worksheet (Tch); hints_first, weak_area_plan, study_language, exam_prep (Stu); explain_report_card, weekly_child_summary, fee_explainer, translate_notices, draft_leave_or_message (Gdn); do_it_in_chat, weekly_report, fee_reminder_drafts, mark_outlier_check, question_paper, grade_suggestions, admissions_followups (Own/Pri/Adm) |
 | /fabric/* 12 pages (agents, data, finance-intel, insights, learning, marketplace, operations, simulator, students, studio, trust, twin) | UI-only (mock data) | tenant members | fixtures in src/modules/fabric/demo |
 | Marketing site (15 pages + 5 legal) | Implemented but unverified | public | no Lighthouse run |
 | Lead capture /api/public/lead | Implemented but unverified | public | migration 0100 not on hosted; unit test lead-schema exists |

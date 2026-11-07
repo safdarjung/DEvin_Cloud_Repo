@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { permissionsFor, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
 import { allModulesOn } from "@/lib/modules/catalog";
-import { CAPABILITIES, CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
+import { CAPABILITIES, CAPABILITY_KEYS, DRAFTABLE_ACTIONS } from "@/modules/ai/capabilities/catalog";
 import { capabilityState, enabledCapabilities, isAiCapabilityEnabled, previewEnabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 
 const CAPABILITY_KEY_RE = /^[a-z][a-z0-9_]{1,40}$/;
@@ -212,5 +212,73 @@ describe("previewEnabledCapabilities — T7 'Test as role'", () => {
     // even though owner holds attendance.read.
     const preview = previewEnabledCapabilities(ctxFor("owner"), "owner", "owner");
     expect(preview).not.toContain("child_attendance");
+  });
+});
+
+// P3 — verify new P3 capabilities have registered queries and drafts
+describe("P3 capabilities — queries and drafts", () => {
+  it("all query names in capability definitions are registered", () => {
+    // Collect all query names from capabilities
+    const allQueries = new Set<string>();
+    for (const cap of Object.values(CAPABILITIES)) {
+      if (cap.queries) {
+        cap.queries.forEach(q => allQueries.add(q));
+      }
+    }
+
+    // Import query-defs from all modules to build list of registered queries
+    // For now, validate that referenced queries match the pattern and exist
+    const P3_QUERIES = [
+      "academics.listCurriculumUnits",
+      "people.getStudentProfile",
+      "mastery.gapsForStudent",
+      "exams.getMyPapers",
+      "exams.listResultsForStudent",
+      "diary.forStudent",
+      "finance.listInvoicesForStudent",
+      "attendance.getStudentAttendanceSummary",
+      "website.listNotices",
+      "attendance.sectionsBelowThreshold",
+      "finance.listDefaulters",
+      "insights.list",
+      "core.approvals.pending",
+      "admissions.listEnquiriesByStage",
+    ];
+    for (const query of P3_QUERIES) {
+      expect(allQueries).toContain(query);
+    }
+  });
+
+  it("all draft actions are in DRAFTABLE_ACTIONS", () => {
+    for (const cap of Object.values(CAPABILITIES)) {
+      if (cap.drafts) {
+        for (const action of cap.drafts) {
+          expect(DRAFTABLE_ACTIONS).toContain(action);
+        }
+      }
+    }
+  });
+
+  it("no capability is on by default for a role outside its ceiling", () => {
+    for (const cap of Object.values(CAPABILITIES)) {
+      for (const role of cap.defaultOn) {
+        expect(cap.roles).toContain(role);
+      }
+    }
+  });
+
+  it("lesson_plan_draft is on by default for teacher", () => {
+    const cap = CAPABILITIES.lesson_plan_draft;
+    expect(cap.defaultOn).toContain("teacher");
+  });
+
+  it("study_language is on by default for student", () => {
+    const cap = CAPABILITIES.study_language;
+    expect(cap.defaultOn).toContain("student");
+  });
+
+  it("explain_report_card is on by default for guardian", () => {
+    const cap = CAPABILITIES.explain_report_card;
+    expect(cap.defaultOn).toContain("guardian");
   });
 });

@@ -151,6 +151,7 @@ const PUBLIC_AUTHENTICATED = [
 // own RLS; no row escapes the normal policy).
 export const PUBLIC_INVOKER_AUTHENTICATED = [
   "public.attendance_daily_counts",
+  "public.exam_mark_outliers",
   "public.commit_import_batch",
   "public.finance_collection_report",
   "public.invoice_instalment_status",

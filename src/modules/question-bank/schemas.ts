@@ -125,3 +125,24 @@ export const QuestionListSchema = z
   })
   .strict();
 export type QuestionListInput = z.infer<typeof QuestionListSchema>;
+
+// AI roles P4 — questionBank.paperDraft. Proportions (0..1) per difficulty
+// of `totalMarks`; omitted difficulties get no quota. Not required to sum
+// to 1 — leftover marks simply go unfilled if the bank runs short.
+export const DifficultyMixSchema = z
+  .object({
+    easy: z.number().min(0).max(1).optional(),
+    medium: z.number().min(0).max(1).optional(),
+    hard: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+export type DifficultyMix = z.infer<typeof DifficultyMixSchema>;
+
+export const PaperDraftSchema = z
+  .object({
+    unitIds: z.array(uuid).min(1).max(20),
+    totalMarks: z.number().positive().max(1000),
+    difficultyMix: DifficultyMixSchema.optional(),
+  })
+  .strict();
+export type PaperDraftInput = z.infer<typeof PaperDraftSchema>;

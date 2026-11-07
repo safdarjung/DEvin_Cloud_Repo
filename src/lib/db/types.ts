@@ -4467,6 +4467,11 @@ isOneToOne: false
 "enter_marks":
 { Args: { "p_institution_id": string,"p_paper_id": string,"p_rows": Json }; Returns: Json
                            },
+"exam_mark_outliers":
+{ Args: { "p_exam_id": string,"p_institution_id": string }; Returns: {
+              "class_section_id": string,"details": Json,"exam_paper_id": string,"outlier_type": string,"student_id": string,"subject_id": string
+            }[]
+                           },
 "exam_verification":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
                            },

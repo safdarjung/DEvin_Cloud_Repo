@@ -49,7 +49,7 @@ export async function getStudentPreferences(ctx: TenantContext): Promise<Student
     notesFormat: ["bullets", "qa", "paragraphs"].includes(storedStyle.notesFormat as string)
       ? (storedStyle.notesFormat as StudentStyle["notesFormat"])
       : DEFAULT_STYLE.notesFormat,
-    language: ["en", "hi", "mixed"].includes(storedStyle.language as string)
+    language: ["en", "hi", "mixed", "ta", "te", "kn", "ml", "mr", "bn", "gu", "pa", "or"].includes(storedStyle.language as string)
       ? (storedStyle.language as StudentStyle["language"])
       : DEFAULT_STYLE.language,
     myStyle: typeof storedStyle.myStyle === "string" ? storedStyle.myStyle : undefined,
