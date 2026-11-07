@@ -130,7 +130,7 @@ export function AssistantPanel({
           e.preventDefault();
           ask(input);
         }}
-        className="flex gap-2"
+        className="sticky bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] z-10 -mx-1 flex gap-2 bg-background px-1 pt-2 pb-2 lg:bottom-0"
       >
         <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} disabled={busy} aria-label="Question" />
         <Button type="submit" disabled={busy || input.trim().length === 0} className="min-h-10">

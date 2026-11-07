@@ -321,7 +321,7 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="sticky bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
+      <form onSubmit={handleSubmit} className="sticky bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] lg:bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
