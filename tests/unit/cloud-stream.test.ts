@@ -38,7 +38,7 @@ vi.mock("ai", async () => {
   return { ...actual, streamText: (...args: unknown[]) => streamTextMock(...args) };
 });
 
-const { streamCloudAgent } = await import("@/modules/ai/agent/cloud-stream");
+const { streamCloudAgent } = await import("@/lib/ai/cloud-stream");
 
 function ctx(): TenantContext {
   return {

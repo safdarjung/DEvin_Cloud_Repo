@@ -68,23 +68,35 @@ describe("M20-T13 exam_papers.unit_ids mapping", () => {
 });
 
 describe("M20-T13 compute_mastery over the demo tenant", () => {
-  it("snapshot count = 2 x current non-absent HY-2026 marks of actively enrolled students; no unit-3 (PT2-X) snapshot", async () => {
-    const [{ n: markCount }] = await sql`
-      select count(*)::int as n
-      from public.marks m
-      join public.exam_papers ep on ep.id = m.exam_paper_id and ep.exam_id = ${hyExamId}
-      join public.enrolments e
-        on e.student_id = m.student_id
-        and e.institution_id = m.institution_id
-        and e.academic_year_id = ${academicYearId}
-        and e.status = 'active'
-      where not m.is_absent and m.superseded_by is null
+  it("one snapshot per (student, unit) from HY-2026 marks or graded homework of actively enrolled students; no unit-3 (PT2-X) snapshot", async () => {
+    // Graded homework (seed `homework` section, 2026-11-07) adds (student, unit)
+    // pairs on top of the HY marks, the same two sources compute_mastery reads.
+    const [{ n: pairCount }] = await sql`
+      with active as (
+        select e.student_id from public.enrolments e
+        where e.institution_id = ${institutionId} and e.academic_year_id = ${academicYearId} and e.status = 'active'
+      ),
+      mark_pairs as (
+        select m.student_id, u.unit_id
+        from public.marks m
+        join public.exam_papers ep on ep.id = m.exam_paper_id and ep.exam_id = ${hyExamId}
+        cross join lateral unnest(ep.unit_ids) as u(unit_id)
+        where not m.is_absent and m.superseded_by is null and m.student_id in (select student_id from active)
+      ),
+      submission_pairs as (
+        select asu.student_id, a.curriculum_unit_id as unit_id
+        from public.assignment_submissions asu
+        join public.assignments a on a.id = asu.assignment_id
+        where asu.institution_id = ${institutionId} and asu.status = 'graded' and a.curriculum_unit_id is not null
+          and asu.student_id in (select student_id from active)
+      )
+      select count(*)::int as n from (select * from mark_pairs union select * from submission_pairs) p
     `;
 
     const [{ n: snapshotCount }] = await sql`
       select count(*)::int as n from public.mastery_snapshots where institution_id = ${institutionId}
     `;
-    expect(snapshotCount).toBe(2 * markCount);
+    expect(snapshotCount).toBe(pairCount);
 
     const [{ n: ptUnitSnapshots }] = await sql`
       select count(*)::int as n

@@ -9,6 +9,7 @@ import { AppError, fail, ok, type ActionResult, type ErrorCode } from "@/lib/act
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
 import { BriefingHeadlineSchema, DashboardBriefingRequestSchema } from "@/modules/ai/dashboard-briefing.schemas";
@@ -116,6 +117,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   } catch (err) {
     if (err instanceof AppError) return json(fail(err.code, err.message, err.fieldErrors));
     throw err;
+  }
+
+  if (!isAiCapabilityEnabled(ctx, "daily_briefing")) {
+    return json(fail("ai_unavailable", "This AI feature is turned off for your role."));
   }
 
   const ensured = await ensureBriefing(ctx);

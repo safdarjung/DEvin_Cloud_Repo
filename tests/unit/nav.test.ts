@@ -37,6 +37,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
+    "/settings/ai",
     "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
   ],
   principal: [
@@ -56,6 +57,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
+    "/settings/ai",
     "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
   ],
   admin: [
@@ -74,6 +76,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/notifications",
     "/jobs",
     "/settings/modules",
+    "/settings/ai",
     "/diary", "/lesson-plans", "/ptm", "/timetable", "/assistant", "/messages",
   ],
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],

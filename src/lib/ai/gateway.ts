@@ -10,6 +10,8 @@ import { redact } from "@/lib/ai/redact";
 import { estimateCost } from "@/lib/ai/pricing";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import * as providers from "@/lib/ai/providers";
+import { streamCloudAgent } from "@/lib/ai/cloud-stream";
+import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 
 // 06 §W10 — local 60s, cloud 30s.
 const TIMEOUT_MS: Record<ProviderStep, number> = { local: 60_000, cloud: 30_000 };
@@ -449,4 +451,110 @@ export async function streamAgent<TOOLS extends ToolSet>(
     ok: false,
     error: { code: "ai_unavailable", message: unavailableMessage(plan[0], ctx.institution.ai_policy) },
   };
+}
+
+// T3a (ai-roles rule 6) — the single entry point a chat caller (T4's
+// handleAiChat) uses for either path, instead of calling streamAgent or
+// streamCloudAgent directly. `mode` is caller-decided (role AI config +
+// provider keys, resolved by the caller, not this function): `"local"`
+// delegates to `streamAgent` unchanged, which never touches a cloud
+// provider factory. `"cloud"` delegates to `streamCloudAgent`
+// (lib/ai/cloud-stream.ts) with every tool's `execute` result redacted
+// first (07 §5) — a cloud step has a safe per-tool-call point to redact
+// from, unlike `streamAgent`'s own whole, already-committed transcript
+// (see that function's header comment).
+export interface StreamChatInput<TOOLS extends ToolSet> {
+  ctx: TenantContext;
+  feature: string;
+  permission: Permission;
+  dataClass: "general" | "student_personal";
+  mode: "local" | "cloud";
+  /** Required when `mode` is `"cloud"`. */
+  provider?: AgentProvider;
+  system: string;
+  messages: ModelMessage[];
+  tools: TOOLS;
+  stopWhen?: StopCondition<TOOLS> | StopCondition<TOOLS>[];
+  maxOutputTokens?: number;
+  concurrencyKey?: string;
+  abortSignal: AbortSignal;
+  /** Redactions already applied by the caller (e.g. to `messages`) before this call; tool-result redactions on the cloud path are added on top. */
+  redactions?: number;
+  /** Required when `mode` is `"cloud"`: shown to the caller if that provider has no key configured. */
+  notConfiguredMessage?: string;
+}
+
+export type StreamChatResult<TOOLS extends ToolSet> =
+  | { ok: true; provider: ProviderStep; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> }
+  | { ok: false; error: { code: ErrorCode; message: string } };
+
+// Redacts every string leaf, keeping the value's shape: structured tool
+// output (e.g. the student's study blocks) is rendered by the UI from its
+// object form, so it must not be stringified.
+function redactDeep(value: unknown, tally: { count: number }): unknown {
+  if (typeof value === "string") {
+    const redacted = redact(value);
+    tally.count += redacted.count;
+    return redacted.text;
+  }
+  if (Array.isArray(value)) return value.map((item) => redactDeep(item, tally));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, redactDeep(item, tally)]));
+  }
+  return value;
+}
+
+// Wraps every tool with an `execute` so its result is redacted before it
+// can reach a cloud provider; the count folds into `tally` so
+// `streamCloudAgent`'s usage log (read lazily via its `redactions` thunk)
+// reflects it.
+function redactToolResults<TOOLS extends ToolSet>(tools: TOOLS, tally: { count: number }): TOOLS {
+  const wrapped: Record<string, unknown> = {};
+  for (const [name, tool] of Object.entries(tools)) {
+    const execute = (tool as { execute?: (...args: unknown[]) => unknown }).execute;
+    if (typeof execute !== "function") {
+      wrapped[name] = tool;
+      continue;
+    }
+    wrapped[name] = {
+      ...tool,
+      execute: async (...args: unknown[]) => redactDeep(await execute(...args), tally),
+    };
+  }
+  return wrapped as TOOLS;
+}
+
+export async function streamChat<TOOLS extends ToolSet>(
+  input: StreamChatInput<TOOLS>,
+): Promise<StreamChatResult<TOOLS>> {
+  const { ctx, feature, permission, dataClass, mode, system, messages, tools, stopWhen, maxOutputTokens, concurrencyKey, abortSignal } =
+    input;
+
+  if (!hasPermission(ctx, permission)) {
+    return { ok: false, error: { code: "forbidden", message: "You do not have permission to use AI features." } };
+  }
+
+  if (mode === "local") {
+    return streamAgent({ ctx, feature, permission, dataClass, system, messages, tools, stopWhen, maxOutputTokens, concurrencyKey, abortSignal });
+  }
+
+  if (!input.provider) {
+    return { ok: false, error: { code: "ai_unavailable", message: "No cloud AI provider configured for this request." } };
+  }
+
+  const tally = { count: input.redactions ?? 0 };
+  const result = await streamCloudAgent({
+    ctx,
+    feature,
+    provider: input.provider,
+    system,
+    messages,
+    tools: redactToolResults(tools, tally),
+    abortSignal,
+    redactions: () => tally.count,
+    notConfiguredMessage: input.notConfiguredMessage ?? "Cloud AI provider is not configured.",
+  });
+
+  if (!result.ok) return result;
+  return { ok: true, provider: "cloud", modelId: result.modelId, stream: result.stream };
 }

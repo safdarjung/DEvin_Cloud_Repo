@@ -73,6 +73,16 @@ export function startOfDayInTimezone(timeZone: string, now: Date = new Date()): 
 
 export type LimitsResult = { ok: true } | { ok: false; code: "quota_exceeded" | "rate_limited" };
 
+// T3b: read straight off settings (ai-roles T1b's roleAiConfig resolver is
+// being written in parallel; usage.ts must not import it mid-flight).
+function roleDailyTokenQuota(ctx: TenantContext): number | null {
+  const settings = ctx.institution.settings as {
+    ai_roles?: Record<string, { daily_token_quota?: unknown } | undefined>;
+  };
+  const raw = settings.ai_roles?.[ctx.membership.role]?.daily_token_quota;
+  return typeof raw === "number" ? raw : null;
+}
+
 /**
  * 06 §W10 order: daily token quota, then per-user per-minute rate. `feature`
  * is accepted (and logged by the caller) for a future per-feature quota;
@@ -99,6 +109,22 @@ export async function checkLimits(ctx: TenantContext, feature: string): Promise<
   const tokensToday = (dayRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
   if (tokensToday >= settings.daily_token_quota) {
     return { ok: false, code: "quota_exceeded" };
+  }
+
+  const roleQuota = roleDailyTokenQuota(ctx);
+  if (roleQuota !== null) {
+    const { data: roleRows, error: roleError } = await admin
+      .from("ai_usage_events")
+      .select("input_tokens, output_tokens")
+      .eq("institution_id", ctx.institution.id)
+      .eq("role", ctx.membership.role)
+      .gte("created_at", dayStart.toISOString());
+    if (roleError) throw roleError;
+
+    const roleTokensToday = (roleRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
+    if (roleTokensToday >= roleQuota) {
+      return { ok: false, code: "quota_exceeded" };
+    }
   }
 
   if (STUDENT_QUOTA_FEATURES.has(feature)) {
@@ -159,6 +185,7 @@ export async function logUsage(event: UsageEvent): Promise<void> {
     const { error } = await admin.from("ai_usage_events").insert({
       institution_id: event.ctx.institution.id,
       user_id: event.ctx.user.id,
+      role: event.ctx.membership.role,
       feature: event.feature,
       provider: event.provider,
       model: event.model,

@@ -246,6 +246,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "agents.runs": {},
         "agents.runDetail": { runId: UUID },
         "ai.usageSummary": {},
+        "ai.usageByRole": {},
         "ai.listStudyItems": {},
         "ai.listStudyFolders": {},
         "ai.getStudyItem": { itemId: UUID },

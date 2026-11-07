@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import type { TenantContext } from "@/lib/auth/types";
 
 describe("AI routes — module gating", () => {
@@ -74,6 +75,63 @@ describe("AI routes — module gating", () => {
       expect(isModuleEnabled(ctx, "ai_teacher")).toBe(true); // default true
       expect(isModuleEnabled(ctx, "ai_student")).toBe(true); // default true
       expect(isModuleEnabled(ctx, "ai_briefings")).toBe(true); // default true
+    });
+  });
+
+  describe("isAiCapabilityEnabled checks", () => {
+    it("quiz_generator capability off → ai_unavailable", () => {
+      const ctx = mockCtx({
+        modules: { ai_teacher: true },
+        ai_roles: { owner: { enabled: true, capabilities: { quiz_generator: false } } },
+      }) as TenantContext;
+      const enabled = isAiCapabilityEnabled(ctx, "quiz_generator");
+      expect(enabled).toBe(false);
+    });
+
+    it("report_remark capability off → ai_unavailable", () => {
+      const ctx = mockCtx({
+        modules: { ai_teacher: true },
+        ai_roles: { owner: { enabled: true, capabilities: { report_remark: false } } },
+      }) as TenantContext;
+      const enabled = isAiCapabilityEnabled(ctx, "report_remark");
+      expect(enabled).toBe(false);
+    });
+
+    it("enquiry_reply capability off → ai_unavailable", () => {
+      const ctx = mockCtx({
+        modules: { ai_teacher: true },
+        ai_roles: { owner: { enabled: true, capabilities: { enquiry_reply: false } } },
+      }) as TenantContext;
+      const enabled = isAiCapabilityEnabled(ctx, "enquiry_reply");
+      expect(enabled).toBe(false);
+    });
+
+    it("attendance_insight capability off → ai_unavailable", () => {
+      const ctx = mockCtx({
+        modules: { ai_briefings: true },
+        ai_roles: { owner: { enabled: true, capabilities: { attendance_insight: false } } },
+      }) as TenantContext;
+      const enabled = isAiCapabilityEnabled(ctx, "attendance_insight");
+      expect(enabled).toBe(false);
+    });
+
+    it("daily_briefing capability off → ai_unavailable", () => {
+      const ctx = mockCtx({
+        modules: { ai_briefings: true },
+        ai_roles: { owner: { enabled: true, capabilities: { daily_briefing: false } } },
+      }) as TenantContext;
+      const enabled = isAiCapabilityEnabled(ctx, "daily_briefing");
+      expect(enabled).toBe(false);
+    });
+
+    it("practice_quiz capability off → ai_unavailable", () => {
+      const ctx = mockCtx({
+        modules: { practice: true, ai_student: true },
+        ai_roles: { student: { enabled: true, capabilities: { practice_quiz: false } } },
+      }) as TenantContext;
+      ctx.membership.role = "student";
+      const enabled = isAiCapabilityEnabled(ctx, "practice_quiz");
+      expect(enabled).toBe(false);
     });
   });
 });

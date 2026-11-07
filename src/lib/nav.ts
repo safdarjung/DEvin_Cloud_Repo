@@ -89,6 +89,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read", group: "Admin" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage", group: "Admin" },
   { href: "/settings/modules", label: "Modules", icon: Puzzle, permission: "institution.settings.manage", group: "Admin" },
+  { href: "/settings/ai", label: "AI roles", icon: Bot, permission: "institution.settings.manage", group: "Admin" },
   { href: "/fabric/learning", label: "Learning", icon: Book, permission: "dashboard.view", group: "Fabric" },
   { href: "/fabric/students", label: "Student success", icon: Target, permission: "mastery.review", group: "Fabric", module: "mastery" },
   { href: "/fabric/operations", label: "Operations", icon: Cog, permission: "dashboard.view", group: "Fabric" },

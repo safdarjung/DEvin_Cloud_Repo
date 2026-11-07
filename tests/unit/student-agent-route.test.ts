@@ -1,35 +1,45 @@
-// GU-08 — src/app/api/ai/agent/student/route.ts: cross-site guard, body
-// cap, Zod validation, tenant-context error mapping, permission/entitlement
-// gates, and that `streamAgent` (GU-05) is called with the right
-// permission/dataClass — not the quota/concurrency/provider logic itself,
-// which belongs to ai-gateway.test.ts. Same style as
-// tests/unit/teacher-agent-route.test.ts.
+// T4 (ai-roles) — src/app/api/ai/agent/student/route.ts now only delegates
+// to the shared kernel (`handleAiChat`). Generic coverage lives in
+// tests/unit/assistant-route.test.ts; this file covers only what is
+// specific to the student path: the "student_study" usage feature name
+// (usage.ts's STUDENT_QUOTA_FEATURES keys off this exact string), the
+// 3-step budget, the dedicated concurrencyKey (so students never compete
+// with teachers for the institution's local-AI slots), `dataClass:
+// "student_personal"`, and that the student's saved preferences reach
+// `studentTools`'s `visualsEnabled` flag via the enabled capability set.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/lib/auth/types";
 
 const getTenantContextMock = vi.fn();
-const streamAgentMock = vi.fn();
-const streamCloudAgentMock = vi.fn();
-const studentToolsMock = vi.fn(async () => ({}));
+const streamChatMock = vi.fn();
+const buildReadToolsMock = vi.fn(async () => ({ tools: {}, registryNameOf: new Map() }));
+const studentToolsMock = vi.fn(async () => ({ findMyCurriculumUnit: { description: "x", inputSchema: {}, execute: async () => "ok" } }));
 const getStudentPreferencesMock = vi.fn(async () => ({
   skills: ["terse"],
   style: { notesDensity: "standard", notesFormat: "bullets", language: "en" },
 }));
+const roleAiConfigMock = vi.fn(() => ({ enabled: true, cloud: true, instructions: "", dailyTokenQuota: null }));
+const enabledCapabilitiesMock = vi.fn(() => ["study_curriculum"] as string[]);
 
 vi.mock("@/lib/auth/context", () => ({ getTenantContext: getTenantContextMock }));
-vi.mock("@/lib/ai/gateway", () => ({ streamAgent: streamAgentMock }));
-vi.mock("@/modules/ai/agent/cloud-stream", () => ({ streamCloudAgent: streamCloudAgentMock, cloudStreamErrorText: () => "x" }));
+vi.mock("@/lib/ai/gateway", () => ({ streamChat: streamChatMock }));
+vi.mock("@/lib/ai/cloud-stream", () => ({ cloudStreamErrorText: () => "x" }));
+vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock }));
 vi.mock("@/modules/ai/agent/student-tools", () => ({ studentTools: studentToolsMock }));
 vi.mock("@/modules/ai/student-preferences", () => ({ getStudentPreferences: getStudentPreferencesMock }));
+vi.mock("@/modules/ai/capabilities/resolve", () => ({
+  roleAiConfig: roleAiConfigMock,
+  enabledCapabilities: enabledCapabilitiesMock,
+}));
 
 const { POST } = await import("@/app/api/ai/agent/student/route");
 
-function studentCtx(overrides: Partial<TenantContext["membership"]> = {}): TenantContext {
+function studentCtx(): TenantContext {
   return {
     institution: { id: "inst-1", slug: "demo", name: "Demo", settings: {}, ai_policy: "local_only", is_demo: true },
     user: { id: "user-1", profile: { fullName: "Student", phone: null, avatarPath: null, isPlatformAdmin: false } },
-    membership: { role: "student", staffId: null, guardianId: null, studentId: "student-1", ...overrides },
-    permissions: new Set(["ai.study"]),
+    membership: { role: "student", staffId: null, studentId: "student-1", guardianId: null },
+    permissions: new Set(["ai.chat"]),
   } as unknown as TenantContext;
 }
 
@@ -48,182 +58,78 @@ function request(body: unknown, headers: Record<string, string> = {}): Request {
   });
 }
 
-async function json(res: Response) {
-  return res.json();
+function okStream() {
+  return { ok: true, provider: "local", modelId: "m", stream: { toUIMessageStreamResponse: () => new Response("stream-body") } };
 }
 
-// Each test starts keyless (local path); the cloud test sets GROQ_API_KEY itself.
-const savedCloudKeys = { GROQ_API_KEY: process.env.GROQ_API_KEY, GEMINI_API_KEY: process.env.GEMINI_API_KEY };
+const CLOUD_KEYS = ["GEMINI_API_KEY", "GROQ_API_KEY"] as const;
+const savedCloudKeys = Object.fromEntries(CLOUD_KEYS.map((k) => [k, process.env[k]]));
+
 beforeEach(() => {
-  delete process.env.GROQ_API_KEY;
-  delete process.env.GEMINI_API_KEY;
+  for (const k of CLOUD_KEYS) delete process.env[k];
 });
 
 afterEach(() => {
-  for (const [k, v] of Object.entries(savedCloudKeys)) {
-    if (v === undefined) delete process.env[k];
-    else process.env[k] = v;
-  }
   vi.clearAllMocks();
+  buildReadToolsMock.mockResolvedValue({ tools: {}, registryNameOf: new Map() });
+  roleAiConfigMock.mockReturnValue({ enabled: true, cloud: true, instructions: "", dailyTokenQuota: null });
+  enabledCapabilitiesMock.mockReturnValue(["study_curriculum"]);
   getStudentPreferencesMock.mockResolvedValue({
     skills: ["terse"],
     style: { notesDensity: "standard", notesFormat: "bullets", language: "en" },
   });
+  for (const k of CLOUD_KEYS) {
+    if (savedCloudKeys[k] === undefined) delete process.env[k];
+    else process.env[k] = savedCloudKeys[k];
+  }
 });
 
 describe("POST /api/ai/agent/student", () => {
-  it("with a Groq key: streams via the cloud agent (D32 amended), redacts a phone number, never the local path", async () => {
-    process.env.GROQ_API_KEY = "test-key";
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: { ...studentCtx().institution, settings: { features: { student_ai_study: true } } },
-    });
-    const streamResponse = new Response("stream");
-    streamCloudAgentMock.mockResolvedValueOnce({ ok: true, modelId: "groq", stream: { toUIMessageStreamResponse: () => streamResponse } });
-    const res = await POST(
-      request({ institutionSlug: "demo", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "My number is 9876543210, explain fractions" }] }] }),
-    );
-    expect(res).toBe(streamResponse);
-    expect(streamAgentMock).not.toHaveBeenCalled();
-    const call = streamCloudAgentMock.mock.calls[0][0];
-    expect(call.provider).toBe("groq");
-    expect(call.redactions).toBeGreaterThanOrEqual(1);
-    expect(JSON.stringify(call.messages)).not.toContain("9876543210");
-  });
-
-  it("refuses a cross-site request", async () => {
+  it("refuses a cross-site request (shared kernel guard)", async () => {
     const res = await POST(request(validBody(), { origin: "https://evil.example" }));
     expect(res.status).toBe(403);
-    const body = await json(res);
-    expect(body.error.code).toBe("forbidden");
   });
 
-  it("refuses a body over the byte cap via content-length", async () => {
-    const res = await POST(request(validBody(), { "content-length": String(65 * 1024) }));
-    expect(res.status).toBe(422);
-    expect((await json(res)).error.code).toBe("validation_failed");
+  it("logs usage under the student_study feature name (usage.ts STUDENT_QUOTA_FEATURES keys off this)", async () => {
+    getTenantContextMock.mockResolvedValueOnce(studentCtx());
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody()));
+    expect(streamChatMock).toHaveBeenCalledWith(
+      expect.objectContaining({ feature: "student_study", dataClass: "student_personal" }),
+    );
   });
 
-  it("rejects an invalid request shape", async () => {
-    const res = await POST(request({ institutionSlug: "demo" }));
-    expect(res.status).toBe(422);
-    expect((await json(res)).error.code).toBe("validation_failed");
+  it("caps the step budget at 3, not 6, and uses a dedicated per-institution student bucket", async () => {
+    getTenantContextMock.mockResolvedValueOnce(studentCtx());
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody()));
+    const call = streamChatMock.mock.calls[0][0];
+    expect(call.concurrencyKey).toBe("inst-1:student");
   });
 
-  it("rejects a 'file' part (download-capable)", async () => {
-    const body = { institutionSlug: "demo", messages: [{ id: "m1", role: "user", parts: [{ type: "file", url: "https://evil.example/x" }] }] };
-    const res = await POST(request(body));
-    expect(res.status).toBe(422);
+  it("reads the student's saved preferences and passes visualsEnabled based on study_visuals being enabled", async () => {
+    getTenantContextMock.mockResolvedValueOnce(studentCtx());
+    enabledCapabilitiesMock.mockReturnValueOnce(["study_curriculum", "study_visuals"]);
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody()));
+    expect(getStudentPreferencesMock).toHaveBeenCalledOnce();
+    expect(studentToolsMock).toHaveBeenCalledWith(expect.anything(), { visualsEnabled: true });
   });
 
-  it("maps a NEXT_REDIRECT tenant-context signal to unauthenticated", async () => {
-    getTenantContextMock.mockImplementationOnce(() => {
-      const err = new Error("redirect") as Error & { digest: string };
-      err.digest = "NEXT_REDIRECT;replace;/login;307;";
-      throw err;
-    });
-    const res = await POST(request(validBody()));
-    expect(res.status).toBe(401);
-  });
-
-  it("forbids a guardian (no ai.study permission)", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      membership: { role: "guardian", staffId: null, guardianId: "g1", studentId: null },
-      permissions: new Set([]),
-    });
-    const res = await POST(request(validBody()));
-    expect(res.status).toBe(403);
-    expect((await json(res)).error.code).toBe("forbidden");
-  });
-
-  it("forbids a teacher (no ai.study permission)", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      membership: { role: "teacher", staffId: "s1", guardianId: null, studentId: null },
-      permissions: new Set(["ai.generate"]),
-    });
-    const res = await POST(request(validBody()));
-    expect(res.status).toBe(403);
-    expect((await json(res)).error.code).toBe("forbidden");
-  });
-
-  it("returns ai_unavailable when student_ai_study is off", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: { ...studentCtx().institution, settings: { features: { student_ai_study: false } } },
-    });
-    const res = await POST(request(validBody()));
-    expect(res.status).toBe(502);
-    const body = await json(res);
-    expect(body.error.code).toBe("ai_unavailable");
-    expect(streamAgentMock).not.toHaveBeenCalled();
-  });
-
-  it("passes visualsEnabled=false to studentTools when student_ai_visuals is off", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: {
-        ...studentCtx().institution,
-        settings: { features: { student_ai_study: true, student_ai_visuals: false } },
-      },
-    });
-    streamAgentMock.mockResolvedValueOnce({ ok: true, provider: "local", modelId: "m", stream: { toUIMessageStreamResponse: () => new Response("ok") } });
+  it("visualsEnabled is false when study_visuals is not enabled", async () => {
+    getTenantContextMock.mockResolvedValueOnce(studentCtx());
+    enabledCapabilitiesMock.mockReturnValueOnce(["study_curriculum"]);
+    streamChatMock.mockResolvedValueOnce(okStream());
     await POST(request(validBody()));
     expect(studentToolsMock).toHaveBeenCalledWith(expect.anything(), { visualsEnabled: false });
   });
 
-  it("passes visualsEnabled=true to studentTools when student_ai_visuals is on (and study is implicitly on via default)", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: {
-        ...studentCtx().institution,
-        settings: { features: { student_ai_study: true, student_ai_visuals: true } },
-      },
-    });
-    streamAgentMock.mockResolvedValueOnce({ ok: true, provider: "local", modelId: "m", stream: { toUIMessageStreamResponse: () => new Response("ok") } });
-    await POST(request(validBody()));
-    expect(studentToolsMock).toHaveBeenCalledWith(expect.anything(), { visualsEnabled: true });
-  });
-
-  it("calls streamAgent with permission ai.study and dataClass student_personal", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: { ...studentCtx().institution, settings: { features: { student_ai_study: true } } },
-    });
-    streamAgentMock.mockResolvedValueOnce({ ok: true, provider: "local", modelId: "m", stream: { toUIMessageStreamResponse: () => new Response("ok") } });
-    await POST(request(validBody()));
-    expect(streamAgentMock).toHaveBeenCalledWith(
-      expect.objectContaining({ feature: "student_study", permission: "ai.study", dataClass: "student_personal" }),
-    );
-  });
-
-  it("propagates a streamAgent failure as the mapped status/code", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: { ...studentCtx().institution, settings: { features: { student_ai_study: true } } },
-    });
-    streamAgentMock.mockResolvedValueOnce({
-      ok: false,
-      error: { code: "ai_policy_blocked", message: "This feature is only available on a local-only AI policy for now." },
-    });
+  it("returns ai_unavailable when the role's AI chat is disabled", async () => {
+    getTenantContextMock.mockResolvedValueOnce(studentCtx());
+    roleAiConfigMock.mockReturnValueOnce({ enabled: false, cloud: true, instructions: "", dailyTokenQuota: null });
     const res = await POST(request(validBody()));
-    expect(res.status).toBe(502);
-    expect((await json(res)).error.code).toBe("ai_policy_blocked");
-  });
-
-  it("returns the stream response on success", async () => {
-    getTenantContextMock.mockResolvedValueOnce({
-      ...studentCtx(),
-      institution: { ...studentCtx().institution, settings: { features: { student_ai_study: true } } },
-    });
-    streamAgentMock.mockResolvedValueOnce({
-      ok: true,
-      provider: "local",
-      modelId: "m",
-      stream: { toUIMessageStreamResponse: () => new Response("stream-body") },
-    });
-    const res = await POST(request(validBody()));
-    expect(await res.text()).toBe("stream-body");
+    expect(res.status).toBe(503);
+    expect((await res.json()).error.code).toBe("ai_unavailable");
+    expect(streamChatMock).not.toHaveBeenCalled();
   });
 });

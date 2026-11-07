@@ -14,6 +14,7 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
 import {
@@ -134,6 +135,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   if (!isModuleEnabled(ctx, "ai_briefings")) {
     return json(fail("ai_unavailable", "AI features are not available for your institution."));
+  }
+
+  if (!isAiCapabilityEnabled(ctx, "attendance_insight")) {
+    return json(fail("ai_unavailable", "This AI feature is turned off for your role."));
   }
 
   const supabase = await createClient();

@@ -103,7 +103,10 @@ describe("setModuleEnabled (MOD-T4)", () => {
 });
 
 describe("listModules (MOD-T4)", () => {
-  it("has 11 categories in display order, core modules enabled, ai_teacher lists its options", async () => {
+  // T6 (ai-roles): teacher_ai_agent/student_ai_* feature toggles moved from
+  // this page to /settings/ai's per-role capability switches, so ai_teacher
+  // no longer lists them here.
+  it("has 11 categories in display order, core modules enabled, ai_teacher lists no options", async () => {
     const inst = await createTestInstitution("mod-list");
     const ctx = await buildContext(inst, "owner");
     const groups = await listModules(ctx);
@@ -128,6 +131,6 @@ describe("listModules (MOD-T4)", () => {
 
     const ai = groups.find((g) => g.category === "AI");
     const aiTeacher = ai?.modules.find((m) => m.key === "ai_teacher");
-    expect(aiTeacher?.options.some((o) => o.key === "teacher_ai_agent")).toBe(true);
+    expect(aiTeacher?.options).toEqual([]);
   });
 });

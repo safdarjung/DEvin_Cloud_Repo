@@ -2,7 +2,7 @@ import { APICallError } from "ai";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const { cloudStreamErrorText } = await import("@/modules/ai/agent/cloud-stream");
+const { cloudStreamErrorText } = await import("@/lib/ai/cloud-stream");
 
 function apiError(statusCode: number): APICallError {
   return new APICallError({ message: "provider said: secret request echo", url: "https://x", requestBodyValues: {}, statusCode });

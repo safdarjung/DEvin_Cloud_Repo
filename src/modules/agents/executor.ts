@@ -11,7 +11,7 @@ import type { ActionResult } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { streamAgent } from "@/lib/ai/gateway";
 import { redact } from "@/lib/ai/redact";
-import { streamCloudAgent } from "@/modules/ai/agent/cloud-stream";
+import { streamCloudAgent } from "@/lib/ai/cloud-stream";
 import { pickAgentProvider } from "@/modules/ai/agent/provider-routing";
 import { AGENT_CATALOG, maxRisk, type AgentLogEntry, type AgentProposal, type AgentSlug, type RiskClass } from "./catalog";
 import { buildAgentTools, createProposalSink } from "./tools";

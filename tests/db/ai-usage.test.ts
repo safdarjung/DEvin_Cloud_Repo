@@ -69,6 +69,7 @@ describe("ai_usage_events (T-035)", () => {
           "output_tokens",
           "provider",
           "redactions",
+          "role",
           "user_id",
         ].sort(),
       );

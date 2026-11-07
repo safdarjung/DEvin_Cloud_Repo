@@ -4,7 +4,7 @@
 // ai/usage/page.tsx:21's only caller.
 import { defineQuery } from "@/lib/actions/define-query";
 import { z } from "zod";
-import { usageSummary } from "./queries";
+import { usageByRole, usageSummary } from "./queries";
 
 export const usageSummaryQuery = defineQuery({
   name: "ai.usageSummary",
@@ -12,4 +12,13 @@ export const usageSummaryQuery = defineQuery({
   schema: z.object({}).strict(),
   permission: "ai.usage.read",
   handler: (_input, ctx) => usageSummary(ctx),
+});
+
+// T3b (ai-roles) — per-role usage/cost for the AI role settings page.
+export const usageByRoleQuery = defineQuery({
+  name: "ai.usageByRole",
+  module: "core",
+  schema: z.object({}).strict(),
+  permission: "ai.usage.read",
+  handler: (_input, ctx) => usageByRole(ctx),
 });

@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { notFound, redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
-import { isFeatureEnabled } from "@/lib/auth/entitlements";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { requirePermission } from "@/lib/auth/require";
 import { uuid } from "@/lib/schemas/common";
 import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
@@ -20,7 +20,7 @@ export default async function NotebookItemPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "ai.study");
 
-  if (!isFeatureEnabled(ctx, "student_ai_notebook")) {
+  if (!isAiCapabilityEnabled(ctx, "study_notebook")) {
     notFound();
   }
 

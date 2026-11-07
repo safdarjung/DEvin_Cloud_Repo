@@ -47,6 +47,31 @@ const AttendanceStatus = z
   })
   .strict();
 
+// AI roles: the 9 membership roles whose AI the settings page configures.
+export const AI_ROLES = [
+  "owner",
+  "principal",
+  "admin",
+  "admissions",
+  "accountant",
+  "exam_controller",
+  "teacher",
+  "student",
+  "guardian",
+] as const;
+
+export const AiRoleConfigSchema = z
+  .object({
+    enabled: z.boolean().optional(),
+    cloud: z.boolean().optional(),
+    instructions: z.string().trim().max(500).optional(),
+    daily_token_quota: z.number().int().min(0).max(10_000_000).optional(),
+    capabilities: z.record(z.string().regex(/^[a-z][a-z0-9_]{1,40}$/), z.boolean()).optional(),
+  })
+  .strict();
+
+export type AiRoleConfig = z.infer<typeof AiRoleConfigSchema>;
+
 export const InstitutionSettingsSchema = z
   .object({
     locale: z
@@ -207,6 +232,8 @@ export const InstitutionSettingsSchema = z
       })
       .strict()
       .optional(),
+    // Per-role AI config (AI roles ADR): narrows what each role's AI may do; never grants beyond permissions.ts.
+    ai_roles: z.partialRecord(z.enum(AI_ROLES), AiRoleConfigSchema).optional(),
   })
   .strict();
 

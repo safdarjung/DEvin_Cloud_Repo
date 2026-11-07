@@ -135,8 +135,17 @@ describe("X04-T10 seed section fee-plans — invoice_instalments", () => {
     }
   });
 
-  it("charges no late fee yet (date-dependent application deferred to the runner)", async () => {
+  it("the seed charges no late fee itself (date-dependent application deferred to the runner)", async () => {
+    // Other db files call enqueue_due_late_fees() (a sweep over every school)
+    // and later run the job runner, so once the demo instalments pass their
+    // grace period the demo tenant can hold runner-made charges. Any charge
+    // here must therefore come with a succeeded fee_plans.late_fees job.
     const [row] = await sql`select count(*)::int as n from public.late_fee_charges where institution_id = ${institutionId}`;
-    expect(row.n).toBe(0);
+    if (row.n === 0) return;
+    const [job] = await sql`
+      select count(*)::int as n from public.jobs
+      where institution_id = ${institutionId} and type = 'fee_plans.late_fees' and status = 'succeeded'
+    `;
+    expect(job.n).toBeGreaterThan(0);
   });
 });

@@ -1,6 +1,7 @@
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { AssistantPanel } from "@/modules/ai/components/AssistantPanel";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
@@ -34,7 +35,8 @@ export default async function PortalAssistantPage({
         activeHref="/assistant"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      {isModuleEnabled(ctx, "ai_teacher") ? (
+      {isModuleEnabled(ctx, ctx.membership.role === "student" ? "ai_student" : "ai_teacher") &&
+      roleAiConfig(ctx, ctx.membership.role).enabled ? (
         <div className="max-w-2xl space-y-2">
           <p className="text-sm text-muted-foreground">Ask about {selection.studentName}. Each answer lists the records it used.</p>
           <AssistantPanel
@@ -46,7 +48,7 @@ export default async function PortalAssistantPage({
           />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">The AI assistant is not enabled for this school.</p>
+        <p className="text-sm text-muted-foreground">Your school has not switched this assistant on.</p>
       )}
     </>
   );
