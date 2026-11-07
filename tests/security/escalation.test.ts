@@ -29,6 +29,7 @@ const at = "2026-10-01T09:00:00.000Z";
 const FIXTURES: Record<string, { permission: Permission; input: () => Record<string, unknown>; rolesForbidden?: Role[] }> = {
   "core.feature.set": { permission: "institution.settings.manage", input: () => ({ key: "teacher_ai_agent", enabled: true }) },
   "core.module.set": { permission: "institution.settings.manage", input: () => ({ key: "timetable", enabled: true }) },
+  "core.ai_role.set": { permission: "institution.settings.manage", input: () => ({ role: "teacher", patch: { enabled: true } }) },
   "agent.run": { permission: "agent.run", input: () => ({ slug: "finance", task: "x" }) },
   "agent.definition.setEnabled": { permission: "agent.approve", input: () => ({ slug: "finance", enabled: true }) },
   "agent.approve": { permission: "agent.run", input: () => ({ runId: U() }) },

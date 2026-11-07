@@ -55,6 +55,7 @@ export type Permission =
   | "assignment.manage"
   | "assignment.read"
   | "assignment.submit"
+  | "ai.chat"
   | "ai.generate"
   | "ai.usage.read"
   | "ai.study"
@@ -145,6 +146,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.seating.read",
     "assignment.manage",
     "assignment.read",
+    "ai.chat",
     "ai.generate",
     "ai.usage.read",
     "website.edit",
@@ -231,6 +233,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.seating.read",
     "assignment.manage",
     "assignment.read",
+    "ai.chat",
     "ai.generate",
     "ai.usage.read",
     "website.edit",
@@ -304,6 +307,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "mastery.review",
     "exam.seating.read",
     "assignment.read",
+    "ai.chat",
     "ai.generate",
     "ai.usage.read",
     "website.edit",
@@ -360,6 +364,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "academics.read",
     // Admissions staff draft routine enquiry-reply/call-notes via AI (this
     // packet) — the same "AI drafts, human saves" boundary as teacher quizzes.
+    "ai.chat",
     "ai.generate",
     "website.edit",
     "notification.read",
@@ -382,6 +387,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "guardian.read",
     "staff.read",
     "academics.read",
+    "ai.chat",
     "finance.structure.manage",
     "finance.invoice.generate",
     "finance.payment.record",
@@ -407,6 +413,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "student.read",
     "staff.read",
     "academics.read",
+    "ai.chat",
     "attendance.read",
     "exam.manage",
     "exam.marks.enter",
@@ -434,6 +441,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "student.read",
     "guardian.read",
     "academics.read",
+    "ai.chat",
+    "ai.generate",
     "attendance.mark",
     "attendance.correct",
     "attendance.read",
@@ -443,7 +452,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "mastery.review",
     "assignment.manage",
     "assignment.read",
-    "ai.generate",
     "notification.read",
     "question.manage",
     "document.read",
@@ -465,6 +473,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   student: [
     "student.read",
     "academics.read",
+    "ai.chat",
+    "ai.study",
     "attendance.read",
     "finance.read",
     "exam.result.read",
@@ -475,7 +485,6 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "assignment.submit",
     "notification.read",
     // D32/GU-08 — student-only (07 §2.2 column: stu). No other role holds this.
-    "ai.study",
     "document.read",
     "document.write",
     "timetable.read",
@@ -486,6 +495,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "student.read",
     "guardian.read",
     "academics.read",
+    "ai.chat",
     "attendance.read",
     "finance.read",
     "finance.payment.online",

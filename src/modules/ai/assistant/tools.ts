@@ -28,7 +28,10 @@ const TaskDraftInput = z
   })
   .strict();
 
-function navigateTool(ctx: TenantContext) {
+// Exported (ai-roles T4): the unified chat kernel (kernel/handle-chat.ts)
+// reuses these two directly, filtered by the caller's enabled capabilities,
+// instead of `buildAssistantTools`'s own fixed `navigate`+`createTask` pair.
+export function navigateTool(ctx: TenantContext) {
   const items = navItemsFor(ctx.permissions, ctx.institution.settings).filter((i) => i.group !== "Fabric");
   if (items.length === 0) return null;
   const hrefs = items.map((i) => i.href) as [string, ...string[]];
@@ -42,7 +45,7 @@ function navigateTool(ctx: TenantContext) {
   });
 }
 
-async function createTaskTool(ctx: TenantContext) {
+export async function createTaskTool(ctx: TenantContext) {
   await import("@/app/api/v1/actions/all-actions");
   const meta = getActionMeta().get(TASK_ACTION);
   if (!meta || typeof meta.permission !== "string") return null;

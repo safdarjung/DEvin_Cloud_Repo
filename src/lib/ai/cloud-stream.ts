@@ -5,6 +5,10 @@ import "server-only";
 // (the M24 school-wide assistant, T6) shares it instead of re-copying it.
 // The caller keeps its own gates (parse, role/feature checks, tool
 // building, message conversion) — this module starts at `checkLimits`.
+// T3a (ai-roles) — moved under `src/lib/ai/` so `gateway.ts`'s new
+// `streamChat` can import it (rule 6: every model call goes through the
+// gateway); existing callers (executor.ts, the 3 agent routes) just
+// updated their import path, no behavior change.
 import { APICallError, stepCountIs, streamText, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import type { ErrorCode } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
@@ -25,7 +29,8 @@ export interface CloudAgentInput<TOOLS extends ToolSet> {
   messages: ModelMessage[];
   tools: TOOLS;
   abortSignal: AbortSignal;
-  redactions?: number;
+  /** A fixed count, or a thunk read at usage-log time (T3a: lets `streamChat`'s tool-result redaction, which happens during the stream, count toward the logged total). */
+  redactions?: number | (() => number);
   notConfiguredMessage: string;
   /** Agent runs (M22): usage rows carry the run id so the run's cost is attributable. */
   agentRunId?: string;
@@ -45,7 +50,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   input: CloudAgentInput<TOOLS>,
 ): Promise<CloudAgentResult<TOOLS>> {
   const { ctx, feature, provider, system, messages, tools, abortSignal, notConfiguredMessage } = input;
-  const redactions = input.redactions ?? 0;
+  const redactionsAt = (): number => (typeof input.redactions === "function" ? input.redactions() : input.redactions ?? 0);
   const agentRunId = input.agentRunId ?? null;
   const { modelId, getModel } = resolveAgentModel(provider);
 
@@ -70,7 +75,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
       costEstimateUsd: 0,
       ok: false,
       errorCode: limits.code,
-      redactions,
+      redactions: redactionsAt(),
       agentRunId,
     });
     const message =
@@ -112,7 +117,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
       costEstimateUsd: 0,
       ok: false,
       errorCode: "ai_unavailable",
-      redactions,
+      redactions: redactionsAt(),
       agentRunId,
     });
     return { ok: false, error: { code: "ai_unavailable", message: notConfiguredMessage } };
@@ -160,7 +165,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
         costEstimateUsd: estimateCost("cloud", modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0),
         ok: true,
         errorCode: null,
-        redactions,
+        redactions: redactionsAt(),
         agentRunId,
       }),
     )
@@ -178,7 +183,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
         costEstimateUsd: estimateCost("cloud", modelId, accumulatedUsage.inputTokens, accumulatedUsage.outputTokens),
         ok: false,
         errorCode: "ai_unavailable",
-        redactions,
+        redactions: redactionsAt(),
         agentRunId,
       });
     })

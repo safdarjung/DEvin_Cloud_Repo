@@ -17,8 +17,11 @@ import { isModuleEnabled, MODULE_KEYS, MODULES, type ModuleKey } from "@/lib/mod
 import { createClient } from "@/lib/supabase/server";
 import { emailChannel, resendConfigured } from "@/modules/notifications/channels/resend";
 import { getWebsite } from "@/modules/website/queries";
+import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
 import {
   AcademicYearUpsertSchema,
+  AI_ROLES,
+  AiRoleConfigSchema,
   InstitutionSettingsSchema,
   InviteMemberSchema,
   RevokeInvitationSchema,
@@ -28,6 +31,7 @@ import {
   TermUpsertSchema,
   UpdateInstitutionSettingsSchema,
   type AcademicYearUpsertInput,
+  type AiRoleConfig,
   type InviteMemberInput,
   type SetMemberRoleInput,
   type SetMemberStatusInput,
@@ -90,6 +94,89 @@ export const setFeatureEnabled = defineAction({
 
     revalidatePath(`/${ctx.institution.slug}/ai`);
     return { key, enabled };
+  },
+});
+
+export const setAiRoleConfig = defineAction({
+  name: "core.ai_role.set",
+  module: "core",
+  schema: z.object({ role: z.enum(AI_ROLES), patch: AiRoleConfigSchema }).strict(),
+  permission: "institution.settings.manage",
+  handler: async ({ role, patch }, ctx) => {
+    // Validate that all capability keys in the patch are known.
+    if (patch.capabilities) {
+      const unknownKeys = Object.keys(patch.capabilities).filter(
+        (key) => !(CAPABILITY_KEYS as readonly string[]).includes(key)
+      );
+      if (unknownKeys.length > 0) {
+        throw new AppError("validation_failed", "Unknown capability keys in patch.");
+      }
+    }
+
+    const existingAiRoles = ctx.institution.settings.ai_roles;
+    const existingRoleConfig = (typeof existingAiRoles === "object" && existingAiRoles !== null
+      ? (existingAiRoles as Record<string, AiRoleConfig>)[role]
+      : undefined) || {};
+
+    // Patch merge: capabilities merge key-wise, other fields replace.
+    const mergedRoleConfig: AiRoleConfig = {
+      ...existingRoleConfig,
+      ...patch,
+      ...(patch.capabilities && existingRoleConfig.capabilities
+        ? {
+            capabilities: {
+              ...existingRoleConfig.capabilities,
+              ...patch.capabilities,
+            },
+          }
+        : {}),
+    };
+
+    // Validate the merged config against AiRoleConfigSchema.
+    const parsedRoleConfig = AiRoleConfigSchema.safeParse(mergedRoleConfig);
+    if (!parsedRoleConfig.success) {
+      throw new AppError("validation_failed", "This institution's settings could not be updated safely.");
+    }
+
+    const aiRoles = {
+      ...(typeof existingAiRoles === "object" && existingAiRoles !== null ? existingAiRoles : {}),
+      [role]: parsedRoleConfig.data,
+    };
+
+    // Validate the full ai_roles object against the schema.
+    const parsedAiRoles = InstitutionSettingsSchema.shape.ai_roles?.safeParse(aiRoles);
+    if (parsedAiRoles && !parsedAiRoles.success) {
+      throw new AppError("validation_failed", "This institution's settings could not be updated safely.");
+    }
+
+    const settings = { ...ctx.institution.settings, ai_roles: aiRoles };
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("institutions")
+      .update({ settings })
+      .eq("id", ctx.institution.id);
+    if (error) {
+      const mapped = mapSqlError(error);
+      if (mapped.ok) throw new AppError("internal", "Unexpected error.");
+      throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+    }
+
+    // Audit: role + changed keys only (no instructions text).
+    const changedKeys = Object.keys(patch).filter((key) => {
+      if (key === "instructions") return false; // Skip instructions text
+      return true;
+    });
+
+    await audit(ctx, {
+      action: "core.ai_role.set",
+      entityType: "institution",
+      entityId: ctx.institution.id,
+      after: { role, ...Object.fromEntries(changedKeys.map((k) => [k, patch[k as keyof AiRoleConfig]])) },
+    });
+
+    revalidatePath(`/${ctx.institution.slug}/settings/ai`);
+    return { role, ...parsedRoleConfig.data };
   },
 });
 

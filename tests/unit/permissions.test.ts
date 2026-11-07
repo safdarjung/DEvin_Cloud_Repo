@@ -58,6 +58,7 @@ const MATRIX: Row[] = [
   ["assignment.manage", true, true, false, false, false, false, true, false, false],
   ["assignment.read", true, true, true, false, false, false, true, true, true],
   ["assignment.submit", false, false, false, false, false, false, false, true, false],
+  ["ai.chat", true, true, true, true, true, true, true, true, true],
   ["ai.generate", true, true, true, true, false, false, true, false, false],
   ["ai.usage.read", true, true, true, false, false, false, false, false, false],
   // D32/GU-08 — student only.

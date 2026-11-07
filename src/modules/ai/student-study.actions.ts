@@ -15,7 +15,7 @@ import { revalidatePath } from "next/cache";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { defineAction } from "@/lib/actions/define-action";
-import { isFeatureEnabled } from "@/lib/auth/entitlements";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, Json } from "@/lib/db/types";
@@ -38,8 +38,8 @@ const MAX_ITEMS_PER_STUDENT = 200;
 type StudyClient = Awaited<ReturnType<typeof createClient>>;
 
 function requireNotebookEnabled(ctx: TenantContext): void {
-  if (!isFeatureEnabled(ctx, "student_ai_notebook")) {
-    throw new AppError("ai_unavailable", "The notebook is not included in this school's plan.");
+  if (!isAiCapabilityEnabled(ctx, "study_notebook")) {
+    throw new AppError("ai_unavailable", "Your school has switched the notebook off.");
   }
 }
 

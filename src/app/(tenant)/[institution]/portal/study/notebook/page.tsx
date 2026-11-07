@@ -4,7 +4,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "cn";
 import { Input } from "@/components/ui/input";
 import { getTenantContext } from "@/lib/auth/context";
-import { isFeatureEnabled } from "@/lib/auth/entitlements";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { requirePermission } from "@/lib/auth/require";
 import { NotebookList } from "@/modules/ai/components/NotebookList";
 import { listStudyFolders, listStudyItems } from "@/modules/ai/student-study.queries";
@@ -31,7 +31,7 @@ export default async function NotebookPage({
 
   const basePath = `/${institutionSlug}/portal/study`;
 
-  if (!isFeatureEnabled(ctx, "student_ai_notebook")) {
+  if (!isAiCapabilityEnabled(ctx, "study_notebook")) {
     return (
       <PageHeader
         title="My notebook"

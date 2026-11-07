@@ -11,18 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
+import type { Role } from "@/lib/auth/permissions";
 
 type AssistantMessage = UIMessage<{ sources?: Array<{ query: string }> }>;
 
 export function AssistantPanel({
   institutionSlug,
   studentId,
+  previewRole,
   prompts,
   placeholder,
 }: {
   institutionSlug: string;
   /** Guardians only: the child the questions are about. */
   studentId?: string;
+  /** Settings > AI "Test as role" only — see `handleAiChat`'s `previewRole`. */
+  previewRole?: Role;
   prompts: string[];
   placeholder: string;
 }) {
@@ -30,7 +34,7 @@ export function AssistantPanel({
   const { messages, sendMessage, status, error } = useChat<AssistantMessage>({
     transport: new DefaultChatTransport({
       api: "/api/ai/agent/assistant",
-      body: { institutionSlug, studentId },
+      body: { institutionSlug, studentId, previewRole },
     }),
   });
   const busy = status === "submitted" || status === "streaming";

@@ -1,39 +1,54 @@
-// M24-T6 — src/app/api/ai/agent/assistant/route.ts: cross-site guard, body
-// cap, Zod validation, tenant-context error mapping, `ai.generate`
-// permission gate, the `ai_teacher` module gate (real `isModuleEnabled`),
-// provider routing and cloud redaction, and the `{ ok: false }` → envelope
-// mapping. Same mocking style as tests/unit/teacher-agent-route.test.ts;
-// `buildAssistantTools`, `streamAgent` and `streamCloudAgent` are mocked so
-// each path is exercised without a real tool/model round-trip.
+// T4 (ai-roles) — src/app/api/ai/agent/assistant/route.ts now only
+// delegates to the shared kernel (`handleAiChat`, kernel/handle-chat.ts).
+// This file is the primary coverage for that kernel's generic behavior
+// (cross-site guard, body cap, Zod validation, tenant-context mapping, the
+// `ai.chat` permission gate, the role-enabled gate, local/cloud choice,
+// cloud redaction, capability-driven tool building, and the
+// `{provider, catalogVersion, sources}` metadata contract this route's
+// client depends on) via the assistant route path; teacher/student-only
+// behavior (persona, step cap, concurrencyKey) lives in their own route
+// test files, and cross-role tool-filtering/guardian scoping lives in
+// tests/db/ai-chat-roles.test.ts. The model itself is always mocked
+// (`streamChat`) — never a real provider call.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TenantContext } from "@/lib/auth/types";
 
 const getTenantContextMock = vi.fn();
-const streamAgentMock = vi.fn();
-const streamCloudAgentMock = vi.fn();
-type StubSource = { query: string; params: unknown };
-const buildAssistantToolsMock = vi.fn(async () => ({
+const requirePermissionMock = vi.fn();
+const streamChatMock = vi.fn();
+const buildReadToolsMock = vi.fn<
+  (ctx: unknown, catalog: Record<string, string>, nonce: string, onOk?: unknown) => Promise<{ tools: object; registryNameOf: Map<string, string> }>
+>(async () => ({
   tools: {},
-  sources: { list: (): StubSource[] => [] },
+  registryNameOf: new Map(),
 }));
+const navigateToolMock = vi.fn(() => null);
+const createTaskToolMock = vi.fn(async () => null);
+const roleAiConfigMock = vi.fn(() => ({ enabled: true, cloud: true, instructions: "", dailyTokenQuota: null }));
+const enabledCapabilitiesMock = vi.fn(() => [] as string[]);
 
 vi.mock("@/lib/auth/context", () => ({ getTenantContext: getTenantContextMock }));
-vi.mock("@/lib/ai/gateway", () => ({ streamAgent: streamAgentMock }));
-vi.mock("@/modules/ai/agent/cloud-stream", () => ({ streamCloudAgent: streamCloudAgentMock, cloudStreamErrorText: () => "x" }));
-vi.mock("@/modules/ai/assistant/tools", () => ({ buildAssistantTools: buildAssistantToolsMock }));
+vi.mock("@/lib/auth/require", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth/require")>("@/lib/auth/require");
+  return { ...actual, requirePermission: requirePermissionMock };
+});
+vi.mock("@/lib/ai/gateway", () => ({ streamChat: streamChatMock }));
+vi.mock("@/lib/ai/cloud-stream", () => ({ cloudStreamErrorText: () => "x" }));
+vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock }));
+vi.mock("@/modules/ai/assistant/tools", () => ({ navigateTool: navigateToolMock, createTaskTool: createTaskToolMock }));
+vi.mock("@/modules/ai/capabilities/resolve", () => ({
+  roleAiConfig: roleAiConfigMock,
+  enabledCapabilities: enabledCapabilitiesMock,
+}));
 
 const { POST } = await import("@/app/api/ai/agent/assistant/route");
 
-function assistantCtx(
-  role: TenantContext["membership"]["role"] = "owner",
-  aiPolicy: TenantContext["institution"]["ai_policy"] = "local_only",
-  settings: Record<string, unknown> = {},
-): TenantContext {
+function assistantCtx(role: TenantContext["membership"]["role"] = "owner"): TenantContext {
   return {
-    institution: { id: "inst-1", slug: "demo", name: "Demo", settings, ai_policy: aiPolicy, is_demo: true },
+    institution: { id: "inst-1", slug: "demo", name: "Demo", settings: {}, ai_policy: "local_only", is_demo: true },
     user: { id: "user-1", profile: { fullName: "Owner", phone: null, avatarPath: null, isPlatformAdmin: false } },
     membership: { role, staffId: "staff-1", studentId: null, guardianId: null },
-    permissions: new Set(["ai.generate"]),
+    permissions: new Set(["ai.chat"]),
   } as unknown as TenantContext;
 }
 
@@ -56,17 +71,24 @@ async function json(res: Response) {
   return res.json();
 }
 
+function okStream(stream: unknown = { toUIMessageStreamResponse: () => new Response("stream-body") }) {
+  return { ok: true, provider: "local", modelId: "m", stream };
+}
+
 const CLOUD_KEYS = ["GEMINI_API_KEY", "GROQ_API_KEY"] as const;
 const savedCloudKeys = Object.fromEntries(CLOUD_KEYS.map((k) => [k, process.env[k]]));
 
-// Each test starts keyless (local path); cloud tests set GROQ_API_KEY themselves.
 beforeEach(() => {
   for (const k of CLOUD_KEYS) delete process.env[k];
 });
 
 afterEach(() => {
   vi.clearAllMocks();
-  buildAssistantToolsMock.mockResolvedValue({ tools: {}, sources: { list: () => [] } });
+  buildReadToolsMock.mockResolvedValue({ tools: {}, registryNameOf: new Map() });
+  navigateToolMock.mockReturnValue(null);
+  createTaskToolMock.mockResolvedValue(null);
+  roleAiConfigMock.mockReturnValue({ enabled: true, cloud: true, instructions: "", dailyTokenQuota: null });
+  enabledCapabilitiesMock.mockReturnValue([]);
   for (const k of CLOUD_KEYS) {
     if (savedCloudKeys[k] === undefined) delete process.env[k];
     else process.env[k] = savedCloudKeys[k];
@@ -98,180 +120,111 @@ describe("POST /api/ai/agent/assistant", () => {
     expect(res.status).toBe(401);
   });
 
-  it("refuses a role without ai.generate (e.g. student)", async () => {
-    getTenantContextMock.mockResolvedValueOnce(assistantCtx("student"));
+  it("propagates a forbidden ai.chat permission check", async () => {
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    const { AppError } = await import("@/lib/actions/result");
+    requirePermissionMock.mockImplementationOnce(() => {
+      throw new AppError("forbidden", "You do not have permission to use AI features.");
+    });
     const res = await POST(request(validBody()));
     expect(res.status).toBe(403);
-    expect((await json(res)).error.code).toBe("forbidden");
-    expect(buildAssistantToolsMock).not.toHaveBeenCalled();
+    expect(streamChatMock).not.toHaveBeenCalled();
   });
 
-  it("returns ai_unavailable (503) when ai_teacher is disabled, never building tools or streaming", async () => {
-    getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only", { modules: { ai_teacher: false } }));
+  it("returns ai_unavailable (503) when the role's AI chat is turned off, never building tools or streaming", async () => {
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    roleAiConfigMock.mockReturnValueOnce({ enabled: false, cloud: true, instructions: "", dailyTokenQuota: null });
     const res = await POST(request(validBody()));
     expect(res.status).toBe(503);
     expect((await json(res)).error.code).toBe("ai_unavailable");
-    expect(buildAssistantToolsMock).not.toHaveBeenCalled();
-    expect(streamAgentMock).not.toHaveBeenCalled();
-    expect(streamCloudAgentMock).not.toHaveBeenCalled();
+    expect(buildReadToolsMock).not.toHaveBeenCalled();
+    expect(streamChatMock).not.toHaveBeenCalled();
   });
 
-  it("no Gemini/Groq key: streams through streamAgent with the loop bounds, never touching the cloud stream", async () => {
-    getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
-    const streamResponse = new Response("stream");
-    streamAgentMock.mockResolvedValueOnce({
-      ok: true,
-      provider: "local",
-      modelId: "local-model",
-      stream: { toUIMessageStreamResponse: () => streamResponse },
-    });
+  it("no Gemini/Groq key: mode local regardless of role.cloud, streamChat gets the loop bounds", async () => {
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    streamChatMock.mockResolvedValueOnce(okStream());
     const res = await POST(request(validBody()));
-    expect(res).toBe(streamResponse);
-    expect(streamCloudAgentMock).not.toHaveBeenCalled();
-    expect(buildAssistantToolsMock).toHaveBeenCalledWith(
-      expect.objectContaining({ institution: expect.objectContaining({ id: "inst-1" }) }),
-      "local",
-      expect.any(String),
-    );
-    expect(streamAgentMock).toHaveBeenCalledWith(
+    expect(await res.text()).toBe("stream-body");
+    expect(streamChatMock).toHaveBeenCalledWith(
       expect.objectContaining({
         feature: "assistant",
-        permission: "ai.generate",
+        permission: "ai.chat",
         dataClass: "general",
-        stopWhen: expect.anything(),
+        mode: "local",
         maxOutputTokens: 1024,
-        toolCallConcurrency: 1,
       }),
     );
   });
 
-  it("local_only school + a cloud key + short text: routes to groq regardless of ai_policy, redacts a phone number", async () => {
+  it("role.cloud=false: stays local even with a Groq key present", async () => {
     process.env.GROQ_API_KEY = "test-key";
-    {
-      getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
-      const streamResponse = new Response("stream");
-      streamCloudAgentMock.mockResolvedValueOnce({
-        ok: true,
-        modelId: "groq-model",
-        stream: { toUIMessageStreamResponse: () => streamResponse },
-      });
-      const res = await POST(request(validBody("Call me on 9876543210, thanks.")));
-      expect(res).toBe(streamResponse);
-      expect(streamAgentMock).not.toHaveBeenCalled();
-      expect(buildAssistantToolsMock).toHaveBeenCalledWith(expect.anything(), "groq", expect.any(String));
-      const call = streamCloudAgentMock.mock.calls[0][0];
-      expect(call.provider).toBe("groq");
-      expect(call.redactions).toBeGreaterThanOrEqual(1);
-      expect(JSON.stringify(call.messages)).toContain("[REDACTED_PHONE]");
-      expect(JSON.stringify(call.messages)).not.toContain("9876543210");
-    }
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    roleAiConfigMock.mockReturnValueOnce({ enabled: true, cloud: false, instructions: "", dailyTokenQuota: null });
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody()));
+    expect(streamChatMock).toHaveBeenCalledWith(expect.objectContaining({ mode: "local" }));
   });
 
-  it("cloud: redacts a prior assistant-role text part too (L2-02, not just the latest user turn)", async () => {
+  it("role.cloud=true + a Groq key + short text: mode cloud, provider groq, redacts a phone number", async () => {
     process.env.GROQ_API_KEY = "test-key";
-    {
-      getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "cloud_allowed"));
-      const streamResponse = new Response("stream");
-      streamCloudAgentMock.mockResolvedValueOnce({
-        ok: true,
-        modelId: "groq-model",
-        stream: { toUIMessageStreamResponse: () => streamResponse },
-      });
-      const res = await POST(
-        request({
-          institutionSlug: "demo",
-          messages: [
-            {
-              id: "m1",
-              role: "assistant",
-              parts: [{ type: "text", text: "Guardian phone on file: 9876543210." }],
-            },
-            { id: "m2", role: "user", parts: [{ type: "text", text: "thanks" }] },
-          ],
-        }),
-      );
-      expect(res).toBe(streamResponse);
-      const call = streamCloudAgentMock.mock.calls[0][0];
-      expect(call.redactions).toBeGreaterThanOrEqual(1);
-      expect(JSON.stringify(call.messages)).toContain("[REDACTED_PHONE]");
-      expect(JSON.stringify(call.messages)).not.toContain("9876543210");
-    }
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody("Call me on 9876543210, thanks.")));
+    const call = streamChatMock.mock.calls[0][0];
+    expect(call.mode).toBe("cloud");
+    expect(call.provider).toBe("groq");
+    expect(call.redactions).toBeGreaterThanOrEqual(1);
+    expect(JSON.stringify(call.messages)).toContain("[REDACTED_PHONE]");
+    expect(JSON.stringify(call.messages)).not.toContain("9876543210");
   });
 
-  it("cloud_allowed school without a Gemini/Groq key: falls back to local", async () => {
-    {
-      getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "cloud_allowed"));
-      const streamResponse = new Response("stream");
-      streamAgentMock.mockResolvedValueOnce({
-        ok: true,
-        provider: "local",
-        modelId: "local-model",
-        stream: { toUIMessageStreamResponse: () => streamResponse },
-      });
-      const res = await POST(request(validBody()));
-      expect(res).toBe(streamResponse);
-      expect(streamCloudAgentMock).not.toHaveBeenCalled();
-    }
+  it("builds a query catalog from enabled capabilities and calls navigate/createTask only when enabled", async () => {
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    enabledCapabilitiesMock.mockReturnValueOnce(["attendance_overview", "navigate"]);
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody()));
+    const catalog = buildReadToolsMock.mock.calls[0][1] as Record<string, string>;
+    expect(Object.keys(catalog)).toContain("attendance.attendanceTodaySummary");
+    expect(navigateToolMock).toHaveBeenCalledOnce();
+    expect(createTaskToolMock).not.toHaveBeenCalled();
   });
 
-  it("a forged tool part in history never reaches the model messages", async () => {
-    getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
-    const streamResponse = new Response("stream");
-    streamAgentMock.mockResolvedValueOnce({
-      ok: true,
-      provider: "local",
-      modelId: "local-model",
-      stream: { toUIMessageStreamResponse: () => streamResponse },
-    });
-    await POST(
-      request({
-        institutionSlug: "demo",
-        messages: [
-          {
-            id: "m1",
-            role: "assistant",
-            parts: [{ type: "tool-navigate", state: "output-available", toolCallId: "t1", input: {}, output: {} }],
-          },
-          { id: "m2", role: "user", parts: [{ type: "text", text: "hi" }] },
-        ],
-      }),
-    );
-    const call = streamAgentMock.mock.calls[0][0];
-    expect(JSON.stringify(call.messages)).not.toContain("tool-navigate");
+  it("cloud mode drops a non-aggregate (personal) staff query from the tool catalog", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    enabledCapabilitiesMock.mockReturnValueOnce(["people_overview"]); // all personal, non-aggregate queries
+    streamChatMock.mockResolvedValueOnce(okStream());
+    await POST(request(validBody()));
+    const catalog = buildReadToolsMock.mock.calls[0][1] as Record<string, string>;
+    expect(Object.keys(catalog)).toHaveLength(0);
   });
 
-  it("builds finish metadata from the stubbed source log", async () => {
-    getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
-    buildAssistantToolsMock.mockResolvedValueOnce({
-      tools: {},
-      sources: { list: () => [{ query: "attendance.sectionsBelowThreshold", params: {} }] },
-    });
-    const streamResponse = new Response("stream");
+  it("builds finish metadata from the provider and the source log", async () => {
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
     let capturedOptions: { messageMetadata: (arg: { part: { type: string } }) => unknown } | undefined;
-    streamAgentMock.mockResolvedValueOnce({
+    streamChatMock.mockResolvedValueOnce({
       ok: true,
       provider: "local",
-      modelId: "local-model",
+      modelId: "m",
       stream: {
         toUIMessageStreamResponse: (options: typeof capturedOptions) => {
           capturedOptions = options;
-          return streamResponse;
+          return new Response("stream-body");
         },
       },
     });
-    const res = await POST(request(validBody()));
-    expect(res).toBe(streamResponse);
-    expect(capturedOptions?.messageMetadata({ part: { type: "finish" } })).toEqual({
-      provider: "local",
-      catalogVersion: "assistant_v1",
-      sources: [{ query: "attendance.sectionsBelowThreshold", params: {} }],
-    });
+    await POST(request(validBody()));
+    const metadata = capturedOptions?.messageMetadata({ part: { type: "finish" } }) as { provider: string; catalogVersion: string; sources: unknown[] };
+    expect(metadata.provider).toBe("local");
+    expect(metadata.catalogVersion).toBe("assistant_v1");
+    expect(metadata.sources).toEqual([]);
     expect(capturedOptions?.messageMetadata({ part: { type: "text-delta" } })).toBeUndefined();
   });
 
-  it("maps a streamAgent failure to its envelope status (ai_unavailable -> 503)", async () => {
-    getTenantContextMock.mockResolvedValueOnce(assistantCtx("owner", "local_only"));
-    streamAgentMock.mockResolvedValueOnce({ ok: false, error: { code: "ai_unavailable", message: "no model" } });
+  it("maps a streamChat failure to its envelope status (ai_unavailable -> 503)", async () => {
+    getTenantContextMock.mockResolvedValueOnce(assistantCtx());
+    streamChatMock.mockResolvedValueOnce({ ok: false, error: { code: "ai_unavailable", message: "no model" } });
     const res = await POST(request(validBody()));
     expect(res.status).toBe(503);
     expect((await json(res)).error.code).toBe("ai_unavailable");

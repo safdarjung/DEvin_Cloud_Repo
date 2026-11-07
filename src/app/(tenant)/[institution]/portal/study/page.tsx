@@ -2,7 +2,7 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
-import { isFeatureEnabled } from "@/lib/auth/entitlements";
+import { isAiCapabilityEnabled, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { requirePermission } from "@/lib/auth/require";
 import { uuid } from "@/lib/schemas/common";
 import { getStudentPreferences } from "@/modules/ai/student-preferences";
@@ -28,12 +28,11 @@ export default async function PortalStudyPage({
 
   const basePath = `/${institutionSlug}/portal`;
 
-  const notebookEnabled = isFeatureEnabled(ctx, "student_ai_notebook");
-  const unavailable = !isFeatureEnabled(ctx, "student_ai_study")
-    ? "The study helper is not part of this school's current plan, so chat is switched off."
-    : ctx.institution.ai_policy !== "local_only"
-      ? "The study helper only runs when a school keeps AI on its own servers. This school uses a different AI setting, so chat is switched off."
-      : null;
+  const notebookEnabled = isAiCapabilityEnabled(ctx, "study_notebook");
+  // Where the chat runs (local or cloud) is the role's cloud switch on /settings/ai, checked by the chat route.
+  const unavailable = !roleAiConfig(ctx, ctx.membership.role).enabled
+    ? "Your school has switched the study helper off, so chat is not available."
+    : null;
 
   if (unavailable) {
     return (

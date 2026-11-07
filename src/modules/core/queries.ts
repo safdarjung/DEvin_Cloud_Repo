@@ -48,8 +48,11 @@ export function listModules(ctx: TenantContext): ModuleCategoryGroup[] {
       // catalog.ts's own isModuleEnabled — a union of per-key literal types
       // has no shared `core`/`requires` property.
       const entry = MODULES[key] as Record<string, unknown>;
+      // T6 (ai-roles) — AI feature toggles (teacher_ai_*/student_ai_*, both on
+      // the ai_teacher/ai_student modules) moved to /settings/ai's per-role
+      // capability switches; this page no longer lists them.
       const options = (Object.keys(FEATURE_CATALOG) as FeatureKey[])
-        .filter((featureKey) => FEATURE_CATALOG[featureKey].module === key)
+        .filter((featureKey) => FEATURE_CATALOG[featureKey].module === key && key !== "ai_teacher" && key !== "ai_student")
         .map((featureKey) => ({
           key: featureKey,
           label: FEATURE_CATALOG[featureKey].label,

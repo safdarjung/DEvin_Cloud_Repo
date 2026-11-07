@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { AssistantPanel } from "@/modules/ai/components/AssistantPanel";
 
 const PROMPTS = [
@@ -17,6 +18,10 @@ export default async function AssistantPage({ params }: { params: Promise<{ inst
 
   if (!isModuleEnabled(ctx, "ai_teacher")) {
     return <PageHeader title="Assistant" description="The AI assistant is not enabled for this school." />;
+  }
+
+  if (!roleAiConfig(ctx, ctx.membership.role).enabled) {
+    return <PageHeader title="Assistant" description="Your school has switched the AI assistant off for your role." />;
   }
 
   return (
