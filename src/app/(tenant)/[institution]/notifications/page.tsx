@@ -34,7 +34,7 @@ export default async function NotificationsPage({
       />
 
       <Card>
-        <CardContent>
+        <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
           <Inbox institutionSlug={institutionSlug} notifications={notifications} />
         </CardContent>
       </Card>

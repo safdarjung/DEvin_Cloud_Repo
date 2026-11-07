@@ -71,7 +71,7 @@ export default async function PortalStudyPage({
   const resumedChatId = resumedItem?.kind === "chat" ? resumedItem.id : undefined;
 
   return (
-    <div>
+    <div className="flex min-h-[60dvh] flex-col">
       <StudyChat
         institutionSlug={institutionSlug}
         skills={preferences.skills}

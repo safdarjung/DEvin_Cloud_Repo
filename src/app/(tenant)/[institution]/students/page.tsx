@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -50,20 +51,23 @@ export default async function StudentsPage({
     <div className="space-y-4">
       <PageHeader title="Students" description={`${total} enrolled and past students`} />
 
-      <form method="get" className="flex gap-2">
-        <Input name="q" defaultValue={q ?? ""} placeholder="Search by name or admission no (e.g. ADM/2026/00001)" className="max-w-sm" />
-        <Button type="submit" variant="outline">
-          Search
-        </Button>
-      </form>
+      <Card>
+        <form method="get" role="search" className="flex flex-col gap-2 border-b-2 border-border px-4 pb-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:max-w-xl">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input name="q" defaultValue={q ?? ""} placeholder="Search by name or admission no (e.g. ADM/2026/00001)" aria-label="Search students" className="pl-9" />
+          </div>
+          <Button type="submit" variant="outline" className="w-full sm:w-auto">
+            Search
+          </Button>
+        </form>
 
-      {loadError && <ErrorState title="Could not load students" description={loadError} />}
-
-      {!loadError && students.length === 0 ? (
-        <EmptyState title="No students found" description={q ? "Try a different name or admission number." : "Students appear here once admitted."} />
-      ) : (
-        <Card>
-          <CardContent>
+        <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
+          {loadError ? (
+            <ErrorState title="Could not load students" description={loadError} />
+          ) : students.length === 0 ? (
+            <EmptyState title="No students found" description={q ? "Try a different name or admission number." : "Students appear here once admitted."} />
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -90,12 +94,12 @@ export default async function StudentsPage({
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm">
+        <nav aria-label="Pagination" className="flex flex-wrap items-center justify-between gap-2 text-sm">
           <span className="text-muted-foreground">
             Page {pageNum} of {totalPages} ({total} students)
           </span>
@@ -111,7 +115,7 @@ export default async function StudentsPage({
               </Button>
             )}
           </div>
-        </div>
+        </nav>
       )}
     </div>
   );

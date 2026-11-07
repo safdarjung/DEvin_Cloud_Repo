@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { usageSummary } from "@/modules/ai/queries";
@@ -29,35 +30,44 @@ export default async function AiUsagePage({
         description={`Last 30 days · ${summary.totalRequests} requests · ${summary.totalTokens.toLocaleString()} tokens · ${formatUsd(summary.totalCostEstimateUsd)} (cost estimate, not a bill)`}
       />
 
+      <KpiStrip className="xl:[&>div]:grid-cols-3">
+        <KpiTile label="Requests" value={summary.totalRequests.toLocaleString()} sub="Last 30 days" />
+        <KpiTile label="Tokens" value={summary.totalTokens.toLocaleString()} sub="Input and output" />
+        <KpiTile label="Cost estimate" value={formatUsd(summary.totalCostEstimateUsd)} sub="Not a bill" />
+      </KpiStrip>
+
       <Card>
-        <CardContent>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Provider</TableHead>
-            <TableHead className="text-right">Requests</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Successful</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Input tokens</TableHead>
-            <TableHead className="hidden text-right sm:table-cell">Output tokens</TableHead>
-            <TableHead className="text-right">Cost estimate (USD)</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {PROVIDER_ROWS.map((provider) => {
-            const row = summary.byProvider[provider];
-            return (
-              <TableRow key={provider}>
-                <TableCell className="capitalize">{provider}</TableCell>
-                <TableCell className="text-right tabular-nums">{row.requests}</TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.okRequests}</TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.inputTokens.toLocaleString()}</TableCell>
-                <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.outputTokens.toLocaleString()}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatUsd(row.costEstimateUsd)}</TableCell>
+        <CardHeader>
+          <CardTitle>By provider</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Provider</TableHead>
+                <TableHead className="text-right">Requests</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Successful</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Input tokens</TableHead>
+                <TableHead className="hidden text-right sm:table-cell">Output tokens</TableHead>
+                <TableHead className="text-right">Cost estimate (USD)</TableHead>
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+              {PROVIDER_ROWS.map((provider) => {
+                const row = summary.byProvider[provider];
+                return (
+                  <TableRow key={provider}>
+                    <TableCell className="capitalize">{provider}</TableCell>
+                    <TableCell className="text-right tabular-nums">{row.requests}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.okRequests}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.inputTokens.toLocaleString()}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.outputTokens.toLocaleString()}</TableCell>
+                    <TableCell className="text-right tabular-nums">{formatUsd(row.costEstimateUsd)}</TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 

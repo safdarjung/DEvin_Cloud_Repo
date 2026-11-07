@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { startThread } from "@/modules/messaging/actions";
 
-const SELECT_CLASS = "h-10 w-full rounded-[15px] border border-input bg-transparent px-3 text-sm";
+const SELECT_CLASS = "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:h-9";
 
 /** Starts a thread (or appends to the existing one) and opens it. `threadBase` is the thread-list URL without query. */
 export function NewThreadForm({
@@ -72,9 +72,11 @@ export function NewThreadForm({
         <Label htmlFor="nt-body">Message</Label>
         <Textarea id="nt-body" value={body} rows={4} maxLength={4000} onChange={(e) => setBody(e.target.value)} disabled={pending} required />
       </div>
-      <Button type="submit" disabled={pending || !subject.trim() || !body.trim()} className="min-h-10">
-        {pending ? "Sending…" : "Send message"}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending || !subject.trim() || !body.trim()} className="min-h-11 w-full sm:min-h-10 sm:w-auto">
+          {pending ? "Sending…" : "Send message"}
+        </Button>
+      </div>
     </form>
   );
 }

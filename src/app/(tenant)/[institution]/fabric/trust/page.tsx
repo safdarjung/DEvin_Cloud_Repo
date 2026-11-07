@@ -83,7 +83,7 @@ export default async function TrustPage({
             usage,
             (u) => (
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 divide-x-2 divide-border rounded-lg bg-secondary/60 [&_[data-slot=card]]:border-0 [&_[data-slot=card]]:bg-transparent">
                   <KpiTile label="Requests" value={u.totalRequests.toLocaleString("en-IN")} />
                   <KpiTile label="Tokens" value={u.totalTokens.toLocaleString("en-IN")} />
                 </div>
@@ -134,8 +134,8 @@ export default async function TrustPage({
                     Page {Math.min(page, pages)} of {pages} · {total.toLocaleString("en-IN")} events
                   </span>
                   <span className="flex gap-3">
-                    {page > 1 && <Link className="underline" href={`${base}${qs(sp, { page: String(page - 1) })}`}>Previous</Link>}
-                    {page < pages && <Link className="underline" href={`${base}${qs(sp, { page: String(page + 1) })}`}>Next</Link>}
+                    {page > 1 && <Link className="inline-flex min-h-11 items-center underline underline-offset-2 sm:min-h-9" href={`${base}${qs(sp, { page: String(page - 1) })}`}>Previous</Link>}
+                    {page < pages && <Link className="inline-flex min-h-11 items-center underline underline-offset-2 sm:min-h-9" href={`${base}${qs(sp, { page: String(page + 1) })}`}>Next</Link>}
                   </span>
                 </nav>
               </div>
@@ -152,7 +152,7 @@ export default async function TrustPage({
                   key={r}
                   href={`${base}${qs({ ...sp, page: undefined }, { role: r })}`}
                   aria-current={r === role ? "page" : undefined}
-                  className={`rounded-md border px-2.5 py-1 text-sm ${r === role ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                  className={`inline-flex min-h-11 items-center rounded-[3px] border px-3 text-sm transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9 ${r === role ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"}`}
                 >
                   {humanize(r)}
                 </Link>

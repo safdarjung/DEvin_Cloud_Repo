@@ -14,7 +14,7 @@ export function SubjectCurriculum({ subjects }: { subjects: PortalSubject[] }) {
       {subjects.map((s) => {
         const covered = s.units.filter((u) => u.coveredOn).length;
         return (
-          <section key={s.id} className="rounded-xl border border-border bg-card p-4">
+          <section key={s.id} className="rounded-md border border-border bg-card p-4">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-base font-semibold">{s.name}</h2>
               <span className="text-xs text-muted-foreground tabular-nums">

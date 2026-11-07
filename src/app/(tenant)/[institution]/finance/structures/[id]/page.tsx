@@ -28,9 +28,12 @@ export default async function FeeStructureDetailPage({
   return (
     <div className="space-y-6">
       <PageHeader title={structure.name} back={{ href: `/${institutionSlug}/finance/structures`, label: "Fee structures" }} />
-      <FeeStructureForm institutionSlug={institutionSlug} academicYears={academicYears} grades={grades} initial={structure} />
+      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="min-w-0 lg:col-span-2">
+        <FeeStructureForm institutionSlug={institutionSlug} academicYears={academicYears} grades={grades} initial={structure} />
+      </div>
 
-      <Card>
+      <Card className="min-w-0 self-start">
         <CardHeader>
           <CardTitle>Assign to a student</CardTitle>
           <CardDescription>Assigns this student&apos;s fee structure for this academic year, with optional concessions.</CardDescription>
@@ -43,6 +46,7 @@ export default async function FeeStructureDetailPage({
         />
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

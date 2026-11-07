@@ -28,14 +28,31 @@ export default async function PageEditorPage({
     <div className="space-y-4">
       <PageHeader title={page.title} description={`/${page.slug}`} back={{ href: `/${institutionSlug}/website`, label: "Website" }} />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Edit</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BlockEditor institutionSlug={institutionSlug} pageId={page.id} initialBlocks={latestBlocks} />
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="min-w-0 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Edit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BlockEditor institutionSlug={institutionSlug} pageId={page.id} initialBlocks={latestBlocks} />
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0 self-start">
+          <CardHeader>
+            <CardTitle>Versions</CardTitle>
+          </CardHeader>
+          <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
+            <VersionList
+            institutionSlug={institutionSlug}
+            pageId={page.id}
+            versions={page.versions}
+            publishedVersionId={page.publishedVersionId}
+            canPublish={hasPermission(ctx, "website.publish")}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -43,21 +60,6 @@ export default async function PageEditorPage({
         </CardHeader>
         <CardContent>
           <DraftPreview blocks={latestBlocks} slug={page.slug} institutionId={ctx.institution.id} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Versions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <VersionList
-          institutionSlug={institutionSlug}
-          pageId={page.id}
-          versions={page.versions}
-          publishedVersionId={page.publishedVersionId}
-          canPublish={hasPermission(ctx, "website.publish")}
-          />
         </CardContent>
       </Card>
     </div>

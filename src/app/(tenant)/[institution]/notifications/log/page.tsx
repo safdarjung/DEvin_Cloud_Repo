@@ -21,10 +21,11 @@ export default async function NotificationLogPage({
       <PageHeader
         title="Message log"
         description="Every delivery attempt for this institution. SMS and email are simulated — no real provider is ever called."
+        back={{ href: `/${institutionSlug}/notifications`, label: "Notifications" }}
       />
 
       <Card>
-        <CardContent>
+        <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
           <MessageLog rows={rows} />
         </CardContent>
       </Card>

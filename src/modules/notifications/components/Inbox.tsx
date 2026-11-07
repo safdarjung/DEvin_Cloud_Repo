@@ -26,7 +26,7 @@ export function Inbox({
               {!n.readAt && <Badge variant="default">New</Badge>}
             </div>
             <p className="text-sm text-muted-foreground">{n.body}</p>
-            <p className="text-xs text-muted-foreground">{new Date(n.createdAt).toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground tabular-nums">{new Date(n.createdAt).toLocaleString()}</p>
           </div>
           {!n.readAt && <MarkReadButton institutionSlug={institutionSlug} notificationId={n.id} />}
         </li>

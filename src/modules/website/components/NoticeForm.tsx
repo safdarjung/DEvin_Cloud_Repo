@@ -38,16 +38,23 @@ export function NoticeForm({ institutionSlug }: NoticeFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-3 rounded-xl border bg-card p-4">
-      <h2 className="font-medium">New notice</h2>
-      <Input name="title" placeholder="Title" required maxLength={200} />
+    <form action={formAction} className="min-w-0 space-y-3 rounded-lg border bg-card p-4">
+      <h2 className="border-b-2 border-border pb-3 font-semibold">New notice</h2>
+      <div className="space-y-1">
+        <Label htmlFor="noticeTitle">Title</Label>
+        <Input id="noticeTitle" name="title" placeholder="Title" required maxLength={200} />
+      </div>
+      <div className="space-y-1">
+      <Label htmlFor="noticeBody">Body</Label>
       <Textarea
+        id="noticeBody"
         name="body"
         placeholder="Body"
         required
         maxLength={5000}
         className="min-h-24"
       />
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="publishAt">
@@ -62,18 +69,20 @@ export function NoticeForm({ institutionSlug }: NoticeFormProps) {
           <Input id="expiresAt" name="expiresAt" type="datetime-local" />
         </div>
       </div>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex min-h-10 items-center gap-2 text-sm">
         <input type="checkbox" name="isPublic" className="size-4 accent-primary" />
         Show on public site
       </label>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save notice"}
-      </Button>
       {state && !state.ok && (
         <p role="alert" className="text-destructive text-sm">
           {state.error.message}
         </p>
       )}
+      <div className="flex justify-end border-t border-border pt-3">
+        <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
+          {pending ? "Saving…" : "Save notice"}
+        </Button>
+      </div>
     </form>
   );
 }

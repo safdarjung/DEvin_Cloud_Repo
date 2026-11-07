@@ -5,6 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { formatIst } from "@/modules/messaging/format";
 import type { ThreadSummary } from "@/modules/messaging/queries";
 
+function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase())
+      .join("") || "?"
+  );
+}
+
 /** `who` picks the counterpart label; `query` is appended to each thread link (e.g. ?student=). */
 export function ThreadList({
   threads,
@@ -23,27 +34,39 @@ export function ThreadList({
     return <EmptyState title="No messages yet" description="Conversations you start or receive appear here." action={emptyAction} />;
   }
   return (
-    <ul className="divide-y rounded-xl border">
-      {threads.map((t) => (
-        <li key={t.id}>
-          <Link
-            href={`${basePath}/${t.id}${query}`}
-            className="flex min-h-14 items-start justify-between gap-3 px-4 py-3 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{t.subject}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {who(t)} · {t.studentName}
+    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
+      {threads.map((t) => {
+        const unread = t.unreadCount > 0;
+        const label = who(t);
+        return (
+          <li key={t.id}>
+            <Link
+              href={`${basePath}/${t.id}${query}`}
+              className="flex min-h-14 items-start gap-3 px-4 py-3 transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              <span
+                aria-hidden
+                className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${unread ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+              >
+                {initials(label)}
               </span>
-              {t.lastMessagePreview && <span className="mt-1 block truncate text-sm text-muted-foreground">{t.lastMessagePreview}</span>}
-            </span>
-            <span className="flex shrink-0 flex-col items-end gap-1">
-              <span className="text-xs tabular-nums text-muted-foreground">{formatIst(t.lastMessageAt)}</span>
-              {t.unreadCount > 0 && <Badge>{t.unreadCount} unread</Badge>}
-            </span>
-          </Link>
-        </li>
-      ))}
+              <span className="min-w-0 flex-1">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className={`block truncate text-sm ${unread ? "font-semibold" : "font-medium"}`}>{t.subject}</span>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{formatIst(t.lastMessageAt)}</span>
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {label} · {t.studentName}
+                </span>
+                <span className="mt-1 flex items-center justify-between gap-3">
+                  <span className="block min-w-0 truncate text-sm text-muted-foreground">{t.lastMessagePreview}</span>
+                  {unread && <Badge className="shrink-0">{t.unreadCount} unread</Badge>}
+                </span>
+              </span>
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

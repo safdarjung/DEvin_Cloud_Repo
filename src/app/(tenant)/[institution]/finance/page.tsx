@@ -20,7 +20,7 @@ export default async function FinancePage({
       <PageHeader title="Finance" description="Fee structures, invoices and payments." />
       <div className="grid gap-4 sm:grid-cols-2">
         {canManageStructures && (
-          <Link href={`/${institutionSlug}/finance/structures`} className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <Link href={`/${institutionSlug}/finance/structures`} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
             <Card className="h-full transition-colors hover:bg-muted/50">
               <CardHeader>
                 <CardTitle>Fee structures &amp; assignments</CardTitle>
@@ -29,7 +29,7 @@ export default async function FinancePage({
             </Card>
           </Link>
         )}
-        <Link href={`/${institutionSlug}/finance/invoices`} className="rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <Link href={`/${institutionSlug}/finance/invoices`} className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Card className="h-full transition-colors hover:bg-muted/50">
             <CardHeader>
               <CardTitle>Invoices</CardTitle>

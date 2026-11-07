@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
@@ -33,7 +34,11 @@ export default async function WebsitePage({ params }: { params: Promise<{ instit
           </>
         }
       />
-      <PageList institutionSlug={institutionSlug} pages={pages} canEdit={hasPermission(ctx, "website.edit")} />
+      <Card>
+        <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
+          <PageList institutionSlug={institutionSlug} pages={pages} canEdit={hasPermission(ctx, "website.edit")} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

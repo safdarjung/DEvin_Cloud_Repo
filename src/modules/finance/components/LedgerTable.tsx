@@ -42,7 +42,7 @@ export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
       </Table>
       )}
 
-      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-3 text-sm">
         <div className="flex gap-1">
           <dt className="text-muted-foreground">Total debit</dt>
           <dd className="font-medium tabular-nums">{inr(ledger.totalDebit)}</dd>

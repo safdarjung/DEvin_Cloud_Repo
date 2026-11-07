@@ -61,7 +61,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
   }
 
   return (
-    <form action={formAction} className="space-y-4 rounded-xl border bg-card p-4 text-card-foreground">
+    <form action={formAction} className="space-y-4 rounded-lg border bg-card p-4 text-card-foreground">
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <Label className="mb-1 block" htmlFor="academicYearId">
@@ -162,9 +162,11 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
         </p>
       )}
 
-      <Button type="submit" disabled={pending || !name.trim() || !academicYearId || !gradeId}>
-        {pending ? "Saving…" : "Save structure"}
-      </Button>
+      <div className="flex justify-end border-t border-border pt-4">
+        <Button type="submit" className="w-full sm:w-auto" disabled={pending || !name.trim() || !academicYearId || !gradeId}>
+          {pending ? "Saving…" : "Save structure"}
+        </Button>
+      </div>
     </form>
   );
 }

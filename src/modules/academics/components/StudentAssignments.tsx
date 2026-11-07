@@ -28,7 +28,7 @@ export function StudentAssignments({ institutionSlug, assignments, portal }: Stu
   return (
     <ul className="space-y-2">
       {assignments.map((assignment) => (
-        <li key={assignment.id} className="rounded-xl border border-border bg-card p-4">
+        <li key={assignment.id} className="rounded-md border border-border bg-card p-4">
           <Link
             href={portal ? `/${institutionSlug}/portal/assignments/${assignment.id}?student=${portal.studentId}` : `/${institutionSlug}/assignments/${assignment.id}`} 
             className="inline-flex min-h-10 items-center font-medium hover:underline sm:min-h-0"

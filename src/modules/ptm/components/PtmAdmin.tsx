@@ -12,7 +12,7 @@ import { describeActionError } from "@/lib/action-error";
 import { createPtmEvent, publishPtmEvent } from "@/modules/ptm/actions";
 import { PtmEventCreateSchema, PTM_SLOT_MINUTES } from "@/modules/ptm/schemas";
 
-const SELECT_CLASS = "h-10 rounded-[15px] border border-input bg-transparent px-3 text-sm";
+const SELECT_CLASS = "h-10 rounded-md border border-input bg-transparent px-3 text-sm";
 
 function FieldError({ errors }: { errors?: string[] }) {
   if (!errors?.length) return null;

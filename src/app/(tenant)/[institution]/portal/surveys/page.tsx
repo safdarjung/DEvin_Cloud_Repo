@@ -34,7 +34,7 @@ export default async function PortalSurveysPage({
       {surveys.length === 0 ? (
         <EmptyState title="No open surveys" description="Surveys from the school appear here while they are open." />
       ) : (
-        <ul className="grid gap-4 lg:grid-cols-2">
+        <ul className="grid gap-4 lg:grid-cols-2 *:min-w-0">
           {surveys.map((s) => (
             <li key={s.id}>
               <Card className="h-full">

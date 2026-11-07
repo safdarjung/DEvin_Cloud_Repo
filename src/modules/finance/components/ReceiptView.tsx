@@ -17,9 +17,9 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
   const { snapshot } = receipt;
 
   return (
-    <div className="space-y-4 rounded-xl border bg-card p-4 text-card-foreground sm:p-6 print:rounded-none print:border-0 print:p-0">
-      <div className="flex items-start justify-between">
-        <div>
+    <div className="min-w-0 space-y-4 rounded-lg border bg-card p-4 text-card-foreground sm:p-6 print:rounded-none print:border-0 print:bg-white print:p-0 print:text-black">
+      <div className="flex items-start justify-between gap-3 border-b-2 border-border pb-3">
+        <div className="min-w-0">
           {snapshot.schoolName && <p className="text-sm font-medium">{snapshot.schoolName}</p>}
           <h2 className="text-lg font-semibold">{receipt.receiptNo}</h2>
           <p className="text-muted-foreground text-sm">FY {receipt.financialYear}</p>
@@ -27,7 +27,7 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
         <Badge variant="outline">{humanize(snapshot.mode)}</Badge>
       </div>
 
-      <dl className="grid grid-cols-2 gap-1 text-sm sm:w-96">
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm sm:w-96">
         <dt className="text-muted-foreground">Student</dt>
         <dd className="text-right">{snapshot.studentName || "—"}</dd>
         <dt className="text-muted-foreground">Admission no</dt>

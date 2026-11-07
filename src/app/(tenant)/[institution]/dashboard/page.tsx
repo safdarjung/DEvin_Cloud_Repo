@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Banknote, CalendarCheck, GraduationCap, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Banknote, CalendarCheck, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
 import { SimulatedBadge } from "@/components/honesty";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -56,6 +57,13 @@ const HALF = "lg:col-span-6";
 const FULL = "md:col-span-2 lg:col-span-12";
 
 /** "just now" / "5m ago" / "3h ago", else the short date. */
+const ASK_PROMPTS = [
+  "Summarize today's school operations",
+  "Which classes have the lowest attendance?",
+  "What is waiting for my approval?",
+  "Identify students with repeated absences",
+];
+
 function ago(iso: string, now: Date): string {
   const mins = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 60_000));
   if (mins < 1) return "just now";
@@ -587,6 +595,28 @@ export default async function DashboardPage({
       )
     );
 
+    // "Ask the data" entry point: same gate as the sidebar's /assistant link
+    // (dashboard.view + ai_teacher module; see src/lib/nav.ts). The assistant
+    // reads no ?q= param, so prompts are plain links shown as hints.
+    const askPanel = hasPermission(ctx, "dashboard.view") && isModuleEnabled(ctx, "ai_teacher") && (
+      <Panel title="Ask the data" action={{ href: `${basePath}/assistant`, label: "Open assistant" }}>
+        <p className="text-xs text-muted-foreground">Questions you can ask the assistant:</p>
+        <ul className="-mx-2">
+          {ASK_PROMPTS.map((prompt) => (
+            <li key={prompt}>
+              <Link
+                href={`${basePath}/assistant`}
+                className="flex min-h-11 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0">{prompt}</span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+    );
+
     // Lower grid: everything that is not first-screen, still reorderable.
     const cards: GridCard[] = [];
     const add = (id: string, title: string, span: string, node: ReactNode) => node && cards.push({ id, title, span, node });
@@ -664,6 +694,7 @@ export default async function DashboardPage({
             upcomingPanel,
             !isAdminRole && absenteesPanel,
             !isAdminRole && canResults && isModuleEnabled(ctx, "exams") && grades(""),
+            askPanel,
           ].map((node, i) => node && <div key={i} className="min-w-0">{node}</div>)}
           {!isAdminRole && briefing && <div className="min-w-0 md:col-span-2 xl:col-span-3">{briefing}</div>}
         </div>

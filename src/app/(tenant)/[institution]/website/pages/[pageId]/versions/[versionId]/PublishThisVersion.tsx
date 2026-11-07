@@ -26,7 +26,7 @@ export function PublishThisVersion({
   }, [state, router]);
 
   return (
-    <form action={formAction} className="flex items-center gap-2">
+    <form action={formAction} className="flex flex-wrap items-center gap-2">
       <Button type="submit" variant="outline" disabled={pending}>
         {pending ? "Publishing…" : "Publish this version"}
       </Button>

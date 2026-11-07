@@ -36,9 +36,12 @@ export function EventForm({ institutionSlug }: EventFormProps) {
   }, [state, router]);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-3 rounded-xl border bg-card p-4">
-      <h2 className="font-medium">New event</h2>
-      <Input name="title" placeholder="Title" required maxLength={200} />
+    <form action={formAction} className="min-w-0 space-y-3 rounded-lg border bg-card p-4">
+      <h2 className="border-b-2 border-border pb-3 font-semibold">New event</h2>
+      <div className="space-y-1">
+        <Label htmlFor="eventTitle">Title</Label>
+        <Input id="eventTitle" name="title" placeholder="Title" required maxLength={200} />
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <Label htmlFor="startsAt">
@@ -53,19 +56,24 @@ export function EventForm({ institutionSlug }: EventFormProps) {
           <Input id="endsAt" name="endsAt" type="datetime-local" />
         </div>
       </div>
-      <Input name="location" placeholder="Location (optional)" maxLength={300} />
-      <label className="flex items-center gap-2 text-sm">
+      <div className="space-y-1">
+        <Label htmlFor="eventLocation">Location (optional)</Label>
+        <Input id="eventLocation" name="location" placeholder="Location (optional)" maxLength={300} />
+      </div>
+      <label className="flex min-h-10 items-center gap-2 text-sm">
         <input type="checkbox" name="isPublic" className="size-4 accent-primary" />
         Show on public site
       </label>
-      <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : "Save event"}
-      </Button>
       {state && !state.ok && (
         <p role="alert" className="text-destructive text-sm">
           {state.error.message}
         </p>
       )}
+      <div className="flex justify-end border-t border-border pt-3">
+        <Button type="submit" className="w-full sm:w-auto" disabled={pending}>
+          {pending ? "Saving…" : "Save event"}
+        </Button>
+      </div>
     </form>
   );
 }

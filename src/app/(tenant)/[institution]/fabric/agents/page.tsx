@@ -68,13 +68,13 @@ export default async function AgentsPage({
   return (
     <div data-fabric-ws="agents" className="space-y-6">
       {header}
-      <p className="flex items-start gap-2 rounded-xl border bg-muted/50 p-3 text-sm">
+      <p className="flex items-start gap-2 rounded-lg border bg-secondary p-3 text-sm">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden />
         Agents only propose actions. Risky ones wait here until an authorised person approves them.
       </p>
 
       {awaiting > 0 && (
-        <p role="status" className="rounded-xl border border-warning/40 bg-warning/10 p-3 text-sm font-medium">
+        <p role="status" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-medium">
           {awaiting} run{awaiting === 1 ? " is" : "s are"} awaiting approval.
         </p>
       )}
@@ -94,11 +94,11 @@ export default async function AgentsPage({
       ) : (
         <>
           <section aria-labelledby="agents-h" className="space-y-3">
-            <h2 id="agents-h" className="text-lg font-semibold">Your agents</h2>
+            <h2 id="agents-h" className="text-base font-semibold">Your agents</h2>
             {defsRes.status === "rejected" ? (
               <ErrorState title="Could not load agents" description="Reload the page to try again." />
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 *:min-w-0">
                 {defs.map((d) => {
                   const spec = AGENT_CATALOG[d.slug as AgentSlug];
                   return (
@@ -133,7 +133,7 @@ export default async function AgentsPage({
           </section>
 
           <section aria-labelledby="runs-h" className="space-y-3">
-            <h2 id="runs-h" className="text-lg font-semibold">Recent runs</h2>
+            <h2 id="runs-h" className="text-base font-semibold">Recent runs</h2>
             {runsRes.status === "rejected" ? (
               <ErrorState title="Could not load runs" description="Reload the page to try again." />
             ) : (

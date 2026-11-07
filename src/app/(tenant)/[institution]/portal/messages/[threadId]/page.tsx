@@ -37,8 +37,8 @@ export default async function PortalThreadPage({
         activeHref="/messages"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <div className="max-w-2xl space-y-4">
-        <div>
+      <div className="max-w-3xl space-y-4">
+        <div className="border-b-2 border-border pb-3">
           <h2 className="text-base font-semibold">{thread.subject}</h2>
           <p className="text-xs text-muted-foreground">
             {thread.teacherName ?? "Teacher"} · {thread.studentName}

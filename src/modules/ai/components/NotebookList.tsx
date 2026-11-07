@@ -38,7 +38,7 @@ function NotebookRow({ institutionSlug, item }: { institutionSlug: string; item:
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card p-3">
       <Link href={href} className="min-h-10 min-w-0 flex-1 basis-40">
         <p className="truncate font-medium">{item.title}</p>
         <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">

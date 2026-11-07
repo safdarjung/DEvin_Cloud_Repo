@@ -7,8 +7,8 @@ import type { InvoiceDetail as InvoiceDetailData } from "@/modules/finance/queri
 
 export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="grid gap-4 lg:grid-cols-3">
+      <Card className="min-w-0 self-start lg:col-span-2">
         <CardHeader>
           <CardTitle>Fee lines</CardTitle>
         </CardHeader>
@@ -36,9 +36,12 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="min-w-0 self-start">
+        <CardHeader>
+          <CardTitle>Summary</CardTitle>
+        </CardHeader>
         <CardContent>
-          <dl className="ml-auto grid grid-cols-2 gap-1 text-sm tabular-nums sm:w-72">
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm tabular-nums">
             <dt className="text-muted-foreground">Subtotal</dt>
             <dd className="text-right">{inr(invoice.subtotal)}</dd>
             <dt className="text-muted-foreground">Concessions</dt>

@@ -51,7 +51,7 @@ export default async function JobsPage({
         <EmptyState title="No failed or dead-lettered jobs" />
       ) : (
         <Card>
-          <CardContent>
+          <CardContent className="min-w-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -60,7 +60,7 @@ export default async function JobsPage({
                   <TableHead className="hidden sm:table-cell">Attempts</TableHead>
                   <TableHead className="hidden sm:table-cell">Last error</TableHead>
                   <TableHead className="hidden sm:table-cell">Updated</TableHead>
-                  <TableHead />
+                  <TableHead><span className="sr-only">Actions</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -73,7 +73,7 @@ export default async function JobsPage({
                     <TableCell>
                       <Badge variant={jobStatusVariant(job.status)}>{humanize(job.status)}</Badge>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
+                    <TableCell className="hidden tabular-nums sm:table-cell">
                       {job.attempts}/{job.maxAttempts}
                     </TableCell>
                     <TableCell
@@ -82,7 +82,7 @@ export default async function JobsPage({
                     >
                       {job.lastError}
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{new Date(job.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell className="hidden tabular-nums sm:table-cell">{new Date(job.updatedAt).toLocaleString()}</TableCell>
                     <TableCell>
                       {job.status === "dead" ? <RequeueButton institutionSlug={institutionSlug} jobId={job.id} /> : null}
                     </TableCell>

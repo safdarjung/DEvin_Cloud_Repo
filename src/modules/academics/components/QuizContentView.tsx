@@ -12,7 +12,7 @@ export function QuizContentView({ content, showAnswers }: QuizContentViewProps) 
   return (
     <ol className="space-y-4">
       {content.questions.map((question, index) => (
-        <li key={index} className="space-y-2 rounded-xl border border-border p-4">
+        <li key={index} className="space-y-2 rounded-md border border-border p-4">
           <p className="font-medium">
             {index + 1}. {question.stem}
           </p>

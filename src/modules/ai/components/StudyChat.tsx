@@ -281,12 +281,12 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
             <p className="text-muted-foreground">Ask about a topic you&apos;re studying — try a mindmap or a practice quiz.</p>
           )}
           {messages.map((message) => (
-            <div key={message.id} className={message.role === "user" ? "max-w-[85%] self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground" : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"}>
+            <div key={message.id} className={message.role === "user" ? "max-w-[85%] self-end rounded-lg rounded-br-sm bg-primary px-3 py-2 text-primary-foreground" : "min-w-0 max-w-full self-start space-y-2 rounded-lg rounded-bl-sm bg-muted px-3 py-2"}>
               <MessageParts message={message} institutionSlug={institutionSlug} resumedChatId={resumedChatId} />
             </div>
           ))}
           {busy && messages.at(-1)?.role !== "assistant" && (
-            <div role="status" className="self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Thinking…</span>
             </div>
           )}

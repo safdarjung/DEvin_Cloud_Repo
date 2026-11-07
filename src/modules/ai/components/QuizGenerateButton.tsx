@@ -81,7 +81,7 @@ export function QuizGenerateButton({ institutionSlug, curriculumUnitId, aiPolicy
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+    <div className="space-y-3 rounded-md border border-border bg-card p-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <Label htmlFor="questionCount">

@@ -55,7 +55,7 @@ function PublishButton({
 
 export function VersionList({ institutionSlug, pageId, versions, publishedVersionId, canPublish }: VersionListProps) {
   if (versions.length === 0) {
-    return <EmptyState title="No versions saved yet" description="Save the editor above to create version 1." />;
+    return <EmptyState title="No versions saved yet" description="Save the editor to create version 1." />;
   }
 
   return (
@@ -63,7 +63,7 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
       <TableHeader>
         <TableRow>
           <TableHead>Version</TableHead>
-          <TableHead className="hidden sm:table-cell">Saved</TableHead>
+          <TableHead className="hidden sm:table-cell lg:hidden 2xl:table-cell">Saved</TableHead>
           <TableHead>Status</TableHead>
           <TableHead />
         </TableRow>
@@ -81,7 +81,7 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
                   v{version.versionNo}
                 </Link>
               </TableCell>
-              <TableCell className="hidden sm:table-cell">{new Date(version.createdAt).toLocaleString()}</TableCell>
+              <TableCell className="hidden tabular-nums sm:table-cell lg:hidden 2xl:table-cell">{new Date(version.createdAt).toLocaleString()}</TableCell>
               <TableCell>{isPublished && <Badge variant="success">Published</Badge>}</TableCell>
               <TableCell>
                 {!isPublished && canPublish && (

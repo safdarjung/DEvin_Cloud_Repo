@@ -47,7 +47,7 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
   if (terms.length === 0) return null;
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground sm:flex-row sm:flex-wrap sm:items-end">
+    <form action={formAction} className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-card-foreground sm:flex-row sm:flex-wrap sm:items-end">
       <div>
         <Label className="mb-1 block" htmlFor="genTermId">
           Term
@@ -83,7 +83,7 @@ export function GenerateInvoicesPanel({ institutionSlug, terms, grades }: Genera
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={pending || !termId}>
+      <Button type="submit" className="w-full sm:w-auto" disabled={pending || !termId}>
         {pending ? "Generating…" : "Generate Term invoices"}
       </Button>
       {state && (

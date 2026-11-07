@@ -55,7 +55,7 @@ export default async function PortalAssignmentDetailPage({
         activeHref="/assignments"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <div className="max-w-2xl space-y-4">
+      <div className="space-y-4">
         <PageHeader
           title={assignment.title}
           description={assignment.dueAt ? `Due ${fmt.format(new Date(assignment.dueAt))}` : undefined}
@@ -67,33 +67,14 @@ export default async function PortalAssignmentDetailPage({
           }
         />
 
+        <div className="grid gap-4 lg:grid-cols-3">
+        <div className={`min-w-0 space-y-4 ${mine.state === "not_submitted" ? "lg:col-span-3 lg:max-w-3xl" : "lg:col-span-2"}`}>
         {assignment.instructions && (
           <Card>
             <CardHeader>
               <CardTitle>Instructions</CardTitle>
             </CardHeader>
             <CardContent className="whitespace-pre-line text-sm">{assignment.instructions}</CardContent>
-          </Card>
-        )}
-
-        {mine.state !== "not_submitted" && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{graded ? "Your result" : "Your submission"}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p className="text-muted-foreground">
-                {mine.submittedAt ? `Submitted ${fmt.format(new Date(mine.submittedAt))}` : null}
-                {mine.isLate ? " (late)" : ""}
-                {mine.attempt > 1 ? ` · attempt ${mine.attempt}` : ""}
-              </p>
-              {graded && mine.score !== null && mine.maxScore !== null && (
-                <p className="text-2xl font-semibold tabular-nums">
-                  {mine.score}/{mine.maxScore}
-                </p>
-              )}
-              {graded && (mine.feedback ? <p className="whitespace-pre-line">{mine.feedback}</p> : <p className="text-muted-foreground">No feedback from your teacher.</p>)}
-            </CardContent>
           </Card>
         )}
 
@@ -125,6 +106,30 @@ export default async function PortalAssignmentDetailPage({
             </CardContent>
           </Card>
         ) : null}
+        </div>
+        {mine.state !== "not_submitted" && (
+        <aside className="order-first min-w-0 space-y-4 lg:order-none">
+          <Card>
+            <CardHeader>
+              <CardTitle>{graded ? "Your result" : "Your submission"}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <p className="text-muted-foreground">
+                {mine.submittedAt ? `Submitted ${fmt.format(new Date(mine.submittedAt))}` : null}
+                {mine.isLate ? " (late)" : ""}
+                {mine.attempt > 1 ? ` · attempt ${mine.attempt}` : ""}
+              </p>
+              {graded && mine.score !== null && mine.maxScore !== null && (
+                <p className="text-2xl font-semibold tabular-nums">
+                  {mine.score}/{mine.maxScore}
+                </p>
+              )}
+              {graded && (mine.feedback ? <p className="whitespace-pre-line">{mine.feedback}</p> : <p className="text-muted-foreground">No feedback from your teacher.</p>)}
+            </CardContent>
+          </Card>
+        </aside>
+        )}
+        </div>
       </div>
     </>
   );

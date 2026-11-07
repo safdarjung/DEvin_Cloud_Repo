@@ -1,3 +1,4 @@
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { NewThreadForm } from "@/modules/messaging/components/NewThreadForm";
@@ -34,8 +35,8 @@ export default async function PortalMessagesPage({
         activeHref="/messages"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <div className="space-y-6">
-        <section aria-labelledby="threads-h" className="space-y-3">
+      <div className="grid gap-4 lg:grid-cols-3">
+        <section aria-labelledby="threads-h" className="min-w-0 space-y-3 lg:col-span-2">
           <h2 id="threads-h" className="text-base font-semibold">
             Messages about {selection.studentName}
           </h2>
@@ -47,10 +48,13 @@ export default async function PortalMessagesPage({
           />
         </section>
         {canSend && (
-          <section aria-labelledby="new-h" className="max-w-xl space-y-3">
+          <Card aria-labelledby="new-h" role="region" className="min-w-0 self-start">
+            <CardHeader>
             <h2 id="new-h" className="text-base font-semibold">
               New message
             </h2>
+            </CardHeader>
+            <CardContent>
             <NewThreadForm
               institutionSlug={institutionSlug}
               studentId={selection.studentId}
@@ -62,7 +66,8 @@ export default async function PortalMessagesPage({
               threadBase={`/${institutionSlug}/portal/messages`}
               threadQuery={`?student=${selection.studentId}`}
             />
-          </section>
+            </CardContent>
+          </Card>
         )}
       </div>
     </>

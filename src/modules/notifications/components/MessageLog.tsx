@@ -62,7 +62,7 @@ export function MessageLog({ rows }: { rows: DeliveryLogRow[] }) {
             <TableCell className="hidden max-w-sm truncate text-sm text-muted-foreground sm:table-cell" title={row.renderedBody}>
               {row.renderedBody}
             </TableCell>
-            <TableCell className="hidden sm:table-cell">{new Date(row.attemptedAt).toLocaleString()}</TableCell>
+            <TableCell className="hidden tabular-nums sm:table-cell">{new Date(row.attemptedAt).toLocaleString()}</TableCell>
           </TableRow>
         ))}
       </TableBody>

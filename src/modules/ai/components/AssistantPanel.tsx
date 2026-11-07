@@ -81,8 +81,8 @@ export function AssistantPanel({
                 key={message.id}
                 className={
                   message.role === "user"
-                    ? "max-w-[85%] self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
-                    : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"
+                    ? "max-w-[85%] self-end rounded-lg rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
+                    : "min-w-0 max-w-full self-start space-y-2 rounded-lg rounded-bl-sm bg-muted px-3 py-2"
                 }
               >
                 {text && <p className="whitespace-pre-wrap">{text}</p>}
@@ -118,7 +118,7 @@ export function AssistantPanel({
             );
           })}
           {busy && messages.at(-1)?.role !== "assistant" && (
-            <div role="status" className="self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Looking up records…</span>
             </div>
           )}

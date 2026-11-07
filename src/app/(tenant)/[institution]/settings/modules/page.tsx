@@ -25,11 +25,11 @@ export default async function ModulesPage({
       />
 
       {categories.map((cat) => (
-        <div key={cat.category} className="space-y-4">
-          <h2 className="text-lg font-semibold">{cat.category}</h2>
-          <div className="grid gap-4">
+        <div key={cat.category} className="space-y-3 pt-2">
+          <h2 className="text-base font-semibold">{cat.category}</h2>
+          <div className="grid gap-4 md:grid-cols-2">
             {cat.modules.map((mod) => (
-              <Card key={mod.key}>
+              <Card key={mod.key} className="min-w-0">
                 <CardHeader>
                   <CardTitle className="text-base">{mod.label}</CardTitle>
                   <CardDescription>{mod.description}</CardDescription>

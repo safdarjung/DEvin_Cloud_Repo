@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KpiTile } from "@/components/widgets/kpi-widget";
+import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { inr } from "@/lib/format";
@@ -51,7 +51,8 @@ export default async function FinanceIntelPage({
     >
       <div className="space-y-4">
         {collections.state === "ok" && collections.data && (
-          <section aria-label="This term" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <section aria-label="This term">
+            <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
             <KpiTile label="Billed this term" value={paiseToInr(collections.data.duePaise)} sub={`${collections.data.invoiceCount} invoices`} />
             <KpiTile label="Collected" value={paiseToInr(collections.data.collectedPaise)} />
             <KpiTile label="Outstanding" value={paiseToInr(Math.max(0, collections.data.duePaise - collections.data.collectedPaise))} />
@@ -60,6 +61,7 @@ export default async function FinanceIntelPage({
               value={collections.data.duePaise > 0 ? pct(collections.data.collectedPaise / collections.data.duePaise) : "—"}
               sub="of billed"
             />
+            </KpiStrip>
           </section>
         )}
 
