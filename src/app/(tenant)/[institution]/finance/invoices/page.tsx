@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { humanize } from "@/lib/format";
+import { isModuleEnabled } from "@/lib/modules/catalog";
+import { BulkActions } from "@/modules/finance/components/BulkActions";
 import { parsePage } from "@/lib/list-search";
 import { GenerateInvoicesPanel } from "@/modules/finance/components/GenerateInvoicesPanel";
 import { InvoiceTable } from "@/modules/finance/components/InvoiceTable";
@@ -28,6 +30,7 @@ export default async function InvoicesPage({
   requirePermission(ctx, "finance.read");
 
   const canGenerate = hasPermission(ctx, "finance.invoice.generate");
+  const canRemind = hasPermission(ctx, "finance.reminder.send") && isModuleEnabled(ctx, "finance_plus");
   const status = STATUSES.find((s) => s === sp.status);
   const pageNum = parsePage(sp.page);
   const [result, terms, grades] = await Promise.all([
@@ -75,7 +78,13 @@ export default async function InvoicesPage({
           </Button>
         </form>
         <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
-          <InvoiceTable institutionSlug={institutionSlug} invoices={result.rows} serverFiltered />
+          {canRemind && result.rows.length > 0 ? (
+            <BulkActions kind="remind" institutionSlug={institutionSlug}>
+              <InvoiceTable institutionSlug={institutionSlug} invoices={result.rows} serverFiltered selectable />
+            </BulkActions>
+          ) : (
+            <InvoiceTable institutionSlug={institutionSlug} invoices={result.rows} serverFiltered />
+          )}
         </CardContent>
       </Card>
       <ListPager

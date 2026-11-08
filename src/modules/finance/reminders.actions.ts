@@ -13,7 +13,12 @@ import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
-import { SendFeeRemindersSchema, type SendFeeRemindersInput } from "./schemas";
+import {
+  SendFeeRemindersSchema,
+  SendInvoiceRemindersSchema,
+  type SendFeeRemindersInput,
+  type SendInvoiceRemindersInput,
+} from "./schemas";
 
 function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
@@ -50,5 +55,28 @@ export const sendFeeReminders = defineAction({
     const asOf = todayInTimezone(locale.success ? locale.data.timezone : "Asia/Kolkata");
     const jobId = (data as { jobId: string } | null)?.jobId ?? "";
     return { jobId, asOf };
+  },
+});
+
+export interface SendInvoiceRemindersResult {
+  jobId: string;
+  invoiceCount: number;
+}
+
+/** Bulk reminder for selected invoices/defaulters: thin wrapper over `public.enqueue_invoice_reminders` (0110), which re-proves every id and the role. */
+export const sendInvoiceReminders = defineAction({
+  name: "finance.reminders.sendSelected",
+  module: "finance_plus",
+  schema: SendInvoiceRemindersSchema,
+  permission: "finance.reminder.send",
+  handler: async (input: SendInvoiceRemindersInput, ctx): Promise<SendInvoiceRemindersResult> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("enqueue_invoice_reminders", {
+      p_institution_id: ctx.institution.id,
+      p_invoice_ids: input.invoiceIds,
+    });
+    if (error) throwMapped(error);
+    const result = data as { jobId: string; invoiceCount: number } | null;
+    return { jobId: result?.jobId ?? "", invoiceCount: result?.invoiceCount ?? 0 };
   },
 });

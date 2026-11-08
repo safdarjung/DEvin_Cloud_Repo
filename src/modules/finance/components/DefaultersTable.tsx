@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState } from "@/components/states";
 import { inr } from "@/lib/format";
 import type { DefaulterRow } from "@/modules/finance/queries";
+import { BulkCheckbox } from "@/modules/finance/components/BulkActions";
 
 // Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
 const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
@@ -14,9 +15,12 @@ const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` })
 export function DefaultersTable({
   institutionSlug,
   defaulters,
+  selectable,
 }: {
   institutionSlug: string;
   defaulters: DefaulterRow[];
+  /** Render a checkbox per row for <BulkActions kind="remind">. */
+  selectable?: boolean;
 }) {
   if (defaulters.length === 0) {
     return <EmptyState title="No outstanding invoices" description="Nothing is pending for this term." />;
@@ -26,6 +30,7 @@ export function DefaultersTable({
     <Table>
       <TableHeader>
         <TableRow>
+          {selectable && <TableHead className="w-8"><span className="sr-only">Select</span></TableHead>}
           <TableHead>Student</TableHead>
           <TableHead>Invoice</TableHead>
           <TableHead className="hidden text-right sm:table-cell">Total</TableHead>
@@ -37,6 +42,11 @@ export function DefaultersTable({
       <TableBody>
         {defaulters.map((row, i) => (
           <TableRow key={row.invoiceId} className={ROW_ENTER} style={rowDelay(i)}>
+            {selectable && (
+              <TableCell>
+                <BulkCheckbox value={row.invoiceId} label={`Select ${row.studentName}`} />
+              </TableCell>
+            )}
             <TableCell>{row.studentName}</TableCell>
             <TableCell>
               <Link

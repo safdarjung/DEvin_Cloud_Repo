@@ -30,7 +30,8 @@ test.describe("J-00: login smoke, every demo role", () => {
       await loginAs(page, role);
       await page.goto(`/${SLUG}`);
       await expect(page).toHaveURL(new RegExp(`/${SLUG}/dashboard$`));
-      await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+      // Dashboard hero h1 is the time-of-day greeting, not a fixed "Dashboard" title.
+      await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
       expect(errors).toEqual([]);
     });
   }

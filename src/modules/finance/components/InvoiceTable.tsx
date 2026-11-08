@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { humanize, inr } from "@/lib/format";
 import { invoiceStatusVariant } from "@/modules/finance/format";
 import type { InvoiceSummary } from "@/modules/finance/queries";
+import { BulkCheckbox } from "@/modules/finance/components/BulkActions";
 
 const STATUS_OPTIONS = ["all", "issued", "part_paid", "paid", "cancelled"] as const;
 
@@ -25,9 +26,11 @@ interface InvoiceTableProps {
   invoices: InvoiceSummary[];
   /** The page already filtered server-side (status/search); hide the client status filter. */
   serverFiltered?: boolean;
+  /** Checkbox on unpaid rows for <BulkActions kind="remind">. */
+  selectable?: boolean;
 }
 
-export function InvoiceTable({ institutionSlug, invoices, serverFiltered }: InvoiceTableProps) {
+export function InvoiceTable({ institutionSlug, invoices, serverFiltered, selectable }: InvoiceTableProps) {
   const [status, setStatus] = useState<(typeof STATUS_OPTIONS)[number]>("all");
 
   const filtered = useMemo(
@@ -61,6 +64,7 @@ export function InvoiceTable({ institutionSlug, invoices, serverFiltered }: Invo
       <Table>
         <TableHeader>
           <TableRow>
+            {selectable && <TableHead className="w-8"><span className="sr-only">Select</span></TableHead>}
             <TableHead>Invoice</TableHead>
             <TableHead className="hidden sm:table-cell">Student</TableHead>
             <TableHead>Status</TableHead>
@@ -72,6 +76,13 @@ export function InvoiceTable({ institutionSlug, invoices, serverFiltered }: Invo
         <TableBody>
           {filtered.map((invoice, i) => (
             <TableRow key={invoice.id} className={ROW_ENTER} style={rowDelay(i)}>
+              {selectable && (
+                <TableCell>
+                  {(invoice.status === "issued" || invoice.status === "part_paid") && (
+                    <BulkCheckbox value={invoice.id} label={`Select ${invoice.invoiceNo}`} />
+                  )}
+                </TableCell>
+              )}
               <TableCell>
                 <Link href={`/${institutionSlug}/finance/invoices/${invoice.id}`} className="underline-offset-2 hover:underline">
                   {invoice.invoiceNo}

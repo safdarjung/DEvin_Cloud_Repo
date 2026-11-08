@@ -28,8 +28,8 @@ test.describe("J-03: admissions pipeline — move stages, convert to application
     const phone = uniquePhone();
 
     await page.goto(`/s/${SLUG}/admissions`);
-    await page.getByPlaceholder("Child's name").fill(childName);
-    await page.getByPlaceholder("Your name").fill("J03 Guardian");
+    await page.getByLabel("Child's name").fill(childName);
+    await page.getByLabel("Your name").fill("J03 Guardian");
     await page.getByPlaceholder("10-digit mobile number").fill(phone);
     await page.getByRole("button", { name: /submit enquiry/i }).click();
     await expect(page.getByRole("status")).toContainText(/reference ENQ-/i);
@@ -42,18 +42,18 @@ test.describe("J-03: admissions pipeline — move stages, convert to application
     // select (packet: no drag-and-drop dependency).
     const card = page.getByRole("listitem").filter({ hasText: childName });
     await card.getByRole("combobox").click();
-    await page.getByRole("option", { name: "contacted", exact: true }).click();
+    await page.getByRole("option", { name: "Contacted", exact: true }).click();
     await page.waitForLoadState("networkidle");
 
     const movedCard = page.getByRole("listitem").filter({ hasText: childName });
     await movedCard.getByRole("combobox").click();
-    await page.getByRole("option", { name: "visit_scheduled", exact: true }).click();
+    await page.getByRole("option", { name: "Visit scheduled", exact: true }).click();
     await page.waitForLoadState("networkidle");
 
-    // AC2: convert — open the detail page (its own status line confirms
-    // the move landed) and submit the convert form.
+    // AC2: convert — open the detail page (its status badge confirms the
+    // move landed; stages render humanized) and submit the convert form.
     await page.getByRole("link", { name: childName }).click();
-    await expect(page.getByText(/stage: visit_scheduled/)).toBeVisible();
+    await expect(page.getByText("Visit scheduled", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("button", { name: "Convert to application" }).click();
     await page.getByPlaceholder("First name").fill("Riya");
@@ -64,6 +64,6 @@ test.describe("J-03: admissions pipeline — move stages, convert to application
     await page.getByRole("button", { name: "Convert", exact: true }).click();
 
     await page.waitForURL(/\/admissions\/applications\//);
-    await expect(page.getByText(/status: submitted/)).toBeVisible();
+    await expect(page.getByText("Submitted", { exact: true }).first()).toBeVisible();
   });
 });

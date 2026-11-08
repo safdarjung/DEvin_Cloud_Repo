@@ -205,7 +205,7 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
     await page.waitForURL(new RegExp(`/exams/${examId}$`));
 
     await page.getByRole("button", { name: "Open marks entry" }).click();
-    await expect(page.getByText("marks_entry", { exact: true })).toBeVisible();
+    await expect(page.getByText("Marks entry", { exact: true }).first()).toBeVisible();
 
     const { data: examPaper } = await admin.from("exam_papers").select("id").eq("exam_id", examId).single();
     if (!examPaper) throw new Error("fixture exam paper was not created");
@@ -230,7 +230,7 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
     // 3. close marks entry, verify clean, publish.
     await page.goto(`/${SLUG}/exams/${examId}`);
     await page.getByRole("button", { name: "Close marks entry" }).click();
-    await expect(page.getByText("verification", { exact: true })).toBeVisible();
+    await expect(page.getByText("Verification", { exact: true }).first()).toBeVisible();
 
     await page.getByRole("link", { name: "Publish / View results" }).click();
     await page.waitForURL(new RegExp(`/exams/${examId}/results$`));

@@ -23,6 +23,7 @@ export function AssistantPanel({
   previewRole,
   prompts,
   placeholder,
+  initialInput,
 }: {
   institutionSlug: string;
   /** Guardians only: the child the questions are about. */
@@ -31,8 +32,10 @@ export function AssistantPanel({
   previewRole?: Role;
   prompts: string[];
   placeholder: string;
+  /** Pre-filled question (e.g. a dashboard prompt link); the user still presses Send. */
+  initialInput?: string;
 }) {
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialInput ?? "");
   const { messages, sendMessage, status, error } = useChat<AssistantMessage>({
     transport: new DefaultChatTransport({
       api: "/api/ai/agent/assistant",

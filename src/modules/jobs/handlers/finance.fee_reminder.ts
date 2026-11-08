@@ -9,12 +9,14 @@ import { z } from "zod";
 import { createNotification } from "../../notifications/service.ts";
 import type { JobHandler } from "../types.ts";
 
-const PayloadSchema = z
-  .object({
-    term_id: z.string().uuid(),
-    as_of: z.string().min(1),
-  })
-  .strict();
+// Term mode (`enqueue_fee_reminders`): every overdue defaulter in the term.
+// Invoice mode (`enqueue_invoice_reminders`, 0110): only the invoices a
+// finance user selected, still unpaid at run time; no overdue/plan filter,
+// the selection is the decision.
+const PayloadSchema = z.union([
+  z.object({ term_id: z.string().uuid(), as_of: z.string().min(1) }).strict(),
+  z.object({ invoice_ids: z.array(z.string().uuid()).min(1).max(200), as_of: z.string().min(1) }).strict(),
+]);
 
 const PAGE_SIZE = 500;
 
@@ -53,7 +55,9 @@ export const feeReminder: JobHandler = async (job, { admin }) => {
   if (!parsed.success) {
     throw new Error("finance.fee_reminder: invalid payload");
   }
-  const { term_id: termId, as_of: asOf } = parsed.data;
+  const asOf = parsed.data.as_of;
+  const termId = "term_id" in parsed.data ? parsed.data.term_id : null;
+  const invoiceIds = "invoice_ids" in parsed.data ? parsed.data.invoice_ids : null;
 
   const { data: institution, error: institutionError } = await admin
     .from("institutions")
@@ -69,7 +73,18 @@ export const feeReminder: JobHandler = async (job, { admin }) => {
   // T-043 load-test lesson applies to the service role too (06 ruling):
   // page explicitly, never rely on PostgREST's default 1,000-row cap.
   const invoices: OverdueInvoice[] = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
+  if (invoiceIds) {
+    const { data, error } = await admin
+      .from("invoices")
+      .select("id, student_id, invoice_no, due_on, total, paid_total")
+      .eq("institution_id", job.institution_id)
+      .in("id", invoiceIds)
+      .in("status", ["issued", "part_paid"])
+      .order("id");
+    if (error) throw error;
+    invoices.push(...((data as OverdueInvoice[] | null) ?? []));
+  }
+  for (let from = 0; termId; from += PAGE_SIZE) {
     const { data: page, error } = await admin
       .from("invoices")
       .select("id, student_id, invoice_no, due_on, total, paid_total")
@@ -90,7 +105,7 @@ export const feeReminder: JobHandler = async (job, { admin }) => {
   // is `overdue`; a no-plan invoice (absent from this map) is unaffected.
   const hasOverduePart = new Set<string>();
   const planInvoiceIds = new Set<string>();
-  for (let from = 0; ; from += PAGE_SIZE) {
+  for (let from = 0; termId; from += PAGE_SIZE) {
     const { data: page, error } = await admin
       .rpc("invoice_instalment_status", { p_institution_id: job.institution_id, p_term_id: termId })
       .range(from, from + PAGE_SIZE - 1);

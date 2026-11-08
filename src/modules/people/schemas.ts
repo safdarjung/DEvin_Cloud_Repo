@@ -105,3 +105,15 @@ export const GuardianLinkSchema = z
   );
 
 export type GuardianLinkInput = z.infer<typeof GuardianLinkSchema>;
+
+// Students list filters (search params, so every field is optional and
+// untrusted until parsed here).
+export const StudentListFiltersSchema = z
+  .object({
+    gradeId: z.string().uuid().optional(),
+    sectionId: z.string().uuid().optional(),
+    status: z.enum(["active", "alumni", "withdrawn"]).optional(),
+  })
+  .strip();
+
+export type StudentListFiltersInput = z.infer<typeof StudentListFiltersSchema>;

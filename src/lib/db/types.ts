@@ -4455,6 +4455,9 @@ isOneToOne: false
 "enqueue_insight_detection":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
+"enqueue_invoice_reminders":
+{ Args: { "p_institution_id": string,"p_invoice_ids": string[] }; Returns: Json
+                           },
 "enqueue_mastery_compute":
 { Args: Record<PropertyKey, never>; Returns: number
                            },

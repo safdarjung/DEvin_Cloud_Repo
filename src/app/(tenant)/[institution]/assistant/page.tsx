@@ -5,14 +5,19 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { AssistantPanel } from "@/modules/ai/components/AssistantPanel";
 
-const PROMPTS = [
-  "Give me today's attendance summary and list the sections that need attention",
-  "Which sections have the lowest attendance this week?",
-  "Summarise fee collection this term",
-];
+import { assistantPromptsFor } from "@/modules/ai/prompts/dashboard-prompts";
 
-export default async function AssistantPage({ params }: { params: Promise<{ institution: string }> }) {
+export default async function AssistantPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ institution: string }>;
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
   const { institution: institutionSlug } = await params;
+  const { q } = await searchParams;
+  // ?q= only pre-fills the box (never auto-sends); bounded so a long link can't stuff the input.
+  const initialInput = typeof q === "string" ? q.trim().slice(0, 500) : undefined;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "dashboard.view");
 
@@ -27,7 +32,12 @@ export default async function AssistantPage({ params }: { params: Promise<{ inst
   return (
     <div className="max-w-3xl">
       <PageHeader title="Assistant" description="Ask about attendance and fees. Each answer lists the records it used." />
-      <AssistantPanel institutionSlug={institutionSlug} prompts={PROMPTS} placeholder="Ask about attendance or fees" />
+      <AssistantPanel
+        institutionSlug={institutionSlug}
+        prompts={assistantPromptsFor(ctx.membership.role)}
+        placeholder="Ask about attendance or fees"
+        initialInput={initialInput}
+      />
     </div>
   );
 }

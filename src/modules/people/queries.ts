@@ -47,22 +47,43 @@ interface EnrolmentEmbed {
   class_sections: { name: string; grades: { display_name: string } | null } | null;
 }
 
-/** Paginated (packet rule: never unbounded), searches admission no or name. */
-export async function listStudents(ctx: TenantContext, query: string | undefined, page: number): Promise<StudentListPage> {
+/** Optional list filters (validated by `StudentListFiltersSchema`); grade/section match the student's active enrolment. */
+export interface StudentListFilters {
+  gradeId?: string;
+  sectionId?: string;
+  status?: "active" | "alumni" | "withdrawn";
+}
+
+/** Paginated (packet rule: never unbounded), searches admission no or name, filters by grade/section/status. */
+export async function listStudents(
+  ctx: TenantContext,
+  query: string | undefined,
+  page: number,
+  filters: StudentListFilters = {},
+): Promise<StudentListPage> {
   const supabase = await createClient();
   const safePage = Math.max(1, Math.floor(page) || 1);
   const from = (safePage - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
+  // Grade/section filters need an inner join on the active enrolment; without
+  // them the plain embed keeps students who have no enrolment in the list.
+  const byClass = Boolean(filters.gradeId || filters.sectionId);
   let builder = supabase
     .from("students")
     .select(
-      "id, admission_no, first_name, last_name, status, enrolments(status, class_sections(name, grades(display_name)))",
+      byClass
+        ? "id, admission_no, first_name, last_name, status, enrolments!inner(status, class_section_id, class_sections!inner(name, grade_id, grades(display_name)))"
+        : "id, admission_no, first_name, last_name, status, enrolments(status, class_sections(name, grades(display_name)))",
       { count: "exact" },
     )
     .eq("institution_id", ctx.institution.id)
     .order("admission_no", { ascending: true })
     .range(from, to);
+  if (filters.status) builder = builder.eq("status", filters.status);
+  if (byClass) builder = builder.eq("enrolments.status", "active");
+  if (filters.sectionId) builder = builder.eq("enrolments.class_section_id", filters.sectionId);
+  if (filters.gradeId) builder = builder.eq("enrolments.class_sections.grade_id", filters.gradeId);
 
   const trimmed = query?.trim();
   if (trimmed) {

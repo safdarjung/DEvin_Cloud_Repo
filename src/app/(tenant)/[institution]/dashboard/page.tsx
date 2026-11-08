@@ -1,15 +1,15 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Banknote, CalendarCheck, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
+import { Banknote, CalendarCheck, ChevronRight, GraduationCap, Sparkles, UserPlus } from "lucide-react";
+import { GsapStage } from "@/components/gsap-stage";
 import { SimulatedBadge } from "@/components/honesty";
-import { StaggerItem } from "@/components/motion";
-import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
-import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
+import type { QuickAction } from "@/components/widgets/quick-actions";
 import { StaffAvailabilityWidget } from "@/components/widgets/staff-availability-widget";
 import { AnimatedList, BarList, BorderBeam, InteractiveTrend, ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
@@ -27,6 +27,7 @@ import { ApprovalsQueue } from "@/modules/core/components/dashboard/ApprovalsQue
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
 import { Panel, PanelEmpty, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
+import { FeesByClassChart } from "@/modules/core/components/dashboard/FeesByClassChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { listExams, listRecheckQueue, listSectionOptions } from "@/modules/exams/queries";
@@ -38,7 +39,8 @@ import { ForecastCards } from "@/modules/fabric/components/command/forecast-card
 import { PriorityActionsWidget } from "@/modules/fabric/components/command/priority-actions";
 import { RiskIndicators } from "@/modules/fabric/components/command/risk-indicators";
 import { examStatusVariant, recheckStatusVariant } from "@/modules/exams/status";
-import { listDefaulters } from "@/modules/finance/queries";
+import { collectionReport, listDefaulters } from "@/modules/finance/queries";
+import { assistantPromptsFor } from "@/modules/ai/prompts/dashboard-prompts";
 import { staffAvailabilityToday } from "@/modules/people/hr.queries";
 import { peopleCounts } from "@/modules/people/counts.queries";
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
@@ -51,20 +53,67 @@ const longDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long
 const shortDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, day: "numeric", month: "short" });
 const eventDate = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
-// 12-col desktop grid, 2-col tablet, 1-col phone. Pairs are 7/5 or 6/6.
-const WIDE = "lg:col-span-7";
-const NARROW = "lg:col-span-5";
+// 12-col desktop grid, 2-col tablet, 1-col phone, one gap (gap-4) everywhere.
+// Rows pair 8/4, 7/5 or 6/6, or run three 4-col cards.
+const MAIN = "md:col-span-2 lg:col-span-8";
+const SIDE = "md:col-span-2 lg:col-span-4";
+const WIDE = "md:col-span-2 lg:col-span-7";
+const NARROW = "md:col-span-2 lg:col-span-5";
 const HALF = "lg:col-span-6";
+const THIRD = "lg:col-span-4";
 const FULL = "md:col-span-2 lg:col-span-12";
+const DAY_MS = 86_400_000;
+
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner",
+  principal: "Principal",
+  admin: "Administrator",
+  admissions: "Admissions",
+  accountant: "Accounts",
+  exam_controller: "Examinations",
+};
+
+/** One grid cell; GsapStage lifts it in on first view. */
+function Cell({ span, children }: { span: string; children: ReactNode }) {
+  if (!children) return null;
+  return (
+    <div data-gsap="rise" className={cn("min-w-0 [&>*]:h-full", span)}>
+      {children}
+    </div>
+  );
+}
+
+function Hero({ title, subtitle, eyebrow, actions }: { title: string; subtitle: string; eyebrow: string; actions: QuickAction[] }) {
+  return (
+    <header data-gsap="hero" className={cn(FULL, "relative overflow-hidden rounded-xl border bg-card px-5 py-5 sm:px-6 sm:py-6")}>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_140%_at_100%_0%,color-mix(in_oklab,var(--primary)_16%,transparent),transparent_70%)]"
+      />
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-medium tracking-wide text-primary uppercase">{eyebrow}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">{title}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+        </div>
+        {actions.length > 0 && (
+          <nav aria-label="Quick actions" className="flex flex-wrap gap-2">
+            {actions.map((a) => (
+              <Button key={a.href + a.label} asChild variant="outline" size="sm" className="min-h-10 bg-background/70 backdrop-blur-sm">
+                <Link href={a.href}>
+                  {a.icon}
+                  {a.label}
+                </Link>
+              </Button>
+            ))}
+          </nav>
+        )}
+      </div>
+    </header>
+  );
+}
 
 /** "just now" / "5m ago" / "3h ago", else the short date. */
-const ASK_PROMPTS = [
-  "Summarize today's school operations",
-  "Which classes have the lowest attendance?",
-  "What is waiting for my approval?",
-  "Identify students with repeated absences",
-];
-
 function ago(iso: string, now: Date): string {
   const mins = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 60_000));
   if (mins < 1) return "just now";
@@ -138,13 +187,6 @@ const STRIP_COLS: Record<number, string> = {
   4: "md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4",
 };
 
-function Kpis({ items }: { items: ReactNode[] }) {
-  const shown = items.filter(Boolean);
-  if (shown.length === 0) return null;
-  return (
-    <KpiStrip className={cn(FULL, STRIP_COLS[Math.min(shown.length, 4)])}>{shown}</KpiStrip>
-  );
-}
 
 // T-039 — role-aware dashboard (07 §2.2 `dashboard.view`; finance tiles need
 // `finance.read`). `requirePermission` below is the gate: a role without
@@ -197,9 +239,12 @@ export default async function DashboardPage({
   ]);
   const data = await getDashboardData(ctx);
   const termId = data.collections?.termId;
-  const [defaultersR] = await Promise.allSettled([(isLeader || role === "accountant") && termId ? listDefaulters(ctx, { termId }) : skip]);
+  const [defaultersR, feesByClassR] = await Promise.allSettled([
+    (isLeader || role === "accountant") && termId ? listDefaulters(ctx, { termId }) : skip,
+    (isLeader || role === "accountant") && termId ? collectionReport(ctx, { termId, groupBy: "grade" }) : skip,
+  ]);
   const [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, sectionAttR, countsR, sectionCountR, studentLeaveR, upcomingExamsR, calendarR, absenteesR] = await extrasP;
-  for (const r of [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, sectionAttR, countsR, sectionCountR, studentLeaveR, upcomingExamsR, calendarR, absenteesR, defaultersR]) {
+  for (const r of [noticesR, eventsR, rechecksR, examsR, enquiriesR, trendR, approvalsR, staffR, sectionAttR, countsR, sectionCountR, studentLeaveR, upcomingExamsR, calendarR, absenteesR, defaultersR, feesByClassR]) {
     if (r.status === "rejected") console.error("dashboard widget fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
   }
 
@@ -267,7 +312,89 @@ export default async function DashboardPage({
       collections={collections ? { collectedPaise: collections.collectedPaise, duePaise: collections.duePaise } : null}
     />
   );
-  const actions = (className?: string) => <QuickActions actions={quickActions} className={className} />;
+  const heroTitle = firstName ? `${greeting}, ${firstName}` : greeting;
+  const hero = <Hero title={heroTitle} subtitle={`${longDate.format(now)} · ${ctx.institution.name}`} eyebrow={ROLE_LABEL[role] ?? humanize(role)} actions={quickActions} />;
+
+  // Fees by class (grade) this term — finance.collectionReport, rupees.
+  const feesByClass = value(feesByClassR);
+  const feesByClassPanel = (className: string) =>
+    failed(feesByClassR) ? (
+      <FailedWidget title="Fees by class" className={className} />
+    ) : (
+      feesByClass && (
+        <Cell span={className}>
+          <Widget title="Fees by class" description="Collected and outstanding this term" action={{ href: `${basePath}/finance/invoices`, label: "Invoices" }}>
+            <FeesByClassChart
+              rows={feesByClass.map((r) => ({ label: r.groupLabel, collected: r.collected, outstanding: Math.max(r.outstanding ?? 0, 0) }))}
+            />
+          </Widget>
+        </Cell>
+      )
+    );
+
+  // Defaulter ageing: outstanding rupees by days past due (derived from the defaulter rows above).
+  const ageing = (() => {
+    if (!defaulters) return null;
+    const buckets = [
+      { label: "Not yet due", value: 0, tone: "default" as const },
+      { label: "1–30 days late", value: 0, tone: "warning" as const },
+      { label: "31–60 days late", value: 0, tone: "warning" as const },
+      { label: "61–90 days late", value: 0, tone: "destructive" as const },
+      { label: "Over 90 days late", value: 0, tone: "destructive" as const },
+    ];
+    const today = Date.parse(todayIso);
+    for (const d of defaulters) {
+      const late = d.dueOn ? Math.floor((today - Date.parse(d.dueOn)) / DAY_MS) : 0;
+      const i = late <= 0 ? 0 : late <= 30 ? 1 : late <= 60 ? 2 : late <= 90 ? 3 : 4;
+      buckets[i]!.value += d.outstanding;
+    }
+    return buckets;
+  })();
+  const ageingPanel = (className: string) =>
+    defaultersFailed ? (
+      <FailedWidget title="Outstanding by age" className={className} />
+    ) : (
+      ageing && (
+        <Cell span={className}>
+          <Widget
+            title="Outstanding by age"
+            description="Unpaid balance by days past due"
+            action={{ href: `${basePath}/finance/defaulters`, label: "Defaulters" }}
+            isEmpty={ageing.every((b) => b.value === 0)}
+            empty={<EmptyState bare title="Nothing outstanding this term" />}
+          >
+            <BarList ariaLabel="Outstanding by days past due" format="inr" items={ageing.map((b) => ({ ...b, href: `${basePath}/finance/defaulters` }))} />
+          </Widget>
+        </Cell>
+      )
+    );
+
+  // "Ask the data": role prompts pre-fill /assistant?q= (the user still presses Send).
+  const askPanel = (className: string) =>
+    isModuleEnabled(ctx, "ai_teacher") && (
+      <Cell span={className}>
+        <Panel title="Ask the data" action={{ href: `${basePath}/assistant`, label: "Open assistant" }} className="relative overflow-hidden">
+          <BorderBeam />
+          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="size-3.5 text-primary" aria-hidden />
+            Tap a question to open it in the assistant
+          </p>
+          <ul className="-mx-2">
+            {assistantPromptsFor(role).map((prompt) => (
+              <li key={prompt}>
+                <Link
+                  href={`${basePath}/assistant?q=${encodeURIComponent(prompt)}`}
+                  className="group flex min-h-11 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="min-w-0">{prompt}</span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-(--duration-fast) group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </Cell>
+    );
 
   const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && (
     <KpiTile label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
@@ -367,38 +494,51 @@ export default async function DashboardPage({
       {failed(eventsR) ? (
         <FailedWidget title="Upcoming events" className={HALF} />
       ) : (
+        <Cell span={HALF}>
         <ListWidget
           title="Upcoming events"
           action={canEditWebsite ? { href: `${basePath}/website/events`, label: "Events" } : undefined}
           emptyTitle="No upcoming public events"
           rows={(events ?? []).map((e) => ({ id: e.id, title: e.title, meta: [eventDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · ") }))}
-          className={HALF}
         />
+        </Cell>
       )}
       {failed(noticesR) ? (
         <FailedWidget title="Latest notices" className={HALF} />
       ) : (
+        <Cell span={HALF}>
         <ListWidget
           title="Latest notices"
           action={canEditWebsite ? { href: `${basePath}/website/notices`, label: "Notices" } : undefined}
           emptyTitle="No public notices"
           rows={(notices ?? []).map((n) => ({ id: n.id, title: n.title, meta: shortDate.format(new Date(n.publishAt)) }))}
-          className={HALF}
         />
+        </Cell>
       )}
     </>
   );
   const defaultersFailed = failed(defaultersR);
 
   // ---- per-role layouts ----------------------------------------------------
+  // Every role: hero, KPI strip, a main chart row, then cards. One grid,
+  // one gap; GsapStage staggers the cells in.
+
+  const kpiStrip = (items: ReactNode[]) => {
+    const shown = items.filter(Boolean);
+    if (shown.length === 0) return null;
+    return (
+      <div data-gsap="rise" className={FULL}>
+        <KpiStrip className={cn("md:[&>div]:grid-cols-4", STRIP_COLS[Math.min(shown.length, 4)])}>{shown}</KpiStrip>
+      </div>
+    );
+  };
 
   let body: ReactNode;
-  let showHeader = true;
   if (role === "admissions") {
-    const enquiryRows: ListRow[] = Object.values(value(enquiriesR) ?? {})
-      .flat()
+    const allEnquiries = Object.values(value(enquiriesR) ?? {}).flat();
+    const enquiryRows: ListRow[] = [...allEnquiries]
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .slice(0, 5)
+      .slice(0, 6)
       .map((e) => ({
         id: e.id,
         title: e.childName,
@@ -406,136 +546,167 @@ export default async function DashboardPage({
         href: `${basePath}/admissions/enquiries/${e.id}`,
         badge: { label: humanize(e.status), variant: "outline" },
       }));
+    // Weekly enquiry volume, last 8 weeks (oldest first), from the enquiry rows above.
+    const weekStart = now.getTime() - 7 * 8 * DAY_MS;
+    const weekly = Array.from({ length: 8 }, (_, i) => ({ label: shortDate.format(new Date(weekStart + i * 7 * DAY_MS)), value: 0 }));
+    for (const e of allEnquiries) {
+      const i = Math.floor((new Date(e.createdAt).getTime() - weekStart) / (7 * DAY_MS));
+      if (i >= 0 && i < 8) weekly[i]!.value += 1;
+    }
+    const newThisWeek = weekly[7]?.value ?? 0;
+    const bySource = Object.entries(
+      allEnquiries.reduce<Record<string, number>>((acc, e) => ((acc[e.source] = (acc[e.source] ?? 0) + 1), acc), {}),
+    )
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([source, n]) => ({ label: humanize(source), value: n }));
+    const totalApps = Object.values(data.funnel.applicationStatuses).reduce((a, n) => a + n, 0);
+    const conversion = totalApps > 0 ? Math.round((enrolledCount / totalApps) * 100) : null;
+    const admissionsOn = canEnquiries && isModuleEnabled(ctx, "admissions");
+
     body = (
       <>
-        <Kpis
-          items={[
-            enquiryKpi,
-            canEnquiries && isModuleEnabled(ctx, "admissions") && <KpiTile label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
-          ]}
-        />
-        {funnel(WIDE)}
-        <div className={cn("min-w-0 space-y-4", NARROW)}>
-          {quickActions.length > 0 && actions()}
-          {failed(enquiriesR) ? (
-            <FailedWidget title="Newest enquiries" />
-          ) : (
-            canEnquiries && isModuleEnabled(ctx, "admissions") && (
-              <ListWidget
-                title="Newest enquiries"
-                action={{ href: `${basePath}/admissions`, label: "All enquiries" }}
-                emptyTitle="No enquiries yet"
-                rows={enquiryRows}
-              />
-            )
-          )}
-        </div>
-        {insights && <Insights items={insights} className={briefing ? WIDE : FULL} />}
-        {briefing && <div className={insights ? NARROW : FULL}>{briefing}</div>}
+        {hero}
+        {kpiStrip([
+          enquiryKpi,
+          admissionsOn && <KpiTile key="new" label="New this week" value={String(newThisWeek)} animateTo={newThisWeek} sub="enquiries received" href={`${basePath}/admissions`} />,
+          admissionsOn && <KpiTile key="enrolled" label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
+          admissionsOn && (
+            <KpiTile key="conv" label="Application conversion" value={conversion === null ? "—" : `${conversion}%`} animateTo={conversion ?? undefined} format="percent" sub={`${totalApps} applications`} />
+          ),
+        ])}
+        {admissionsOn && (
+          <Cell span={MAIN}>
+            <Widget title="Enquiries per week" description="Last 8 weeks" action={{ href: `${basePath}/admissions`, label: "Pipeline" }}>
+              <InteractiveTrend title="Enquiries per week" unit="count" series={{ "8w": weekly }} keys={[{ key: "value", label: "Enquiries" }]} rangeLabels={{ "8w": "8 weeks" }} heightClass="h-56" />
+            </Widget>
+          </Cell>
+        )}
+        <Cell span={SIDE}>{funnel("")}</Cell>
+        {admissionsOn && bySource.length > 0 && (
+          <Cell span={THIRD}>
+            <Widget title="Where enquiries come from">
+              <BarList ariaLabel="Enquiries by source" items={bySource} />
+            </Widget>
+          </Cell>
+        )}
+        {failed(enquiriesR) ? (
+          <FailedWidget title="Newest enquiries" className={THIRD} />
+        ) : (
+          admissionsOn && (
+            <Cell span={THIRD}>
+              <ListWidget title="Newest enquiries" action={{ href: `${basePath}/admissions`, label: "All enquiries" }} emptyTitle="No enquiries yet" rows={enquiryRows} />
+            </Cell>
+          )
+        )}
+        {askPanel(THIRD)}
+        {insights && <Cell span={briefing ? WIDE : FULL}><Insights items={insights} /></Cell>}
+        {briefing && <Cell span={insights ? NARROW : FULL}>{briefing}</Cell>}
         {website}
       </>
     );
   } else if (role === "accountant") {
-    const topDefaulters = [...(defaulters ?? [])].sort((a, b) => b.outstanding - a.outstanding).slice(0, 5);
+    const topDefaulters = [...(defaulters ?? [])].sort((a, b) => b.outstanding - a.outstanding).slice(0, 6);
     body = collections ? (
       <>
-        <Kpis
-          items={[
-            collectedKpi,
-            <KpiTile key="outstanding" label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} />,
-            <KpiTile
-              key="collection-rate"
-              label="Collection rate"
-              value={collectionPct === null ? "—" : `${collectionPct}%`}
-              animateTo={collectionPct ?? undefined}
-              format="percent"
-              sub={`${collections.invoiceCount} invoices this term`}
-            />,
-          ]}
-        />
-        {quickActions.length > 0 && actions(FULL)}
-        {collectionsChart(NARROW, true)}
+        {hero}
+        {kpiStrip([
+          collectedKpi,
+          <KpiTile key="outstanding" label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} tone="warning" />,
+          <KpiTile key="collection-rate" label="Collection rate" value={collectionPct === null ? "—" : `${collectionPct}%`} animateTo={collectionPct ?? undefined} format="percent" sub={`${collections.invoiceCount} invoices this term`} />,
+          defaulters && (
+            <KpiTile key="overdue" label="Overdue invoices" value={String(overdue.length)} animateTo={overdue.length} sub={`${defaulters.length} unpaid in total`} href={`${basePath}/finance/defaulters`} tone={overdue.length > 0 ? "destructive" : "default"} />
+          ),
+        ])}
+        {feesByClassPanel(MAIN)}
+        <Cell span={SIDE}>{collectionsChart("", true)}</Cell>
+        {ageingPanel(NARROW)}
         {defaultersFailed ? (
           <FailedWidget title="Top defaulters" className={WIDE} />
         ) : (
-          <ListWidget
-            title="Top defaulters"
-            description={`${defaulters?.length ?? 0} unpaid invoices, ${overdue.length} overdue`}
-            action={{ href: `${basePath}/finance/defaulters`, label: "All defaulters" }}
-            emptyTitle="No unpaid invoices this term"
-            rows={topDefaulters.map((d) => ({
-              id: d.invoiceId,
-              title: d.studentName,
-              meta: `${inr(d.outstanding)} outstanding · ${d.invoiceNo}${d.dueOn ? ` · due ${shortDate.format(new Date(d.dueOn))}` : ""}`,
-              href: `${basePath}/finance/invoices/${d.invoiceId}`,
-              badge: d.dueOn !== null && d.dueOn < todayIso ? { label: "Overdue", variant: "destructive" } : undefined,
-            }))}
-            className={WIDE}
-          />
+          <Cell span={WIDE}>
+            <ListWidget
+              title="Top defaulters"
+              description={`${defaulters?.length ?? 0} unpaid invoices, ${overdue.length} overdue`}
+              action={{ href: `${basePath}/finance/defaulters`, label: "Remind in bulk" }}
+              emptyTitle="No unpaid invoices this term"
+              rows={topDefaulters.map((d) => ({
+                id: d.invoiceId,
+                title: d.studentName,
+                meta: `${inr(d.outstanding)} outstanding · ${d.invoiceNo}${d.dueOn ? ` · due ${shortDate.format(new Date(d.dueOn))}` : ""}`,
+                href: `${basePath}/finance/invoices/${d.invoiceId}`,
+                badge: d.dueOn !== null && d.dueOn < todayIso ? { label: "Overdue", variant: "destructive" } : undefined,
+              }))}
+            />
+          </Cell>
         )}
-        {insights && <Insights items={insights} className={FULL} />}
+        {askPanel(insights ? NARROW : FULL)}
+        {insights && <Cell span={WIDE}><Insights items={insights} /></Cell>}
       </>
     ) : (
       <>
-        <Widget title="Fee collection this term" className={FULL}>
-          <EmptyState title="No current term" description="Collections appear once the current academic year has a term with invoices." />
-        </Widget>
-        {quickActions.length > 0 && actions(NARROW)}
+        {hero}
+        <Cell span={FULL}>
+          <Widget title="Fee collection this term">
+            <EmptyState title="No current term" description="Collections appear once the current academic year has a term with invoices." />
+          </Widget>
+        </Cell>
       </>
     );
   } else if (role === "exam_controller") {
     const byStatus = (s: string) => exams?.filter((e) => e.status === s).length ?? 0;
+    const examTotal = exams?.length ?? 0;
     body = (
       <>
-        <Kpis
-          items={[
-            exams && <KpiTile label="In marks entry" value={String(byStatus("marks_entry"))} animateTo={byStatus("marks_entry")} sub={`${byStatus("draft")} in draft`} href={`${basePath}/exams`} />,
-            exams && <KpiTile label="In verification" value={String(byStatus("verification"))} animateTo={byStatus("verification")} href={`${basePath}/exams`} />,
-            exams && <KpiTile label="Published" value={String(byStatus("published"))} animateTo={byStatus("published")} href={`${basePath}/exams`} />,
-            rechecks && <KpiTile label="Pending rechecks" value={String(rechecks.length)} animateTo={rechecks.length} href={`${basePath}/exams/rechecks`} />,
-          ]}
-        />
-        {grades(NARROW)}
-        {recheckQueue(WIDE)}
+        {hero}
+        {kpiStrip([
+          exams && <KpiTile key="me" label="In marks entry" value={String(byStatus("marks_entry"))} animateTo={byStatus("marks_entry")} sub={`${byStatus("draft")} in draft`} href={`${basePath}/exams`} />,
+          exams && <KpiTile key="ver" label="In verification" value={String(byStatus("verification"))} animateTo={byStatus("verification")} href={`${basePath}/exams`} />,
+          exams && <KpiTile key="pub" label="Published" value={String(byStatus("published"))} animateTo={byStatus("published")} sub={`of ${examTotal} exams`} href={`${basePath}/exams`} tone="success" />,
+          rechecks && <KpiTile key="rc" label="Pending rechecks" value={String(rechecks.length)} animateTo={rechecks.length} href={`${basePath}/exams/rechecks`} tone={rechecks.length > 0 ? "warning" : "default"} />,
+        ])}
+        <Cell span={MAIN}>{grades("")}</Cell>
+        {exams && examTotal > 0 && (
+          <Cell span={SIDE}>
+            <Widget title="Exam pipeline" action={{ href: `${basePath}/exams`, label: "All exams" }}>
+              <div className="space-y-4">
+                <RadialGauge value={Math.round((byStatus("published") / examTotal) * 100)} label="Published" sublabel={`${byStatus("published")} of ${examTotal} exams`} thresholds={{ good: 60, warn: 30 }} />
+                <BarList ariaLabel="Exams by status" items={(["draft", "marks_entry", "verification", "published"] as const).map((s) => ({ label: humanize(s), value: byStatus(s), href: `${basePath}/exams` }))} />
+              </div>
+            </Widget>
+          </Cell>
+        )}
+        <Cell span={WIDE}>{recheckQueue("")}</Cell>
         {failed(examsR) ? (
-          <FailedWidget title="Exams" className={WIDE} />
+          <FailedWidget title="Exams" className={NARROW} />
         ) : (
           exams && (
-            <ListWidget
-              title="Exams"
-              action={{ href: `${basePath}/exams`, label: "All exams" }}
-              emptyTitle="No exams yet"
-              rows={exams.slice(0, 6).map((e) => ({
-                id: e.id,
-                title: e.name,
-                meta: [e.termName, humanize(e.type)].filter(Boolean).join(" · "),
-                href: `${basePath}/exams/${e.id}`,
-                badge: { label: humanize(e.status), variant: examStatusVariant(e.status) },
-              }))}
-              className={WIDE}
-            />
+            <Cell span={NARROW}>
+              <ListWidget
+                title="Exams"
+                action={{ href: `${basePath}/exams`, label: "All exams" }}
+                emptyTitle="No exams yet"
+                rows={exams.slice(0, 6).map((e) => ({
+                  id: e.id,
+                  title: e.name,
+                  meta: [e.termName, humanize(e.type)].filter(Boolean).join(" · "),
+                  href: `${basePath}/exams/${e.id}`,
+                  badge: { label: humanize(e.status), variant: examStatusVariant(e.status) },
+                }))}
+              />
+            </Cell>
           )
         )}
-        <div className={cn("min-w-0 space-y-4", NARROW)}>
-          {exams && exams.length > 0 && (
-            <Widget title="Exams by status" action={{ href: `${basePath}/exams`, label: "All exams" }}>
-              <BarList
-                ariaLabel="Exams by status"
-                items={(["draft", "marks_entry", "verification", "published"] as const).map((s) => ({ label: humanize(s), value: byStatus(s), href: `${basePath}/exams` }))}
-              />
-            </Widget>
-          )}
-          {actions()}
-          {insights && <Insights items={insights} />}
-        </div>
+        {askPanel(insights ? NARROW : FULL)}
+        {insights && <Cell span={WIDE}><Insights items={insights} /></Cell>}
       </>
     );
   } else {
     // Leader command center (owner / principal / admin). Operational first:
-    // KPI strip, approvals, class attendance, activity, upcoming. Every figure
-    // comes from a query above; a missing permission/module drops the tile.
+    // KPI strip, attendance trend + gauges, fees by class, approvals, then
+    // cards. Every figure comes from a query above; a missing
+    // permission/module drops the tile.
     const isAdminRole = role === "admin";
-    showHeader = false;
 
     const trendPts = value(trendR) ?? [];
     const sectionAtt = value(sectionAttR);
@@ -550,25 +721,23 @@ export default async function DashboardPage({
     const marked = data.attendanceToday.totalInDenominator;
     const inrWhole = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 
-    const tiles: (StatTileProps & { spark?: number[] })[] = [];
+    const tiles: (StatTileProps & { spark?: number[]; tone?: "default" | "success" | "warning" | "destructive" })[] = [];
     if (counts) {
       tiles.push({ label: "Students", value: counts.students.toLocaleString("en-IN"), href: `${basePath}/students` });
-      tiles.push({ label: "Staff", value: counts.staff.toLocaleString("en-IN") });
+      tiles.push({ label: "Staff", value: counts.staff.toLocaleString("en-IN"), sub: sectionCount !== null ? `${sectionCount} sections` : undefined });
     }
-    if (sectionCount !== null) tiles.push({ label: "Sections", value: String(sectionCount) });
     if (canAttendance) {
       tiles.push({
         label: "Attendance today",
         value: marked > 0 ? `${data.attendanceToday.percentage}%` : "—",
-        sub: marked > 0 ? `${marked} students marked` : "Not marked yet",
+        sub: marked > 0 ? `${marked} marked${sectionAtt ? ` · ${sectionAtt.absentTotal} absent` : ""}` : "Not marked yet",
         href: `${basePath}/attendance`,
         spark: trendPts.length > 1 ? trendPts.map((p) => p.value) : undefined,
       });
-      if (sectionAtt) tiles.push({ label: "Absent today", value: marked > 0 ? String(sectionAtt.absentTotal) : "—", sub: marked > 0 ? `${data.sectionsAtRisk.length} sections below threshold` : undefined });
     }
-    if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : undefined });
+    if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : undefined, tone: queue.total > 0 ? "warning" : undefined });
     if (collections) tiles.push({ label: "Collected this term", value: inrWhole(collections.collectedPaise), sub: `of ${inrWhole(collections.duePaise)} due`, href: `${basePath}/finance` });
-    if (defaulters) tiles.push({ label: "Overdue invoices", value: String(overdue.length), href: `${basePath}/finance/defaulters` });
+    if (defaulters) tiles.push({ label: "Overdue invoices", value: String(overdue.length), href: `${basePath}/finance/defaulters`, tone: overdue.length > 0 ? "destructive" : undefined });
     if (canEnquiries && isModuleEnabled(ctx, "admissions")) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled this year`, href: `${basePath}/admissions` });
     if (upcomingExams) tiles.push({ label: "Upcoming exams", value: String(upcomingExams.total), sub: upcomingExams.papers[0] ? `Next ${shortDate.format(new Date(upcomingExams.papers[0].scheduledAt))}` : undefined, href: `${basePath}/exams` });
 
@@ -665,7 +834,7 @@ export default async function DashboardPage({
           keys={[{ key: "value", label: "Attendance" }]}
           defaultRange="6w"
           rangeLabels={{ "2w": "2 weeks", "6w": "6 weeks" }}
-          heightClass="h-48"
+          heightClass="h-56"
         />
       </Widget>
     );
@@ -674,33 +843,19 @@ export default async function DashboardPage({
     const attThresholds = getAttendanceSettings(ctx).thresholds;
     const glance = [
       canAttendance && marked > 0 && (
-        <RadialGauge
-          key="att"
-          value={data.attendanceToday.percentage}
-          label="Present today"
-          sublabel={`${marked} students marked`}
-          thresholds={{ good: attThresholds.warn, warn: attThresholds.critical }}
-        />
+        <RadialGauge key="att" value={data.attendanceToday.percentage} label="Present today" sublabel={`${marked} students marked`} thresholds={{ good: attThresholds.warn, warn: attThresholds.critical }} />
       ),
       collections && collectionPct !== null && (
-        <RadialGauge
-          key="fees"
-          value={collectionPct}
-          label="Term fees collected"
-          sublabel={`${inrWhole(collections.collectedPaise)} of ${inrWhole(collections.duePaise)}`}
-          thresholds={{ good: 80, warn: 50 }}
-        />
+        <RadialGauge key="fees" value={collectionPct} label="Term fees collected" sublabel={`${inrWhole(collections.collectedPaise)} of ${inrWhole(collections.duePaise)}`} thresholds={{ good: 80, warn: 50 }} />
       ),
     ].filter(Boolean);
     const glancePanel = glance.length > 0 && (
       <Panel title="Today at a glance">
-        <div className="grid gap-4 py-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">{glance}</div>
+        <div className="grid h-full content-center gap-6 py-2 sm:grid-cols-2 lg:grid-cols-1">{glance}</div>
       </Panel>
     );
     const staffToday = value(staffR);
     const staffPanel = failed(staffR) ? <FailedWidget title="Staff today" /> : staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />;
-
-    const quickPanel = quickActions.length > 0 && <QuickActions actions={quickActions} />;
 
     const absenteesPanel = !isAdminRole && canAttendance && (
       failed(absenteesR) ? (
@@ -714,29 +869,6 @@ export default async function DashboardPage({
           )}
         </Panel>
       )
-    );
-
-    // "Ask the data" entry point: same gate as the sidebar's /assistant link
-    // (dashboard.view + ai_teacher module; see src/lib/nav.ts). The assistant
-    // reads no ?q= param, so prompts are plain links shown as hints.
-    const askPanel = hasPermission(ctx, "dashboard.view") && isModuleEnabled(ctx, "ai_teacher") && (
-      <Panel title="Ask the data" action={{ href: `${basePath}/assistant`, label: "Open assistant" }} className="relative">
-        <BorderBeam />
-        <p className="text-xs text-muted-foreground">Questions you can ask the assistant:</p>
-        <ul className="-mx-2">
-          {ASK_PROMPTS.map((prompt) => (
-            <li key={prompt}>
-              <Link
-                href={`${basePath}/assistant`}
-                className="flex min-h-11 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className="min-w-0">{prompt}</span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Panel>
     );
 
     // Lower grid: everything that is not first-screen, still reorderable.
@@ -761,8 +893,6 @@ export default async function DashboardPage({
         add("forecasts", "Forecasts", FULL, !forecastsOn ? off("Forecasts", PLAN_OFF) : failed(forecastR) ? <FailedWidget title="Forecasts" /> : fc && fc.length > 0 ? <ForecastCards cards={fc} base={basePath} /> : off("Forecasts", "Forecasts appear once enough history is recorded."));
       }
     }
-    add("funnel", "Admissions funnel", WIDE, funnel(""));
-    add("collections", "Fee collection", NARROW, collectionsChart(""));
     if (isAdminRole) add("grades", "Grades", NARROW, grades(""));
     if (isAdminRole) add("assistant", "AI briefing", NARROW, briefing);
     add(
@@ -782,73 +912,51 @@ export default async function DashboardPage({
         )),
     );
 
+    const sideStack = (approvalsPanel || staffPanel) && (
+      <div className="flex min-w-0 flex-col gap-4">
+        {approvalsPanel}
+        {staffPanel}
+      </div>
+    );
+
     body = (
-      <div className={cn(FULL, "space-y-4")}>
-        <header>
-          <h1 className="text-2xl font-semibold tracking-tight text-balance">{firstName ? `${greeting}, ${firstName}` : greeting}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {longDate.format(now)} · {ctx.institution.name}
-          </p>
-        </header>
+      <>
+        {hero}
         {tiles.length > 0 && (
-          <KpiStrip className={tiles.length > 6 ? "xl:[&>div]:grid-cols-5" : undefined}>
-            {tiles.map((t) => (
-              <KpiTile key={t.label} {...t} />
-            ))}
-          </KpiStrip>
-        )}
-        {(canAttendance || approvalsPanel || staffPanel) && (
-          <div className="grid gap-4 lg:grid-cols-3">
-            {canAttendance && <div className="min-w-0 lg:col-span-2">{trendPanel}</div>}
-            {(approvalsPanel || staffPanel) && (
-              <div className={cn("min-w-0 space-y-4", canAttendance ? "lg:col-span-1" : "lg:col-span-3")}>
-                {approvalsPanel}
-                {staffPanel}
-              </div>
-            )}
+          <div data-gsap="rise" className={FULL}>
+            <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
+              {tiles.slice(0, 8).map((t) => (
+                <KpiTile key={t.label} {...t} />
+              ))}
+            </KpiStrip>
           </div>
         )}
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[
-            glancePanel,
-            isAdminRole && quickPanel,
-            sectionPanel,
-            activityPanel,
-            upcomingPanel,
-            !isAdminRole && absenteesPanel,
-            !isAdminRole && canResults && isModuleEnabled(ctx, "exams") && grades(""),
-            askPanel,
-          ]
-            .filter(Boolean)
-            .map((node, i) => (
-              <StaggerItem key={i} className="min-w-0" style={{ animationDelay: `${i * 40}ms` }}>
-                {node}
-              </StaggerItem>
-            ))}
-          {!isAdminRole && briefing && <div className="min-w-0 md:col-span-2 xl:col-span-3">{briefing}</div>}
-        </div>
+        {canAttendance && <Cell span={MAIN}>{trendPanel}</Cell>}
+        <Cell span={canAttendance ? SIDE : FULL}>{glancePanel}</Cell>
+        {feesByClassPanel(sideStack ? MAIN : FULL)}
+        {sideStack && <Cell span={feesByClass || failed(feesByClassR) ? SIDE : FULL}>{sideStack}</Cell>}
+        <Cell span={THIRD}>{sectionPanel}</Cell>
+        <Cell span={THIRD}>{upcomingPanel}</Cell>
+        <Cell span={THIRD}>{activityPanel}</Cell>
+        {!isAdminRole && <Cell span={THIRD}>{absenteesPanel}</Cell>}
+        {ageingPanel(THIRD)}
+        {askPanel(THIRD)}
+        <Cell span={HALF}>{funnel("")}</Cell>
+        <Cell span={HALF}>{isAdminRole ? collectionsChart("") : grades("")}</Cell>
+        {!isAdminRole && briefing && <Cell span={FULL}>{briefing}</Cell>}
         {cards.length > 0 && (
-          <section aria-labelledby="more-h" className="space-y-3 pt-2">
+          <section data-gsap="rise" aria-labelledby="more-h" className={cn(FULL, "space-y-3 pt-2")}>
             <h2 id="more-h" className="text-base font-semibold">
               More from your school
             </h2>
             <CommandGrid layoutKey="command-more" defaultOrder={cards.map((c) => c.id)} cards={cards} />
           </section>
         )}
-      </div>
+      </>
     );
   }
 
   return (
-    <div>
-      {showHeader && (
-        <PageHeader
-          compact
-          title={firstName ? `${greeting}, ${firstName}` : greeting}
-          description={`${longDate.format(now)} · ${ctx.institution.name}`}
-        />
-      )}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-12">{body}</div>
-    </div>
+    <GsapStage className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12">{body}</GsapStage>
   );
 }

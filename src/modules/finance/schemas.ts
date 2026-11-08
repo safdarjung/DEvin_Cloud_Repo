@@ -144,6 +144,26 @@ export const SendFeeRemindersSchema = z
 
 export type SendFeeRemindersInput = z.infer<typeof SendFeeRemindersSchema>;
 
+// Bulk actions (dashboard redesign): selected invoices/defaulters get a
+// reminder; selected students get this term's invoice. 200 caps one request
+// (matches enqueue_invoice_reminders' own bound).
+export const SendInvoiceRemindersSchema = z
+  .object({
+    invoiceIds: z.array(uuid).min(1).max(200),
+  })
+  .strict();
+
+export type SendInvoiceRemindersInput = z.infer<typeof SendInvoiceRemindersSchema>;
+
+export const BulkGenerateStudentInvoicesSchema = z
+  .object({
+    termId: uuid,
+    studentIds: z.array(uuid).min(1).max(200),
+  })
+  .strict();
+
+export type BulkGenerateStudentInvoicesInput = z.infer<typeof BulkGenerateStudentInvoicesSchema>;
+
 export const CreatePaymentIntentSchema = z
   .object({
     invoiceId: uuid,

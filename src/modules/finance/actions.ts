@@ -18,11 +18,13 @@ import { createClient } from "@/lib/supabase/server";
 import { paymentModesFor } from "./queries";
 import {
   AssignFeeStructureSchema,
+  BulkGenerateStudentInvoicesSchema,
   GenerateStudentInvoiceSchema,
   GenerateTermInvoicesSchema,
   RecordPaymentSchema,
   UpsertFeeStructureSchema,
   type AssignFeeStructureInput,
+  type BulkGenerateStudentInvoicesInput,
   type GenerateStudentInvoiceInput,
   type GenerateTermInvoicesInput,
   type RecordPaymentInput,
@@ -439,6 +441,54 @@ export const generateStudentInvoice = defineAction({
 
     revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
     return { invoiceId: data as string };
+  },
+});
+
+export interface BulkGenerateStudentInvoicesResult {
+  generated: { studentId: string; invoiceId: string }[];
+  failed: { studentId: string; code: string; message: string }[];
+}
+
+/**
+ * Bulk action on students: this term's invoice for each selected student.
+ * One `generate_invoice` call per student (it audits itself, like
+ * generateStudentInvoice); a per-student failure (e.g. no fee structure
+ * assigned) is reported, not thrown, so one bad row never blocks the rest.
+ */
+export const bulkGenerateStudentInvoices = defineAction({
+  name: "finance.invoice.generateBulk",
+  module: "fees",
+  schema: BulkGenerateStudentInvoicesSchema,
+  permission: "finance.invoice.generate",
+  handler: async (input: BulkGenerateStudentInvoicesInput, ctx): Promise<BulkGenerateStudentInvoicesResult> => {
+    const supabase = await createClient();
+    await requireTerm(supabase, ctx.institution.id, input.termId);
+    const ids = [...new Set(input.studentIds)];
+    const { data: found, error: foundError } = await supabase
+      .from("students")
+      .select("id")
+      .eq("institution_id", ctx.institution.id)
+      .in("id", ids);
+    if (foundError) throwMapped(foundError);
+    if ((found ?? []).length !== ids.length) throw new AppError("not_found", "One or more students not found.");
+
+    const result: BulkGenerateStudentInvoicesResult = { generated: [], failed: [] };
+    for (const studentId of ids) {
+      const { data, error } = await supabase.rpc("generate_invoice", { p_student_id: studentId, p_term_id: input.termId });
+      if (error) {
+        const mapped = mapSqlError(error);
+        result.failed.push(
+          mapped.ok
+            ? { studentId, code: "internal", message: "Unexpected error." }
+            : { studentId, code: mapped.error.code, message: mapped.error.message },
+        );
+      } else {
+        result.generated.push({ studentId, invoiceId: data as string });
+      }
+    }
+
+    revalidatePath(`/${ctx.institution.slug}/finance/invoices`);
+    return result;
   },
 });
 

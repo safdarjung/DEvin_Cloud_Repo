@@ -8,7 +8,9 @@ import { BarList, ProgressBar } from "@/components/widgets/viz";
 import { inr } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
-import { requirePermission } from "@/lib/auth/require";
+import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { isModuleEnabled } from "@/lib/modules/catalog";
+import { BulkActions } from "@/modules/finance/components/BulkActions";
 import { DefaultersTable } from "@/modules/finance/components/DefaultersTable";
 import { listDefaulters, listTermOptions } from "@/modules/finance/queries";
 
@@ -31,6 +33,7 @@ export default async function DefaultersPage({
   const terms = await listTermOptions(ctx);
   const termId = requestedTermId ?? terms[0]?.id;
   const defaulters = termId ? await listDefaulters(ctx, { termId }) : [];
+  const canRemind = hasPermission(ctx, "finance.reminder.send") && isModuleEnabled(ctx, "finance_plus") && defaulters.length > 0;
 
   // Derived only from the rows above (unpaid / part-paid invoices this term).
   const billed = defaulters.reduce((sum, d) => sum + d.total, 0);
@@ -108,7 +111,13 @@ export default async function DefaultersPage({
 
         <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
           {termId ? (
-            <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} />
+            canRemind ? (
+              <BulkActions kind="remind" institutionSlug={institutionSlug}>
+                <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} selectable />
+              </BulkActions>
+            ) : (
+              <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} />
+            )
           ) : (
             <EmptyState title="No terms set up yet" />
           )}

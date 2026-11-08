@@ -126,6 +126,7 @@ flowchart TD
 - `20261028000107` · live-fabric studio lane (F-UI-12) · `studio_requests` — Custom Studio intake, AI proposal (embedded jsonb, no separate versioned row), owner/principal decision via `propose_studio_request`/`decide_studio_request`; no UPDATE grant to `authenticated`.
 - `20261028000108` · T3b (ai-roles, DB owner) · `ai_usage_events.role text` + index `(institution_id, role, created_at)`, no backfill (table blocks UPDATE) — per-role daily quota check in `checkLimits` and the new `ai.usageByRole` query (30-day tokens/cost_paise per role).
 - `20261028000109` · ai-roles P4 (DB owner) · `public.exam_mark_outliers(p_institution_id, p_exam_id)` — `security invoker` deterministic outlier scan for `exams.markOutliers` (marks above paper max, >=25-point subject percentage drop vs the student's previous published exam, section paper average >=2 population-SD from the exam's paper mean); capped at 50 rows, no names. No table changes — read-only over existing `marks`/`exam_papers`/`results` RLS.
+- `20261028000110` · dashboard redesign (backend session, claimed 2026-11-08) · `public.enqueue_invoice_reminders(p_institution_id, p_invoice_ids uuid[])` — `security definer` bulk fee reminders for 1–200 selected invoices (finance write roles, every id re-proven against the institution); enqueues `finance.fee_reminder` with an `invoice_ids` payload. No table changes.
 
 ## 4. Review requirements
 

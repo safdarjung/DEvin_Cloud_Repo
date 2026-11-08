@@ -304,6 +304,19 @@ a > [data-slot="card"] {
   to { offset-distance: 100%; }
 }
 
+/* gsap-stage.tsx: marked nodes wait hidden for GSAP; the failsafe reveals
+   them if the script never runs. Once GSAP marks the stage ready, it owns
+   opacity inline. Reduced motion: never hidden. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-gsap-stage]:not([data-gsap-ready]) [data-gsap] {
+    opacity: 0;
+    animation: gsap-failsafe 0s 2s forwards;
+  }
+}
+@keyframes gsap-failsafe {
+  to { opacity: 1; }
+}
+
 /* Page entrance: subtle rise, staggered; zeroed by the reduced-motion block. */
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
