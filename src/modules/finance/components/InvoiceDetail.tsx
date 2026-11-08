@@ -2,13 +2,18 @@
 // calls here (recordPayment is out of scope for this packet).
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ProgressBar } from "@/components/widgets/viz";
 import { inr } from "@/lib/format";
 import type { InvoiceDetail as InvoiceDetailData } from "@/modules/finance/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="grid gap-4 lg:grid-cols-3">
+      <Card className="min-w-0 self-start lg:col-span-2">
         <CardHeader>
           <CardTitle>Fee lines</CardTitle>
         </CardHeader>
@@ -23,8 +28,8 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {invoice.lines.map((line) => (
-            <TableRow key={line.head}>
+          {invoice.lines.map((line, i) => (
+            <TableRow key={line.head} className={ROW_ENTER} style={rowDelay(i)}>
               <TableCell>{line.head}</TableCell>
               <TableCell className="hidden sm:table-cell">{line.description}</TableCell>
               <TableCell className="text-right tabular-nums">{inr(line.amount)}</TableCell>
@@ -36,9 +41,12 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="min-w-0 self-start">
+        <CardHeader>
+          <CardTitle>Summary</CardTitle>
+        </CardHeader>
         <CardContent>
-          <dl className="ml-auto grid grid-cols-2 gap-1 text-sm tabular-nums sm:w-72">
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm tabular-nums">
             <dt className="text-muted-foreground">Subtotal</dt>
             <dd className="text-right">{inr(invoice.subtotal)}</dd>
             <dt className="text-muted-foreground">Concessions</dt>
@@ -52,6 +60,15 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
             <dt className="text-muted-foreground">Due on</dt>
             <dd className="text-right">{invoice.dueOn ?? "—"}</dd>
           </dl>
+          {invoice.total > 0 && (
+            <ProgressBar
+              className="mt-4 border-t pt-3"
+              value={invoice.paidTotal}
+              max={invoice.total}
+              label="Paid"
+              tone={invoice.paidTotal >= invoice.total ? "success" : "default"}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

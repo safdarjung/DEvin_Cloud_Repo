@@ -111,7 +111,7 @@ export function EnquiryReplyDraft({ institutionSlug, enquiryId, aiPolicy }: Enqu
   }
 
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-card p-3">
+    <div className="space-y-2 rounded-md border border-border bg-card p-3">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">AI draft — edit before saving</span>
         <ProviderBadge provider={draft.provider} />

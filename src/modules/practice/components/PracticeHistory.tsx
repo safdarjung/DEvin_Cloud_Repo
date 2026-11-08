@@ -1,9 +1,12 @@
 import { EmptyState } from "@/components/states";
+import { AnimatedList, BarList, Sparkline } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { earnedMilestones } from "@/modules/practice/milestones";
 import type { PracticeAttemptSummary, PracticeProgress } from "@/modules/practice/queries";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
+
+const pctOf = (a: PracticeAttemptSummary): number => (a.maxScore > 0 ? Math.round((a.score / a.maxScore) * 100) : 0);
 
 export function streakText(streak: number): string {
   return streak > 0 ? `${streak}-day practice streak` : "No practice streak yet";
@@ -24,6 +27,7 @@ export function PracticeHistory({
     streak: progress.streak,
     hasFullMarks: attempts.some((a) => a.maxScore > 0 && a.score === a.maxScore),
   });
+  const recent = attempts.slice(0, 10);
   return (
     <section aria-labelledby="practice-progress" className="mt-8 space-y-4">
       <div>
@@ -40,25 +44,28 @@ export function PracticeHistory({
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <Widget title="Average by subject">
-            <ul className="divide-y">
-              {progress.subjects.map((s) => (
-                <li key={s.subjectId} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
-                  <span className="min-w-0 truncate text-sm">{s.subjectName ?? "Subject"}</span>
-                  <span className="shrink-0 text-sm tabular-nums">
-                    <span className="font-medium text-[var(--chart-1)]">{s.averagePercent}%</span>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {s.attempts} {s.attempts === 1 ? "quiz" : "quizzes"}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <BarList
+              ariaLabel="Average practice score by subject"
+              max={100}
+              format="percent"
+              items={progress.subjects.map((s) => ({
+                label: s.subjectName ?? "Subject",
+                value: s.averagePercent,
+                display: `${s.averagePercent}% · ${s.attempts} ${s.attempts === 1 ? "quiz" : "quizzes"}`,
+              }))}
+            />
           </Widget>
           <Widget title="Recent attempts">
-            <ul className="divide-y">
-              {attempts.slice(0, 10).map((a) => (
-                <li key={a.id} className="flex items-start justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+            {recent.length > 1 && (
+              <Sparkline
+                data={[...recent].reverse().map(pctOf)}
+                summary={`Score on your last ${recent.length} quizzes, oldest to newest: ${[...recent].reverse().map((a) => `${pctOf(a)}%`).join(", ")}.`}
+                className="mb-3"
+              />
+            )}
+            <AnimatedList ariaLabel="Recent attempts" className="space-y-0 divide-y">
+              {recent.map((a) => (
+                <div key={a.id} className="flex items-start justify-between gap-3 py-2.5">
                   <div className="min-w-0">
                     <p className="truncate text-sm">{a.unitTitle ?? "Unit"}</p>
                     <p className="truncate text-xs text-muted-foreground">
@@ -68,9 +75,9 @@ export function PracticeHistory({
                   <span className="shrink-0 text-sm font-medium tabular-nums">
                     {a.score}/{a.maxScore}
                   </span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </AnimatedList>
           </Widget>
         </div>
       )}

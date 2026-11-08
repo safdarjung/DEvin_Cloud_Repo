@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 import { saveResultRemark } from "@/modules/exams/actions";
+import { BorderBeam } from "@/components/widgets/viz";
 
 const STUDENT_LABEL_PLACEHOLDER = "{studentLabel}";
 const MAX_REMARK_LENGTH = 500;
@@ -109,7 +110,8 @@ export function RemarkDraftEditor({ institutionSlug, resultId, studentName, init
   }
 
   return (
-    <Card className="print:hidden">
+    <Card className="relative print:hidden">
+      <BorderBeam />
       <CardHeader>
         <CardTitle className="flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-2">

@@ -1,3 +1,4 @@
+import { ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { humanize } from "@/lib/format";
@@ -46,8 +47,23 @@ export default async function LearningPage({
               if (rows.length === 0) return <p className="text-sm text-muted-foreground">No curriculum plan is set up for the current academic year.</p>;
               const behind = rows.filter((r) => !r.on_track);
               const sorted = [...behind, ...rows.filter((r) => r.on_track)].slice(0, 15);
+              const done = rows.reduce((n, r) => n + r.completed_units, 0);
+              const planned = rows.reduce((n, r) => n + r.planned_units, 0);
               return (
                 <div className="space-y-2">
+                  <div className="flex flex-col gap-4 pb-2 sm:flex-row sm:items-center">
+                    {planned > 0 && (
+                      <RadialGauge value={(done / planned) * 100} label="Covered against plan" sublabel={`${done} of ${planned} units planned to date`} />
+                    )}
+                    <ProgressBar
+                      className="flex-1"
+                      label="Subject-sections on pace"
+                      value={rows.length - behind.length}
+                      max={rows.length}
+                      valueLabel={`${rows.length - behind.length} of ${rows.length}`}
+                      tone={behind.length === 0 ? "success" : "warning"}
+                    />
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {behind.length} of {rows.length} subject-sections behind pace.
                   </p>

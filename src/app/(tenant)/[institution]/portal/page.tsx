@@ -3,13 +3,14 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Bell, CalendarDays, ClipboardList, GraduationCap, Megaphone, Sparkles, Wallet } from "lucide-react";
 import { AnimatedNumber } from "@/components/motion";
-import { ErrorState } from "@/components/states";
+import { EmptyState, ErrorState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ActivityTimeline } from "@/components/widgets/activity-timeline";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
-import { TrendWidget } from "@/components/widgets/trend-widget";
+import { AnimatedList, BarList, InteractiveTrend, ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -146,13 +147,6 @@ export default async function PortalOverviewPage({
             : dueBadge(a.dueAt, now),
     };
   });
-  const resultRows: ListRow[] = results.slice(0, 4).map((r) => ({
-    id: r.examId,
-    title: r.examName,
-    meta: `${+r.percentage.toFixed(1)}% · ${r.total}/${r.maxTotal}`,
-    href: `${basePath}/results${q}`,
-    badge: { label: r.grade, variant: "outline" },
-  }));
   const unpaid = invoices.filter((inv) => inv.total - inv.paidTotal > 0);
   const nextDue = unpaid.map((inv) => inv.dueOn).filter((d): d is string => d !== null).sort()[0];
 
@@ -210,32 +204,88 @@ export default async function PortalOverviewPage({
     ) : (
       <Failed key="tt" title="Today's timetable" icon={<CalendarDays />} />
     ));
+  const submittedCount = submissions.filter((x) => x.state !== "not_submitted").length;
   const homework = (
-    <ListWidget
+    <Widget
       key="asg"
       title={isGuardian ? "Homework" : "Pending assignments"}
       icon={<ClipboardList />}
       action={{ href: `${basePath}/assignments${q}`, label: "All assignments" }}
-      rows={assignmentRows}
-      emptyTitle={isGuardian ? "No assignments right now" : "Nothing pending"}
-    />
+      isEmpty={assignmentRows.length === 0}
+      empty={<EmptyState bare title={isGuardian ? "No assignments right now" : "Nothing pending"} />}
+    >
+      {studentView && assignments.length > 0 && (
+        <ProgressBar
+          label="Submitted"
+          value={submittedCount}
+          max={assignments.length}
+          valueLabel={`${submittedCount} of ${assignments.length}`}
+          tone={submittedCount === assignments.length ? "success" : "default"}
+          className="mb-2"
+        />
+      )}
+      <AnimatedList ariaLabel={isGuardian ? "Homework" : "Pending assignments"} className="space-y-0 divide-y">
+        {assignmentRows.map((r) => (
+          <Link
+            key={r.id}
+            href={r.href ?? `${basePath}/assignments${q}`}
+            className="flex min-h-11 items-center justify-between gap-3 rounded-md py-2 outline-none transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">{r.title}</span>
+              {r.meta && <span className="block truncate text-xs text-muted-foreground">{r.meta}</span>}
+            </span>
+            {r.badge && <Badge variant={r.badge.variant}>{r.badge.label}</Badge>}
+          </Link>
+        ))}
+      </AnimatedList>
+    </Widget>
   );
   const attendanceTrendWidget =
     isModuleEnabled(ctx, "attendance") &&
     (trendR.status === "fulfilled" ? (
-      <TrendWidget
-        key="trend"
-        title="Attendance, last 30 days"
-        description="Running attendance %, school days"
-        data={trendR.value}
-        unit="percent"
-        action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }}
-      />
+      <Widget key="trend" title="Attendance, last 30 days" description="Running attendance %, school days" action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }}>
+        {attendance && attendance.totalInDenominator > 0 && (
+          <RadialGauge
+            value={attendance.percentage}
+            label="This term"
+            sublabel={`Warning below ${attendance.thresholds.warn}%`}
+            thresholds={{ good: attendance.thresholds.warn, warn: attendance.thresholds.critical }}
+            size={72}
+            className="mb-3"
+          />
+        )}
+        <InteractiveTrend
+          title="Attendance, last 30 days"
+          unit="percent"
+          series={{ "30d": trendR.value.map((p) => ({ label: p.label, value: p.value })) }}
+          keys={[{ key: "value", label: "Attendance" }]}
+          heightClass="h-48"
+        />
+      </Widget>
     ) : (
       <Failed key="trend" title="Attendance, last 30 days" icon={<CalendarDays />} />
     ));
   const latestResults = (
-    <ListWidget key="res" title="Recent results" icon={<GraduationCap />} action={{ href: `${basePath}/results${q}`, label: "All results" }} rows={resultRows} emptyTitle="No published results yet" />
+    <Widget
+      key="res"
+      title="Recent results"
+      icon={<GraduationCap />}
+      action={{ href: `${basePath}/results${q}`, label: "All results" }}
+      isEmpty={results.length === 0}
+      empty={<EmptyState bare title="No published results yet" />}
+    >
+      <BarList
+        ariaLabel="Recent results, percentage"
+        max={100}
+        items={results.slice(0, 4).map((r) => ({
+          label: r.examName,
+          value: r.percentage,
+          display: `${+r.percentage.toFixed(1)}% · ${r.grade}`,
+          href: `${basePath}/results${q}`,
+        }))}
+      />
+    </Widget>
   );
   // GU-08 — ai.study is student-only (D32); a guardian never has it, so the
   // card simply doesn't render for them.

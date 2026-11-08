@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { AnimatedList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { deleteDiaryEntry, postDiaryEntry } from "@/modules/diary/actions";
 import type { DiaryEntryRow } from "@/modules/diary/queries";
@@ -149,9 +150,9 @@ export function DiaryView({
           {entries.length === 0 ? (
             <EmptyState title="No diary entries in this window" description="Entries you post appear here and in the parents' portal." />
           ) : (
-            <ul className="divide-y">
+            <AnimatedList className="space-y-0 divide-y" ariaLabel="Diary entries">
               {entries.map((e) => (
-                <li key={e.id} className="space-y-1 py-3">
+                <div key={e.id} className="space-y-1 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="tabular-nums text-muted-foreground">{fmt(e.entryDate)}</span>
@@ -166,9 +167,9 @@ export function DiaryView({
                   </div>
                   <p className="whitespace-pre-line text-sm">{e.body}</p>
                   {e.dueDate && <p className="text-xs text-muted-foreground">Due {fmt(e.dueDate)}</p>}
-                </li>
+                </div>
               ))}
-            </ul>
+            </AnimatedList>
           )}
         </CardContent>
       </Card>

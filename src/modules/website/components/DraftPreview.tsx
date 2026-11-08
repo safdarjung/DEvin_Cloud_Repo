@@ -19,7 +19,7 @@ interface DraftPreviewProps {
 export function DraftPreview({ blocks, slug, institutionId }: DraftPreviewProps) {
   const safeBlocks = parseBlocksSafely(blocks);
   return (
-    <div className="rounded-lg border">
+    <div className="min-w-0 rounded-lg border bg-card">
       <div className="text-muted-foreground border-b bg-muted/30 px-4 py-2 text-xs font-medium uppercase tracking-wide">
         Draft preview
       </div>

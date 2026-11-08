@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnimatedList } from "@/components/widgets/viz";
 import {
   Dialog,
   DialogContent,
@@ -146,6 +147,8 @@ export function EnquiryDetail({
         </p>
       )}
 
+      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="min-w-0 space-y-4 lg:col-span-2">
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3">
           <Select disabled={pending || isConverted} value={enquiry.assignedTo ?? undefined} onValueChange={handleAssign}>
@@ -255,8 +258,9 @@ export function EnquiryDetail({
       </Card>
 
       <EnquiryReplyDraft institutionSlug={institutionSlug} enquiryId={enquiry.id} aiPolicy={aiPolicy} />
+      </div>
 
-      <Card>
+      <Card className="min-w-0 self-start">
         <CardHeader>
           <CardTitle>Notes</CardTitle>
         </CardHeader>
@@ -264,14 +268,15 @@ export function EnquiryDetail({
           {enquiry.notes.length === 0 ? (
             <EmptyState title="No notes yet" />
           ) : (
-            <ul className="space-y-2">
+            <AnimatedList ariaLabel="Notes" className="ml-1.5 space-y-3 border-l-2 border-border">
               {enquiry.notes.map((note, i) => (
-                <li key={i} className="rounded-md border border-border p-2.5 text-sm">
+                <div key={i} className="relative pl-4 text-sm">
+                  <span aria-hidden className="absolute top-1 -left-[6px] size-2.5 rounded-full border-2 border-ring bg-card" />
                   <p>{note.text}</p>
-                  <p className="text-muted-foreground text-xs">{note.at ?? "—"}</p>
-                </li>
+                  <p className="text-xs text-muted-foreground italic">{note.at ?? "—"}</p>
+                </div>
               ))}
-            </ul>
+            </AnimatedList>
           )}
           <div className="flex gap-2">
             <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
@@ -281,6 +286,7 @@ export function EnquiryDetail({
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

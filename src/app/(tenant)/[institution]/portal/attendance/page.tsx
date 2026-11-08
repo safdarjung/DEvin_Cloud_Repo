@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
@@ -32,7 +33,9 @@ export default async function PortalAttendancePage({
         canStudy={hasPermission(ctx, "ai.study")}
       />
       {termId ? (
-        <StudentAttendanceSummary ctx={ctx} studentId={selection.studentId} termId={termId} studentName={selection.studentName} />
+        <FadeIn key={selection.studentId}>
+          <StudentAttendanceSummary ctx={ctx} studentId={selection.studentId} termId={termId} studentName={selection.studentName} />
+        </FadeIn>
       ) : (
         <EmptyState title="No attendance to show" description="No active enrolment or term to show attendance for." />
       )}

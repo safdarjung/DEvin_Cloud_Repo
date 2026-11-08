@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
@@ -8,6 +9,7 @@ import { humanize } from "@/lib/format";
 import { PublishButton } from "@/modules/exams/components/PublishButton";
 import { ResultsTable } from "@/modules/exams/components/ResultsTable";
 import { getExamWithPapers, listResultsForExam } from "@/modules/exams/queries";
+import { examStatusVariant } from "@/modules/exams/status";
 
 // T-019 — 06 §W7's one-click publish lives here: before publish this is the
 // verification + PublishButton screen; after publish it's the class list
@@ -44,10 +46,17 @@ export default async function ExamResultsPage({
   if (exam.status !== "verification") {
     return (
       <div className="space-y-4">
-        <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
-        <p className="text-sm text-muted-foreground">
-          Results can be published once the exam is in verification. Current status: {humanize(exam.status)}.
-        </p>
+        <PageHeader
+          title={`${exam.name} — Results`}
+          description={exam.type}
+          back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }}
+          actions={<Badge variant={examStatusVariant(exam.status)}>{humanize(exam.status)}</Badge>}
+        />
+        <Card>
+          <CardContent className="text-sm text-muted-foreground">
+            Results can be published once the exam is in verification. Current status: {humanize(exam.status)}.
+          </CardContent>
+        </Card>
       </div>
     );
   }

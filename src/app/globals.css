@@ -292,6 +292,18 @@ a > [data-slot="card"] {
   to { stroke-dashoffset: 0; }
 }
 
+/* viz.tsx primitives. `from`-only keyframes animate to the element's own
+   value, so the static (no-JS / reduced-motion) render is the final state. */
+@keyframes grow-x {
+  from { transform: scaleX(0); }
+}
+@keyframes ring-fill {
+  from { stroke-dashoffset: 100; }
+}
+@keyframes beam {
+  to { offset-distance: 100%; }
+}
+
 /* Page entrance: subtle rise, staggered; zeroed by the reduced-motion block. */
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }

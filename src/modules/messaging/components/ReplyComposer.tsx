@@ -48,10 +48,12 @@ export function ReplyComposer({
 
   return (
     <form onSubmit={submit} className="space-y-2">
-      <Textarea aria-label="Reply" value={body} rows={3} maxLength={4000} onChange={(e) => setBody(e.target.value)} disabled={pending} placeholder="Write a reply" />
-      <Button type="submit" disabled={pending || !body.trim()} className="min-h-10">
-        {pending ? "Sending…" : "Send reply"}
-      </Button>
+      <Textarea aria-label="Reply" value={body} rows={3} maxLength={4000} onChange={(e) => setBody(e.target.value)} disabled={pending} placeholder="Write a reply" className="bg-card" />
+      <div className="flex justify-end">
+        <Button type="submit" disabled={pending || !body.trim()} className="min-h-11 w-full sm:min-h-10 sm:w-auto">
+          {pending ? "Sending…" : "Send reply"}
+        </Button>
+      </div>
     </form>
   );
 }

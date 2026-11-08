@@ -84,7 +84,8 @@ export function ApplicationDetail({
         </p>
       )}
 
-      <Card>
+      <div className="grid gap-4 lg:grid-cols-3">
+      <Card className="min-w-0 self-start lg:col-span-2">
         <CardHeader>
           <CardTitle>Decisions</CardTitle>
         </CardHeader>
@@ -110,10 +111,18 @@ export function ApplicationDetail({
             feeStructures={feeStructures}
             enabled={canEnrol}
           />
+        </CardContent>
+      </Card>
 
+      <Card className="min-w-0 self-start">
+        <CardHeader>
+          <CardTitle>History</CardTitle>
+        </CardHeader>
+        <CardContent>
           <DecisionTimeline decisions={decisions} />
         </CardContent>
       </Card>
+      </div>
 
       <Dialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
         <DialogContent>

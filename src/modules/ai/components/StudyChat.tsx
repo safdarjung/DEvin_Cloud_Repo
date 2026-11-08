@@ -26,6 +26,7 @@ import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/mo
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { StudentSkill } from "@/modules/ai/prompts/student-skills";
 import { saveStudyChat, saveStudyNote } from "@/modules/ai/student-study.actions";
+import { BorderBeam } from "@/components/widgets/viz";
 
 interface StudyChatProps {
   institutionSlug: string;
@@ -275,18 +276,19 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
         <SkillChips skills={skills} />
       </div>
 
-      <Card>
+      <Card className="relative">
+        <BorderBeam />
         <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:h-[480px] sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-muted-foreground">Ask about a topic you&apos;re studying — try a mindmap or a practice quiz.</p>
           )}
           {messages.map((message) => (
-            <div key={message.id} className={message.role === "user" ? "max-w-[85%] self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground" : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"}>
+            <div key={message.id} className={message.role === "user" ? "max-w-[85%] self-end rounded-lg rounded-br-sm bg-primary px-3 py-2 text-primary-foreground" : "min-w-0 max-w-full self-start space-y-2 rounded-lg rounded-bl-sm bg-muted px-3 py-2"}>
               <MessageParts message={message} institutionSlug={institutionSlug} resumedChatId={resumedChatId} />
             </div>
           ))}
           {busy && messages.at(-1)?.role !== "assistant" && (
-            <div role="status" className="self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Thinking…</span>
             </div>
           )}
@@ -321,7 +323,7 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="sticky bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
+      <form onSubmit={handleSubmit} className="sticky bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] lg:bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}

@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default async function NotebookPage({
     <div className="space-y-4">
       <PageHeader title="My notebook" back={{ href: basePath, label: "Back to study helper" }} />
 
-      <form action={`${basePath}/notebook`} className="flex gap-2">
+      <form action={`${basePath}/notebook`} className="flex flex-wrap gap-2 sm:max-w-sm">
         {folder && <input type="hidden" name="folder" value={folder} />}
         <Input name="search" defaultValue={search} placeholder="Search by title" aria-label="Search by title" />
       </form>
@@ -61,7 +62,7 @@ export default async function NotebookPage({
                 key={f ?? "all"}
                 href={f === null ? `${basePath}/notebook` : `${basePath}/notebook?folder=${encodeURIComponent(f)}`}
                 aria-current={active ? "true" : undefined}
-                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }))}
+                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }), "min-h-11 sm:min-h-8")}
               >
                 {f ?? "All"}
               </Link>
@@ -70,7 +71,9 @@ export default async function NotebookPage({
         </div>
       )}
 
-      <NotebookList institutionSlug={institutionSlug} items={items} />
+      <FadeIn>
+        <NotebookList institutionSlug={institutionSlug} items={items} />
+      </FadeIn>
     </div>
   );
 }

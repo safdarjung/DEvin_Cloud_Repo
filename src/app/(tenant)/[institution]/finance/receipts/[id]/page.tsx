@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { getTenantContext } from "@/lib/auth/context";
@@ -36,7 +37,9 @@ export default async function ReceiptPage({
           </Button>
         }
       />
-      <ReceiptView receipt={receipt} />
+      <FadeIn>
+        <ReceiptView receipt={receipt} />
+      </FadeIn>
     </div>
   );
 }

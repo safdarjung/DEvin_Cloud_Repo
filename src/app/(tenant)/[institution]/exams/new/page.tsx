@@ -5,6 +5,7 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import { ExamForm } from "@/modules/exams/components/ExamForm";
 import { listTermOptions } from "@/modules/exams/queries";
+import { FadeIn } from "@/components/motion";
 
 export default async function NewExamPage({
   params,
@@ -26,7 +27,9 @@ export default async function NewExamPage({
       {terms.length === 0 ? (
         <EmptyState title="No terms found" description="No terms found for the current academic year." />
       ) : (
-        <ExamForm institutionSlug={institutionSlug} terms={terms} gradingScaleKeys={gradingScaleKeys} />
+        <FadeIn>
+          <ExamForm institutionSlug={institutionSlug} terms={terms} gradingScaleKeys={gradingScaleKeys} />
+        </FadeIn>
       )}
     </div>
   );

@@ -28,7 +28,7 @@ export default async function InvoiceDetailPage({
   const outstanding = invoice.total - invoice.paidTotal;
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <PageHeader
         title={invoice.invoiceNo}
         description={invoice.studentName}

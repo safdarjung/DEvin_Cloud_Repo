@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { getTodaySectionsForTeacher } from "@/modules/attendance/queries";
@@ -47,13 +48,13 @@ export default async function AttendancePage({
         <Card>
           <CardContent>
             <ul className="divide-y divide-border">
-              {sections.map((section) => (
-                <li key={section.id} className="flex items-center justify-between gap-3 py-3">
+              {sections.map((section, i) => (
+                <FadeIn as="li" delay={Math.min(i, 8) * 0.04} key={section.id} className="motion-safe:fill-mode-backwards flex items-center justify-between gap-3 py-3">
                   <span className="font-medium">{section.label}</span>
                   <Button asChild variant="outline" className="shrink-0">
                     <Link href={`/${institutionSlug}/attendance/${section.id}?date=${today}`}>Open register</Link>
                   </Button>
-                </li>
+                </FadeIn>
               ))}
             </ul>
           </CardContent>

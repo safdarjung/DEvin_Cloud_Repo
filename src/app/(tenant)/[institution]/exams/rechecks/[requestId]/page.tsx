@@ -9,6 +9,7 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { RecheckDecisionForm } from "@/modules/exams/components/RecheckDecisionForm";
 import { ResultVersionHistory } from "@/modules/exams/components/ResultVersionHistory";
 import { getRecheck, getResultHistory } from "@/modules/exams/queries";
+import { FadeIn } from "@/components/motion";
 
 // T-020 — review + decide one recheck request (06 §W8), exam.recheck.review
 // only (decide_recheck itself re-checks exam.recheck.decide — RecheckDecisionForm
@@ -30,7 +31,7 @@ export default async function RecheckDecisionPage({
   const history = await getResultHistory(ctx, request.examId, request.studentId);
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div>
       <PageHeader
         title={`${request.studentName} — ${request.subjectName}`}
         description={request.examName}
@@ -38,18 +39,22 @@ export default async function RecheckDecisionPage({
         actions={<Badge variant={recheckStatusVariant(request.status)}>{humanize(request.status)}</Badge>}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Reason</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm">{request.reason}</p>
-        </CardContent>
-      </Card>
+      <FadeIn className="grid gap-4 lg:grid-cols-3">
+        <Card className="min-w-0 self-start lg:order-last">
+          <CardHeader>
+            <CardTitle>Reason</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm">{request.reason}</p>
+          </CardContent>
+        </Card>
 
-      <RecheckDecisionForm institutionSlug={institutionSlug} request={request} />
+        <div className="min-w-0 space-y-4 lg:col-span-2">
+          <RecheckDecisionForm institutionSlug={institutionSlug} request={request} />
 
-      <ResultVersionHistory history={history} />
+          <ResultVersionHistory history={history} />
+        </div>
+      </FadeIn>
     </div>
   );
 }

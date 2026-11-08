@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
@@ -37,7 +38,9 @@ export default async function PortalReceiptPage({
         activeHref="/fees"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <ReceiptView receipt={receipt} />
+      <FadeIn>
+        <ReceiptView receipt={receipt} />
+      </FadeIn>
     </>
   );
 }

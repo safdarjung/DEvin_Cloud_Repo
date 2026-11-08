@@ -4,6 +4,7 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { MarksEntryGrid } from "@/modules/exams/components/MarksEntryGrid";
 import { getPaperMarks } from "@/modules/exams/queries";
+import { FadeIn } from "@/components/motion";
 
 export default async function PaperMarksPage({
   params,
@@ -25,7 +26,9 @@ export default async function PaperMarksPage({
         description={`${paper.students.length} students enrolled.`}
         back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }}
       />
-      <MarksEntryGrid institutionSlug={institutionSlug} paper={paper} />
+      <FadeIn>
+        <MarksEntryGrid institutionSlug={institutionSlug} paper={paper} />
+      </FadeIn>
     </div>
   );
 }

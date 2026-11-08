@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnimatedList, BorderBeam } from "@/components/widgets/viz";
 import type { AnonymizedAttendancePattern } from "@/modules/attendance/queries";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 
@@ -62,7 +63,8 @@ export function AttendanceInsightsPanel({ institutionSlug, sectionId, patterns, 
   }
 
   return (
-    <Card>
+    <Card className="relative">
+      <BorderBeam />
       <CardHeader className="flex flex-row items-center justify-between gap-2">
         <CardTitle>Attendance patterns</CardTitle>
         {/* Fix round 1 (LOW-2): every other AI surface shows ProviderBadge
@@ -91,13 +93,13 @@ export function AttendanceInsightsPanel({ institutionSlug, sectionId, patterns, 
           <p className="text-muted-foreground text-sm">No unusual attendance patterns flagged.</p>
         )}
         {state.kind === "done" && state.items.length > 0 && (
-          <ul className="space-y-1 text-sm">
+          <AnimatedList className="space-y-1 text-sm" ariaLabel="Flagged attendance patterns">
             {state.items.map((item) => (
-              <li key={item.index}>
+              <p key={item.index}>
                 <span className="font-medium">{names[item.index] ?? "Unknown"}</span> — {item.note}
-              </li>
+              </p>
             ))}
-          </ul>
+          </AnimatedList>
         )}
       </CardContent>
     </Card>

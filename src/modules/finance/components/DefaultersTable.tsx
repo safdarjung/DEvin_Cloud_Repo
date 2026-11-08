@@ -7,6 +7,10 @@ import { EmptyState } from "@/components/states";
 import { inr } from "@/lib/format";
 import type { DefaulterRow } from "@/modules/finance/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 export function DefaultersTable({
   institutionSlug,
   defaulters,
@@ -31,8 +35,8 @@ export function DefaultersTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {defaulters.map((row) => (
-          <TableRow key={row.invoiceId}>
+        {defaulters.map((row, i) => (
+          <TableRow key={row.invoiceId} className={ROW_ENTER} style={rowDelay(i)}>
             <TableCell>{row.studentName}</TableCell>
             <TableCell>
               <Link

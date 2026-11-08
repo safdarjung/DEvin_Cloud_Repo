@@ -2,6 +2,7 @@ import { SimulatedBadge } from "@/components/honesty";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProgressBar } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -63,7 +64,7 @@ export default async function DataPage({
                   <Label htmlFor="batch" className="mb-1 block">Batch id</Label>
                   <Input id="batch" name="batch" defaultValue={batch ?? ""} placeholder="00000000-0000-0000-0000-000000000000" aria-describedby="batch-help" />
                 </div>
-                <Button type="submit" variant="outline">Look up</Button>
+                <Button type="submit" variant="outline" className="w-full sm:w-auto">Look up</Button>
               </form>
               <p id="batch-help" className="mt-2 text-xs text-muted-foreground">Batch ids are shown when an import finishes. There is no import history list yet.</p>
               {batch && !batchId && <p role="alert" className="mt-2 text-sm text-destructive">That is not a valid batch id.</p>}
@@ -76,6 +77,12 @@ export default async function DataPage({
                       <p className="text-sm">
                         {humanize(b.entityType)} · {b.fileName} · <StatusChip>{humanize(b.status)}</StatusChip>
                       </p>
+                      {b.rowCount > 0 && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <ProgressBar label="Valid rows" value={b.validCount} max={b.rowCount} valueLabel={`${b.validCount} of ${b.rowCount}`} tone={b.errorCount > 0 ? "warning" : "success"} />
+                          <ProgressBar label="Committed rows" value={b.committedCount} max={b.rowCount} valueLabel={`${b.committedCount} of ${b.rowCount}`} tone="success" />
+                        </div>
+                      )}
                       <SimpleTable
                         caption="Import batch row counts"
                         head={["Rows", "Valid", "Errors", "Committed", "Skipped"]}

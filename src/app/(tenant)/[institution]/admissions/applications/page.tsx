@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { ListPager } from "@/components/list-pager";
@@ -16,6 +17,10 @@ import { humanize } from "@/lib/format";
 import { parsePage } from "@/lib/list-search";
 
 const STATUSES: ApplicationStatus[] = ["submitted", "under_review", "interaction_scheduled", "offered", "accepted", "rejected", "withdrawn", "enrolled"];
+
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
 
 export default async function ApplicationsPage({
   params,
@@ -36,34 +41,37 @@ export default async function ApplicationsPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Applications" />
-      <form method="get" className="flex flex-wrap items-center gap-2">
-        <Input name="q" defaultValue={q ?? ""} placeholder="Search by applicant name or application no" aria-label="Search applications" className="max-w-sm" />
-        <select
-          name="status"
-          defaultValue={status ?? ""}
-          aria-label="Filter by status"
-          className="h-10 rounded-[15px] border border-input bg-transparent px-3 text-sm"
-        >
-          <option value="">All statuses</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {humanize(s)}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" variant="outline">
-          Search
-        </Button>
-      </form>
-      {applications.length === 0 ? (
-        <EmptyState
-          title={q ? "No applications match your search" : status ? `No applications in ${humanize(status)}` : "No applications yet"}
-          description={q ? "Try a different name or application number." : undefined}
-        />
-      ) : (
-        <Card>
-          <CardContent>
+      <PageHeader title="Applications" back={{ href: `/${institutionSlug}/admissions`, label: "Pipeline" }} />
+      <Card>
+        <form method="get" className="flex flex-wrap items-center gap-2 border-b-2 border-border px-4 pb-3">
+          <div className="relative w-full min-w-0 sm:max-w-sm">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <Input name="q" defaultValue={q ?? ""} placeholder="Search by applicant name or application no" aria-label="Search applications" className="pl-9" />
+          </div>
+          <select
+            name="status"
+            defaultValue={status ?? ""}
+            aria-label="Filter by status"
+            className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-3 text-sm sm:h-9 sm:flex-none"
+          >
+            <option value="">All statuses</option>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {humanize(s)}
+              </option>
+            ))}
+          </select>
+          <Button type="submit" variant="outline">
+            Search
+          </Button>
+        </form>
+        <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
+          {applications.length === 0 ? (
+            <EmptyState
+              title={q ? "No applications match your search" : status ? `No applications in ${humanize(status)}` : "No applications yet"}
+              description={q ? "Try a different name or application number." : undefined}
+            />
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
@@ -73,24 +81,24 @@ export default async function ApplicationsPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((application) => (
-                  <ApplicationRowItem key={application.id} institutionSlug={institutionSlug} application={application} />
+                {applications.map((application, i) => (
+                  <ApplicationRowItem key={application.id} index={i} institutionSlug={institutionSlug} application={application} />
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
       <ListPager basePath={`/${institutionSlug}/admissions/applications`} params={{ q, status }} page={pageNum} total={total} pageSize={pageSize} noun="applications" />
     </div>
   );
 }
 
-function ApplicationRowItem({ institutionSlug, application }: { institutionSlug: string; application: ApplicationRow }) {
+function ApplicationRowItem({ index, institutionSlug, application }: { index: number; institutionSlug: string; application: ApplicationRow }) {
   const applicant = application.applicant as { firstName?: string; lastName?: string };
   const name = [applicant.firstName, applicant.lastName].filter(Boolean).join(" ") || "Applicant";
   return (
-    <TableRow>
+    <TableRow className={ROW_ENTER} style={rowDelay(index)}>
       <TableCell>
         <Link
           href={`/${institutionSlug}/admissions/applications/${application.id}`}

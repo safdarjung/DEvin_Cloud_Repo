@@ -13,6 +13,10 @@ import type { ActionResult } from "@/lib/actions/result";
 import { createPage } from "@/modules/website/actions";
 import type { PageSummary } from "@/modules/website/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 interface PageListProps {
   institutionSlug: string;
   pages: PageSummary[];
@@ -48,8 +52,8 @@ export function PageList({ institutionSlug, pages, canEdit }: PageListProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {pages.map((page) => (
-              <TableRow key={page.id}>
+            {pages.map((page, i) => (
+              <TableRow key={page.id} className={ROW_ENTER} style={rowDelay(i)}>
                 <TableCell>
                   <Link href={`/${institutionSlug}/website/pages/${page.id}`} className="font-medium hover:underline">
                     {page.title}

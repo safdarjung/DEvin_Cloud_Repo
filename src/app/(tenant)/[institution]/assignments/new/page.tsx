@@ -4,6 +4,7 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
+import { FadeIn } from "@/components/motion";
 
 export default async function NewAssignmentPage({
   params,
@@ -26,7 +27,9 @@ export default async function NewAssignmentPage({
       {sectionsWithSubjects.length === 0 ? (
         <EmptyState title="No sections to assign to" description="You don't teach any sections yet." />
       ) : (
-        <AssignmentForm institutionSlug={institutionSlug} sections={sectionsWithSubjects} />
+        <FadeIn>
+          <AssignmentForm institutionSlug={institutionSlug} sections={sectionsWithSubjects} />
+        </FadeIn>
       )}
     </div>
   );

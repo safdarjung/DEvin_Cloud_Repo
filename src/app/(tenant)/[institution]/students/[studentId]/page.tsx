@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
@@ -21,5 +22,9 @@ export default async function StudentProfilePage({
   const termId = student.enrolment ? await getCurrentTermId(ctx, student.enrolment.academicYearId) : null;
   const invoices = await listInvoicesForStudent(ctx, studentId);
 
-  return <StudentProfile ctx={ctx} student={student} invoices={invoices} termId={termId} />;
+  return (
+    <FadeIn>
+      <StudentProfile ctx={ctx} student={student} invoices={invoices} termId={termId} />
+    </FadeIn>
+  );
 }

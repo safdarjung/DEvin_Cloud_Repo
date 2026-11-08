@@ -5,6 +5,7 @@
 // (rule 3 — the grade label is always `results.grade` from the snapshot).
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgressBar } from "@/components/widgets/viz";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { RecheckRequestForm } from "@/modules/exams/components/RecheckRequestForm";
@@ -115,16 +116,10 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
         </table>
         </div>
 
-        <dl className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-3 text-sm print:bg-transparent">
-          <div>
-            <dt className="text-muted-foreground">Percentage</dt>
-            <dd className="font-medium">{result.percentage}%</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">Attendance</dt>
-            <dd className="font-medium">{result.attendancePercentage}%</dd>
-          </div>
-        </dl>
+        <div className="grid gap-4 rounded-lg bg-muted/40 p-3 text-sm sm:grid-cols-2 print:bg-transparent">
+          <ProgressBar label="Percentage" value={Number(result.percentage)} valueLabel={`${result.percentage}%`} />
+          <ProgressBar label="Attendance" value={Number(result.attendancePercentage)} valueLabel={`${result.attendancePercentage}%`} />
+        </div>
 
         {remark && (
           <div className="border-l-2 pl-3 text-sm">

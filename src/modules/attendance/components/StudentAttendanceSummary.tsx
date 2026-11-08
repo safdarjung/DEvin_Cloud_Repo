@@ -3,6 +3,7 @@
 // getStudentAttendanceSummary's already-computed numbers.
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProgressBar } from "@/components/widgets/viz";
 import type { TenantContext } from "@/lib/auth/types";
 import { getStudentAttendanceSummary } from "@/modules/attendance/queries";
 
@@ -29,6 +30,13 @@ export async function StudentAttendanceSummary({ ctx, studentId, termId, student
         <p className="text-muted-foreground text-sm">
           {summary.presentWeighted} / {summary.totalInDenominator} days this term
         </p>
+        <ProgressBar
+          className="mt-3"
+          label="Term attendance"
+          value={summary.percentage}
+          showValue={false}
+          tone={isCritical ? "destructive" : isWarn ? "warning" : "success"}
+        />
       </CardContent>
     </Card>
   );

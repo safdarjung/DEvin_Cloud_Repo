@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { Role } from "@/lib/auth/permissions";
+import { BorderBeam } from "@/components/widgets/viz";
 
 type AssistantMessage = UIMessage<{ sources?: Array<{ query: string }> }>;
 
@@ -49,7 +50,8 @@ export function AssistantPanel({
 
   return (
     <div className="space-y-3">
-      <Card>
+      <Card className="relative">
+        <BorderBeam />
         <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <div className="space-y-3">
@@ -81,8 +83,8 @@ export function AssistantPanel({
                 key={message.id}
                 className={
                   message.role === "user"
-                    ? "max-w-[85%] self-end rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
-                    : "min-w-0 max-w-full self-start space-y-2 rounded-2xl rounded-bl-sm bg-muted px-3 py-2"
+                    ? "max-w-[85%] self-end rounded-lg rounded-br-sm bg-primary px-3 py-2 text-primary-foreground"
+                    : "min-w-0 max-w-full self-start space-y-2 rounded-lg rounded-bl-sm bg-muted px-3 py-2"
                 }
               >
                 {text && <p className="whitespace-pre-wrap">{text}</p>}
@@ -118,7 +120,7 @@ export function AssistantPanel({
             );
           })}
           {busy && messages.at(-1)?.role !== "assistant" && (
-            <div role="status" className="self-start rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Looking up records…</span>
             </div>
           )}
@@ -130,7 +132,7 @@ export function AssistantPanel({
           e.preventDefault();
           ask(input);
         }}
-        className="flex gap-2"
+        className="sticky bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] z-10 -mx-1 flex gap-2 bg-background px-1 pt-2 pb-2 lg:bottom-0"
       >
         <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} disabled={busy} aria-label="Question" />
         <Button type="submit" disabled={busy || input.trim().length === 0} className="min-h-10">

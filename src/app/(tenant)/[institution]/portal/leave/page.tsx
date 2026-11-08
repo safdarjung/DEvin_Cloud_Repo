@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
+import { AnimatedList, BarList, type VizTone } from "@/components/widgets/viz";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -13,6 +15,7 @@ import { studentLeaveRequests } from "@/modules/student-leave/queries";
 
 const date = new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 const fmt = (iso: string) => date.format(new Date(`${iso}T00:00:00Z`));
+const STATUS_TONE: Record<string, VizTone> = { pending: "warning", approved: "success", rejected: "destructive" };
 const STATUS_VARIANT: Record<string, BadgeVariant> = { pending: "warning", approved: "success", rejected: "destructive", cancelled: "secondary" };
 
 export default async function PortalLeavePage({
@@ -30,11 +33,13 @@ export default async function PortalLeavePage({
 
   const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/leave`);
   const rows = await studentLeaveRequests(ctx, { studentId: selection.studentId });
+  const daysByStatus = new Map<string, number>();
+  for (const r of rows) daysByStatus.set(r.status, (daysByStatus.get(r.status) ?? 0) + r.days);
 
   return (
     <>
       <PortalNav institutionSlug={institutionSlug} role="guardian" selection={selection} activeHref="/leave" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <FadeIn key={selection.studentId} className="grid gap-4 lg:grid-cols-2 *:min-w-0">
         <Card>
           <CardHeader>
             <CardTitle>Request leave for {selection.studentName}</CardTitle>
@@ -49,10 +54,23 @@ export default async function PortalLeavePage({
           {rows.length === 0 ? (
             <EmptyState title="No leave requests yet" description="Use the form to send the first one." />
           ) : (
-            <ul className="grid gap-3">
+            <div className="space-y-3">
+              <Card>
+                <CardContent>
+                  <BarList
+                    ariaLabel="Leave days by status"
+                    items={[...daysByStatus].map(([status, days]) => ({
+                      label: humanize(status),
+                      value: days,
+                      display: `${days} day${days === 1 ? "" : "s"}`,
+                      tone: STATUS_TONE[status],
+                    }))}
+                  />
+                </CardContent>
+              </Card>
+            <AnimatedList ariaLabel="Leave history" className="grid gap-3 space-y-0">
               {rows.map((r) => (
-                <li key={r.id}>
-                  <Card>
+                  <Card key={r.id}>
                     <CardContent className="grid gap-2">
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-sm font-medium tabular-nums">
@@ -73,12 +91,12 @@ export default async function PortalLeavePage({
                       )}
                     </CardContent>
                   </Card>
-                </li>
               ))}
-            </ul>
+            </AnimatedList>
+            </div>
           )}
         </div>
-      </div>
+      </FadeIn>
     </>
   );
 }

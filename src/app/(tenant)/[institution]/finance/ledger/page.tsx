@@ -2,7 +2,11 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Stagger, StaggerItem } from "@/components/motion";
+import { KpiTile } from "@/components/widgets/kpi-widget";
+import { inr } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -50,7 +54,28 @@ export default async function LedgerPage({
     <div className="space-y-4">
       <PageHeader title="Ledger" description="Double-entry postings for the selected range." back={{ href: `/${institutionSlug}/finance`, label: "Finance" }} />
 
-      <form className="grid gap-3 rounded-xl border bg-card p-4 sm:flex sm:flex-wrap sm:items-end">
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile label="Postings" value={String(ledger.totalCount)} animateTo={ledger.totalCount} sub={`${range.from} to ${range.to}`} />
+        </StaggerItem>
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile label="Debit" value={inr(ledger.totalDebit)} animateTo={ledger.totalDebit} format="inr" />
+        </StaggerItem>
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile label="Credit" value={inr(ledger.totalCredit)} animateTo={ledger.totalCredit} format="inr" />
+        </StaggerItem>
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile
+            label="Balanced"
+            value={ledger.balanced ? "Yes" : "No"}
+            tone={ledger.balanced ? "success" : "destructive"}
+            sub={ledger.balanced ? "Debit equals credit" : "Debit and credit differ"}
+          />
+        </StaggerItem>
+      </Stagger>
+
+      <Card>
+      <form className="grid gap-3 border-b-2 border-border px-4 pb-3 sm:flex sm:flex-wrap sm:items-end">
         <div>
           <Label className="mb-1 block" htmlFor="from">
             From
@@ -81,21 +106,24 @@ export default async function LedgerPage({
             </SelectContent>
           </Select>
         </div>
-        <Button type="submit" variant="outline">
+        <Button type="submit" variant="outline" className="w-full sm:w-auto">
           Filter
         </Button>
       </form>
 
-      <LedgerTable ledger={ledger} />
+      <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
+        <LedgerTable ledger={ledger} />
+      </CardContent>
+      </Card>
 
-      <div className="flex justify-end gap-2">
+      <nav aria-label="Pagination" className="flex justify-end gap-2">
         <Button variant="outline" disabled={ledger.page <= 1} asChild={ledger.page > 1}>
           {ledger.page > 1 ? <Link href={query(ledger.page - 1)}>Previous</Link> : <span>Previous</span>}
         </Button>
         <Button variant="outline" disabled={!hasMore} asChild={hasMore}>
           {hasMore ? <Link href={query(ledger.page + 1)}>Next</Link> : <span>Next</span>}
         </Button>
-      </div>
+      </nav>
     </div>
   );
 }

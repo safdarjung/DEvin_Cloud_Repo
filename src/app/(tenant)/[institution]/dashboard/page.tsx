@@ -1,30 +1,32 @@
 import type { ReactNode } from "react";
-import { Banknote, CalendarCheck, GraduationCap, UserPlus } from "lucide-react";
+import Link from "next/link";
+import { Banknote, CalendarCheck, ChevronRight, GraduationCap, UserPlus } from "lucide-react";
 import { SimulatedBadge } from "@/components/honesty";
+import { StaggerItem } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
+import { Badge } from "@/components/ui/badge";
 import { AIInsightCard } from "@/components/widgets/ai-insight-card";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
 import { StaffAvailabilityWidget } from "@/components/widgets/staff-availability-widget";
-import { TrendWidget } from "@/components/widgets/trend-widget";
+import { AnimatedList, BarList, BorderBeam, InteractiveTrend, ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
-import { humanize, inr } from "@/lib/format";
+import { humanize, inr, type BadgeVariant } from "@/lib/format";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listEnquiriesByStage } from "@/modules/admissions/queries";
-import { attendanceTrend } from "@/modules/attendance/queries";
+import { attendanceTrend, getAttendanceSettings } from "@/modules/attendance/queries";
 import { repeatedAbsentees, sectionAttendanceToday } from "@/modules/attendance/command.queries";
 import { calendarForRole } from "@/modules/calendar/queries";
 import { pendingApprovals } from "@/modules/core/approvals.queries";
 import { buildApprovalQueue } from "@/modules/core/approval-queue";
 import { ApprovalsQueue } from "@/modules/core/components/dashboard/ApprovalsQueue";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
-import { Feed, Panel, PanelEmpty, SectionBars, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
+import { Panel, PanelEmpty, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
-import { FunnelChart } from "@/modules/core/components/dashboard/FunnelChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { listExams, listRecheckQueue, listSectionOptions } from "@/modules/exams/queries";
@@ -56,6 +58,13 @@ const HALF = "lg:col-span-6";
 const FULL = "md:col-span-2 lg:col-span-12";
 
 /** "just now" / "5m ago" / "3h ago", else the short date. */
+const ASK_PROMPTS = [
+  "Summarize today's school operations",
+  "Which classes have the lowest attendance?",
+  "What is waiting for my approval?",
+  "Identify students with repeated absences",
+];
+
 function ago(iso: string, now: Date): string {
   const mins = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 60_000));
   if (mins < 1) return "just now";
@@ -66,6 +75,35 @@ function ago(iso: string, now: Date): string {
 
 const value = <T,>(r: PromiseSettledResult<T | null>): T | null => (r.status === "fulfilled" ? r.value : null);
 const failed = (r: PromiseSettledResult<unknown>): boolean => r.status === "rejected";
+
+type LiveItem = FeedItem & { badge?: { label: string; variant: BadgeVariant } };
+
+/** Feed rows (same anatomy as command-center `Feed`) in an AnimatedList: first paint staggers, later rows slide in. */
+function LiveFeed({ items, label }: { items: LiveItem[]; label: string }) {
+  return (
+    <AnimatedList ariaLabel={label} className="space-y-0 divide-y">
+      {items.map((i) => {
+        const body = (
+          <div className="flex min-h-11 items-center justify-between gap-3 py-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{i.title}</p>
+              {i.meta && <p className="truncate text-xs text-muted-foreground">{i.meta}</p>}
+            </div>
+            {i.badge && <Badge variant={i.badge.variant}>{i.badge.label}</Badge>}
+            {i.time && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{i.time}</span>}
+          </div>
+        );
+        return i.href ? (
+          <Link key={i.id} href={i.href} className="block rounded-sm outline-none transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+            {body}
+          </Link>
+        ) : (
+          <div key={i.id}>{body}</div>
+        );
+      })}
+    </AnimatedList>
+  );
+}
 
 function FailedWidget({ title, className }: { title: string; className?: string }) {
   return (
@@ -245,16 +283,43 @@ export default async function DashboardPage({
     />
   );
 
-  const collectionsChart = (className: string) =>
+  const collectionsChart = (className: string, gauge = false) =>
     collections && (
       <Widget title="Fee collection this term" action={{ href: `${basePath}/finance`, label: "Finance" }} className={className}>
+        {collectionPct !== null &&
+          (gauge ? (
+            <RadialGauge
+              value={collectionPct}
+              label="Collection rate"
+              sublabel={`${formatINR(collections.collectedPaise)} of ${formatINR(collections.duePaise)}`}
+              thresholds={{ good: 80, warn: 50 }}
+              className="mb-4"
+            />
+          ) : (
+            <ProgressBar label="Collected so far" value={collections.collectedPaise} max={collections.duePaise} valueLabel={`${collectionPct}%`} className="mb-4" />
+          ))}
         <CollectionsChart collectedPaise={collections.collectedPaise} duePaise={collections.duePaise} />
       </Widget>
     );
   const funnel = (className: string) =>
     canEnquiries && isModuleEnabled(ctx, "admissions") && (
       <Widget title="Admissions funnel" action={{ href: `${basePath}/admissions`, label: "Pipeline" }} className={cn("md:col-span-2", className)}>
-        <FunnelChart funnel={data.funnel} />
+        {openEnquiries === 0 ? (
+          <EmptyState bare title="No enquiries yet" />
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2">
+            <BarList
+              ariaLabel="Enquiries by stage"
+              items={Object.entries(data.funnel.enquiryStages).map(([stage, n]) => ({ label: humanize(stage), value: n }))}
+            />
+            <BarList
+              ariaLabel="Applications by status"
+              items={Object.entries(data.funnel.applicationStatuses)
+                .filter(([, n]) => n > 0)
+                .map(([status, n]) => ({ label: humanize(status), value: n, tone: status === "enrolled" ? ("success" as const) : undefined }))}
+            />
+          </div>
+        )}
       </Widget>
     );
   const gd = data.gradeDistribution;
@@ -264,7 +329,7 @@ export default async function DashboardPage({
         title="Exam grade distribution"
         description={gd ? `${gd.examName} — ${gd.total} results` : undefined}
         isEmpty={!gd}
-        empty={<EmptyState title="No published exam yet" description="Grade distribution appears once results are published." />}
+        empty={<EmptyState bare title="No published exam yet" description="Grade distribution appears once results are published." />}
         className={className}
       >
         {gd && <GradeDistributionChart distribution={gd.distribution} />}
@@ -275,20 +340,25 @@ export default async function DashboardPage({
       <FailedWidget title="Recheck requests" className={className} />
     ) : (
       rechecks && (
-        <ListWidget
+        <Widget
           title="Recheck requests"
           description={`${rechecks.length} waiting for review`}
           action={{ href: `${basePath}/exams/rechecks`, label: "Review all" }}
-          emptyTitle="No recheck requests waiting"
-          rows={rechecks.slice(0, 5).map((r) => ({
-            id: r.id,
-            title: r.studentName,
-            meta: `${r.subjectName} · ${r.examName}`,
-            href: `${basePath}/exams/rechecks/${r.id}`,
-            badge: { label: humanize(r.status), variant: recheckStatusVariant(r.status) },
-          }))}
+          isEmpty={rechecks.length === 0}
+          empty={<EmptyState bare title="No recheck requests waiting" />}
           className={className}
-        />
+        >
+          <LiveFeed
+            label="Recheck requests"
+            items={rechecks.slice(0, 5).map((r) => ({
+              id: r.id,
+              title: r.studentName,
+              meta: `${r.subjectName} · ${r.examName}`,
+              href: `${basePath}/exams/rechecks/${r.id}`,
+              badge: { label: humanize(r.status), variant: recheckStatusVariant(r.status) },
+            }))}
+          />
+        </Widget>
       )
     );
   const canEditWebsite = hasPermission(ctx, "website.edit");
@@ -384,7 +454,7 @@ export default async function DashboardPage({
           ]}
         />
         {quickActions.length > 0 && actions(FULL)}
-        {collectionsChart(NARROW)}
+        {collectionsChart(NARROW, true)}
         {defaultersFailed ? (
           <FailedWidget title="Top defaulters" className={WIDE} />
         ) : (
@@ -447,6 +517,14 @@ export default async function DashboardPage({
           )
         )}
         <div className={cn("min-w-0 space-y-4", NARROW)}>
+          {exams && exams.length > 0 && (
+            <Widget title="Exams by status" action={{ href: `${basePath}/exams`, label: "All exams" }}>
+              <BarList
+                ariaLabel="Exams by status"
+                items={(["draft", "marks_entry", "verification", "published"] as const).map((s) => ({ label: humanize(s), value: byStatus(s), href: `${basePath}/exams` }))}
+              />
+            </Widget>
+          )}
           {actions()}
           {insights && <Insights items={insights} />}
         </div>
@@ -472,7 +550,7 @@ export default async function DashboardPage({
     const marked = data.attendanceToday.totalInDenominator;
     const inrWhole = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 
-    const tiles: StatTileProps[] = [];
+    const tiles: (StatTileProps & { spark?: number[] })[] = [];
     if (counts) {
       tiles.push({ label: "Students", value: counts.students.toLocaleString("en-IN"), href: `${basePath}/students` });
       tiles.push({ label: "Staff", value: counts.staff.toLocaleString("en-IN") });
@@ -484,6 +562,7 @@ export default async function DashboardPage({
         value: marked > 0 ? `${data.attendanceToday.percentage}%` : "—",
         sub: marked > 0 ? `${marked} students marked` : "Not marked yet",
         href: `${basePath}/attendance`,
+        spark: trendPts.length > 1 ? trendPts.map((p) => p.value) : undefined,
       });
       if (sectionAtt) tiles.push({ label: "Absent today", value: marked > 0 ? String(sectionAtt.absentTotal) : "—", sub: marked > 0 ? `${data.sectionsAtRisk.length} sections below threshold` : undefined });
     }
@@ -526,9 +605,16 @@ export default async function DashboardPage({
               action={hasPermission(ctx, "attendance.mark") ? { href: `${basePath}/attendance`, label: "Mark attendance" } : undefined}
             />
           ) : (
-            <SectionBars
-              threshold={75}
-              rows={sectionAtt.sections.slice(0, 7).map((s) => ({ id: s.classSectionId, label: s.label, percentage: s.percentage, absent: s.absent, href: `${basePath}/attendance/${s.classSectionId}` }))}
+            <BarList
+              ariaLabel="Section attendance today, lowest first"
+              max={100}
+              items={sectionAtt.sections.slice(0, 7).map((s) => ({
+                label: s.label,
+                value: s.percentage,
+                display: `${s.percentage}% · ${s.absent} absent`,
+                tone: s.percentage < 75 ? ("destructive" as const) : undefined,
+                href: `${basePath}/attendance/${s.classSectionId}`,
+              }))}
             />
           )}
         </Panel>
@@ -542,7 +628,7 @@ export default async function DashboardPage({
         ) : (
           <>
             {data.recentActivity.slice(0, 6).some((e) => e.status === "simulated") && <SimulatedBadge />}
-            <Feed items={data.recentActivity.slice(0, 6).map((e) => ({ id: e.id, title: e.renderedBody, meta: humanize(e.channel), time: ago(e.attemptedAt, now) }))} />
+            <LiveFeed label="Recent activity" items={data.recentActivity.slice(0, 6).map((e) => ({ id: e.id, title: e.renderedBody, meta: humanize(e.channel), time: ago(e.attemptedAt, now) }))} />
           </>
         )}
       </Panel>
@@ -562,12 +648,55 @@ export default async function DashboardPage({
         {upcomingItems.length === 0 ? (
           <PanelEmpty title="Nothing scheduled" hint="Exam papers and calendar events show here once they are scheduled." />
         ) : (
-          <Feed items={upcomingItems} />
+          <LiveFeed label="Upcoming events and exams" items={upcomingItems} />
         )}
       </Panel>
     );
 
-    const trendPanel = <TrendWidget title="Attendance performance" description="School-wide attendance by school day" unit="percent" data={trendPts} />;
+    // Ranges are slices of the one 42-day series already loaded: last 10 school days, and all of it.
+    const trendRows = trendPts.map((p) => ({ label: p.label, value: p.value }));
+    const trendSeries: Record<string, typeof trendRows> = trendRows.length > 10 ? { "2w": trendRows.slice(-10), "6w": trendRows } : { "6w": trendRows };
+    const trendPanel = (
+      <Widget title="Attendance performance" description="School-wide attendance by school day">
+        <InteractiveTrend
+          title="Attendance performance"
+          unit="percent"
+          series={trendSeries}
+          keys={[{ key: "value", label: "Attendance" }]}
+          defaultRange="6w"
+          rangeLabels={{ "2w": "2 weeks", "6w": "6 weeks" }}
+          heightClass="h-48"
+        />
+      </Widget>
+    );
+
+    // Today at a glance: the two headline percentages as gauges (same figures as the KPI strip).
+    const attThresholds = getAttendanceSettings(ctx).thresholds;
+    const glance = [
+      canAttendance && marked > 0 && (
+        <RadialGauge
+          key="att"
+          value={data.attendanceToday.percentage}
+          label="Present today"
+          sublabel={`${marked} students marked`}
+          thresholds={{ good: attThresholds.warn, warn: attThresholds.critical }}
+        />
+      ),
+      collections && collectionPct !== null && (
+        <RadialGauge
+          key="fees"
+          value={collectionPct}
+          label="Term fees collected"
+          sublabel={`${inrWhole(collections.collectedPaise)} of ${inrWhole(collections.duePaise)}`}
+          thresholds={{ good: 80, warn: 50 }}
+        />
+      ),
+    ].filter(Boolean);
+    const glancePanel = glance.length > 0 && (
+      <Panel title="Today at a glance">
+        <div className="grid gap-4 py-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">{glance}</div>
+      </Panel>
+    );
     const staffToday = value(staffR);
     const staffPanel = failed(staffR) ? <FailedWidget title="Staff today" /> : staffToday && <StaffAvailabilityWidget title="Staff today" description="Self check-ins are self-reported" {...staffToday} />;
 
@@ -581,10 +710,33 @@ export default async function DashboardPage({
           {!absentees || absentees.length === 0 ? (
             <PanelEmpty title="No repeated absences" hint="Students absent 3 or more days in the last 14 appear here." />
           ) : (
-            <Feed items={absentees.map((s) => ({ id: s.studentId, title: s.name, meta: s.classSection, time: `${s.absences} days`, href: `${basePath}/students/${s.studentId}` }))} />
+            <LiveFeed label="Repeated absentees" items={absentees.map((s) => ({ id: s.studentId, title: s.name, meta: s.classSection, time: `${s.absences} days`, href: `${basePath}/students/${s.studentId}` }))} />
           )}
         </Panel>
       )
+    );
+
+    // "Ask the data" entry point: same gate as the sidebar's /assistant link
+    // (dashboard.view + ai_teacher module; see src/lib/nav.ts). The assistant
+    // reads no ?q= param, so prompts are plain links shown as hints.
+    const askPanel = hasPermission(ctx, "dashboard.view") && isModuleEnabled(ctx, "ai_teacher") && (
+      <Panel title="Ask the data" action={{ href: `${basePath}/assistant`, label: "Open assistant" }} className="relative">
+        <BorderBeam />
+        <p className="text-xs text-muted-foreground">Questions you can ask the assistant:</p>
+        <ul className="-mx-2">
+          {ASK_PROMPTS.map((prompt) => (
+            <li key={prompt}>
+              <Link
+                href={`${basePath}/assistant`}
+                className="flex min-h-11 items-center justify-between gap-2 rounded-md px-2 text-sm transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0">{prompt}</span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
     );
 
     // Lower grid: everything that is not first-screen, still reorderable.
@@ -658,13 +810,21 @@ export default async function DashboardPage({
         )}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[
+            glancePanel,
             isAdminRole && quickPanel,
             sectionPanel,
             activityPanel,
             upcomingPanel,
             !isAdminRole && absenteesPanel,
             !isAdminRole && canResults && isModuleEnabled(ctx, "exams") && grades(""),
-          ].map((node, i) => node && <div key={i} className="min-w-0">{node}</div>)}
+            askPanel,
+          ]
+            .filter(Boolean)
+            .map((node, i) => (
+              <StaggerItem key={i} className="min-w-0" style={{ animationDelay: `${i * 40}ms` }}>
+                {node}
+              </StaggerItem>
+            ))}
           {!isAdminRole && briefing && <div className="min-w-0 md:col-span-2 xl:col-span-3">{briefing}</div>}
         </div>
         {cards.length > 0 && (

@@ -77,7 +77,7 @@ export function AssignmentSubmitForm({ institutionSlug, assignmentId, questions,
         <ol className="space-y-4">
           {questions.map((q, i) => (
             <li key={i}>
-              <fieldset className="space-y-2 rounded-xl border border-border p-4">
+              <fieldset className="space-y-2 rounded-md border border-border p-4">
                 <legend className="px-1 text-sm font-medium">
                   {i + 1}. {q.stem}
                 </legend>

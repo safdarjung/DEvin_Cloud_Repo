@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { deleteLessonPlan, markCovered, upsertLessonPlan } from "@/modules/academics/curriculum.actions";
 import type { LessonPlanRow, SectionUnitRow } from "@/modules/academics/curriculum.queries";
+import { AnimatedList, ProgressBar } from "@/components/widgets/viz";
 
 export interface SubjectUnits {
   subjectId: string;
@@ -149,9 +150,9 @@ export function LessonPlansView({ institutionSlug, classSectionId, today, subjec
               action={canManage && subjects.length > 0 ? <Button onClick={openNew}>New lesson plan</Button> : undefined}
             />
           ) : (
-            <ul className="divide-y">
+            <AnimatedList className="space-y-0 divide-y" ariaLabel="Lesson plans">
               {plans.map((p) => (
-                <li key={p.id} className="space-y-1 py-3">
+                <div key={p.id} className="space-y-1 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{p.title}</span>
@@ -170,9 +171,9 @@ export function LessonPlansView({ institutionSlug, classSectionId, today, subjec
                       </Button>
                     </div>
                   )}
-                </li>
+                </div>
               ))}
-            </ul>
+            </AnimatedList>
           )}
         </CardContent>
       </Card>
@@ -194,6 +195,14 @@ export function LessonPlansView({ institutionSlug, classSectionId, today, subjec
                     <p className="mb-1 text-sm font-medium">
                       {s.subjectName} <span className="text-xs tabular-nums text-muted-foreground">{done}/{s.units.length} covered</span>
                     </p>
+                    <ProgressBar
+                      className="mb-2"
+                      label={`${s.subjectName} coverage`}
+                      value={done}
+                      max={s.units.length}
+                      showValue={false}
+                      tone={done === s.units.length ? "success" : "default"}
+                    />
                     <ul className="divide-y">
                       {s.units.map((u) => (
                         <li key={u.id} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">

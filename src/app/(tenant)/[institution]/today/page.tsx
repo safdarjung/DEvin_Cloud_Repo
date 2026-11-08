@@ -10,6 +10,7 @@ import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { QuickActions, type QuickAction } from "@/components/widgets/quick-actions";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
+import { AnimatedList, ProgressBar } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -160,8 +161,16 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
         description={rows.length ? `${pending.length} of ${rows.length} still to submit` : undefined}
         icon={<ClipboardCheck />}
         isEmpty={rows.length === 0}
-        empty={<EmptyState title="No sections to mark today" />}
+        empty={<EmptyState bare title="No sections to mark today" />}
       >
+        <ProgressBar
+          label="Registers submitted"
+          value={rows.length - pending.length}
+          max={rows.length}
+          valueLabel={`${rows.length - pending.length} of ${rows.length}`}
+          tone={pending.length === 0 ? "success" : "default"}
+          className="mb-2"
+        />
         <ul className="divide-y">
           {rows.map((s) => (
             <li key={s.id} className="flex items-center justify-between gap-3 py-3">
@@ -197,20 +206,23 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     settled(
       papersR,
       (rows) => (
-        <ListWidget
-          title="Marks to enter"
-          icon={<PenLine />}
-          emptyTitle="No marks sheets open for you"
-          rows={rows.map(
-            (p): ListRow => ({
-              id: p.id,
-              title: `${p.subjectName} · ${p.sectionLabel}`,
-              meta: p.examName,
-              href: `${basePath}/exams/${p.examId}/papers/${p.id}`,
-              badge: { label: p.examStatus === "verification" ? "Verification" : "Marks entry", variant: examStatusVariant(p.examStatus) },
-            }),
-          )}
-        />
+        <Widget title="Marks to enter" icon={<PenLine />} isEmpty={rows.length === 0} empty={<EmptyState bare title="No marks sheets open for you" />}>
+          <AnimatedList ariaLabel="Marks to enter" className="space-y-0 divide-y">
+            {rows.map((p) => (
+              <Link
+                key={p.id}
+                href={`${basePath}/exams/${p.examId}/papers/${p.id}`}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-md py-2 outline-none transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{`${p.subjectName} · ${p.sectionLabel}`}</span>
+                  <span className="block truncate text-xs text-muted-foreground">{p.examName}</span>
+                </span>
+                <Badge variant={examStatusVariant(p.examStatus)}>{p.examStatus === "verification" ? "Verification" : "Marks entry"}</Badge>
+              </Link>
+            ))}
+          </AnimatedList>
+        </Widget>
       ),
       "Marks to enter",
     );
@@ -318,20 +330,27 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     settled(
       coverageR,
       (rows) => (
-        <ListWidget
+        <Widget
           title="Syllabus coverage"
           icon={<BookOpenCheck />}
           action={{ href: `${basePath}/lesson-plans`, label: "Lesson plans" }}
-          emptyTitle="No curriculum units set for your subjects"
-          rows={rows.map(
-            (c): ListRow => ({
-              id: `${c.section_label}:${c.subject}`,
-              title: `${c.subject} · ${c.section_label}`,
-              meta: `${c.completed_units} of ${c.planned_units} units covered`,
-              badge: c.planned_units === 0 ? undefined : { label: c.on_track ? "On track" : "Behind", variant: c.on_track ? "success" : "warning" },
-            }),
-          )}
-        />
+          isEmpty={rows.length === 0}
+          empty={<EmptyState bare title="No curriculum units set for your subjects" />}
+        >
+          <ul className="space-y-3">
+            {rows.map((c) => (
+              <li key={`${c.section_label}:${c.subject}`}>
+                <ProgressBar
+                  label={`${c.subject} · ${c.section_label}`}
+                  value={c.completed_units}
+                  max={Math.max(c.planned_units, 1)}
+                  valueLabel={`${c.completed_units} of ${c.planned_units} units${c.planned_units === 0 ? "" : c.on_track ? " · On track" : " · Behind"}`}
+                  tone={c.planned_units === 0 ? "default" : c.on_track ? "success" : "warning"}
+                />
+              </li>
+            ))}
+          </ul>
+        </Widget>
       ),
       "Syllabus coverage",
     );

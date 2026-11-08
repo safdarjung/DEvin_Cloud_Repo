@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { uuid } from "@/lib/schemas/common";
@@ -26,18 +27,24 @@ export default async function MessageThreadPage({ params }: { params: Promise<{ 
   const other = isTeacher ? (thread.guardianName ?? "Parent") : "Participant";
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-3xl">
       <PageHeader
         title={thread.subject}
         description={`${thread.guardianName ?? "Parent"} and ${thread.teacherName ?? "teacher"} · ${thread.studentName}`}
         back={{ href: `/${institutionSlug}/messages`, label: "Messages" }}
       />
-      <MessageList messages={messages} otherName={other} />
-      {canReply ? (
-        <ReplyComposer institutionSlug={institutionSlug} threadId={threadId} markRead />
-      ) : (
-        <p className="text-sm text-muted-foreground">You are not part of this conversation, so it is read-only.</p>
-      )}
+      <Card className="gap-0 py-0">
+        <CardContent className="py-4">
+          <MessageList messages={messages} otherName={other} />
+        </CardContent>
+        <div className="border-t border-border bg-secondary/50 px-4 py-3">
+          {canReply ? (
+            <ReplyComposer institutionSlug={institutionSlug} threadId={threadId} markRead />
+          ) : (
+            <p className="text-sm text-muted-foreground">You are not part of this conversation, so it is read-only.</p>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }

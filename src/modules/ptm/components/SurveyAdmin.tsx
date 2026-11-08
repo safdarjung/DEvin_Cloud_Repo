@@ -14,7 +14,7 @@ import { describeActionError } from "@/lib/action-error";
 import { closeSurvey, createSurvey } from "@/modules/ptm/survey.actions";
 import { SURVEY_MAX_QUESTIONS, SurveyCreateSchema } from "@/modules/ptm/schemas";
 
-const SELECT_CLASS = "h-10 rounded-[15px] border border-input bg-transparent px-3 text-sm";
+const SELECT_CLASS = "h-10 rounded-md border border-input bg-transparent px-3 text-sm";
 
 type QType = "single" | "multi" | "text";
 interface DraftQuestion {
@@ -126,7 +126,7 @@ export function SurveyForm({ institutionSlug }: { institutionSlug: string }) {
             {q.type !== "text" && (
               <textarea
                 aria-label={`Question ${i + 1} options, one per line`}
-                className="min-h-20 w-full rounded-[15px] border border-input bg-transparent px-3 py-2 text-sm"
+                className="min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
                 placeholder={"Options, one per line (2 to 6)"}
                 value={q.options}
                 onChange={(e) => setQ(i, { options: e.target.value })}

@@ -1,3 +1,5 @@
+import { BarList, RadialGauge } from "@/components/widgets/viz";
+import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
@@ -29,8 +31,31 @@ export default async function StudentSuccessPage({
       ])
     : [[], []];
 
+  const avg = (pick: (r: (typeof rows)[number]) => number) => (rows.length ? rows.reduce((n, r) => n + pick(r), 0) / rows.length : 0);
+  const activeLabel = sections.find((s) => s.id === activeId)?.label;
+
   return (
     <FabricPage title="Student success" description="Roster, risk signals, and intervention plans from live records." ws="students">
+      {rows.length > 0 && (
+        <div className="mb-4 grid gap-4 md:grid-cols-2">
+          <Widget title="Section averages" description={activeLabel ? `${rows.length} students in ${activeLabel}` : `${rows.length} students`}>
+            <div className="flex flex-wrap gap-6">
+              <RadialGauge value={avg((r) => r.attendance_pct)} label="Attendance" sublabel="average" />
+              <RadialGauge value={avg((r) => r.mastery_pct)} label="Mastery" sublabel="average" />
+            </div>
+          </Widget>
+          <Widget title="Risk mix" description="Students by current risk signal">
+            <BarList
+              ariaLabel="Students by risk signal"
+              items={[
+                { label: "On track", value: rows.filter((r) => r.risk === "none").length, tone: "success" as const },
+                { label: "Watch", value: rows.filter((r) => r.risk === "watch").length, tone: "warning" as const },
+                { label: "Support", value: rows.filter((r) => r.risk === "support").length, tone: "destructive" as const },
+              ]}
+            />
+          </Widget>
+        </div>
+      )}
       <StudentRoster
         institutionSlug={institutionSlug}
         rows={rows}

@@ -17,6 +17,8 @@ const full: Record<TrendUnit, (n: number) => string> = {
   inr: inr,
   count: (n) => n.toLocaleString("en-IN"),
 };
+/** Axis-tick and full-value formatters per unit, shared with InteractiveTrend (viz.tsx). */
+export { tick as trendTick, full as trendFull };
 
 export function TrendWidget({
   data,

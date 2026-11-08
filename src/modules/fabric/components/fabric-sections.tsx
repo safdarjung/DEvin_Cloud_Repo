@@ -106,12 +106,12 @@ export function SimpleTable({
 /** Text status chip: always words, never color alone. */
 export function StatusChip({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "warn" | "bad" | "good" }) {
   const cls = {
-    neutral: "bg-muted text-muted-foreground",
-    warn: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-    bad: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
-    good: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
+    neutral: "bg-secondary text-muted-foreground",
+    warn: "bg-warning/12 text-warning",
+    bad: "bg-destructive/12 text-destructive",
+    good: "bg-success/12 text-success",
   }[tone];
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{children}</span>;
+  return <span className={`inline-flex items-center rounded-[3px] px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>{children}</span>;
 }
 
 /** Shared loading.tsx body: header + KPI row + two cards, matching the workspace grid. */
@@ -122,12 +122,12 @@ export function WorkspaceLoading({ kpis = 3 }: { kpis?: number }) {
       <div className="h-9 w-1/3 animate-pulse rounded-md bg-muted" />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {Array.from({ length: kpis }, (_, i) => (
-          <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
+          <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
         ))}
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="h-72 animate-pulse rounded-xl bg-muted" />
-        <div className="h-72 animate-pulse rounded-xl bg-muted" />
+        <div className="h-72 animate-pulse rounded-lg bg-muted" />
+        <div className="h-72 animate-pulse rounded-lg bg-muted" />
       </div>
     </div>
   );

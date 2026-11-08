@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { deleteStudyItem, updateStudyItem } from "@/modules/ai/student-study.actions";
 import type { StudyItemSummary } from "@/modules/ai/student-study.queries";
+import { AnimatedList } from "@/components/widgets/viz";
 
 interface NotebookListProps {
   institutionSlug: string;
@@ -38,7 +39,7 @@ function NotebookRow({ institutionSlug, item }: { institutionSlug: string; item:
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card p-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-card p-3">
       <Link href={href} className="min-h-10 min-w-0 flex-1 basis-40">
         <p className="truncate font-medium">{item.title}</p>
         <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
@@ -63,10 +64,10 @@ export function NotebookList({ institutionSlug, items }: NotebookListProps) {
     return <EmptyState title="Nothing saved yet" description="Save a chat or make notes from the study helper and they will appear here." />;
   }
   return (
-    <div className="space-y-2">
+    <AnimatedList ariaLabel="Saved notebook items">
       {items.map((item) => (
         <NotebookRow key={item.id} institutionSlug={institutionSlug} item={item} />
       ))}
-    </div>
+    </AnimatedList>
   );
 }

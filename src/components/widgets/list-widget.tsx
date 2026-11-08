@@ -19,7 +19,7 @@ export function ListWidget({
   ...frame
 }: Omit<WidgetProps, "children" | "empty" | "isEmpty"> & { rows: ListRow[]; emptyTitle?: string }) {
   return (
-    <Widget {...frame} isEmpty={rows.length === 0} empty={<EmptyState title={emptyTitle} />}>
+    <Widget {...frame} isEmpty={rows.length === 0} empty={<EmptyState bare title={emptyTitle} />}>
       <Stagger className="divide-y">
         {rows.map((r) => {
           const body = (

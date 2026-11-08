@@ -16,6 +16,10 @@ import type { InvoiceSummary } from "@/modules/finance/queries";
 
 const STATUS_OPTIONS = ["all", "issued", "part_paid", "paid", "cancelled"] as const;
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 interface InvoiceTableProps {
   institutionSlug: string;
   invoices: InvoiceSummary[];
@@ -66,8 +70,8 @@ export function InvoiceTable({ institutionSlug, invoices, serverFiltered }: Invo
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.map((invoice) => (
-            <TableRow key={invoice.id}>
+          {filtered.map((invoice, i) => (
+            <TableRow key={invoice.id} className={ROW_ENTER} style={rowDelay(i)}>
               <TableCell>
                 <Link href={`/${institutionSlug}/finance/invoices/${invoice.id}`} className="underline-offset-2 hover:underline">
                   {invoice.invoiceNo}

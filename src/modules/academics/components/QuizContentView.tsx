@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import type { QuizContent } from "@/modules/academics/assignments.schemas";
+import { FadeIn } from "@/components/motion";
 
 interface QuizContentViewProps {
   content: QuizContent;
@@ -12,7 +13,7 @@ export function QuizContentView({ content, showAnswers }: QuizContentViewProps) 
   return (
     <ol className="space-y-4">
       {content.questions.map((question, index) => (
-        <li key={index} className="space-y-2 rounded-xl border border-border p-4">
+        <FadeIn as="li" delay={Math.min(index, 8) * 0.04} key={index} className="motion-safe:fill-mode-backwards space-y-2 rounded-md border border-border p-4">
           <p className="font-medium">
             {index + 1}. {question.stem}
           </p>
@@ -30,7 +31,7 @@ export function QuizContentView({ content, showAnswers }: QuizContentViewProps) 
           {showAnswers && question.explanation ? (
             <p className="text-muted-foreground text-sm">{question.explanation}</p>
           ) : null}
-        </li>
+        </FadeIn>
       ))}
     </ol>
   );

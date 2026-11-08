@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState } from "@/components/states";
+import { ProgressBar } from "@/components/widgets/viz";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -34,9 +36,23 @@ export default async function PortalSurveysPage({
       {surveys.length === 0 ? (
         <EmptyState title="No open surveys" description="Surveys from the school appear here while they are open." />
       ) : (
-        <ul className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+        {surveys.length > 1 && (
+          <Card>
+            <CardContent>
+              <ProgressBar
+                label="Surveys answered"
+                value={surveys.filter((s) => s.responded).length}
+                max={surveys.length}
+                valueLabel={`${surveys.filter((s) => s.responded).length} of ${surveys.length}`}
+                tone="success"
+              />
+            </CardContent>
+          </Card>
+        )}
+        <Stagger className="grid gap-4 lg:grid-cols-2 *:min-w-0">
           {surveys.map((s) => (
-            <li key={s.id}>
+            <StaggerItem key={s.id}>
               <Card className="h-full">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-3">
@@ -55,9 +71,10 @@ export default async function PortalSurveysPage({
                   </CardContent>
                 )}
               </Card>
-            </li>
+            </StaggerItem>
           ))}
-        </ul>
+        </Stagger>
+        </div>
       )}
     </>
   );

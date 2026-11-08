@@ -5,6 +5,10 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentList } from "@/modules/academics/components/AssignmentList";
 import { StudentAssignments } from "@/modules/academics/components/StudentAssignments";
+import { FadeIn } from "@/components/motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarList } from "@/components/widgets/viz";
+import { humanize } from "@/lib/format";
 import {
   listGuardianChildren,
   listStudentAssignments,
@@ -54,7 +58,31 @@ export default async function AssignmentsPage({
           )
         }
       />
-      <AssignmentList institutionSlug={institutionSlug} assignments={assignments} canManage={canManage} />
+      {assignments.length > 0 ? (
+        <FadeIn className="grid gap-4 lg:grid-cols-3">
+          <div className="min-w-0 lg:col-span-2">
+            <AssignmentList institutionSlug={institutionSlug} assignments={assignments} canManage={canManage} />
+          </div>
+          <Card className="min-w-0 self-start">
+            <CardHeader>
+              <CardTitle>By status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BarList
+                ariaLabel="Assignments by status"
+                max={assignments.length}
+                items={(["draft", "published", "closed"] as const).map((status) => ({
+                  label: humanize(status),
+                  value: assignments.filter((a) => a.status === status).length,
+                  tone: status === "draft" ? "warning" : "default",
+                }))}
+              />
+            </CardContent>
+          </Card>
+        </FadeIn>
+      ) : (
+        <AssignmentList institutionSlug={institutionSlug} assignments={assignments} canManage={canManage} />
+      )}
     </div>
   );
 }

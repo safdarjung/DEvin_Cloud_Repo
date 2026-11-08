@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { ListWidget, type ListRow } from "@/components/widgets/list-widget";
 import { TimetableWidget } from "@/components/widgets/timetable-widget";
-import { TrendWidget } from "@/components/widgets/trend-widget";
+import { AnimatedList, InteractiveTrend, ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import type { TenantContext } from "@/lib/auth/types";
 import { inr } from "@/lib/format";
@@ -93,6 +93,7 @@ export async function GuardianOverview({
   // Attendance today + change vs the previous 30 days.
   let todayStatus = "—";
   let todaySub = "No attendance data";
+  const attThresholds = getAttendanceSettings(ctx).thresholds;
   let attendanceKpi: { value: string; animateTo?: number; sub: string; delta?: { value: number; label: string } } = {
     value: "—",
     sub: "No data yet",
@@ -126,6 +127,8 @@ export async function GuardianOverview({
   const unpaid = inv.filter((i) => i.total - i.paidTotal > 0);
   const outstanding = unpaid.reduce((sum, i) => sum + (i.total - i.paidTotal), 0);
   const nextDue = unpaid.map((i) => i.dueOn).filter((d): d is string => d !== null).sort()[0];
+  const billed = inv.reduce((sum, i) => sum + i.total, 0);
+  const paid = inv.reduce((sum, i) => sum + i.paidTotal, 0);
 
   // Homework: no submission data on the summary, so "due" means a future due date.
   const asg = assignments.status === "fulfilled" ? assignments.value : [];
@@ -146,6 +149,7 @@ export async function GuardianOverview({
   const needsAck = (e: (typeof entries)[number]) => e.requiresAck && !e.acknowledged;
   const updates = [...entries].sort((a, b) => Number(needsAck(b)) - Number(needsAck(a)) || b.entryDate.localeCompare(a.entryDate)).slice(0, 4);
   const awaitingAck = entries.filter(needsAck).length;
+  const ackRequired = entries.filter((e) => e.requiresAck).length;
 
   return (
     <>
@@ -184,11 +188,21 @@ export async function GuardianOverview({
               icon={<NotebookPen />}
               action={{ href: `${basePath}/updates${q}`, label: "All updates" }}
               isEmpty={updates.length === 0}
-              empty={<EmptyState title="No updates from teachers yet" />}
+              empty={<EmptyState bare title="No updates from teachers yet" />}
             >
-              <ul className="divide-y">
+              {ackRequired > 0 && (
+                <ProgressBar
+                  label="Acknowledged"
+                  value={ackRequired - awaitingAck}
+                  max={ackRequired}
+                  valueLabel={`${ackRequired - awaitingAck} of ${ackRequired}`}
+                  tone={awaitingAck === 0 ? "success" : "warning"}
+                  className="mb-2"
+                />
+              )}
+              <AnimatedList ariaLabel="Teacher updates" className="space-y-0 divide-y">
                 {updates.map((e) => (
-                  <li key={e.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
+                  <div key={e.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">
                         {shortDate.format(new Date(`${e.entryDate}T00:00:00Z`))}
@@ -197,9 +211,9 @@ export async function GuardianOverview({
                       <p className="mt-0.5 line-clamp-3 text-sm">{e.body}</p>
                     </div>
                     {needsAck(e) && <AckButton institutionSlug={institutionSlug} studentId={studentId} entryId={e.id} />}
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </AnimatedList>
             </Widget>
           ) : (
             <Failed title="Teacher updates" icon={<NotebookPen />} />
@@ -210,6 +224,16 @@ export async function GuardianOverview({
           <p className="mt-1 text-sm text-muted-foreground">
             {unpaid.length ? `Outstanding across ${unpaid.length} invoice${unpaid.length === 1 ? "" : "s"}.` : "Nothing outstanding."}
           </p>
+          {billed > 0 && (
+            <ProgressBar
+              label="Paid so far"
+              value={paid}
+              max={billed}
+              valueLabel={`${inr(paid)} of ${inr(billed)}`}
+              tone={paid >= billed ? "success" : "default"}
+              className="mt-4"
+            />
+          )}
           <Link href={`${basePath}/fees${q}`} className={buttonVariants({ className: "mt-4 min-h-10" })}>
             {unpaid.length ? "View and pay" : "View fees"}
           </Link>
@@ -225,13 +249,25 @@ export async function GuardianOverview({
 
         {on("attendance") &&
           (trend.status === "fulfilled" ? (
-            <TrendWidget
-              title="Attendance, last 30 days"
-              description="Running attendance %, school days"
-              data={trend.value}
-              unit="percent"
-              action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }}
-            />
+            <Widget title="Attendance, last 30 days" description="Running attendance %, school days" action={{ href: `${basePath}/attendance${q}`, label: "Attendance" }}>
+              {attendanceKpi.animateTo !== undefined && (
+                <RadialGauge
+                  value={attendanceKpi.animateTo}
+                  label={`${firstName}, last ${WINDOW_DAYS} days`}
+                  sublabel={`Warning below ${attThresholds.warn}%`}
+                  thresholds={{ good: attThresholds.warn, warn: attThresholds.critical }}
+                  size={72}
+                  className="mb-3"
+                />
+              )}
+              <InteractiveTrend
+                title="Attendance, last 30 days"
+                unit="percent"
+                series={{ "30d": trend.value.map((p) => ({ label: p.label, value: p.value })) }}
+                keys={[{ key: "value", label: "Attendance" }]}
+                heightClass="h-48"
+              />
+            </Widget>
           ) : (
             <Failed title="Attendance, last 30 days" icon={<CalendarDays />} />
           ))}

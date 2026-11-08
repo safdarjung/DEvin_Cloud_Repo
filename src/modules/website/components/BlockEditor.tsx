@@ -344,7 +344,7 @@ export function BlockEditor({ institutionSlug, pageId, initialBlocks }: BlockEdi
   return (
     <div className="space-y-4">
       {blocks.map((block, index) => (
-        <div key={index} className="space-y-3 rounded-xl border bg-card p-4">
+        <div key={index} className="space-y-3 rounded-lg border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Badge variant="secondary" className="capitalize">
               {block.type.replace("_", " ")}

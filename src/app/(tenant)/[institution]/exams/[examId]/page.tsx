@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FadeIn } from "@/components/motion";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -68,13 +69,13 @@ export default async function ExamDetailPage({
           </CardHeader>
           <CardContent>
             <ul className="divide-y divide-border">
-              {exam.papers.map((paper) => (
-                <li key={paper.id} className="flex items-center justify-between gap-3 py-3">
+              {exam.papers.map((paper, i) => (
+                <FadeIn as="li" delay={Math.min(i, 8) * 0.04} key={paper.id} className="motion-safe:fill-mode-backwards flex items-center justify-between gap-3 py-3">
                   <Link href={`/${institutionSlug}/exams/${exam.id}/papers/${paper.id}`} className="hover:underline">
                     {paper.sectionLabel} · {paper.subjectName}
                   </Link>
                   <span className="text-sm text-muted-foreground">/{paper.maxMarks}</span>
-                </li>
+                </FadeIn>
               ))}
             </ul>
           </CardContent>

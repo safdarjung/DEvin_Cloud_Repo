@@ -11,6 +11,10 @@ import type { ActionResult } from "@/lib/actions/result";
 import { publishPage } from "@/modules/website/actions";
 import type { VersionSummary } from "@/modules/website/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 interface VersionListProps {
   institutionSlug: string;
   pageId: string;
@@ -55,7 +59,7 @@ function PublishButton({
 
 export function VersionList({ institutionSlug, pageId, versions, publishedVersionId, canPublish }: VersionListProps) {
   if (versions.length === 0) {
-    return <EmptyState title="No versions saved yet" description="Save the editor above to create version 1." />;
+    return <EmptyState title="No versions saved yet" description="Save the editor to create version 1." />;
   }
 
   return (
@@ -63,16 +67,16 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
       <TableHeader>
         <TableRow>
           <TableHead>Version</TableHead>
-          <TableHead className="hidden sm:table-cell">Saved</TableHead>
+          <TableHead className="hidden sm:table-cell lg:hidden 2xl:table-cell">Saved</TableHead>
           <TableHead>Status</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
-        {versions.map((version) => {
+        {versions.map((version, i) => {
           const isPublished = version.id === publishedVersionId;
           return (
-            <TableRow key={version.id}>
+            <TableRow key={version.id} className={ROW_ENTER} style={rowDelay(i)}>
               <TableCell>
                 <Link
                   href={`/${institutionSlug}/website/pages/${pageId}/versions/${version.id}`}
@@ -81,7 +85,7 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
                   v{version.versionNo}
                 </Link>
               </TableCell>
-              <TableCell className="hidden sm:table-cell">{new Date(version.createdAt).toLocaleString()}</TableCell>
+              <TableCell className="hidden tabular-nums sm:table-cell lg:hidden 2xl:table-cell">{new Date(version.createdAt).toLocaleString()}</TableCell>
               <TableCell>{isPublished && <Badge variant="success">Published</Badge>}</TableCell>
               <TableCell>
                 {!isPublished && canPublish && (
