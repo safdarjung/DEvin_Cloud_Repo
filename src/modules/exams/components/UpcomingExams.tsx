@@ -15,7 +15,7 @@ export function UpcomingExams({ papers }: { papers: StudentUpcomingExamPaper[] |
       title="Upcoming exams"
       icon={<CalendarDays />}
       isEmpty={papers !== null && papers.length === 0}
-      empty={<EmptyState title="No exams scheduled in the next 60 days" />}
+      empty={<EmptyState bare title="No exams scheduled in the next 60 days" />}
     >
       {papers === null ? (
         <p role="alert" className="text-sm text-muted-foreground">

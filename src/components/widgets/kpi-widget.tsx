@@ -53,12 +53,19 @@ function DeltaChip({ value, label, positiveIsGood = true }: KpiDelta) {
 export function KpiTile({ label, value, animateTo, format, sub, href, badge, delta, spark, tone = "default" }: KpiTileProps) {
   const card = (
     <Card className={cn("h-full", href && "group-hover/kpi:border-ring/60 group-hover/kpi:shadow-sm")}>
-      <CardContent className="flex flex-col">
+      <CardContent className="@container flex flex-col">
         <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           {label}
           {badge}
         </p>
-        <p className={cn("mt-1.5 text-[26px] leading-tight font-bold tracking-tight tabular-nums break-words sm:text-[28px] 2xl:text-[32px]", TONE_TEXT[tone])}>
+        <p
+          className={cn(
+            "mt-1.5 leading-tight font-bold tracking-tight tabular-nums",
+            // Long values (₹ amounts) scale with the tile instead of breaking mid-number.
+            value.length > 8 ? "text-[clamp(1.125rem,10.5cqi,2rem)] whitespace-nowrap" : "text-[26px] sm:text-[28px] 2xl:text-[32px]",
+            TONE_TEXT[tone],
+          )}
+        >
           {animateTo === undefined ? value : <AnimatedNumber value={animateTo} format={format} />}
         </p>
         {sub && <p className="mt-1 text-xs text-muted-foreground">{sub}</p>}

@@ -43,9 +43,11 @@ export function TenantHeader({
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav items={navItems} user={sidebarUser} />
         <HeaderCrumb institutionName={institutionName} />
-        <span className="hidden md:inline-flex"><RoleBadge role={role} /></span>
+        <span className="hidden shrink-0 md:inline-flex lg:hidden xl:inline-flex"><RoleBadge role={role} /></span>
         {isDemo && (
-          <span className="hidden rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-foreground sm:inline">Demo mode · sample data</span>
+          <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-foreground sm:inline">
+            Demo<span className="md:hidden xl:inline"> mode · sample data</span>
+          </span>
         )}
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">

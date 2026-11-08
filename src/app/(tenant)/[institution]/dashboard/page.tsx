@@ -329,7 +329,7 @@ export default async function DashboardPage({
         title="Exam grade distribution"
         description={gd ? `${gd.examName} — ${gd.total} results` : undefined}
         isEmpty={!gd}
-        empty={<EmptyState title="No published exam yet" description="Grade distribution appears once results are published." />}
+        empty={<EmptyState bare title="No published exam yet" description="Grade distribution appears once results are published." />}
         className={className}
       >
         {gd && <GradeDistributionChart distribution={gd.distribution} />}
@@ -345,7 +345,7 @@ export default async function DashboardPage({
           description={`${rechecks.length} waiting for review`}
           action={{ href: `${basePath}/exams/rechecks`, label: "Review all" }}
           isEmpty={rechecks.length === 0}
-          empty={<EmptyState title="No recheck requests waiting" />}
+          empty={<EmptyState bare title="No recheck requests waiting" />}
           className={className}
         >
           <LiveFeed

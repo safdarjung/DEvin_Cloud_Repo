@@ -243,11 +243,11 @@ export function ProgressBar({
   const text = valueLabel ?? `${Math.round(pct)}%`;
   return (
     <div className={cn("min-w-0 space-y-1.5", className)}>
-      <div className="flex items-baseline justify-between gap-3 text-sm">
-        <span id={id} className="min-w-0 truncate">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-sm">
+        <span id={id} className="shrink-0">
           {label}
         </span>
-        {showValue && <span className="shrink-0 font-semibold tabular-nums">{text}</span>}
+        {showValue && <span className="min-w-0 font-semibold tabular-nums">{text}</span>}
       </div>
       <div
         role="progressbar"

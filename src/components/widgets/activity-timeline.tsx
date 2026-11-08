@@ -28,7 +28,7 @@ export function ActivityTimeline({
   ...frame
 }: Omit<WidgetProps, "children" | "empty" | "isEmpty"> & { events: TimelineEvent[]; now: Date }) {
   return (
-    <Widget {...frame} isEmpty={events.length === 0} empty={<EmptyState title="No recent activity" />}>
+    <Widget {...frame} isEmpty={events.length === 0} empty={<EmptyState bare title="No recent activity" />}>
       <ol className="relative ml-1.5 space-y-4 border-l-2 border-border pl-5">
         {events.map((e) => (
           <li key={e.id} className="relative">

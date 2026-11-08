@@ -188,7 +188,7 @@ export async function GuardianOverview({
               icon={<NotebookPen />}
               action={{ href: `${basePath}/updates${q}`, label: "All updates" }}
               isEmpty={updates.length === 0}
-              empty={<EmptyState title="No updates from teachers yet" />}
+              empty={<EmptyState bare title="No updates from teachers yet" />}
             >
               {ackRequired > 0 && (
                 <ProgressBar

@@ -154,7 +154,7 @@ function ActionableList({
   ...frame
 }: Extract<WidgetNode, { name: "list" }>["props"] & { onAction: OnAction }) {
   return (
-    <Widget {...frame} icon={canvasIcon(icon)} isEmpty={rows.length === 0} empty={<EmptyState title={emptyTitle} />}>
+    <Widget {...frame} icon={canvasIcon(icon)} isEmpty={rows.length === 0} empty={<EmptyState bare title={emptyTitle} />}>
       <ul className="divide-y">
         {rows.map((row) => {
           const body = (

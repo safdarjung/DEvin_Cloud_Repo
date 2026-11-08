@@ -161,7 +161,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
         description={rows.length ? `${pending.length} of ${rows.length} still to submit` : undefined}
         icon={<ClipboardCheck />}
         isEmpty={rows.length === 0}
-        empty={<EmptyState title="No sections to mark today" />}
+        empty={<EmptyState bare title="No sections to mark today" />}
       >
         <ProgressBar
           label="Registers submitted"
@@ -206,7 +206,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     settled(
       papersR,
       (rows) => (
-        <Widget title="Marks to enter" icon={<PenLine />} isEmpty={rows.length === 0} empty={<EmptyState title="No marks sheets open for you" />}>
+        <Widget title="Marks to enter" icon={<PenLine />} isEmpty={rows.length === 0} empty={<EmptyState bare title="No marks sheets open for you" />}>
           <AnimatedList ariaLabel="Marks to enter" className="space-y-0 divide-y">
             {rows.map((p) => (
               <Link
@@ -335,7 +335,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
           icon={<BookOpenCheck />}
           action={{ href: `${basePath}/lesson-plans`, label: "Lesson plans" }}
           isEmpty={rows.length === 0}
-          empty={<EmptyState title="No curriculum units set for your subjects" />}
+          empty={<EmptyState bare title="No curriculum units set for your subjects" />}
         >
           <ul className="space-y-3">
             {rows.map((c) => (

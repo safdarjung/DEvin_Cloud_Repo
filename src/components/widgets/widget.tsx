@@ -23,7 +23,7 @@ export function Widget({ title, description, action, icon, children, empty, isEm
     <FadeIn className={cn("min-w-0", className)}>
       <Card className="h-full">
         <CardHeader>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
             <div className="min-w-0">
               <CardTitle className="flex items-center gap-2">
                 {icon && <span className="text-muted-foreground [&_svg]:size-4">{icon}</span>}

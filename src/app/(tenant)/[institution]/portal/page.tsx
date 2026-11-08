@@ -212,7 +212,7 @@ export default async function PortalOverviewPage({
       icon={<ClipboardList />}
       action={{ href: `${basePath}/assignments${q}`, label: "All assignments" }}
       isEmpty={assignmentRows.length === 0}
-      empty={<EmptyState title={isGuardian ? "No assignments right now" : "Nothing pending"} />}
+      empty={<EmptyState bare title={isGuardian ? "No assignments right now" : "Nothing pending"} />}
     >
       {studentView && assignments.length > 0 && (
         <ProgressBar
@@ -273,7 +273,7 @@ export default async function PortalOverviewPage({
       icon={<GraduationCap />}
       action={{ href: `${basePath}/results${q}`, label: "All results" }}
       isEmpty={results.length === 0}
-      empty={<EmptyState title="No published results yet" />}
+      empty={<EmptyState bare title="No published results yet" />}
     >
       <BarList
         ariaLabel="Recent results, percentage"

@@ -20,7 +20,7 @@ export function TimetableWidget({
   ...frame
 }: Omit<WidgetProps, "children" | "empty" | "isEmpty"> & { periods: TimetablePeriod[] }) {
   return (
-    <Widget {...frame} isEmpty={periods.length === 0} empty={<EmptyState title="No periods today" />}>
+    <Widget {...frame} isEmpty={periods.length === 0} empty={<EmptyState bare title="No periods today" />}>
       <ol className="space-y-1.5">
         {periods.map((p) => (
           <li

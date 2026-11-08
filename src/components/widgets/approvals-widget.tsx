@@ -20,7 +20,7 @@ export function ApprovalsWidget({
   ...frame
 }: Omit<WidgetProps, "children" | "empty" | "isEmpty"> & { rows: ApprovalRow[] }) {
   return (
-    <Widget {...frame} isEmpty={rows.length === 0} empty={<EmptyState title="No pending approvals" />}>
+    <Widget {...frame} isEmpty={rows.length === 0} empty={<EmptyState bare title="No pending approvals" />}>
       <ul className="divide-y">
         {rows.map((r) => {
           const body = (
