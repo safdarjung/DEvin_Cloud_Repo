@@ -34,3 +34,4 @@ supabase/.temp/
 .idea/
 .DS_Store
 *.log
+.env*
