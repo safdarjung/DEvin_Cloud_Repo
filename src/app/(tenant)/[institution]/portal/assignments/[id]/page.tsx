@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
+import { FadeIn } from "@/components/motion";
+import { ProgressBar } from "@/components/widgets/viz";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -67,7 +69,7 @@ export default async function PortalAssignmentDetailPage({
           }
         />
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <FadeIn className="grid gap-4 lg:grid-cols-3">
         <div className={`min-w-0 space-y-4 ${mine.state === "not_submitted" ? "lg:col-span-3 lg:max-w-3xl" : "lg:col-span-2"}`}>
         {assignment.instructions && (
           <Card>
@@ -120,16 +122,19 @@ export default async function PortalAssignmentDetailPage({
                 {mine.attempt > 1 ? ` · attempt ${mine.attempt}` : ""}
               </p>
               {graded && mine.score !== null && mine.maxScore !== null && (
-                <p className="text-2xl font-semibold tabular-nums">
-                  {mine.score}/{mine.maxScore}
-                </p>
+                <>
+                  <p className="text-2xl font-semibold tabular-nums">
+                    {mine.score}/{mine.maxScore}
+                  </p>
+                  <ProgressBar label="Score" value={mine.score} max={mine.maxScore} tone="success" />
+                </>
               )}
               {graded && (mine.feedback ? <p className="whitespace-pre-line">{mine.feedback}</p> : <p className="text-muted-foreground">No feedback from your teacher.</p>)}
             </CardContent>
           </Card>
         </aside>
         )}
-        </div>
+        </FadeIn>
       </div>
     </>
   );

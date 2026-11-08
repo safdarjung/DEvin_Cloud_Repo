@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
+import { BarList, RadialGauge } from "@/components/widgets/viz";
+import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { usageSummary } from "@/modules/ai/queries";
@@ -22,6 +24,7 @@ export default async function AiUsagePage({
   requirePermission(ctx, "ai.usage.read");
 
   const summary = await usageSummary(ctx);
+  const okRequests = PROVIDER_ROWS.reduce((sum, p) => sum + summary.byProvider[p].okRequests, 0);
 
   return (
     <div className="space-y-4">
@@ -31,10 +34,43 @@ export default async function AiUsagePage({
       />
 
       <KpiStrip className="xl:[&>div]:grid-cols-3">
-        <KpiTile label="Requests" value={summary.totalRequests.toLocaleString()} sub="Last 30 days" />
-        <KpiTile label="Tokens" value={summary.totalTokens.toLocaleString()} sub="Input and output" />
+        <KpiTile label="Requests" value={summary.totalRequests.toLocaleString()} animateTo={summary.totalRequests} sub="Last 30 days" />
+        <KpiTile label="Tokens" value={summary.totalTokens.toLocaleString()} animateTo={summary.totalTokens} sub="Input and output" />
         <KpiTile label="Cost estimate" value={formatUsd(summary.totalCostEstimateUsd)} sub="Not a bill" />
       </KpiStrip>
+
+      {summary.totalRequests > 0 && (
+        <FadeIn className="grid gap-4 md:grid-cols-3">
+          <Card className="min-w-0 md:col-span-2">
+            <CardHeader>
+              <CardTitle>Requests by provider</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <BarList
+                ariaLabel="Requests by provider, last 30 days"
+                max={summary.totalRequests}
+                items={PROVIDER_ROWS.map((provider) => ({
+                  label: provider === "local" ? "Local" : "Cloud",
+                  value: summary.byProvider[provider].requests,
+                }))}
+              />
+            </CardContent>
+          </Card>
+          <Card className="min-w-0">
+            <CardHeader>
+              <CardTitle>Success rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RadialGauge
+                value={(okRequests / summary.totalRequests) * 100}
+                label="Successful requests"
+                sublabel={`${okRequests} of ${summary.totalRequests}`}
+                thresholds={{ good: 95, warn: 80 }}
+              />
+            </CardContent>
+          </Card>
+        </FadeIn>
+      )}
 
       <Card>
         <CardHeader>

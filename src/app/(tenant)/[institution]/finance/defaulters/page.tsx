@@ -2,7 +2,10 @@ import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { FadeIn } from "@/components/motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarList, ProgressBar } from "@/components/widgets/viz";
+import { inr } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -29,9 +32,53 @@ export default async function DefaultersPage({
   const termId = requestedTermId ?? terms[0]?.id;
   const defaulters = termId ? await listDefaulters(ctx, { termId }) : [];
 
+  // Derived only from the rows above (unpaid / part-paid invoices this term).
+  const billed = defaulters.reduce((sum, d) => sum + d.total, 0);
+  const paid = defaulters.reduce((sum, d) => sum + d.paidTotal, 0);
+  const outstanding = defaulters.reduce((sum, d) => sum + d.outstanding, 0);
+  const largest = [...defaulters]
+    .sort((a, b) => b.outstanding - a.outstanding)
+    .slice(0, 5)
+    .map((d) => ({
+      label: d.studentName,
+      value: d.outstanding,
+      href: `/${institutionSlug}/finance/invoices/${d.invoiceId}`,
+      tone: "warning" as const,
+    }));
+
   return (
     <div className="space-y-4">
       <PageHeader title="Defaulters" description="Students with unpaid or part-paid invoices." back={{ href: `/${institutionSlug}/finance`, label: "Finance" }} />
+
+      {defaulters.length > 0 && (
+        <FadeIn className="grid gap-4 lg:grid-cols-3">
+          <Card className="min-w-0">
+            <CardHeader>
+              <CardTitle>Collected on these invoices</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <ProgressBar
+                value={paid}
+                max={billed}
+                label={`${defaulters.length} open invoice${defaulters.length === 1 ? "" : "s"}`}
+                valueLabel={`${inr(paid)} of ${inr(billed)}`}
+                tone="warning"
+              />
+              <p className="text-sm text-muted-foreground">
+                Outstanding <span className="font-semibold text-foreground tabular-nums">{inr(outstanding)}</span>
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="min-w-0 lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Largest balances</CardTitle>
+            </CardHeader>
+            <CardContent className="min-w-0">
+              <BarList items={largest} format="inr" ariaLabel="Largest outstanding balances" />
+            </CardContent>
+          </Card>
+        </FadeIn>
+      )}
 
       <Card>
         {terms.length > 0 && (

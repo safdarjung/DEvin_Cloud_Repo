@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { BarList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { archiveQuestion, createQuestion, updateQuestion } from "@/modules/question-bank/actions";
 import type { QuestionBankItem, TeachingPair } from "@/modules/question-bank/queries";
@@ -133,6 +134,17 @@ export function QuestionBankView({
         />
       ) : (
         <>
+          <div className="max-w-xl">
+            <p className="mb-1 text-sm font-medium">Difficulty mix (shown questions)</p>
+            <BarList
+              ariaLabel="Questions shown by difficulty"
+              max={items.length}
+              items={DIFFICULTIES.map((d) => ({
+                label: d.charAt(0).toUpperCase() + d.slice(1),
+                value: items.filter((q) => q.difficulty === d).length,
+              }))}
+            />
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -145,8 +157,12 @@ export function QuestionBankView({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((q) => (
-                <TableRow key={q.id}>
+              {items.map((q, i) => (
+                <TableRow
+                  key={q.id}
+                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-200"
+                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+                >
                   <TableCell className="max-w-md">
                     <p className="line-clamp-2 whitespace-normal">{q.body}</p>
                     {!q.isActive && <Badge variant="outline">Archived</Badge>}

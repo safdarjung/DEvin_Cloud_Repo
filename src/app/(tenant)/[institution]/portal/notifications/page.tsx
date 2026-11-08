@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { Inbox } from "@/modules/notifications/components/Inbox";
@@ -33,7 +34,9 @@ export default async function PortalNotificationsPage({
         activeHref="/notifications"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <Inbox institutionSlug={institutionSlug} notifications={notifications} />
+      <FadeIn>
+        <Inbox institutionSlug={institutionSlug} notifications={notifications} />
+      </FadeIn>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -39,7 +40,7 @@ export default async function PortalStudyPage({
       <div className="space-y-4">
         <PageHeader title="Study" description={unavailable} back={{ href: basePath, label: "Back" }} />
         <p className="text-sm text-muted-foreground">What you can do instead:</p>
-        <div className="flex flex-wrap gap-2">
+        <FadeIn className="flex flex-wrap gap-2">
           {notebookEnabled && (
             <Link href={`${basePath}/study/notebook`} className={buttonVariants({ variant: "outline" })}>
               Open notebook
@@ -51,7 +52,7 @@ export default async function PortalStudyPage({
           <Link href={`${basePath}/subjects`} className={buttonVariants({ variant: "outline" })}>
             See subjects and units
           </Link>
-        </div>
+        </FadeIn>
       </div>
     );
   }

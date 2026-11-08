@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
+import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState, ErrorState } from "@/components/states";
+import { BarList } from "@/components/widgets/viz";
+import { Widget } from "@/components/widgets/widget";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
@@ -98,12 +101,12 @@ export default async function AgentsPage({
             {defsRes.status === "rejected" ? (
               <ErrorState title="Could not load agents" description="Reload the page to try again." />
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 *:min-w-0">
+              <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 *:min-w-0">
                 {defs.map((d) => {
                   const spec = AGENT_CATALOG[d.slug as AgentSlug];
                   return (
+                    <StaggerItem key={d.slug} className="[&>*]:h-full">
                     <AgentCard
-                      key={d.slug}
                       institutionSlug={slug}
                       runsBase={base}
                       canRun={canRun}
@@ -126,9 +129,18 @@ export default async function AgentsPage({
                         costPaise30d: d.cost_paise_30d,
                       }}
                     />
+                    </StaggerItem>
                   );
                 })}
-              </div>
+              </Stagger>
+            )}
+            {defs.some((d) => d.runs_30d > 0) && (
+              <Widget title="Runs, last 30 days" description="How often each agent ran in the last 30 days.">
+                <BarList
+                  ariaLabel="Agent runs in the last 30 days"
+                  items={[...defs].sort((a, b) => b.runs_30d - a.runs_30d).map((d) => ({ label: d.name, value: d.runs_30d }))}
+                />
+              </Widget>
             )}
           </section>
 

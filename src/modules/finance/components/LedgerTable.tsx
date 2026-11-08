@@ -7,6 +7,10 @@ import { EmptyState } from "@/components/states";
 import { inr } from "@/lib/format";
 import type { LedgerPage } from "@/modules/finance/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
   // Fix round 1 (code review, MEDIUM): "balanced" comes from
   // `listLedgerEntries`'s integer-paise comparison, not a float `===` on
@@ -29,8 +33,8 @@ export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {ledger.entries.map((entry) => (
-            <TableRow key={entry.id}>
+          {ledger.entries.map((entry, i) => (
+            <TableRow key={entry.id} className={ROW_ENTER} style={rowDelay(i)}>
               <TableCell>{entry.entryDate}</TableCell>
               <TableCell>{entry.account}</TableCell>
               <TableCell className="text-right tabular-nums">{entry.debit > 0 ? inr(entry.debit) : "—"}</TableCell>

@@ -13,6 +13,8 @@ import { CloseSurveyButton, SurveyForm } from "@/modules/ptm/components/SurveyAd
 import { PtmSlotsManager } from "@/modules/ptm/components/PtmSlotsManager";
 import { ptmEvents, ptmTeacherSchedule } from "@/modules/ptm/queries";
 import { surveyList } from "@/modules/ptm/survey.queries";
+import { FadeIn } from "@/components/motion";
+import { ProgressBar } from "@/components/widgets/viz";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric" });
 const dateTimeFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -64,7 +66,8 @@ export default async function PtmPage({ params }: { params: Promise<{ institutio
             <EmptyState title="No published meetings" description="When the school publishes a parent-teacher meeting, you can open your slots here." />
           ) : (
             published.map((e, i) => (
-              <Card key={e.id}>
+              <FadeIn key={e.id} delay={Math.min(i, 8) * 0.04} className="motion-safe:fill-mode-backwards">
+              <Card>
                 <CardHeader>
                   <CardTitle>{e.title}</CardTitle>
                   <CardDescription>
@@ -72,10 +75,19 @@ export default async function PtmPage({ params }: { params: Promise<{ institutio
                     {schedules[i].filter((s) => s.booking).length} booked
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {schedules[i].length > 0 && (
+                    <ProgressBar
+                      label="Slots booked"
+                      value={schedules[i].filter((s) => s.booking).length}
+                      max={schedules[i].length}
+                      valueLabel={`${schedules[i].filter((s) => s.booking).length} / ${schedules[i].length}`}
+                    />
+                  )}
                   <PtmSlotsManager institutionSlug={institutionSlug} eventId={e.id} dayStartsAt={e.dayStartsAt} dayEndsAt={e.dayEndsAt} slots={schedules[i]} />
                 </CardContent>
               </Card>
+              </FadeIn>
             ))
           )}
         </section>
@@ -107,8 +119,8 @@ export default async function PtmPage({ params }: { params: Promise<{ institutio
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {eventsR.value.map((e) => (
-                    <TableRow key={e.id}>
+                  {eventsR.value.map((e, i) => (
+                    <TableRow key={e.id} className="motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-200" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                       <TableCell className="font-medium">{e.title}</TableCell>
                       <TableCell>{dateFmt.format(new Date(`${e.eventDate}T00:00:00+05:30`))}</TableCell>
                       <TableCell className="hidden tabular-nums sm:table-cell">
@@ -162,8 +174,8 @@ export default async function PtmPage({ params }: { params: Promise<{ institutio
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {surveysR.value.map((s) => (
-                      <TableRow key={s.id}>
+                    {surveysR.value.map((s, i) => (
+                      <TableRow key={s.id} className="motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-200" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                         <TableCell className="font-medium">{s.title}</TableCell>
                         <TableCell>
                           <Badge variant={s.status === "open" ? "success" : "outline"}>{humanize(s.status)}</Badge>

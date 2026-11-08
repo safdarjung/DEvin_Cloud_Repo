@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
+import { AnimatedList } from "@/components/widgets/viz";
 import type { NotificationSummary } from "@/modules/notifications/queries";
 import { MarkReadButton } from "./MarkReadButton";
 
@@ -17,9 +18,9 @@ export function Inbox({
   }
 
   return (
-    <ul className="divide-y divide-border">
+    <AnimatedList ariaLabel="Notifications" className="space-y-0 divide-y divide-border">
       {notifications.map((n) => (
-        <li key={n.id} className="flex items-start justify-between gap-4 py-3">
+        <div key={n.id} className="flex items-start justify-between gap-4 py-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{n.title}</span>
@@ -29,8 +30,8 @@ export function Inbox({
             <p className="text-xs text-muted-foreground tabular-nums">{new Date(n.createdAt).toLocaleString()}</p>
           </div>
           {!n.readAt && <MarkReadButton institutionSlug={institutionSlug} notificationId={n.id} />}
-        </li>
+        </div>
       ))}
-    </ul>
+    </AnimatedList>
   );
 }

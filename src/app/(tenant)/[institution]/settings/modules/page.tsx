@@ -1,3 +1,4 @@
+import { Stagger, StaggerItem } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -27,9 +28,10 @@ export default async function ModulesPage({
       {categories.map((cat) => (
         <div key={cat.category} className="space-y-3 pt-2">
           <h2 className="text-base font-semibold">{cat.category}</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <Stagger className="grid gap-4 md:grid-cols-2">
             {cat.modules.map((mod) => (
-              <Card key={mod.key} className="min-w-0">
+              <StaggerItem key={mod.key} className="min-w-0 motion-safe:fill-mode-backwards">
+              <Card className="h-full min-w-0">
                 <CardHeader>
                   <CardTitle className="text-base">{mod.label}</CardTitle>
                   <CardDescription>{mod.description}</CardDescription>
@@ -73,8 +75,9 @@ export default async function ModulesPage({
                   )}
                 </CardContent>
               </Card>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       ))}
     </div>

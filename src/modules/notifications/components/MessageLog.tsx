@@ -8,6 +8,10 @@ import { humanize } from "@/lib/format";
 
 type Variant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 // delivery_attempts.status check: 20261028000003_platform.sql
 function deliveryStatusVariant(status: string): Variant {
   switch (status) {
@@ -45,8 +49,8 @@ export function MessageLog({ rows }: { rows: DeliveryLogRow[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => (
-          <TableRow key={row.id}>
+        {rows.map((row, i) => (
+          <TableRow key={row.id} className={ROW_ENTER} style={rowDelay(i)}>
             <TableCell>
               {humanize(row.notificationType)}
               <p className="mt-0.5 line-clamp-2 text-xs whitespace-normal text-muted-foreground sm:hidden">{row.renderedBody}</p>

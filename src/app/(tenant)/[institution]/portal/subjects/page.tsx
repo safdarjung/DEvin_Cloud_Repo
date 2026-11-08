@@ -1,4 +1,7 @@
+import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
+import { BarList } from "@/components/widgets/viz";
+import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { listPortalSubjects } from "@/modules/academics/portal-subjects.queries";
@@ -35,7 +38,28 @@ export default async function PortalSubjectsPage({
         canStudy={hasPermission(ctx, "ai.study")}
       />
       {subjects ? (
-        <SubjectCurriculum subjects={subjects} />
+        <FadeIn key={selection.studentId} className="space-y-4">
+          {subjects.some((sub) => sub.units.length > 0) && (
+            <Widget title="Syllabus coverage" description="Share of each subject's units the class has covered so far.">
+              <BarList
+                ariaLabel="Units covered by subject"
+                max={100}
+                format="percent"
+                items={subjects
+                  .filter((sub) => sub.units.length > 0)
+                  .map((sub) => {
+                    const covered = sub.units.filter((u) => u.coveredOn).length;
+                    return {
+                      label: sub.name,
+                      value: Math.round((covered / sub.units.length) * 100),
+                      display: `${covered} of ${sub.units.length}`,
+                    };
+                  })}
+              />
+            </Widget>
+          )}
+          <SubjectCurriculum subjects={subjects} />
+        </FadeIn>
       ) : (
         <EmptyState title="Not enrolled in a class section" description="Ask the school office to enrol you for this year." />
       )}

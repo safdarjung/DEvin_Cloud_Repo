@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -37,7 +38,7 @@ export default async function PortalThreadPage({
         activeHref="/messages"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <div className="max-w-3xl space-y-4">
+      <FadeIn className="max-w-3xl space-y-4">
         <div className="border-b-2 border-border pb-3">
           <h2 className="text-base font-semibold">{thread.subject}</h2>
           <p className="text-xs text-muted-foreground">
@@ -46,7 +47,7 @@ export default async function PortalThreadPage({
         </div>
         <MessageList messages={messages} otherName={thread.teacherName ?? "Teacher"} />
         {canSend && <ReplyComposer institutionSlug={institutionSlug} threadId={threadId} markRead />}
-      </div>
+      </FadeIn>
     </>
   );
 }

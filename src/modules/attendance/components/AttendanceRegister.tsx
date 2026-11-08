@@ -11,7 +11,8 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarList, ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "cn";
 import { markAttendance, submitAttendance } from "@/modules/attendance/actions";
@@ -61,6 +62,26 @@ export function AttendanceRegister({
     () => students.every((s) => Boolean(draft[s.studentId]?.status)),
     [students, draft],
   );
+
+  // Live tally of the draft (no extra query): marked count, per-status
+  // counts, and present % over statuses that count toward the denominator.
+  const tally = useMemo(() => {
+    const counts = new Map<string, number>();
+    let presentWeighted = 0;
+    let denominator = 0;
+    for (const s of students) {
+      const code = draft[s.studentId]?.status;
+      const option = statuses.find((st) => st.code === code);
+      if (!code || !option) continue;
+      counts.set(code, (counts.get(code) ?? 0) + 1);
+      if (option.inDenominator) {
+        denominator += 1;
+        presentWeighted += option.countsPresent;
+      }
+    }
+    const marked = [...counts.values()].reduce((a, b) => a + b, 0);
+    return { counts, marked, presentPct: denominator > 0 ? (presentWeighted / denominator) * 100 : null };
+  }, [students, statuses, draft]);
 
   function setStatus(studentId: string, status: string) {
     setDraft((d) => ({ ...d, [studentId]: { ...(d[studentId] ?? { note: "" }), status } }));
@@ -139,6 +160,32 @@ export function AttendanceRegister({
             </>
           )}
         </p>
+      )}
+
+      {students.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Register summary</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)] md:items-center">
+            {tally.presentPct !== null ? (
+              <RadialGauge value={tally.presentPct} label="Present" sublabel={`${tally.marked} of ${students.length} marked`} />
+            ) : (
+              <p className="text-sm text-muted-foreground">No students marked yet.</p>
+            )}
+            <div className="min-w-0 space-y-3">
+              <ProgressBar label="Marked" value={tally.marked} max={students.length} valueLabel={`${tally.marked} / ${students.length}`} />
+              <BarList
+                ariaLabel="Students per status"
+                max={students.length}
+                items={statuses.map((st) => {
+                  const count = tally.counts.get(st.code) ?? 0;
+                  return { label: st.label, value: count, tone: st.notifyGuardian ? "warning" : "default" };
+                })}
+              />
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <Card>

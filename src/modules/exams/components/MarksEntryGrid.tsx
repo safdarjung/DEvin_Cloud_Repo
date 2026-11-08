@@ -10,6 +10,7 @@ import type { ActionResult } from "@/lib/actions/result";
 import { enterMarks } from "@/modules/exams/actions";
 import { humanize } from "@/lib/format";
 import type { PaperMarks } from "@/modules/exams/queries";
+import { ProgressBar } from "@/components/widgets/viz";
 
 interface RowState {
   marksObtained: string;
@@ -46,6 +47,8 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
     return row.isAbsent !== base.isAbsent || row.marksObtained !== base.marksObtained;
   });
 
+  const enteredCount = Object.values(rows).filter((r) => r.isAbsent || r.marksObtained !== "").length;
+
   function updateRow(studentId: string, patch: Partial<RowState>) {
     setRows((prev) => ({ ...prev, [studentId]: { ...prev[studentId], ...patch } }));
   }
@@ -78,6 +81,13 @@ export function MarksEntryGrid({ institutionSlug, paper }: MarksEntryGridProps) 
 
   return (
     <form action={formAction} className="space-y-4">
+      <ProgressBar
+        label="Entered (marks or absent)"
+        value={enteredCount}
+        max={paper.students.length}
+        valueLabel={`${enteredCount} / ${paper.students.length}`}
+        tone={enteredCount === paper.students.length ? "success" : "default"}
+      />
       <Card>
         <CardContent>
           <Table>

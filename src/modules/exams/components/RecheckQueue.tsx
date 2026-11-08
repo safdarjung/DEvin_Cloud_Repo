@@ -4,7 +4,9 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FadeIn } from "@/components/motion";
+import { BarList } from "@/components/widgets/viz";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { humanize } from "@/lib/format";
 import { recheckStatusVariant } from "@/modules/exams/status";
@@ -20,7 +22,26 @@ export function RecheckQueue({ institutionSlug, rows }: RecheckQueueProps) {
     return <EmptyState title="No recheck requests" description="Requests from guardians and students appear here." />;
   }
 
+  const statusCounts = new Map<string, number>();
+  for (const row of rows) statusCounts.set(row.status, (statusCounts.get(row.status) ?? 0) + 1);
+
   return (
+    <FadeIn className="space-y-4">
+    <Card>
+      <CardHeader>
+        <CardTitle>Requests by status</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BarList
+          ariaLabel="Recheck requests by status"
+          items={[...statusCounts].map(([status, count]) => ({
+            label: humanize(status),
+            value: count,
+            tone: status === "submitted" || status === "under_review" ? "warning" : "default",
+          }))}
+        />
+      </CardContent>
+    </Card>
     <Card>
       <CardContent>
         <Table>
@@ -53,5 +74,6 @@ export function RecheckQueue({ institutionSlug, rows }: RecheckQueueProps) {
         </Table>
       </CardContent>
     </Card>
+    </FadeIn>
   );
 }

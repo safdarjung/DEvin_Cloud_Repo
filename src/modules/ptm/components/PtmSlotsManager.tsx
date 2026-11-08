@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AnimatedList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { addPtmSlots, removePtmSlot } from "@/modules/ptm/actions";
 import type { PtmScheduleRow } from "@/modules/ptm/queries";
@@ -86,9 +87,9 @@ export function PtmSlotsManager({
       {slots.length === 0 ? (
         <p className="text-sm text-muted-foreground">You have no slots for this meeting yet. Add a time range above to open bookings.</p>
       ) : (
-        <ul className="divide-y">
+        <AnimatedList className="space-y-0 divide-y" ariaLabel="My slots">
           {slots.map((s) => (
-            <li key={s.slotId} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
+            <div key={s.slotId} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
               <span className="tabular-nums">
                 {s.startsAt} to {s.endsAt}
               </span>
@@ -110,9 +111,9 @@ export function PtmSlotsManager({
                   Remove
                 </Button>
               </span>
-            </li>
+            </div>
           ))}
-        </ul>
+        </AnimatedList>
       )}
     </div>
   );

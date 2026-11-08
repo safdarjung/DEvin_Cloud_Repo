@@ -1,4 +1,6 @@
+import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
+import { AnimatedList, ProgressBar } from "@/components/widgets/viz";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -35,6 +37,8 @@ export default async function PortalUpdatesPage({
   const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/updates`);
   const today = todayInInstitutionTimezone(ctx);
   const entries = await diaryForStudent(ctx, selection.studentId, shiftDays(today, -HISTORY_DAYS), shiftDays(today, 30));
+  const needsAck = entries.filter((e) => e.requiresAck);
+  const acked = needsAck.filter((e) => e.acknowledged).length;
 
   return (
     <>
@@ -45,10 +49,23 @@ export default async function PortalUpdatesPage({
       {entries.length === 0 ? (
         <EmptyState title="No updates yet" description="When a teacher posts to the class diary it appears here." />
       ) : (
-        <ul className="grid gap-3">
+        <FadeIn key={selection.studentId} className="space-y-4">
+          {needsAck.length > 0 && (
+            <Card>
+              <CardContent>
+                <ProgressBar
+                  label="Updates acknowledged"
+                  value={acked}
+                  max={needsAck.length}
+                  valueLabel={`${acked} of ${needsAck.length} that ask for it`}
+                  tone={acked === needsAck.length ? "success" : "warning"}
+                />
+              </CardContent>
+            </Card>
+          )}
+        <AnimatedList ariaLabel="Teacher updates" className="grid gap-3 space-y-0">
           {entries.map((e) => (
-            <li key={e.id}>
-              <Card>
+            <Card key={e.id}>
                 <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">
@@ -65,10 +82,10 @@ export default async function PortalUpdatesPage({
                       <AckButton institutionSlug={institutionSlug} studentId={selection.studentId} entryId={e.id} />
                     ))}
                 </CardContent>
-              </Card>
-            </li>
+            </Card>
           ))}
-        </ul>
+        </AnimatedList>
+        </FadeIn>
       )}
     </>
   );

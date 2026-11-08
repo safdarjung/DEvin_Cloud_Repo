@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { notFound } from "next/navigation";
@@ -28,7 +29,7 @@ export default async function PageEditorPage({
     <div className="space-y-4">
       <PageHeader title={page.title} description={`/${page.slug}`} back={{ href: `/${institutionSlug}/website`, label: "Website" }} />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <FadeIn className="grid gap-4 lg:grid-cols-3">
         <Card className="min-w-0 lg:col-span-2">
           <CardHeader>
             <CardTitle>Edit</CardTitle>
@@ -52,7 +53,7 @@ export default async function PageEditorPage({
             />
           </CardContent>
         </Card>
-      </div>
+      </FadeIn>
 
       <Card>
         <CardHeader>

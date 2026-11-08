@@ -18,6 +18,10 @@ import { parsePage } from "@/lib/list-search";
 
 const STATUSES: ApplicationStatus[] = ["submitted", "under_review", "interaction_scheduled", "offered", "accepted", "rejected", "withdrawn", "enrolled"];
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 export default async function ApplicationsPage({
   params,
   searchParams,
@@ -77,8 +81,8 @@ export default async function ApplicationsPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {applications.map((application) => (
-                  <ApplicationRowItem key={application.id} institutionSlug={institutionSlug} application={application} />
+                {applications.map((application, i) => (
+                  <ApplicationRowItem key={application.id} index={i} institutionSlug={institutionSlug} application={application} />
                 ))}
               </TableBody>
             </Table>
@@ -90,11 +94,11 @@ export default async function ApplicationsPage({
   );
 }
 
-function ApplicationRowItem({ institutionSlug, application }: { institutionSlug: string; application: ApplicationRow }) {
+function ApplicationRowItem({ index, institutionSlug, application }: { index: number; institutionSlug: string; application: ApplicationRow }) {
   const applicant = application.applicant as { firstName?: string; lastName?: string };
   const name = [applicant.firstName, applicant.lastName].filter(Boolean).join(" ") || "Applicant";
   return (
-    <TableRow>
+    <TableRow className={ROW_ENTER} style={rowDelay(index)}>
       <TableCell>
         <Link
           href={`/${institutionSlug}/admissions/applications/${application.id}`}

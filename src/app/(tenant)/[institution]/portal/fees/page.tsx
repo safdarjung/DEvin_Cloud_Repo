@@ -1,6 +1,8 @@
 import { inr } from "@/lib/format";
 import Link from "next/link";
+import { FadeIn } from "@/components/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnimatedList } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { StudentInvoices } from "@/modules/finance/components/StudentInvoices";
@@ -34,7 +36,7 @@ export default async function PortalFeesPage({
         canStudy={hasPermission(ctx, "ai.study")}
       />
 
-      <div className="space-y-4">
+      <FadeIn key={selection.studentId} className="space-y-4">
         <StudentInvoices ctx={ctx} institutionSlug={institutionSlug} studentId={selection.studentId}
           payOnline={ctx.membership.role === "guardian" && hasPermission(ctx, "finance.payment.online")}
         />
@@ -45,9 +47,9 @@ export default async function PortalFeesPage({
               <CardTitle>Receipts</CardTitle>
             </CardHeader>
             <CardContent>
-              <ul className="divide-y divide-border">
+              <AnimatedList ariaLabel="Receipts" className="space-y-0 divide-y divide-border">
                 {receipts.map((r) => (
-                  <li key={r.id} className="flex items-center justify-between gap-3 text-sm">
+                  <div key={r.id} className="flex items-center justify-between gap-3 text-sm">
                     <Link
                       href={`/${institutionSlug}/portal/fees/receipts/${r.id}?student=${selection.studentId}`}
                       className="inline-flex min-h-10 items-center font-medium underline-offset-2 hover:underline"
@@ -55,13 +57,13 @@ export default async function PortalFeesPage({
                       {r.receiptNo}
                     </Link>
                     <span className="tabular-nums text-muted-foreground">{inr(r.amount)}</span>
-                  </li>
+                  </div>
                 ))}
-              </ul>
+              </AnimatedList>
             </CardContent>
           </Card>
         )}
-      </div>
+      </FadeIn>
     </>
   );
 }

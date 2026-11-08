@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { Role } from "@/lib/auth/permissions";
+import { BorderBeam } from "@/components/widgets/viz";
 
 type AssistantMessage = UIMessage<{ sources?: Array<{ query: string }> }>;
 
@@ -49,7 +50,8 @@ export function AssistantPanel({
 
   return (
     <div className="space-y-3">
-      <Card>
+      <Card className="relative">
+        <BorderBeam />
         <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <div className="space-y-3">

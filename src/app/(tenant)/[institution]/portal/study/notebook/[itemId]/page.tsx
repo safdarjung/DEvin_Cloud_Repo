@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { notFound, redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
@@ -46,11 +47,11 @@ export default async function NotebookItemPage({
       <h1 className="hidden text-2xl font-semibold print:block">{item.title}</h1>
       {/* Saved-note honesty label (plan §8) — the note outlives the chat it may have come from. */}
       <p className="-mt-4 text-xs italic text-muted-foreground">AI-assisted note · saved {new Date(item.updatedAt).toLocaleDateString()}</p>
-      <div className="space-y-3">
+      <FadeIn className="space-y-3">
         {item.blocks.map((block, index) => (
           <BlockRenderer key={index} block={block} />
         ))}
-      </div>
+      </FadeIn>
     </div>
   );
 }

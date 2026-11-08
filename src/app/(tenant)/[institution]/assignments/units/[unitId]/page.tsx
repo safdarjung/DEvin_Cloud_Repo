@@ -7,6 +7,7 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
+import { FadeIn } from "@/components/motion";
 
 export default async function CurriculumUnitQuizPage({
   params,
@@ -68,6 +69,7 @@ export default async function CurriculumUnitQuizPage({
           description="You don't teach this subject in any section of this grade, so a generated quiz couldn't be saved here yet."
         />
       ) : (
+        <FadeIn>
         <QuizReviewEditor
           institutionSlug={institutionSlug}
           curriculumUnitId={unit.id}
@@ -76,6 +78,7 @@ export default async function CurriculumUnitQuizPage({
           sections={sectionsForSubject}
           aiPolicy={ctx.institution.ai_policy}
         />
+        </FadeIn>
       )}
     </div>
   );

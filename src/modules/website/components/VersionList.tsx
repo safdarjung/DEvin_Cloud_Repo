@@ -11,6 +11,10 @@ import type { ActionResult } from "@/lib/actions/result";
 import { publishPage } from "@/modules/website/actions";
 import type { VersionSummary } from "@/modules/website/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 interface VersionListProps {
   institutionSlug: string;
   pageId: string;
@@ -69,10 +73,10 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
         </TableRow>
       </TableHeader>
       <TableBody>
-        {versions.map((version) => {
+        {versions.map((version, i) => {
           const isPublished = version.id === publishedVersionId;
           return (
-            <TableRow key={version.id}>
+            <TableRow key={version.id} className={ROW_ENTER} style={rowDelay(i)}>
               <TableCell>
                 <Link
                   href={`/${institutionSlug}/website/pages/${pageId}/versions/${version.id}`}

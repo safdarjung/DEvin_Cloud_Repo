@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AnimatedList } from "@/components/widgets/viz";
 import {
   Dialog,
   DialogContent,
@@ -267,15 +268,15 @@ export function EnquiryDetail({
           {enquiry.notes.length === 0 ? (
             <EmptyState title="No notes yet" />
           ) : (
-            <ul className="ml-1.5 space-y-3 border-l-2 border-border">
+            <AnimatedList ariaLabel="Notes" className="ml-1.5 space-y-3 border-l-2 border-border">
               {enquiry.notes.map((note, i) => (
-                <li key={i} className="relative pl-4 text-sm">
+                <div key={i} className="relative pl-4 text-sm">
                   <span aria-hidden className="absolute top-1 -left-[6px] size-2.5 rounded-full border-2 border-ring bg-card" />
                   <p>{note.text}</p>
                   <p className="text-xs text-muted-foreground italic">{note.at ?? "—"}</p>
-                </li>
+                </div>
               ))}
-            </ul>
+            </AnimatedList>
           )}
           <div className="flex gap-2">
             <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />

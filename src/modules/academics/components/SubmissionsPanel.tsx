@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { gradeSubmission } from "@/modules/academics/submissions.actions";
 import type { SubmissionRosterRow } from "@/modules/academics/submissions.queries";
+import { ProgressBar } from "@/components/widgets/viz";
 
 const stamp = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
@@ -130,11 +131,23 @@ export function SubmissionsPanel({
         {rows.length === 0 ? (
           <EmptyState title="No students on this roster" description="Students appear here once they are enrolled in the section." />
         ) : (
+          <>
+          <div className="grid gap-3 pb-2 sm:grid-cols-2">
+            <ProgressBar label="Submitted" value={submitted} max={rows.length} valueLabel={`${submitted} / ${rows.length}`} />
+            <ProgressBar
+              label="Graded"
+              value={submitted - toGrade}
+              max={Math.max(submitted, 1)}
+              valueLabel={`${submitted - toGrade} / ${submitted}`}
+              tone={toGrade === 0 && submitted > 0 ? "success" : "default"}
+            />
+          </div>
           <ul className="divide-y">
             {rows.map((r) => (
               <GradeRow key={r.studentId} institutionSlug={institutionSlug} row={r} canGrade={canGrade} />
             ))}
           </ul>
+          </>
         )}
       </CardContent>
     </Card>

@@ -26,6 +26,7 @@ import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/mo
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import type { StudentSkill } from "@/modules/ai/prompts/student-skills";
 import { saveStudyChat, saveStudyNote } from "@/modules/ai/student-study.actions";
+import { BorderBeam } from "@/components/widgets/viz";
 
 interface StudyChatProps {
   institutionSlug: string;
@@ -275,7 +276,8 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
         <SkillChips skills={skills} />
       </div>
 
-      <Card>
+      <Card className="relative">
+        <BorderBeam />
         <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:h-[480px] sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-muted-foreground">Ask about a topic you&apos;re studying — try a mindmap or a practice quiz.</p>

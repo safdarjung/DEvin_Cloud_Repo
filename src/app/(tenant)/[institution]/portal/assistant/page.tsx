@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
@@ -37,7 +38,7 @@ export default async function PortalAssistantPage({
       />
       {isModuleEnabled(ctx, ctx.membership.role === "student" ? "ai_student" : "ai_teacher") &&
       roleAiConfig(ctx, ctx.membership.role).enabled ? (
-        <div className="flex min-h-[60dvh] max-w-3xl flex-col gap-2">
+        <FadeIn key={selection.studentId} className="flex min-h-[60dvh] max-w-3xl flex-col gap-2">
           <p className="text-sm text-muted-foreground">Ask about {selection.studentName}. Each answer lists the records it used.</p>
           <AssistantPanel
             key={selection.studentId}
@@ -46,7 +47,7 @@ export default async function PortalAssistantPage({
             prompts={PROMPTS}
             placeholder={`Ask about ${selection.studentName}`}
           />
-        </div>
+        </FadeIn>
       ) : (
         <p className="text-sm text-muted-foreground">Your school has not switched this assistant on.</p>
       )}

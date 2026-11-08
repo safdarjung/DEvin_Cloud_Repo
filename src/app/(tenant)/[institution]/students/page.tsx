@@ -13,6 +13,10 @@ import { requirePermission } from "@/lib/auth/require";
 import { studentStatusVariant } from "@/modules/people/components/StudentProfileHeader";
 import { listStudents } from "@/modules/people/queries";
 
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
+
 // T-028 — 07 §2.2 student.read is granted to teacher/student/guardian
 // scoped ("s") by RLS, but this staff list page is staff-only: a
 // student/guardian belongs in the portal (T-034), not here (packet rule,
@@ -78,8 +82,8 @@ export default async function StudentsPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {students.map((s) => (
-                  <TableRow key={s.id}>
+                {students.map((s, i) => (
+                  <TableRow key={s.id} className={ROW_ENTER} style={rowDelay(i)}>
                     <TableCell>
                       <Link className="underline" href={`/${institutionSlug}/students/${s.id}`}>
                         {s.admissionNo}

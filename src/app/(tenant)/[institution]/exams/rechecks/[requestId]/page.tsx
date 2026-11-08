@@ -9,6 +9,7 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { RecheckDecisionForm } from "@/modules/exams/components/RecheckDecisionForm";
 import { ResultVersionHistory } from "@/modules/exams/components/ResultVersionHistory";
 import { getRecheck, getResultHistory } from "@/modules/exams/queries";
+import { FadeIn } from "@/components/motion";
 
 // T-020 — review + decide one recheck request (06 §W8), exam.recheck.review
 // only (decide_recheck itself re-checks exam.recheck.decide — RecheckDecisionForm
@@ -38,7 +39,7 @@ export default async function RecheckDecisionPage({
         actions={<Badge variant={recheckStatusVariant(request.status)}>{humanize(request.status)}</Badge>}
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <FadeIn className="grid gap-4 lg:grid-cols-3">
         <Card className="min-w-0 self-start lg:order-last">
           <CardHeader>
             <CardTitle>Reason</CardTitle>
@@ -53,7 +54,7 @@ export default async function RecheckDecisionPage({
 
           <ResultVersionHistory history={history} />
         </div>
-      </div>
+      </FadeIn>
     </div>
   );
 }

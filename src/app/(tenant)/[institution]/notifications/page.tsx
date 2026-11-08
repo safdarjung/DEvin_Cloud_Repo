@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { FadeIn } from "@/components/motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -33,11 +34,13 @@ export default async function NotificationsPage({
         }
       />
 
-      <Card>
-        <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
-          <Inbox institutionSlug={institutionSlug} notifications={notifications} />
-        </CardContent>
-      </Card>
+      <FadeIn>
+        <Card>
+          <CardContent className="min-w-0 [&_.rounded-lg.border.bg-card]:border-0">
+            <Inbox institutionSlug={institutionSlug} notifications={notifications} />
+          </CardContent>
+        </Card>
+      </FadeIn>
     </div>
   );
 }

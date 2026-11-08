@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Stagger, StaggerItem } from "@/components/motion";
+import { KpiTile } from "@/components/widgets/kpi-widget";
+import { inr } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -50,6 +53,26 @@ export default async function LedgerPage({
   return (
     <div className="space-y-4">
       <PageHeader title="Ledger" description="Double-entry postings for the selected range." back={{ href: `/${institutionSlug}/finance`, label: "Finance" }} />
+
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile label="Postings" value={String(ledger.totalCount)} animateTo={ledger.totalCount} sub={`${range.from} to ${range.to}`} />
+        </StaggerItem>
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile label="Debit" value={inr(ledger.totalDebit)} animateTo={ledger.totalDebit} format="inr" />
+        </StaggerItem>
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile label="Credit" value={inr(ledger.totalCredit)} animateTo={ledger.totalCredit} format="inr" />
+        </StaggerItem>
+        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+          <KpiTile
+            label="Balanced"
+            value={ledger.balanced ? "Yes" : "No"}
+            tone={ledger.balanced ? "success" : "destructive"}
+            sub={ledger.balanced ? "Debit equals credit" : "Debit and credit differ"}
+          />
+        </StaggerItem>
+      </Stagger>
 
       <Card>
       <form className="grid gap-3 border-b-2 border-border px-4 pb-3 sm:flex sm:flex-wrap sm:items-end">

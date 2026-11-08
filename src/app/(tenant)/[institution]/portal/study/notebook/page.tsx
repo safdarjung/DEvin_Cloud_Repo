@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { buttonVariants } from "@/components/ui/button";
@@ -70,7 +71,9 @@ export default async function NotebookPage({
         </div>
       )}
 
-      <NotebookList institutionSlug={institutionSlug} items={items} />
+      <FadeIn>
+        <NotebookList institutionSlug={institutionSlug} items={items} />
+      </FadeIn>
     </div>
   );
 }

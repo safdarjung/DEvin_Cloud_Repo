@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FadeIn } from "@/components/motion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Section {
@@ -84,46 +85,52 @@ export default async function PlatformSection({ params }: { params: Promise<{ se
           </span>
         }
       />
-      <Card>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2" title="Not available yet">
-            <Input disabled aria-disabled="true" aria-label={`Search ${s.title.toLowerCase()}`} placeholder="Search" className="max-w-xs" />
-            <Button type="button" variant="outline" disabled aria-disabled="true">
-              Filter
-            </Button>
-            <LimitedBadge />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {s.columns.map((c) => (
-                  <TableHead key={c}>{c}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell colSpan={s.columns.length} className="py-10 text-center text-muted-foreground">
-                  No data. This view needs the platform backend described below.
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Missing backend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            {s.missing.map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-          </ul>
-          <p className="mt-3 text-xs text-muted-foreground">Tracked as F-IDN-13, Platform superadmin console (P3).</p>
-        </CardContent>
-      </Card>
+      <FadeIn>
+        <Card>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2" title="Not available yet">
+              <Input disabled aria-disabled="true" aria-label={`Search ${s.title.toLowerCase()}`} placeholder="Search" className="max-w-xs" />
+              <Button type="button" variant="outline" disabled aria-disabled="true">
+                Filter
+              </Button>
+              <LimitedBadge />
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {s.columns.map((c) => (
+                    <TableHead key={c}>{c}</TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell colSpan={s.columns.length} className="py-10 text-center text-muted-foreground">
+                    No data. This view needs the platform backend described below.
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </FadeIn>
+      <FadeIn delay={0.06}>
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Missing backend</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+              {s.missing.map((m, i) => (
+                <FadeIn as="li" key={m} delay={0.06 + i * 0.025}>
+                  {m}
+                </FadeIn>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-muted-foreground">Tracked as F-IDN-13, Platform superadmin console (P3).</p>
+          </CardContent>
+        </Card>
+      </FadeIn>
     </>
   );
 }

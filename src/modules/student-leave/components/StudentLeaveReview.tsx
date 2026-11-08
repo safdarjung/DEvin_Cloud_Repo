@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { AnimatedList } from "@/components/widgets/viz";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
@@ -50,9 +51,9 @@ export function StudentLeaveReview({ institutionSlug, requests }: { institutionS
 
   return (
     <>
-      <ul className="divide-y">
+      <AnimatedList ariaLabel="Leave requests waiting for a decision" className="space-y-0 divide-y">
         {requests.map((r) => (
-          <li key={r.id} className="space-y-2 py-3">
+          <div key={r.id} className="space-y-2 py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm font-medium">
                 {r.studentName} <span className="text-xs font-normal text-muted-foreground">{r.classSection}</span>
@@ -78,9 +79,9 @@ export function StudentLeaveReview({ institutionSlug, requests }: { institutionS
                 Reject
               </Button>
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </AnimatedList>
 
       <Dialog open={rejecting !== null} onOpenChange={(open) => !open && setRejecting(null)}>
         <DialogContent>

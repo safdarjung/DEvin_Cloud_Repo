@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
+import { BarList, ProgressBar } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { inr } from "@/lib/format";
@@ -42,6 +43,14 @@ export default async function FinanceIntelPage({
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
+  // Observed months only (forecast months excluded), oldest first, for the Collected tile.
+  const observedSpark =
+    forecast.state === "ok"
+      ? (() => {
+          const fc = new Set(forecast.data.rows.map((r) => r.periodStart.slice(0, 7)));
+          return forecast.data.series.filter((p) => !fc.has(p.month)).map((p) => p.collected_paise / 100);
+        })()
+      : undefined;
 
   return (
     <FabricPage
@@ -53,15 +62,30 @@ export default async function FinanceIntelPage({
         {collections.state === "ok" && collections.data && (
           <section aria-label="This term">
             <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
-            <KpiTile label="Billed this term" value={paiseToInr(collections.data.duePaise)} sub={`${collections.data.invoiceCount} invoices`} />
-            <KpiTile label="Collected" value={paiseToInr(collections.data.collectedPaise)} />
-            <KpiTile label="Outstanding" value={paiseToInr(Math.max(0, collections.data.duePaise - collections.data.collectedPaise))} />
+            <KpiTile label="Billed this term" value={paiseToInr(collections.data.duePaise)} animateTo={collections.data.duePaise / 100} format="inr" sub={`${collections.data.invoiceCount} invoices`} />
+            <KpiTile label="Collected" value={paiseToInr(collections.data.collectedPaise)} animateTo={collections.data.collectedPaise / 100} format="inr" spark={observedSpark} />
+            <KpiTile
+              label="Outstanding"
+              value={paiseToInr(Math.max(0, collections.data.duePaise - collections.data.collectedPaise))}
+              animateTo={Math.max(0, collections.data.duePaise - collections.data.collectedPaise) / 100}
+              format="inr"
+            />
             <KpiTile
               label="Collected share"
               value={collections.data.duePaise > 0 ? pct(collections.data.collectedPaise / collections.data.duePaise) : "—"}
               sub="of billed"
             />
             </KpiStrip>
+            {collections.data.duePaise > 0 && (
+              <ProgressBar
+                className="mt-3"
+                label="Collected against billed this term"
+                value={collections.data.collectedPaise}
+                max={collections.data.duePaise}
+                valueLabel={`${paiseToInr(collections.data.collectedPaise)} of ${paiseToInr(collections.data.duePaise)}`}
+                tone="success"
+              />
+            )}
           </section>
         )}
 
@@ -141,6 +165,11 @@ export default async function FinanceIntelPage({
                   <p className="text-sm">
                     <span className="font-medium tabular-nums">{inr(total)}</span> outstanding across {d.rows.length} invoices in {d.term.label}.
                   </p>
+                  <BarList
+                    ariaLabel={`Largest outstanding invoices, ${d.term.label}`}
+                    format="inr"
+                    items={top.slice(0, 5).map((r) => ({ label: r.studentName, value: r.outstanding, tone: r.dueOn !== null && r.dueOn < today ? ("destructive" as const) : ("warning" as const) }))}
+                  />
                   <SimpleTable
                     caption={`Largest outstanding invoices, ${d.term.label}`}
                     head={["Student", "Outstanding", "Due"]}

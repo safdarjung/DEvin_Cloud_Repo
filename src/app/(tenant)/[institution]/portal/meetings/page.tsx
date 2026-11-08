@@ -1,4 +1,6 @@
+import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState } from "@/components/states";
+import { ProgressBar } from "@/components/widgets/viz";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -42,17 +44,26 @@ export default async function PortalMeetingsPage({
       {events.size === 0 ? (
         <EmptyState title="No parent-teacher meetings are open for booking." />
       ) : (
-        <div className="space-y-4">
+        <Stagger key={selection.studentId} className="space-y-4">
           {[...events.entries()].map(([id, e]) => {
             const byTeacher = new Map<string, PtmBookableRow[]>();
             for (const r of e.rows) byTeacher.set(r.staffId, [...(byTeacher.get(r.staffId) ?? []), r]);
+            const open = e.rows.filter((r) => r.state !== "taken").length;
             return (
-              <Card key={id}>
+              <StaggerItem key={id}>
+              <Card>
                 <CardHeader>
                   <CardTitle>{e.title}</CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {e.date} · booking closes {new Date(e.closes).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
                   </p>
+                  <ProgressBar
+                    className="pt-2"
+                    label="Slots still open"
+                    value={open}
+                    max={e.rows.length}
+                    valueLabel={`${open} of ${e.rows.length}`}
+                  />
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-2 *:min-w-0">
                   {[...byTeacher.values()].map((slots) => (
@@ -87,9 +98,10 @@ export default async function PortalMeetingsPage({
                   ))}
                 </CardContent>
               </Card>
+              </StaggerItem>
             );
           })}
-        </div>
+        </Stagger>
       )}
     </>
   );

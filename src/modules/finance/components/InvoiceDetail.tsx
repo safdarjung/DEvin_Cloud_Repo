@@ -2,8 +2,13 @@
 // calls here (recordPayment is out of scope for this packet).
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ProgressBar } from "@/components/widgets/viz";
 import { inr } from "@/lib/format";
 import type { InvoiceDetail as InvoiceDetailData } from "@/modules/finance/queries";
+
+// Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
+const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
+const rowDelay = (i: number) => ({ animationDelay: `${Math.min(i, 8) * 25}ms` });
 
 export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
   return (
@@ -23,8 +28,8 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {invoice.lines.map((line) => (
-            <TableRow key={line.head}>
+          {invoice.lines.map((line, i) => (
+            <TableRow key={line.head} className={ROW_ENTER} style={rowDelay(i)}>
               <TableCell>{line.head}</TableCell>
               <TableCell className="hidden sm:table-cell">{line.description}</TableCell>
               <TableCell className="text-right tabular-nums">{inr(line.amount)}</TableCell>
@@ -55,6 +60,15 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
             <dt className="text-muted-foreground">Due on</dt>
             <dd className="text-right">{invoice.dueOn ?? "—"}</dd>
           </dl>
+          {invoice.total > 0 && (
+            <ProgressBar
+              className="mt-4 border-t pt-3"
+              value={invoice.paidTotal}
+              max={invoice.total}
+              label="Paid"
+              tone={invoice.paidTotal >= invoice.total ? "success" : "default"}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

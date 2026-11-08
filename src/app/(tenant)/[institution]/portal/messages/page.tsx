@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -35,7 +36,7 @@ export default async function PortalMessagesPage({
         activeHref="/messages"
         canStudy={hasPermission(ctx, "ai.study")}
       />
-      <div className="grid gap-4 lg:grid-cols-3">
+      <FadeIn key={selection.studentId} className="grid gap-4 lg:grid-cols-3">
         <section aria-labelledby="threads-h" className="min-w-0 space-y-3 lg:col-span-2">
           <h2 id="threads-h" className="text-base font-semibold">
             Messages about {selection.studentName}
@@ -69,7 +70,7 @@ export default async function PortalMessagesPage({
             </CardContent>
           </Card>
         )}
-      </div>
+      </FadeIn>
     </>
   );
 }

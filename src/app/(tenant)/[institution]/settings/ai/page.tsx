@@ -1,3 +1,4 @@
+import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -79,7 +80,9 @@ export default async function AiRoleSettingsPage({
   return (
     <div className="space-y-4">
       <PageHeader title="AI roles" description="Configure what each role's AI can do, on the cloud, and its usage limit." />
-      <AiRoleSettings institutionSlug={institutionSlug} roles={roles} />
+      <FadeIn>
+        <AiRoleSettings institutionSlug={institutionSlug} roles={roles} />
+      </FadeIn>
     </div>
   );
 }

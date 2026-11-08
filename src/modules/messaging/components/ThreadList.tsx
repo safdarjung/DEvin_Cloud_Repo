@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { formatIst } from "@/modules/messaging/format";
 import type { ThreadSummary } from "@/modules/messaging/queries";
+import { AnimatedList } from "@/components/widgets/viz";
 
 function initials(name: string): string {
   return (
@@ -34,13 +35,13 @@ export function ThreadList({
     return <EmptyState title="No messages yet" description="Conversations you start or receive appear here." action={emptyAction} />;
   }
   return (
-    <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
+    <AnimatedList className="space-y-0 divide-y divide-border overflow-hidden rounded-md border border-border bg-card" ariaLabel="Conversations">
       {threads.map((t) => {
         const unread = t.unreadCount > 0;
         const label = who(t);
         return (
-          <li key={t.id}>
             <Link
+              key={t.id}
               href={`${basePath}/${t.id}${query}`}
               className="flex min-h-14 items-start gap-3 px-4 py-3 transition-colors duration-(--duration-fast) hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
@@ -64,9 +65,8 @@ export function ThreadList({
                 </span>
               </span>
             </Link>
-          </li>
         );
       })}
-    </ul>
+    </AnimatedList>
   );
 }

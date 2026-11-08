@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/states";
+import { AnimatedList, BarList, BorderBeam } from "@/components/widgets/viz";
 import type { Insight, InsightAction, InsightSeverity } from "@/modules/fabric/types";
 import { InsightControls } from "./insight-controls";
 import {
@@ -96,12 +97,12 @@ export function InsightList({
     );
   }
   return (
-    <ul className="space-y-2" aria-label="Insights">
+    <AnimatedList ariaLabel="Insights">
       {items.map((i) => {
         const selected = i.id === selectedId;
         return (
-          <li key={i.id}>
             <Link
+              key={i.id}
               href={insightHref(base, { status, domain, id: i.id })}
               aria-current={selected ? "true" : undefined}
               className={`block min-h-11 rounded-xl border p-3 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring ${selected ? "border-primary bg-muted" : "hover:bg-muted/60"}`}
@@ -118,16 +119,16 @@ export function InsightList({
                 {i.entity_ref ? ` · ${i.entity_ref.label}` : ""}
               </p>
             </Link>
-          </li>
         );
       })}
-    </ul>
+    </AnimatedList>
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+function Section({ title, hint, beam, children }: { title: string; hint?: string; beam?: boolean; children: ReactNode }) {
   return (
-    <Card>
+    <Card className={beam ? "relative" : undefined}>
+      {beam && <BorderBeam />}
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
         {hint && <p className="text-sm text-muted-foreground">{hint}</p>}
@@ -205,14 +206,13 @@ export function InsightDetail({
         {insight.factors.length > 0 && (
           <div className="mt-3">
             <p className="text-sm font-medium">Possible contributing factors (hypotheses, not causes)</p>
-            <ul className="mt-1 space-y-1 text-sm">
-              {insight.factors.map((f) => (
-                <li key={f.label} className="flex items-center justify-between gap-2">
-                  <span>{f.label}</span>
-                  <span className="text-muted-foreground">{Math.round(f.weight * 100)}%</span>
-                </li>
-              ))}
-            </ul>
+            <BarList
+              className="mt-1"
+              ariaLabel="Contributing factor weights"
+              max={100}
+              format="percent"
+              items={insight.factors.map((f) => ({ label: f.label, value: Math.round(f.weight * 100), display: `${Math.round(f.weight * 100)}%` }))}
+            />
           </div>
         )}
         {insight.recommended_actions.length > 0 && (
@@ -231,7 +231,7 @@ export function InsightDetail({
         </p>
       </Section>
 
-      <Section title="AI-generated suggestion" hint="Written by an AI model from the facts above. Check it before acting; it never changes the insight status.">
+      <Section beam={!!ex} title="AI-generated suggestion" hint="Written by an AI model from the facts above. Check it before acting; it never changes the insight status.">
         {ex ? (
           <div className="space-y-2 text-sm">
             <p className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
@@ -261,9 +261,9 @@ export function InsightDetail({
         ) : actions.length === 0 ? (
           <p className="text-sm text-muted-foreground">No actions recorded yet.</p>
         ) : (
-          <ol className="space-y-3">
+          <AnimatedList ariaLabel="Recorded actions" className="space-y-3">
             {actions.map((a) => (
-              <li key={a.id} className="rounded-lg border p-3 text-sm">
+              <div key={a.id} className="rounded-lg border p-3 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium">{a.action}</span>
                   <Badge variant="secondary">{capitalize(a.status)}</Badge>
@@ -272,9 +272,9 @@ export function InsightDetail({
                 <p className="mt-1">{a.rationale}</p>
                 <p className="mt-1 text-muted-foreground">Expected: {a.expected_outcome}</p>
                 {a.actual_outcome && <p className="mt-1">Actual: {a.actual_outcome}</p>}
-              </li>
+              </div>
             ))}
-          </ol>
+          </AnimatedList>
         )}
       </Section>
     </article>

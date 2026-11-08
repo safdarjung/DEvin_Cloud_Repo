@@ -46,10 +46,15 @@ export function PipelineBoard({ institutionSlug, stages, byStage }: PipelineBoar
       )}
       {/* The board scrolls sideways inside this box, never the page. */}
       <div className="flex gap-3 overflow-x-auto pb-2">
-        {stages.map((stage) => {
+        {stages.map((stage, i) => {
           const items = byStage[stage] ?? [];
           return (
-            <Card key={stage} size="sm" className="min-w-64 flex-1">
+            <Card
+              key={stage}
+              size="sm"
+              className="min-w-64 flex-1 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)"
+              style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+            >
               <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>{humanize(stage)}</CardTitle>
                 <Badge variant="secondary">{items.length}</Badge>
@@ -60,7 +65,7 @@ export function PipelineBoard({ institutionSlug, stages, byStage }: PipelineBoar
                 ) : (
                   <ul className="space-y-2">
                     {items.map((enquiry) => (
-                      <li key={enquiry.id} className="space-y-1.5 rounded-md border border-border bg-background p-2.5">
+                      <li key={enquiry.id} className="space-y-1.5 rounded-md border border-border bg-background p-2.5 transition-colors duration-(--duration-fast) hover:border-ring/60">
                         <Link
                           href={`/${institutionSlug}/admissions/enquiries/${enquiry.id}`}
                           className="block truncate text-sm font-medium underline-offset-2 hover:underline"

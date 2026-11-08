@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { getTenantContext } from "@/lib/auth/context";
@@ -38,7 +39,9 @@ export default async function VersionDetailPage({
         }
       />
       {/* Read-only: this view has no editor, by design — older versions are never mutated (0010's immutability trigger would reject it anyway). */}
-      <DraftPreview blocks={version.blocks} slug={page.slug} institutionId={ctx.institution.id} />
+      <FadeIn>
+        <DraftPreview blocks={version.blocks} slug={page.slug} institutionId={ctx.institution.id} />
+      </FadeIn>
     </div>
   );
 }

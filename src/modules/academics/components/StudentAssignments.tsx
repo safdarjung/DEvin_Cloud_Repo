@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
 import type { AssignmentSummary } from "@/modules/academics/assignments.queries";
+import { FadeIn } from "@/components/motion";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "outline"> = { published: "success", draft: "warning", closed: "outline" };
 const STATUS_LABEL: Record<string, string> = { published: "Published", draft: "Draft", closed: "Closed" };
@@ -27,8 +28,8 @@ export function StudentAssignments({ institutionSlug, assignments, portal }: Stu
 
   return (
     <ul className="space-y-2">
-      {assignments.map((assignment) => (
-        <li key={assignment.id} className="rounded-md border border-border bg-card p-4">
+      {assignments.map((assignment, i) => (
+        <FadeIn as="li" delay={Math.min(i, 8) * 0.04} key={assignment.id} className="motion-safe:fill-mode-backwards rounded-md border border-border bg-card p-4">
           <Link
             href={portal ? `/${institutionSlug}/portal/assignments/${assignment.id}?student=${portal.studentId}` : `/${institutionSlug}/assignments/${assignment.id}`} 
             className="inline-flex min-h-10 items-center font-medium hover:underline sm:min-h-0"
@@ -47,7 +48,7 @@ export function StudentAssignments({ institutionSlug, assignments, portal }: Stu
             <Badge variant={STATUS_VARIANT[assignment.status] ?? "outline"}>{STATUS_LABEL[assignment.status] ?? assignment.status}</Badge>
             {assignment.dueAt ? <span>Due {new Date(assignment.dueAt).toLocaleDateString()}</span> : null}
           </div>
-        </li>
+        </FadeIn>
       ))}
     </ul>
   );

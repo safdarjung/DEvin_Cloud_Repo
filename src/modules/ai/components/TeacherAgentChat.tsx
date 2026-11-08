@@ -19,6 +19,7 @@ import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/mo
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
 import type { QuizContent } from "@/modules/academics/assignments.schemas";
+import { BorderBeam } from "@/components/widgets/viz";
 
 interface TeacherAgentChatProps {
   institutionSlug: string;
@@ -210,7 +211,8 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
         </div>
       </div>
 
-      <Card>
+      <Card className="relative">
+        <BorderBeam />
         <CardContent className="flex h-[60dvh] min-h-72 flex-col gap-3 overflow-y-auto p-3 text-sm sm:h-[480px] sm:p-4" aria-live="polite">
           {messages.length === 0 && (
             <p className="text-muted-foreground">

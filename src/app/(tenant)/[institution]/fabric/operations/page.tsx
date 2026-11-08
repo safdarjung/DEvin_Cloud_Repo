@@ -1,4 +1,5 @@
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
+import { BarList, ProgressBar } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { humanize } from "@/lib/format";
@@ -52,10 +53,10 @@ export default async function OperationsPage({
         {hasKpis && (
           <section aria-label="Summary">
             <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
-              {timetable.state === "ok" && timetable.data && <KpiTile label="Timetable conflicts" value={String(timetable.data.conflicts.length)} sub="published version" />}
-              {cover.state === "ok" && <KpiTile label="Periods needing cover today" value={String(cover.data.filter((c) => !c.substitution).length)} sub={`${cover.data.length} total`} />}
-              {transport.state === "ok" && <KpiTile label="Transport routes" value={String(transport.data.length)} />}
-              {openRequests !== null && <KpiTile label="Open maintenance requests" value={String(openRequests)} />}
+              {timetable.state === "ok" && timetable.data && <KpiTile label="Timetable conflicts" value={String(timetable.data.conflicts.length)} animateTo={timetable.data.conflicts.length} tone={timetable.data.conflicts.length > 0 ? "warning" : "default"} sub="published version" />}
+              {cover.state === "ok" && <KpiTile label="Periods needing cover today" value={String(cover.data.filter((c) => !c.substitution).length)} animateTo={cover.data.filter((c) => !c.substitution).length} sub={`${cover.data.length} total`} />}
+              {transport.state === "ok" && <KpiTile label="Transport routes" value={String(transport.data.length)} animateTo={transport.data.length} />}
+              {openRequests !== null && <KpiTile label="Open maintenance requests" value={String(openRequests)} animateTo={openRequests} />}
             </KpiStrip>
           </section>
         )}
@@ -139,7 +140,17 @@ export default async function OperationsPage({
             timetable,
             (t) => {
               if (!t || t.rooms.length === 0) return <p className="text-sm text-muted-foreground">No rooms to show.</p>;
+              const busiest = [...t.rooms].filter((r) => r.periods_total > 0).sort((a, b) => b.periods_used / b.periods_total - a.periods_used / a.periods_total).slice(0, 6);
               return (
+                <div className="space-y-3">
+                {busiest.length > 0 && (
+                  <BarList
+                    ariaLabel="Busiest rooms by share of weekly periods booked"
+                    max={100}
+                    format="percent"
+                    items={busiest.map((r) => ({ label: r.room, value: Math.round((r.periods_used / r.periods_total) * 100) }))}
+                  />
+                )}
                 <SimpleTable
                   caption="Periods used per room"
                   head={["Room", "Capacity", "Periods used", "Utilisation"]}
@@ -149,6 +160,7 @@ export default async function OperationsPage({
                     cells: [r.room, r.capacity, `${r.periods_used} / ${r.periods_total}`, r.periods_total > 0 ? `${Math.round((r.periods_used / r.periods_total) * 100)}%` : "—"],
                   }))}
                 />
+                </div>
               );
             },
             { description: "Share of weekly periods each room is booked" },
@@ -190,6 +202,15 @@ export default async function OperationsPage({
                   <p className="text-sm text-muted-foreground">
                     {open.length} open of {requests.length} requests · {assets.length} assets on record
                   </p>
+                  {requests.length > 0 && (
+                    <ProgressBar
+                      label="Requests resolved"
+                      value={requests.length - open.length}
+                      max={requests.length}
+                      valueLabel={`${requests.length - open.length} of ${requests.length}`}
+                      tone="success"
+                    />
+                  )}
                   {open.length === 0 ? (
                     <p className="text-sm">Nothing open.</p>
                   ) : (

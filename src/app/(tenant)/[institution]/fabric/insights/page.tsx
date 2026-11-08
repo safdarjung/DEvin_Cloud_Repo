@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
+import { BarList, type VizTone } from "@/components/widgets/viz";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -8,6 +9,13 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listInsightActions, listInsights } from "@/modules/insights/queries";
 import { InsightDetail, InsightFilters, InsightList } from "@/modules/insights/components/insight-view";
 import { parseDomain, parseStatusTab, parseUuid, sortInsights, insightHref } from "@/modules/insights/components/helpers";
+
+const SEVERITY_ROWS: { key: string; label: string; tone: VizTone }[] = [
+  { key: "critical", label: "Critical", tone: "destructive" },
+  { key: "warning", label: "Warning", tone: "warning" },
+  { key: "watch", label: "Watch", tone: "default" },
+  { key: "info", label: "Info", tone: "default" },
+];
 
 export default async function InsightsPage({
   params,
@@ -77,7 +85,19 @@ export default async function InsightsPage({
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-          <div className={selected ? "hidden lg:block" : undefined}>
+          <div className={selected ? "hidden space-y-3 lg:block" : "space-y-3"}>
+            {items.length > 1 && (
+              <div className="rounded-lg border bg-card px-4 py-3">
+                <BarList
+                  ariaLabel="Insights in this view by severity"
+                  items={SEVERITY_ROWS.map((row) => ({
+                    label: row.label,
+                    value: items.filter((i) => i.severity === row.key).length,
+                    tone: row.tone,
+                  })).filter((row) => row.value > 0)}
+                />
+              </div>
+            )}
             <InsightList base={base} status={tab.key} domain={domain} items={items} selectedId={id} />
           </div>
           <div className={selected ? undefined : "hidden lg:block"}>

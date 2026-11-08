@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export default async function FeeStructuresPage({
     <div className="space-y-6">
       <PageHeader title="Fee structures" description="Per-grade components; assign to students from a structure's page." />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <FadeIn className="grid gap-4 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2">
           {academicYears.length === 0 || grades.length === 0 ? (
             <EmptyState title="Set up first" description="Create an academic year and a grade first." />
@@ -45,8 +46,12 @@ export default async function FeeStructuresPage({
               <EmptyState title="No fee structures yet" />
             ) : (
               <ul className="divide-y divide-border">
-                {structures.map((s) => (
-                  <li key={s.id} className="flex items-center justify-between gap-3 py-2">
+                {structures.map((s, i) => (
+                  <li
+                    key={s.id}
+                    className="flex items-center justify-between gap-3 py-2 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-1 motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)"
+                    style={{ animationDelay: `${Math.min(i, 8) * 25}ms` }}
+                  >
                     <span className="min-w-0">
                       {s.name} <span className="text-muted-foreground">({s.componentCount} components)</span>
                     </span>
@@ -59,7 +64,7 @@ export default async function FeeStructuresPage({
             )}
           </CardContent>
         </Card>
-      </div>
+      </FadeIn>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Widget } from "@/components/widgets/widget";
 import { KpiTile } from "@/components/widgets/kpi-widget";
+import { BarList, ProgressBar } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { ROLE_PERMISSIONS, type Role } from "@/lib/auth/permissions";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -84,9 +85,23 @@ export default async function TrustPage({
             (u) => (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 divide-x-2 divide-border rounded-lg bg-secondary/60 [&_[data-slot=card]]:border-0 [&_[data-slot=card]]:bg-transparent">
-                  <KpiTile label="Requests" value={u.totalRequests.toLocaleString("en-IN")} />
-                  <KpiTile label="Tokens" value={u.totalTokens.toLocaleString("en-IN")} />
+                  <KpiTile label="Requests" value={u.totalRequests.toLocaleString("en-IN")} animateTo={u.totalRequests} />
+                  <KpiTile label="Tokens" value={u.totalTokens.toLocaleString("en-IN")} animateTo={u.totalTokens} />
                 </div>
+                {u.totalRequests > 0 && (
+                  <BarList
+                    ariaLabel="AI requests by provider"
+                    items={(["local", "cloud"] as const).map((p) => ({ label: humanize(p), value: u.byProvider[p].requests }))}
+                  />
+                )}
+                {u.totalRequests > 0 && (
+                  <ProgressBar
+                    label="Requests that succeeded"
+                    value={u.byProvider.local.okRequests + u.byProvider.cloud.okRequests}
+                    max={u.totalRequests}
+                    tone="success"
+                  />
+                )}
                 <SimpleTable
                   caption="AI requests by provider"
                   head={["Provider", "Requests", "Succeeded"]}
