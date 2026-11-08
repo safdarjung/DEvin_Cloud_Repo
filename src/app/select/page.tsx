@@ -25,6 +25,10 @@ export default async function SelectInstitution() {
     .filter((inst): inst is { slug: string; name: string } => inst !== null);
 
   if (institutions.length === 0) {
+    // Platform admins (the app's own operators) belong to no school: send them
+    // to the platform console. /platform re-checks is_platform_admin itself.
+    const { data: profile } = await supabase.from("profiles").select("is_platform_admin").eq("id", claims.sub).maybeSingle();
+    if (profile?.is_platform_admin) redirect("/platform");
     return (
       <main className="flex min-h-screen flex-1 flex-col items-center justify-center bg-muted/30 p-6">
         <div className="w-full max-w-md bg-card">
