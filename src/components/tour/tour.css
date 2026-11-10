@@ -1,0 +1,353 @@
+/* School tour (/tour). Marketing tokens (--mk-*) come from the (marketing) layout; --role is set per card. */
+
+.tour-root {
+  --tour-radius: 22px;
+  --tour-ease: cubic-bezier(0.34, 1.56, 0.64, 1); /* springy overshoot */
+}
+
+/* ---------- film ---------- */
+
+.tour-film {
+  position: relative;
+}
+
+.tour-stage {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: #a8e4ff;
+}
+
+.tour-canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.tour-stop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  pointer-events: none; /* the canvas under it stays pokeable */
+}
+
+.tour-pin {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  display: flex;
+  align-items: center;
+  padding: 5.5rem clamp(1rem, 4vw, 3.5rem) 2rem;
+}
+
+.tour-film .tour-card {
+  pointer-events: auto;
+  opacity: var(--dwell, 0);
+  transform: translateY(calc((1 - var(--dwell, 0)) * 28px)) scale(calc(0.94 + var(--dwell, 0) * 0.06));
+  transform-origin: left center;
+}
+
+.tour-film .tour-card[data-on="false"] {
+  pointer-events: none;
+}
+
+/* Keyboard and screen-reader path: a focused card is always shown and usable. */
+.tour-film .tour-card:focus-within {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ---------- card ---------- */
+
+.tour-card {
+  max-width: 27rem;
+  padding: 1.6rem 1.6rem 1.4rem;
+  border-radius: var(--tour-radius);
+  background: var(--mk-bg);
+  color: var(--mk-fg);
+  border: 2px solid var(--mk-line);
+  border-top: 8px solid var(--role, var(--mk-accent));
+  box-shadow: 0 6px 0 var(--mk-line), 0 24px 48px -24px rgb(0 0 0 / 0.35);
+}
+
+.tour-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--mk-muted);
+}
+
+.tour-pill {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--role, var(--mk-accent)) 18%, transparent);
+  color: var(--mk-fg);
+}
+
+.tour-title {
+  margin-top: 0.4rem;
+  font-size: clamp(2rem, 1.4rem + 2vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.tour-tagline {
+  margin-top: 0.6rem;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--mk-muted);
+}
+
+.tour-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.tour-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--mk-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tour-film .tour-hint svg {
+    animation: tour-nudge 1.4s var(--tour-ease) infinite;
+  }
+}
+
+@keyframes tour-nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+/* ---------- chunky buttons (press down onto their own shadow) ---------- */
+
+.tour-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.9rem;
+  padding: 0 1.15rem;
+  border-radius: 14px;
+  font-weight: 800;
+  background: var(--role, var(--mk-accent));
+  color: #10141a; /* dark text keeps contrast on every role accent */
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--role, var(--mk-accent)) 62%, #000);
+  transition: transform 120ms var(--tour-ease), box-shadow 120ms ease, filter 120ms ease;
+}
+
+.tour-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.tour-btn:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 transparent;
+}
+
+.tour-btn:focus-visible,
+.tour-icon-btn:focus-visible,
+.tour-rail button:focus-visible {
+  outline: 3px solid var(--mk-fg);
+  outline-offset: 3px;
+}
+
+.tour-btn-ghost {
+  background: var(--mk-bg);
+  color: var(--mk-fg);
+  border: 2px solid var(--mk-line);
+  box-shadow: 0 4px 0 var(--mk-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-btn {
+    transition: none;
+  }
+}
+
+/* ---------- progress rail ---------- */
+
+.tour-rail {
+  position: absolute;
+  right: clamp(0.75rem, 2vw, 1.75rem);
+  top: 50%;
+  z-index: 3;
+  transform: translateY(-50%);
+}
+
+.tour-rail ol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tour-rail button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+}
+
+.tour-rail button::before {
+  content: "";
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--role, var(--mk-accent));
+  box-shadow: 0 2px 0 rgb(0 0 0 / 0.18);
+  transition: transform 220ms var(--tour-ease), background 160ms ease;
+}
+
+.tour-rail button[aria-current="step"]::before {
+  background: var(--role, var(--mk-accent));
+  transform: scale(1.45);
+}
+
+.tour-rail-label {
+  position: absolute;
+  right: 2.4rem;
+  white-space: nowrap;
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--mk-bg);
+  color: var(--mk-fg);
+  box-shadow: 0 3px 0 var(--mk-line);
+  opacity: 0;
+  transform: translateX(6px);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 200ms var(--tour-ease);
+}
+
+.tour-rail button:hover .tour-rail-label,
+.tour-rail button:focus-visible .tour-rail-label {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- features dialog ---------- */
+
+.tour-dialog {
+  width: min(960px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--tour-radius);
+  background: var(--mk-bg);
+  color: var(--mk-fg);
+  box-shadow: 0 8px 0 color-mix(in srgb, var(--role, var(--mk-accent)) 60%, #000), 0 40px 80px -30px rgb(0 0 0 / 0.5);
+  overflow: auto;
+}
+
+.tour-dialog::backdrop {
+  background: rgb(10 20 30 / 0.55);
+  backdrop-filter: blur(4px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tour-dialog[open] {
+    animation: tour-pop 380ms var(--tour-ease);
+  }
+}
+
+@keyframes tour-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+}
+
+.tour-dialog-head,
+.tour-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+}
+
+.tour-dialog-head h2 {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.tour-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  border: 2px solid var(--mk-line);
+}
+
+.tour-player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.tour-player-wait {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: #fff;
+}
+
+/* ---------- fallback (no WebGL / reduced motion / narrow portrait) ---------- */
+
+.tour-static {
+  display: grid;
+  gap: clamp(2.5rem, 6vw, 5rem);
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 4.5rem) 1rem;
+}
+
+.tour-static-stop {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+  scroll-margin-top: 5rem;
+}
+
+.tour-static .tour-card {
+  max-width: 34rem;
+}
+
+.tour-video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--tour-radius);
+  background: #000;
+}
+
+@media (min-width: 900px) {
+  .tour-static-stop:has(.tour-video) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  }
+}

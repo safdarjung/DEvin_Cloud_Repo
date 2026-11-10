@@ -27,6 +27,7 @@ import {
   ListChecks,
   NotebookPen,
   NotebookText,
+  Orbit,
   Palette,
   Puzzle,
   Shield,
@@ -70,6 +71,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   // is the only row granted to exactly {student, guardian} and no staff role,
   // which is exactly who the portal link is for.
   { href: "/assistant", label: "Ask the data", icon: MessageSquare, permission: "dashboard.view", group: "Overview", module: "ai_teacher" },
+  // App Orb: every role holds notification.read; portal lists add it below.
+  { href: "/orb", label: "Orb", icon: Orbit, permission: "notification.read", group: "Overview" },
   { href: "/portal", label: "Portal", icon: UserCircle, permission: "exam.recheck.request", group: "Overview" },
   { href: "/students", label: "Students", icon: Users, permission: "student.read", group: "Academics" },
   { href: "/attendance", label: "Attendance", icon: CalendarCheck, permission: "attendance.read", group: "Academics" },
@@ -128,8 +131,11 @@ const portal = (href: string, label: string, icon: LucideIcon, group: NavGroup, 
   module,
 });
 
+const ORB_NAV: NavItem = { href: "/orb", label: "Orb", icon: Orbit, permission: "notification.read", group: "Overview" };
+
 export const GUARDIAN_NAV: readonly NavItem[] = [
   portal("", "Overview", UserCircle, "My child"),
+  { ...ORB_NAV, group: "My child" },
   portal("/attendance", "Attendance", CalendarCheck, "My child", "attendance"),
   portal("/results", "Results", GraduationCap, "My child", "exams"),
   portal("/assignments", "Assignments", FileText, "My child", "assignments"),
@@ -145,6 +151,7 @@ export const GUARDIAN_NAV: readonly NavItem[] = [
 
 export const STUDENT_NAV: readonly NavItem[] = [
   portal("", "Overview", UserCircle, "Overview"),
+  ORB_NAV,
   portal("/subjects", "Subjects", Book, "Learning"),
   { ...portal("/study", "Study", BookOpen, "Learning"), permission: "ai.study" },
   { ...portal("/practice", "Practice", Target, "Learning", "practice"), permission: "ai.study" },
@@ -190,5 +197,5 @@ export function homePathFor(permissions: ReadonlySet<Permission>, settings?: Rec
   if (permissions.has("dashboard.view")) return "/dashboard";
   if (permissions.has("exam.recheck.request")) return "/portal";
   if (permissions.has("attendance.mark")) return "/today";
-  return navItemsFor(permissions, settings)[0]?.href ?? "/notifications";
+  return navItemsFor(permissions, settings).find((i) => i.href !== "/orb")?.href ?? "/notifications";
 }

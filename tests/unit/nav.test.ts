@@ -105,7 +105,8 @@ describe("navItemsFor", () => {
   for (const role of Object.keys(EXPECTED_HREFS) as Role[]) {
     it(`matches the expected link set for ${role}`, () => {
       const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true, role).map((item) => item.href);
-      expect(new Set(hrefs)).toEqual(new Set(EXPECTED_HREFS[role]));
+      // Every role holds notification.read, so every role gets the App Orb link.
+      expect(new Set(hrefs)).toEqual(new Set([...EXPECTED_HREFS[role], "/orb"]));
     });
   }
 
