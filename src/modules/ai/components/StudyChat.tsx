@@ -252,11 +252,16 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
         compact
         back={backHref ? { href: backHref, label: "Back" } : undefined}
         actions={
-          notebookEnabled ? (
-            <Link href={`/${institutionSlug}/portal/study/notebook`} className={buttonVariants({ variant: "outline" })}>
-              My notebook
+          <>
+            <Link href={`/${institutionSlug}/settings/study-preferences`} className={buttonVariants({ variant: "outline" })}>
+              Study language
             </Link>
-          ) : undefined
+            {notebookEnabled && (
+              <Link href={`/${institutionSlug}/portal/study/notebook`} className={buttonVariants({ variant: "outline" })}>
+                My notebook
+              </Link>
+            )}
+          </>
         }
       />
       <div className="space-y-2">

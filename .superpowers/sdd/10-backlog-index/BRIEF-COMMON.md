@@ -28,4 +28,4 @@ Voice: caveman-terse. No filler. Report file = detail; reply ≤4 lines.
 - Single-file test run: `pnpm test:db tests/db/x.test.ts` (no `--`; with `--` the whole project runs).
 - Files the seed scripts import (`src/modules/core/schemas.ts`, …) must use relative `.ts` imports, never `@/` — plain node can't resolve the alias; a broken reseed leaves the demo tenant empty (M03).
 - New actions need C-03 fixtures in `tests/security/escalation.test.ts` (import the action file + one fixture per action) — the security suite fails otherwise (M03).
-- **HOSTED-APPLIED: hosted Supabase holds exactly 0001–0051, 0064–0079, 0082–0086, 0088–0092, 0094, 0095, 0099 (pushed 2026-11-05; 0087 X04, 0093 M20, 0096 M23 are NOT hosted). NEVER edit any of them.** Any fix to their tables/functions/policies goes in a NEW migration numbered 0102 or higher (0100, 0101 taken by the UI session, hosted) (claim it in 10-backlog-index §3) with its own db test.
+- **HOSTED-APPLIED: hosted Supabase holds every migration on main through 0105 (2026-11-06). NEVER edit any of them.** Next free: 0106 (simulator), 0107 (studio) claimed; then 0108.

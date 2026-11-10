@@ -27,6 +27,7 @@ import {
   SaveStudyChatSchema,
   SaveStudyNoteSchema,
   UpdateStudyItemSchema,
+  UpdateStudyLanguageSchema,
 } from "@/modules/ai/student-study.schemas";
 
 // A generous ceiling, not a product decision about how much a student
@@ -193,5 +194,38 @@ export const deleteStudyItem = defineAction({
     await audit(ctx, { action: "ai.study.item.delete", entityType: "study_item", entityId: itemId });
     revalidatePath(`/${ctx.institution.slug}/portal/study/notebook`);
     return { id: itemId };
+  },
+});
+
+// DBT-160 — own-row upsert (RLS: own rows only); keeps any other style keys.
+export const updateStudyLanguage = defineAction({
+  name: "ai.study.language.update",
+  module: "ai_student",
+  schema: UpdateStudyLanguageSchema,
+  permission: "ai.study",
+  handler: async ({ language }, ctx) => {
+    const supabase = await createClient();
+    const { data: existing, error: readError } = await supabase
+      .from("study_preferences")
+      .select("style")
+      .eq("institution_id", ctx.institution.id)
+      .eq("user_id", ctx.user.id)
+      .maybeSingle();
+    if (readError) throwMapped(readError);
+    const style = typeof existing?.style === "object" && existing.style !== null && !Array.isArray(existing.style) ? existing.style : {};
+
+    const { error } = await supabase.from("study_preferences").upsert(
+      {
+        institution_id: ctx.institution.id,
+        user_id: ctx.user.id,
+        style: { ...style, language } as unknown as NonNullable<Json>,
+      },
+      { onConflict: "institution_id,user_id" },
+    );
+    if (error) throwMapped(error);
+
+    await audit(ctx, { action: "ai.study.language.update", entityType: "study_preferences", entityId: ctx.user.id });
+    revalidatePath(`/${ctx.institution.slug}/portal/study`);
+    return { language };
   },
 });

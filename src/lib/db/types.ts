@@ -4185,6 +4185,19 @@ isOneToOne: false
 "add_enquiry_note":
 { Args: { "p_enquiry_id": string,"p_institution_id": string,"p_text": string }; Returns: Json
                            },
+"ai_usage_by_provider":
+{ Args: { "p_from": string,"p_institution_id": string,"p_to": string }; Returns: {
+              "cost_usd": number,"input_tokens": number,"ok_requests": number,"output_tokens": number,"provider": string,"requests": number
+            }[]
+                           },
+"ai_usage_sum":
+{ Args: { "p_feature"?: string,"p_from": string,"p_institution_id": string,"p_role"?: string,"p_user_id"?: string }; Returns: number
+                           },
+"ai_usage_tokens_by_role":
+{ Args: { "p_from": string,"p_institution_id": string }; Returns: {
+              "cost_usd": number,"role": string,"tokens": number
+            }[]
+                           },
 "apply_late_fees":
 { Args: { "p_institution_id": string }; Returns: Json
                            },
@@ -4258,7 +4271,10 @@ isOneToOne: false
 { Args: { "p_batch_id": string }; Returns: Json
                            },
 "compute_mastery":
-{ Args: { "p_institution_id": string }; Returns: number
+{ Args: { "p_class_section_id"?: string,"p_institution_id": string,"p_run_at"?: string }; Returns: number
+                           },
+"compute_mastery_sweep":
+{ Args: { "p_institution_id": string,"p_run_at": string }; Returns: number
                            },
 "convert_enquiry":
 { Args: { "p_academic_year_id": string,"p_applicant": Json,"p_enquiry_id": string,"p_grade_id": string,"p_guardian": Json,"p_institution_id": string }; Returns: Json

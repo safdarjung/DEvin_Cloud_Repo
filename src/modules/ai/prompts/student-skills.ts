@@ -9,10 +9,27 @@
 // know to write a reply.
 export type StudentSkill = "terse" | "eli5" | "anatomy";
 
+/** The study chat's supported languages (also the picker list on /settings/study-preferences). */
+export const STUDENT_LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "hi", label: "Hindi" },
+  { code: "mixed", label: "Hinglish (Hindi + English)" },
+  { code: "ta", label: "Tamil" },
+  { code: "te", label: "Telugu" },
+  { code: "kn", label: "Kannada" },
+  { code: "ml", label: "Malayalam" },
+  { code: "mr", label: "Marathi" },
+  { code: "bn", label: "Bengali" },
+  { code: "gu", label: "Gujarati" },
+  { code: "pa", label: "Punjabi" },
+  { code: "or", label: "Odia" },
+] as const;
+export type StudentLanguage = (typeof STUDENT_LANGUAGES)[number]["code"];
+
 export interface StudentStyle {
   notesDensity: "brief" | "standard" | "detailed";
   notesFormat: "bullets" | "qa" | "paragraphs";
-  language: "en" | "hi" | "mixed" | "ta" | "te" | "kn" | "ml" | "mr" | "bn" | "gu" | "pa" | "or";
+  language: StudentLanguage;
   /** Free text, ≤300 chars (05 §4.1-style cap) — wrapped in the delimited data block below, never trusted as instructions. */
   myStyle?: string;
 }

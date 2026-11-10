@@ -98,49 +98,32 @@ export async function checkLimits(ctx: TenantContext, feature: string): Promise<
   const settings = aiSettingsFor(ctx);
   const admin = withAiServiceRole(() => createAdminClient());
 
-  const dayStart = startOfDayInTimezone(timezoneFor(ctx));
-  const { data: dayRows, error: dayError } = await admin
-    .from("ai_usage_events")
-    .select("input_tokens, output_tokens")
-    .eq("institution_id", ctx.institution.id)
-    .gte("created_at", dayStart.toISOString());
-  if (dayError) throw dayError;
+  const dayStart = startOfDayInTimezone(timezoneFor(ctx)).toISOString();
+  // DBT-159: SQL sums (PostgREST would cap row reads at 1000).
+  const tokensSince = async (extra: { p_role?: string; p_user_id?: string; p_feature?: string }): Promise<number> => {
+    const { data, error } = await admin.rpc("ai_usage_sum", {
+      p_institution_id: ctx.institution.id,
+      p_from: dayStart,
+      ...extra,
+    });
+    if (error) throw error;
+    return Number(data ?? 0);
+  };
 
-  const tokensToday = (dayRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
-  if (tokensToday >= settings.daily_token_quota) {
+  if ((await tokensSince({})) >= settings.daily_token_quota) {
     return { ok: false, code: "quota_exceeded" };
   }
 
   const roleQuota = roleDailyTokenQuota(ctx);
-  if (roleQuota !== null) {
-    const { data: roleRows, error: roleError } = await admin
-      .from("ai_usage_events")
-      .select("input_tokens, output_tokens")
-      .eq("institution_id", ctx.institution.id)
-      .eq("role", ctx.membership.role)
-      .gte("created_at", dayStart.toISOString());
-    if (roleError) throw roleError;
-
-    const roleTokensToday = (roleRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
-    if (roleTokensToday >= roleQuota) {
-      return { ok: false, code: "quota_exceeded" };
-    }
+  if (roleQuota !== null && (await tokensSince({ p_role: ctx.membership.role })) >= roleQuota) {
+    return { ok: false, code: "quota_exceeded" };
   }
 
-  if (STUDENT_QUOTA_FEATURES.has(feature)) {
-    const { data: studentRows, error: studentError } = await admin
-      .from("ai_usage_events")
-      .select("input_tokens, output_tokens")
-      .eq("institution_id", ctx.institution.id)
-      .eq("user_id", ctx.user.id)
-      .eq("feature", feature)
-      .gte("created_at", dayStart.toISOString());
-    if (studentError) throw studentError;
-
-    const studentTokensToday = (studentRows ?? []).reduce((sum, row) => sum + row.input_tokens + row.output_tokens, 0);
-    if (studentTokensToday >= settings.student_daily_token_quota) {
-      return { ok: false, code: "quota_exceeded" };
-    }
+  if (
+    STUDENT_QUOTA_FEATURES.has(feature) &&
+    (await tokensSince({ p_user_id: ctx.user.id, p_feature: feature })) >= settings.student_daily_token_quota
+  ) {
+    return { ok: false, code: "quota_exceeded" };
   }
 
   const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();

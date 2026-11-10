@@ -95,6 +95,7 @@ const PUBLIC_AUTHENTICATED = [
   "public.decide_studio_request",
   "public.decide_workflow_run",
   "public.enqueue_fee_reminders",
+  "public.enqueue_invoice_reminders",
   "public.enqueue_term_invoices",
   "public.enrol_applicant",
   "public.enter_marks",
@@ -150,6 +151,9 @@ const PUBLIC_AUTHENTICATED = [
 // execute — the RLS-bound aggregates (each still filters under the caller's
 // own RLS; no row escapes the normal policy).
 export const PUBLIC_INVOKER_AUTHENTICATED = [
+  "public.ai_usage_by_provider",
+  "public.ai_usage_sum",
+  "public.ai_usage_tokens_by_role",
   "public.attendance_daily_counts",
   "public.exam_mark_outliers",
   "public.commit_import_batch",
@@ -171,6 +175,7 @@ export const SERVICE_ONLY = [
   "public.apply_late_fees",
   "public.assert_forecast_window",
   "public.compute_mastery",
+  "public.compute_mastery_sweep",
   "public.emit_workflow_event",
   "public.enqueue_due_forecasts",
   "public.enqueue_due_late_fees",

@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { uuid } from "@/lib/schemas/common";
 import { UIMessageRequestSchema } from "@/lib/ai/ui-message-schema";
+import { STUDENT_LANGUAGES } from "@/modules/ai/prompts/student-skills";
 import { BlockSchema } from "@/modules/ai/blocks/schemas";
 
 const title = z.string().trim().min(1).max(120);
@@ -47,3 +48,8 @@ export type SaveStudyChatInput = z.infer<typeof SaveStudyChatSchema>;
 export type SaveStudyNoteInput = z.infer<typeof SaveStudyNoteSchema>;
 export type UpdateStudyItemInput = z.infer<typeof UpdateStudyItemSchema>;
 export type DeleteStudyItemInput = z.infer<typeof DeleteStudyItemSchema>;
+
+// DBT-160 — study language picker; merges into study_preferences.style.language.
+export const UpdateStudyLanguageSchema = z
+  .object({ language: z.enum(STUDENT_LANGUAGES.map((l) => l.code) as [string, ...string[]]) })
+  .strict();

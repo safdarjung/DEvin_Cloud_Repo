@@ -7,7 +7,7 @@ import "server-only";
 // concerns, not needed to build the system prompt.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
-import type { StudentSkill, StudentStyle } from "@/modules/ai/prompts/student-skills";
+import { STUDENT_LANGUAGES, type StudentSkill, type StudentStyle } from "@/modules/ai/prompts/student-skills";
 
 const DEFAULT_SKILLS: StudentSkill[] = ["terse", "eli5", "anatomy"];
 const DEFAULT_STYLE: StudentStyle = { notesDensity: "standard", notesFormat: "bullets", language: "en" };
@@ -49,7 +49,7 @@ export async function getStudentPreferences(ctx: TenantContext): Promise<Student
     notesFormat: ["bullets", "qa", "paragraphs"].includes(storedStyle.notesFormat as string)
       ? (storedStyle.notesFormat as StudentStyle["notesFormat"])
       : DEFAULT_STYLE.notesFormat,
-    language: ["en", "hi", "mixed", "ta", "te", "kn", "ml", "mr", "bn", "gu", "pa", "or"].includes(storedStyle.language as string)
+    language: STUDENT_LANGUAGES.some((l) => l.code === storedStyle.language)
       ? (storedStyle.language as StudentStyle["language"])
       : DEFAULT_STYLE.language,
     myStyle: typeof storedStyle.myStyle === "string" ? storedStyle.myStyle : undefined,

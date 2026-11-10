@@ -41,34 +41,35 @@ export async function usageSummary(ctx: TenantContext, range?: UsageSummaryRange
   const to = range?.to ?? new Date();
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("ai_usage_events")
-    .select("provider, input_tokens, output_tokens, cost_estimate_usd, ok")
-    .eq("institution_id", ctx.institution.id)
-    .gte("created_at", from.toISOString())
-    .lte("created_at", to.toISOString());
+  const { data, error } = await supabase.rpc("ai_usage_by_provider", {
+    p_institution_id: ctx.institution.id,
+    p_from: from.toISOString(),
+    p_to: to.toISOString(),
+  });
 
   if (error) throw error;
 
   const byProvider: UsageSummary["byProvider"] = { local: emptyProviderSummary(), cloud: emptyProviderSummary() };
+  let totalRequests = 0;
   let totalTokens = 0;
   let totalCostEstimateUsd = 0;
 
   for (const row of data ?? []) {
     const bucket = row.provider === "cloud" ? byProvider.cloud : byProvider.local;
-    bucket.requests += 1;
-    if (row.ok) bucket.okRequests += 1;
-    bucket.inputTokens += row.input_tokens;
-    bucket.outputTokens += row.output_tokens;
-    bucket.costEstimateUsd += row.cost_estimate_usd;
-    totalTokens += row.input_tokens + row.output_tokens;
-    totalCostEstimateUsd += row.cost_estimate_usd;
+    bucket.requests += Number(row.requests);
+    bucket.okRequests += Number(row.ok_requests);
+    bucket.inputTokens += Number(row.input_tokens);
+    bucket.outputTokens += Number(row.output_tokens);
+    bucket.costEstimateUsd += Number(row.cost_usd);
+    totalRequests += Number(row.requests);
+    totalTokens += Number(row.input_tokens) + Number(row.output_tokens);
+    totalCostEstimateUsd += Number(row.cost_usd);
   }
 
   return {
     rangeFrom: from.toISOString(),
     rangeTo: to.toISOString(),
-    totalRequests: (data ?? []).length,
+    totalRequests,
     totalTokens,
     totalCostEstimateUsd,
     byProvider,
@@ -97,25 +98,15 @@ export async function usageByRole(ctx: TenantContext): Promise<UsageByRole[]> {
   const from = new Date(Date.now() - DEFAULT_RANGE_DAYS * 24 * 60 * 60 * 1000);
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("ai_usage_events")
-    .select("role, input_tokens, output_tokens, cost_estimate_usd")
-    .eq("institution_id", ctx.institution.id)
-    .gte("created_at", from.toISOString());
+  const { data, error } = await supabase.rpc("ai_usage_tokens_by_role", {
+    p_institution_id: ctx.institution.id,
+    p_from: from.toISOString(),
+  });
   if (error) throw error;
 
-  const byRole = new Map<string, { tokens: number; costUsd: number }>();
-  for (const row of data ?? []) {
-    const role = row.role ?? "unknown";
-    const bucket = byRole.get(role) ?? { tokens: 0, costUsd: 0 };
-    bucket.tokens += row.input_tokens + row.output_tokens;
-    bucket.costUsd += row.cost_estimate_usd;
-    byRole.set(role, bucket);
-  }
-
-  return Array.from(byRole.entries()).map(([role, bucket]) => ({
-    role,
-    tokens: bucket.tokens,
-    cost_paise: Math.round(bucket.costUsd * USD_TO_PAISE),
+  return (data ?? []).map((row) => ({
+    role: row.role,
+    tokens: Number(row.tokens),
+    cost_paise: Math.round(Number(row.cost_usd) * USD_TO_PAISE),
   }));
 }
