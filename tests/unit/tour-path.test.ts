@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { CORRIDOR_END_Z, CORRIDOR_HALF, DOOR_HALF, GATE_Z, ROOM_HALF, ROOM_ORDER, ROOM_X, ROOMS, STOPS, cameraAt, dwellAmount, pathParamAt, stopAt } from "@/components/tour/path";
+import { BACK_DOOR, CORRIDOR_END_Z, CORRIDOR_HALF, DOOR_HALF, FINALE_Z, GATE_Z, ROOM_HALF, ROOM_ORDER, ROOM_X, ROOMS, STOPS, cameraAt, dwellAmount, pathParamAt, stopAt } from "@/components/tour/path";
 
-const ORDER = ["gate", "principal", "admin", "teacher", "student", "parent"];
+const ORDER = ["gate", "principal", "admin", "teacher", "student", "parent", "finale"];
 const samples = Array.from({ length: 1001 }, (_, i) => i / 1000);
 const mid = (r: readonly [number, number]) => (r[0] + r[1]) / 2;
 
 describe("tour path", () => {
-  test("stops run gate then the five rooms in order", () => {
+  test("stops run gate, the five rooms in order, then the finale outside", () => {
     expect(STOPS.map((s) => s.key)).toEqual(ORDER);
   });
 
@@ -30,13 +30,21 @@ describe("tour path", () => {
     expect(cameraAt(0).position.z).toBeGreaterThan(GATE_Z);
   });
 
-  test("progress 1 is inside the parent lounge", () => {
-    expect(stopAt(1).key).toBe("parent");
-    const { position } = cameraAt(1);
+  test("the parent stop dwells inside the parent lounge", () => {
+    const parent = STOPS.find((s) => s.key === "parent")!;
+    const { position } = cameraAt(mid(parent.dwell));
     const room = ROOMS.parent;
     expect(Math.sign(position.x)).toBe(room.side);
     expect(Math.abs(position.x)).toBeGreaterThan(ROOM_X - ROOM_HALF.x);
     expect(Math.abs(position.z - room.z)).toBeLessThan(ROOM_HALF.z);
+  });
+
+  test("progress 1 is the finale, outside behind the school and looking at the mascots", () => {
+    expect(stopAt(1).key).toBe("finale");
+    const { position, lookAt } = cameraAt(1);
+    expect(position.z).toBeLessThan(CORRIDOR_END_Z - 2);
+    expect(lookAt.z).toBeLessThan(position.z);
+    expect(Math.abs(lookAt.z - FINALE_Z)).toBeLessThan(1);
   });
 
   test("every stop is reachable and the camera holds its pose through the dwell", () => {
@@ -69,7 +77,7 @@ describe("tour path", () => {
     expect(pathParamAt(1)).toBe(1);
   });
 
-  test("the camera only crosses walls through the front door and room doorways", () => {
+  test("the camera only crosses walls through the front door, room doorways and the back door", () => {
     const MARGIN = 0.3; // room for pointer parallax and the near plane
     for (const p of samples) {
       const { x, y, z } = cameraAt(p).position;
@@ -80,7 +88,12 @@ describe("tour path", () => {
         expect(y).toBeLessThan(3.2 - MARGIN);
         continue;
       }
-      expect(z).toBeGreaterThan(CORRIDOR_END_Z + MARGIN);
+      if (z < CORRIDOR_END_Z - 0.8) continue; // out the back, in the playground
+      if (z < CORRIDOR_END_Z + 0.3) {
+        expect(Math.abs(x)).toBeLessThan(BACK_DOOR.half - MARGIN);
+        expect(y).toBeLessThan(BACK_DOOR.height - MARGIN);
+        continue;
+      }
       if (Math.abs(x) < CORRIDOR_HALF - MARGIN) continue; // in the corridor
       const room = ROOM_ORDER.map((k) => ROOMS[k]).find((r) => r.side === Math.sign(x) && Math.abs(z - r.z) < ROOM_HALF.z);
       expect(room, `camera at x=${x.toFixed(2)} z=${z.toFixed(2)} is inside a wall`).toBeDefined();
@@ -91,7 +104,7 @@ describe("tour path", () => {
 
   test("out-of-range progress clamps", () => {
     expect(stopAt(-0.5).key).toBe("gate");
-    expect(stopAt(2).key).toBe("parent");
+    expect(stopAt(2).key).toBe("finale");
     expect(pathParamAt(-1)).toBe(0);
     expect(pathParamAt(5)).toBe(1);
   });

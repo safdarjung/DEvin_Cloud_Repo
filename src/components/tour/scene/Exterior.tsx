@@ -37,11 +37,11 @@ function Ground() {
         <RBox key={x} size={[0.5, 0.18, 10.6]} radius={0.08} color={C.grassDark} position={[x, 0.09, 5]} />
       ))}
       {[
-        [-60, -8, -95, 34],
-        [10, -14, -110, 42],
-        [70, -9, -90, 30],
-        [-95, -6, -30, 26],
-        [100, -8, -20, 30],
+        [-60, -28, -95, 34],
+        [12, -36, -112, 42],
+        [70, -24, -92, 30],
+        [-95, -19, -30, 26],
+        [100, -23, -20, 30],
       ].map(([x, y, z, r], i) => (
         <Ball key={i} r={r} color={i % 2 ? C.grassDark : C.green} position={[x, y, z]} scale={[1.4, 1, 1]} detail={28} />
       ))}
@@ -150,7 +150,7 @@ const TREES = [
   { p: [6.5, 0, 17.5], s: 0.9, c: C.green },
 ] as const;
 
-function Tree({ position, scale, tint, seed }: { position: readonly number[]; scale: number; tint: string; seed: number }) {
+export function Tree({ position, scale, tint, seed }: { position: readonly number[]; scale: number; tint: string; seed: number }) {
   const crown = useRef<THREE.Group>(null);
   const live = useRef({ tilt: spring(0), squash: spring(1) });
 

@@ -1,4 +1,6 @@
 import { describe, expect, test } from "vitest";
+import { TOUR_ROLES } from "../../src/components/tour/roles.ts";
+import { SCENE_KEYS, sceneKeyFor } from "../../src/components/tour/explainer/scene-map.ts";
 import {
   BEAT_FRAMES,
   END_FRAMES,
@@ -31,7 +33,46 @@ describe("explainerTimeline", () => {
     expect(explainerTimeline(2.9).beats).toHaveLength(2);
   });
 
-  test("a 6-feature role stays under 30 seconds", () => {
-    expect(explainerTimeline(6).durationInFrames / EXPLAINER_FPS).toBeLessThan(30);
+  test("there is one cut per section change: into each beat and into the end card", () => {
+    const t = explainerTimeline(3);
+    expect(t.cuts).toEqual([t.beats[0].from, t.beats[1].from, t.beats[2].from, t.end.from]);
+    expect(explainerTimeline(0).cuts).toEqual([TITLE_FRAMES]);
+  });
+
+  test("every real role runs between 25 and 40 seconds", () => {
+    for (const role of TOUR_ROLES) {
+      const seconds = explainerTimeline(role.features.length).durationInFrames / EXPLAINER_FPS;
+      expect(seconds, role.key).toBeGreaterThanOrEqual(25);
+      expect(seconds, role.key).toBeLessThanOrEqual(40);
+    }
+  });
+});
+
+describe("sceneKeyFor", () => {
+  test("every feature in the tour gets a dedicated scene, not the generic one", () => {
+    for (const role of TOUR_ROLES) {
+      for (const f of role.features) expect(sceneKeyFor(f), `${role.key}: ${f.title}`).not.toBe("generic");
+    }
+  });
+
+  test("no role shows the same scene twice", () => {
+    for (const role of TOUR_ROLES) {
+      const keys = role.features.map(sceneKeyFor);
+      expect(new Set(keys).size, role.key).toBe(keys.length);
+    }
+  });
+
+  test("title keywords beat the icon when two features share an icon", () => {
+    expect(sceneKeyFor({ title: "Admissions funnel", icon: "ClipboardList" })).toBe("funnel");
+    expect(sceneKeyFor({ title: "Admissions pipeline", icon: "ClipboardList" })).toBe("kanban");
+    expect(sceneKeyFor({ title: "Scheduled reports", icon: "Bell" })).toBe("reports");
+    expect(sceneKeyFor({ title: "Notifications", icon: "Bell" })).toBe("notifications");
+    expect(sceneKeyFor({ title: "Attendance alerts", icon: "CalendarCheck" })).toBe("alert");
+    expect(sceneKeyFor({ title: "Report cards", icon: "GraduationCap" })).toBe("marks");
+  });
+
+  test("an unknown icon and title fall back to the generic scene", () => {
+    expect(sceneKeyFor({ title: "Something new", icon: "NoSuchIcon" })).toBe("generic");
+    expect(SCENE_KEYS).toContain("generic");
   });
 });

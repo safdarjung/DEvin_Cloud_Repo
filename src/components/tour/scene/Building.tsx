@@ -4,8 +4,9 @@ import { Instance, Instances, RoundedBoxGeometry } from "@react-three/drei";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { CORRIDOR_END_Z } from "../path";
-import { Ball, C, Cyl, RBox, clamp01, cursor, spring, stepSpring, toon } from "./kit";
+import { BACK_DOOR, CORRIDOR_END_Z } from "../path";
+import { Clock } from "./decor";
+import { Ball, C, RBox, clamp01, cursor, spring, stepSpring, toon } from "./kit";
 
 const HALF_W = 12;
 const HEIGHT = 7;
@@ -21,6 +22,11 @@ export function Building() {
       <RBox size={[HALF_W - 1.4, HEIGHT, 0.4]} radius={0.05} color={C.wall} position={[-(HALF_W + 1.4) / 2, HEIGHT / 2, -0.2]} />
       <RBox size={[HALF_W - 1.4, HEIGHT, 0.4]} radius={0.05} color={C.wall} position={[(HALF_W + 1.4) / 2, HEIGHT / 2, -0.2]} />
       <RBox size={[2.8, HEIGHT - 3.2, 0.4]} radius={0.05} color={C.wall} position={[0, (HEIGHT + 3.2) / 2, -0.2]} />
+      {/* back facade around the garden door, which the camera leaves through */}
+      {[-1, 1].map((s) => (
+        <RBox key={s} size={[HALF_W - BACK_DOOR.half, HEIGHT, 0.4]} radius={0.05} color={C.wall} position={[(s * (HALF_W + BACK_DOOR.half)) / 2, HEIGHT / 2, -DEPTH + 0.2]} />
+      ))}
+      <RBox size={[BACK_DOOR.half * 2, HEIGHT - BACK_DOOR.height, 0.4]} radius={0.05} color={C.wall} position={[0, (HEIGHT + BACK_DOOR.height) / 2, -DEPTH + 0.2]} />
       {/* shell: sides + roof (single-sided, so invisible from inside) */}
       {[-1, 1].map((s) => (
         <RBox key={s} size={[0.4, HEIGHT, DEPTH]} radius={0.05} color={C.wall} position={[s * HALF_W, HEIGHT / 2, -DEPTH / 2]} />
@@ -32,12 +38,12 @@ export function Building() {
         <RBox key={s} size={[0.9, HEIGHT, 0.7]} radius={0.16} color={C.white} position={[s * HALF_W, HEIGHT / 2, 0.05]} />
       ))}
       {/* pediment: a triangular prism */}
-      <mesh material={toon(C.trim)} position={[0, HEIGHT + 0.95, 0.15]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.5, 1, 0.4]} castShadow>
+      <mesh material={toon(C.trim)} position={[0, HEIGHT + 0.95, 0.15]} rotation={[-Math.PI / 2, 0, 0]} scale={[1.5, 1, 0.4]}>
         <cylinderGeometry args={[2.6, 2.6, 0.7, 3]} />
       </mesh>
       <Windows />
       <FrontDoors />
-      <Clock />
+      <Clock r={0.85} position={[0, 5.15, 0.05]} />
       <Cupola />
       <RBox size={[4.4, 0.22, 1.4]} radius={0.08} color="#ffd29a" position={[0, 0.11, 0.9]} />
     </group>
@@ -83,7 +89,7 @@ function Windows() {
   );
 }
 
-/** Double doors that swing in (with a bounce) once the camera is close. */
+/** Double doors that swing open (with a bounce) once the camera is close. */
 function FrontDoors() {
   const left = useRef<THREE.Group>(null);
   const right = useRef<THREE.Group>(null);
@@ -91,8 +97,9 @@ function FrontDoors() {
   useFrame((state, dt) => {
     const near = state.camera.position.z < 8 ? 1 : 0;
     const a = stepSpring(open.current, near * 1.55, dt, 70, 6);
-    if (left.current) left.current.rotation.y = a;
-    if (right.current) right.current.rotation.y = -a;
+    // Swing outward, toward the visitor, so the way in stays clear.
+    if (left.current) left.current.rotation.y = -a;
+    if (right.current) right.current.rotation.y = a;
   });
   return (
     <group>
@@ -111,33 +118,6 @@ function FrontDoors() {
   );
 }
 
-/** Clock above the door shows the visitor's real time. */
-function Clock() {
-  const hour = useRef<THREE.Group>(null);
-  const minute = useRef<THREE.Group>(null);
-  useFrame(() => {
-    const d = new Date();
-    const m = d.getMinutes() + d.getSeconds() / 60;
-    if (minute.current) minute.current.rotation.z = -(m / 60) * Math.PI * 2;
-    if (hour.current) hour.current.rotation.z = -(((d.getHours() % 12) + m / 60) / 12) * Math.PI * 2;
-  });
-  return (
-    <group position={[0, 5.15, 0.05]}>
-      <Cyl r={0.85} h={0.14} color={C.white} rotation-x={Math.PI / 2} seg={32} />
-      <mesh material={toon(C.trim)}>
-        <torusGeometry args={[0.88, 0.09, 8, 32]} />
-      </mesh>
-      <group ref={hour} position={[0, 0, 0.1]}>
-        <RBox size={[0.09, 0.45, 0.04]} radius={0.02} color={C.ink} position={[0, 0.2, 0]} />
-      </group>
-      <group ref={minute} position={[0, 0, 0.13]}>
-        <RBox size={[0.06, 0.66, 0.04]} radius={0.02} color={C.ink} position={[0, 0.3, 0]} />
-      </group>
-      <Ball r={0.07} color={C.yellow} position={[0, 0, 0.16]} detail={10} />
-    </group>
-  );
-}
-
 const BELL_PROFILE: [number, number][] = [
   [0, 0.4],
   [0.13, 0.39],
@@ -150,7 +130,7 @@ const BELL_PROFILE: [number, number][] = [
   [0, -0.34],
 ];
 
-/** Bell tower. Click the bell: it swings, pops and sends out rings. */
+/** Bell tower. Click the bell: it swings, pops and sends out rings. (No shadows: they would fall through the roof into the rooms.) */
 function Cupola() {
   const bell = useRef<THREE.Group>(null);
   const rings = useRef<(THREE.Mesh | null)[]>([]);
@@ -201,15 +181,15 @@ function Cupola() {
         [1, -1],
         [1, 1],
       ].map(([x, z]) => (
-        <RBox key={`${x}${z}`} size={[0.36, 2, 0.36]} radius={0.12} color={C.wall} position={[x * 1.1, 1.3, z * 1.1]} cast />
+        <RBox key={`${x}${z}`} size={[0.36, 2, 0.36]} radius={0.12} color={C.wall} position={[x * 1.1, 1.3, z * 1.1]} />
       ))}
       <RBox size={[2.9, 0.3, 2.9]} radius={0.1} color={C.trim} position={[0, 2.4, 0]} />
-      <mesh material={toon(C.trim)} position={[0, 3.25, 0]} rotation-y={Math.PI / 4} castShadow>
+      <mesh material={toon(C.trim)} position={[0, 3.25, 0]} rotation-y={Math.PI / 4}>
         <coneGeometry args={[2.1, 1.5, 4]} />
       </mesh>
       <Ball r={0.18} color={C.yellow} position={[0, 4.1, 0]} />
       <group ref={bell} position={[0, 2.2, 0]}>
-        <mesh geometry={bellGeo} material={toon(C.yellow)} position={[0, -0.55, 0]} castShadow />
+        <mesh geometry={bellGeo} material={toon(C.yellow)} position={[0, -0.55, 0]} />
         <Ball r={0.11} color={C.orange} position={[0, -0.95, 0]} detail={12} />
       </group>
       {ringMats.map((m, i) => (

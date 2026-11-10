@@ -1,242 +1,82 @@
-import type { CSSProperties } from "react";
-import {
-  AbsoluteFill,
-  Sequence,
-  spring,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
-import type { TourFeature, TourRole } from "../roles";
+import { AbsoluteFill, Sequence } from "remotion";
+import type { TourRole } from "../roles";
+import { Beat, Words } from "./Beat";
 import { FeatureIcon } from "./icon";
+import { Chip, FONT, INK, YELLOW, chunky, useMotion } from "./kit";
+import { Backdrop, MascotLayer, ProgressPill, Wipes } from "./Stage";
 import { explainerTimeline } from "./timeline";
-
-const INK = "#1F2937";
-const PAPER = "#FFF8EC";
-interface SpringCfg {
-  damping: number;
-  stiffness: number;
-  mass: number;
-}
-const BOUNCY: SpringCfg = { damping: 9, stiffness: 150, mass: 0.7 };
-const FONT = '"Nunito", "Segoe UI", system-ui, sans-serif';
 
 export interface RoleExplainerProps extends Record<string, unknown> {
   role: TourRole;
 }
 
-function usePop(delay = 0, config: SpringCfg = BOUNCY) {
-  const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
-  return spring({ frame: frame - delay, fps, config });
-}
-
-const chunky = (): CSSProperties => ({
-  border: `5px solid ${INK}`,
-  borderRadius: 36,
-  boxShadow: `0 10px 0 ${INK}`,
-  background: "#fff",
-});
-
-function Backdrop({ accent }: { accent: string }) {
-  const frame = useCurrentFrame();
-  const drift = Math.sin(frame / 25) * 14;
-  const blob = (size: number, x: number, y: number, o: number): CSSProperties => ({
-    position: "absolute",
-    width: size,
-    height: size,
-    borderRadius: "50%",
-    background: accent,
-    opacity: o,
-    left: x,
-    top: y + drift,
-  });
-  return (
-    <AbsoluteFill style={{ background: PAPER, fontFamily: FONT, overflow: "hidden" }}>
-      <div style={blob(520, -160, -200, 0.16)} />
-      <div style={blob(360, 1000, 480, 0.22)} />
-      <div style={blob(160, 1100, 40, 0.3)} />
-    </AbsoluteFill>
-  );
-}
-
-function Chip({ text, color, scale = 1 }: { text: string; color: string; scale?: number }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        transform: `scale(${scale})`,
-        padding: "8px 22px",
-        borderRadius: 999,
-        border: `4px solid ${INK}`,
-        background: color,
-        color: INK,
-        fontWeight: 900,
-        fontSize: 28,
-        letterSpacing: 1,
-        textTransform: "uppercase",
-      }}
-    >
-      {text}
-    </span>
-  );
-}
-
 function TitleCard({ role }: { role: TourRole }) {
-  const pop = usePop(4);
-  const sub = usePop(18);
-  const wiggle = Math.sin(useCurrentFrame() / 4) * 2;
+  const { pop } = useMotion();
+  const chip = pop(10);
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-      <div style={{ transform: `scale(${pop}) rotate(${wiggle}deg)` }}>
-        <Chip text={role.room} color={role.accent} />
-        <h1 style={{ fontSize: 150, margin: "20px 0 0", color: INK, fontWeight: 900, lineHeight: 1 }}>
-          {role.label}
+    <AbsoluteFill>
+      <div style={{ position: "absolute", left: 520, right: 70, top: 0, bottom: 0, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "flex-start" }}>
+        <Chip color={role.accent} size={28} style={{ color: "#fff", transform: `scale(${chip}) rotate(${(1 - chip) * -20 - 3}deg)`, textTransform: "uppercase", letterSpacing: 1 }}>
+          {role.room}
+        </Chip>
+        <h1 style={{ fontSize: role.label.length > 10 ? 92 : 128, margin: "18px 0 14px", color: INK, fontWeight: 900, lineHeight: 1, whiteSpace: "nowrap" }}>
+          {[...role.label].map((ch, i) => {
+            const on = pop(14 + i * 2);
+            return (
+              <span key={i} style={{ display: "inline-block", transform: `translateY(${(1 - on) * 80}px) scale(${on}, ${2 - on})` }}>
+                {ch}
+              </span>
+            );
+          })}
         </h1>
-      </div>
-      <p
-        style={{
-          fontSize: 38,
-          fontWeight: 700,
-          color: INK,
-          maxWidth: 900,
-          marginTop: 28,
-          opacity: Math.min(1, sub),
-          transform: `translateY(${(1 - sub) * 40}px)`,
-        }}
-      >
-        {role.tagline}
-      </p>
-    </AbsoluteFill>
-  );
-}
-
-/** Small animated mock: bars that grow in, so every beat has something moving. */
-function MockTile({ accent, seed }: { accent: string; seed: number }) {
-  const rows = [0.9, 0.62, 0.78].map((w, i) => ({ w: ((w * 100 + seed * 7 + i * 11) % 45) + 45, i }));
-  return (
-    <div style={{ ...chunky(), padding: 28, width: 440, display: "grid", gap: 18 }}>
-      {rows.map(({ w, i }) => (
-        <MockRow key={i} width={w} delay={22 + i * 8} accent={accent} />
-      ))}
-    </div>
-  );
-}
-
-function MockRow({ width, delay, accent }: { width: number; delay: number; accent: string }) {
-  const grow = usePop(delay, { damping: 14, stiffness: 120, mass: 0.8 });
-  return (
-    <div style={{ height: 34, borderRadius: 17, background: "#EEE7D8", overflow: "hidden" }}>
-      <div
-        style={{
-          height: "100%",
-          width: `${width * Math.min(grow, 1.05)}%`,
-          background: accent,
-          borderRadius: 17,
-          borderRight: `4px solid ${INK}`,
-        }}
-      />
-    </div>
-  );
-}
-
-function Beat({
-  feature,
-  index,
-  total,
-  accent,
-}: {
-  feature: TourFeature;
-  index: number;
-  total: number;
-  accent: string;
-}) {
-  const frame = useCurrentFrame();
-  const icon = usePop(2, { damping: 7, stiffness: 170, mass: 0.7 });
-  const text = usePop(12);
-  const blurb = usePop(20);
-  const mock = usePop(26);
-  const tilt = Math.sin(frame / 6) * 3 * Math.min(1, icon);
-  const labelText = feature.label === "simulated" ? "Simulated" : feature.label === "limited" ? "Limited" : null;
-  return (
-    <AbsoluteFill style={{ flexDirection: "row", alignItems: "center", padding: "0 80px", gap: 56 }}>
-      <div
-        style={{
-          ...chunky(),
-          width: 250,
-          height: 250,
-          flex: "none",
-          background: accent,
-          display: "grid",
-          placeItems: "center",
-          transform: `scale(${icon}) rotate(${tilt}deg)`,
-        }}
-      >
-        <FeatureIcon name={feature.icon} size={140} color="#fff" strokeWidth={2.6} />
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", gap: 14, alignItems: "center", opacity: Math.min(1, text) }}>
-          <Chip text={`${index + 1} / ${total}`} color="#fff" />
-          {labelText && <Chip text={labelText} color="#FFD84D" scale={Math.min(1, text)} />}
-        </div>
-        <h2
-          style={{
-            fontSize: 84,
-            lineHeight: 1.05,
-            margin: "18px 0 10px",
-            color: INK,
-            fontWeight: 900,
-            transform: `translateX(${(1 - text) * -120}px)`,
-            opacity: Math.min(1, text),
-          }}
-        >
-          {feature.title}
-        </h2>
-        <p
-          style={{
-            fontSize: 38,
-            lineHeight: 1.3,
-            margin: 0,
-            fontWeight: 700,
-            color: "#374151",
-            maxWidth: 720,
-            opacity: Math.min(1, blurb),
-            transform: `translateY(${(1 - blurb) * 30}px)`,
-          }}
-        >
-          {feature.blurb}
+        <p style={{ fontSize: 36, lineHeight: 1.3, fontWeight: 700, color: "#374151", margin: 0 }}>
+          <Words text={role.tagline} from={32} step={2} />
         </p>
-        <div style={{ marginTop: 30, transform: `scale(${mock})`, transformOrigin: "left top" }}>
-          <MockTile accent={accent} seed={index} />
-        </div>
       </div>
     </AbsoluteFill>
   );
 }
+
+const CONFETTI = Array.from({ length: 14 }, (_, i) => ({ angle: (i / 14) * Math.PI * 2 + 0.3, reach: 250 + ((i * 53) % 140), size: 16 + ((i * 7) % 14) }));
 
 function EndCard({ role }: { role: TourRole }) {
-  const frame = useCurrentFrame();
-  const pop = usePop(4);
-  const pulse = 1 + Math.sin(frame / 5) * 0.03;
+  const { frame, pop, ramp } = useMotion();
+  const cta = pop(26, { damping: 8, stiffness: 170, mass: 0.7 });
+  const tap = 1 - 0.07 * Math.max(0, Math.sin((frame - 50) / 6)) ** 6;
+  const burst = ramp(26, 62);
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", textAlign: "center" }}>
-      <h2 style={{ fontSize: 96, color: INK, fontWeight: 900, margin: 0, transform: `scale(${pop})` }}>
-        Ready to look around?
+    <AbsoluteFill>
+      {CONFETTI.map((c, i) => (
+        <span
+          key={i}
+          style={{
+            position: "absolute",
+            left: 640 + Math.cos(c.angle) * c.reach * (1 - (1 - burst) ** 3),
+            top: 470 + Math.sin(c.angle) * c.reach * 0.6 * (1 - (1 - burst) ** 3) + burst * burst * 60,
+            width: c.size,
+            height: c.size,
+            borderRadius: i % 2 ? "50%" : 5,
+            border: `3px solid ${INK}`,
+            background: [role.accent, YELLOW, "#fff"][i % 3],
+            opacity: burst > 0 ? 1 - burst ** 4 : 0,
+            transform: `rotate(${frame * (6 + i)}deg)`,
+          }}
+        />
+      ))}
+      <h2 style={{ position: "absolute", left: 0, right: 0, top: 310, textAlign: "center", fontSize: 72, color: INK, fontWeight: 900, margin: 0 }}>
+        <Words text="Ready to look around?" from={12} />
       </h2>
-      <div
-        style={{
-          marginTop: 44,
-          transform: `scale(${Math.min(1, pop) * pulse})`,
-          padding: "26px 64px",
-          borderRadius: 999,
-          border: `6px solid ${INK}`,
-          boxShadow: `0 12px 0 ${INK}`,
-          background: role.accent,
-          color: "#fff",
-          fontSize: 60,
-          fontWeight: 900,
-        }}
-      >
-        Try the {role.label} demo
+      <div style={{ position: "absolute", left: 0, right: 0, top: 424, display: "grid", placeItems: "center" }}>
+        <div style={{ ...chunky(999, 12 * tap), padding: "22px 60px", background: role.accent, color: "#fff", fontSize: 56, fontWeight: 900, transform: `scale(${cta * tap}) translateY(${(1 - tap) * 60}px)` }}>
+          Try the {role.label} demo
+        </div>
+      </div>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 590, display: "flex", justifyContent: "center", gap: 16 }}>
+        {role.features.map((f, i) => (
+          <div key={f.title} style={{ ...chunky(18, 6), width: 64, height: 64, display: "grid", placeItems: "center", transform: `scale(${pop(40 + i * 4)}) rotate(${i % 2 ? 5 : -5}deg)` }}>
+            <FeatureIcon name={f.icon} size={34} color={INK} strokeWidth={2.6} />
+          </div>
+        ))}
       </div>
     </AbsoluteFill>
   );
@@ -245,19 +85,24 @@ function EndCard({ role }: { role: TourRole }) {
 export function RoleExplainer({ role }: RoleExplainerProps) {
   const t = explainerTimeline(role.features.length);
   return (
-    <AbsoluteFill>
+    <AbsoluteFill className="tour-explainer" style={{ fontFamily: FONT }}>
+      {/* The app's CSS reset is not present in the MP4 render page, so pin the box model here. */}
+      <style>{".tour-explainer *{box-sizing:border-box}"}</style>
       <Backdrop accent={role.accent} />
-      <Sequence from={t.title.from} durationInFrames={t.title.duration} premountFor={10}>
+      <Sequence from={t.title.from} durationInFrames={t.title.duration}>
         <TitleCard role={role} />
       </Sequence>
       {role.features.map((f, i) => (
-        <Sequence key={f.title} from={t.beats[i].from} durationInFrames={t.beats[i].duration} premountFor={10}>
-          <Beat feature={f} index={i} total={role.features.length} accent={role.accent} />
+        <Sequence key={f.title} from={t.beats[i].from} durationInFrames={t.beats[i].duration}>
+          <Beat feature={f} index={i} accent={role.accent} />
         </Sequence>
       ))}
-      <Sequence from={t.end.from} durationInFrames={t.end.duration} premountFor={10}>
+      <Sequence from={t.end.from} durationInFrames={t.end.duration}>
         <EndCard role={role} />
       </Sequence>
+      <Wipes accent={role.accent} cuts={t.cuts} />
+      <ProgressPill accent={role.accent} count={role.features.length} />
+      <MascotLayer role={role} />
     </AbsoluteFill>
   );
 }

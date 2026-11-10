@@ -128,6 +128,9 @@ flowchart TD
 - `20261028000109` · ai-roles P4 (DB owner) · `public.exam_mark_outliers(p_institution_id, p_exam_id)` — `security invoker` deterministic outlier scan for `exams.markOutliers` (marks above paper max, >=25-point subject percentage drop vs the student's previous published exam, section paper average >=2 population-SD from the exam's paper mean); capped at 50 rows, no names. No table changes — read-only over existing `marks`/`exam_papers`/`results` RLS.
 - `20261028000110` · dashboard redesign (backend session, claimed 2026-11-08) · `public.enqueue_invoice_reminders(p_institution_id, p_invoice_ids uuid[])` — `security definer` bulk fee reminders for 1–200 selected invoices (finance write roles, every id re-proven against the institution); enqueues `finance.fee_reminder` with an `invoice_ids` payload. No table changes.
 
+- `20261028000111` · DBT-153 (backend session, claimed 2026-11-10) · `compute_mastery` gains optional `p_class_section_id`, `p_run_at`; new service-only `compute_mastery_sweep`. No table changes.
+- `20261028000112` · DBT-159 (backend session, claimed 2026-11-10) · `security invoker` aggregates `ai_usage_sum`, `ai_usage_by_provider`, `ai_usage_tokens_by_role`. No table changes.
+
 ## 4. Review requirements
 
 Mandatory `security-reviewer` + lead review before merge: T-003, T-004, T-005, T-006, T-007, T-008, T-009, T-010, T-011, T-012, T-014, T-017, T-023, T-026, T-030, T-035, T-036, T-037, T-042, T-044. `code-reviewer` for the rest.

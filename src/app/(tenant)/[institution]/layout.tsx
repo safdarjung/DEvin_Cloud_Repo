@@ -5,6 +5,7 @@ import { Banknote, CalendarCheck, FilePlus, GraduationCap, UserPlus } from "luci
 import type { QuickAction } from "@/components/tenant/command-palette";
 import { BellLoader } from "@/components/tenant/bell-loader";
 import { Bell } from "@/modules/notifications/components/Bell";
+import { AskAiLauncher } from "@/components/ask-ai-launcher";
 import { BottomNav } from "@/components/tenant/bottom-nav";
 import { ROLE_LABELS } from "@/components/tenant/role-badge";
 import { TenantHeader } from "@/components/tenant/header";
@@ -126,6 +127,7 @@ export default async function TenantLayout({
         </div>
       </div>
       <BottomNav items={navItems} user={sidebarUser} />
+      <AskAiLauncher institutionSlug={ctx.institution.slug} />
     </div>
   );
 }

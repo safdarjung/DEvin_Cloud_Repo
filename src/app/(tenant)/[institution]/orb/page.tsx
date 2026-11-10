@@ -3,22 +3,28 @@ import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listMyChildren } from "@/modules/people/queries";
-import { CAPABILITIES } from "@/modules/ai/capabilities/catalog";
 import { enabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { OrbView, type OrbChat } from "@/modules/ai/components/orb/OrbView";
+import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { orbIconKey } from "@/modules/ai/components/orb/orb-icons";
+import { starterPromptsFor } from "@/modules/ai/page-starters";
 
-const MAX_CHIPS = 8;
-
-export default async function OrbPage({ params }: { params: Promise<{ institution: string }> }) {
+export default async function OrbPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ institution: string }>;
+  searchParams: Promise<{ from?: string | string[] }>;
+}) {
   const { institution: slug } = await params;
+  const { from } = await searchParams;
   const ctx = await getTenantContext(slug);
   const role = ctx.membership.role;
 
   // Icons go across as keys; lucide components are not serialisable.
   const apps = navItemsFor(ctx.permissions, ctx.institution.settings, ctx.institution.is_demo, role)
     .filter((item) => item.href !== "/orb")
-    .map((item) => ({ href: `/${slug}${item.href}`, label: item.label, icon: orbIconKey(item.icon) }));
+    .map((item) => ({ href: `/${slug}${item.href}`, label: item.label, icon: orbIconKey(item.icon), group: item.group }));
 
   // Same endpoint choice as the existing pages: /ai (teacher), study (student), assistant (everyone else).
   // Student: gated like portal/study/page.tsx (ai.study + role switch). Others like the assistant pages.
@@ -37,12 +43,14 @@ export default async function OrbPage({ params }: { params: Promise<{ institutio
     }
   }
 
-  const chips = chat
-    ? enabledCapabilities(ctx)
-        .filter((key) => CAPABILITIES[key].kind === "chat_tool")
-        .slice(0, MAX_CHIPS)
-        .map((key) => ({ key, label: CAPABILITIES[key].label, prompt: `Help me with: ${CAPABILITIES[key].label}.` }))
-    : [];
+  // Every enabled capability: chat ones send a starter prompt, page tasks link to their page.
+  const chips = orbChips(enabledCapabilities(ctx), { slug, appHrefs: apps.map((a) => a.href), chatOn: chat !== null });
 
-  return <OrbView institutionSlug={slug} apps={apps} chat={chat} chips={chips} />;
+  // `from` is untrusted: only an in-app absolute path (not "//host") is used, minus the school prefix.
+  const prefix = `/${slug}`;
+  const fromPath = typeof from === "string" && from.startsWith("/") && !from.startsWith("//") ? from : null;
+  const page = fromPath?.startsWith(`${prefix}/`) ? fromPath.slice(prefix.length) : null;
+  const starters = chat && page ? starterPromptsFor(page, role) : undefined;
+
+  return <OrbView institutionSlug={slug} role={role} apps={apps} chat={chat} chips={chips} starters={starters} />;
 }

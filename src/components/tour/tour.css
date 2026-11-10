@@ -2,7 +2,9 @@
 
 .tour-root {
   --tour-radius: 22px;
-  --tour-ease: cubic-bezier(0.34, 1.56, 0.64, 1); /* springy overshoot */
+  --tour-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoot */
+  --tour-header: 4rem;
+  --tour-grad: linear-gradient(90deg, #ff6b35, #7b61ff, #00c853, #2979ff, #ff2d95);
 }
 
 /* ---------- film ---------- */
@@ -17,7 +19,7 @@
   height: 100vh;
   height: 100svh;
   overflow: hidden;
-  background: #a8e4ff;
+  background: linear-gradient(#36b3ff, #c8f0ff 60%, #7ed957 60%);
 }
 
 .tour-canvas {
@@ -40,25 +42,226 @@
   height: 100svh;
   display: flex;
   align-items: center;
-  padding: 5.5rem clamp(1rem, 4vw, 3.5rem) 2rem;
+  padding: calc(var(--tour-header) + 1.5rem) clamp(1rem, 4vw, 3.5rem) 5.5rem;
 }
 
+.tour-stop[data-stop="finale"] .tour-pin {
+  align-items: flex-end;
+  justify-content: center;
+  text-align: center;
+}
+
+.tour-stop[data-stop="finale"] :is(.tour-actions, .tour-eyebrow) {
+  justify-content: center;
+}
+
+/* Cards spring in when their stop arrives (not scrubbed), children follow in a short stagger. */
 .tour-film .tour-card {
   pointer-events: auto;
-  opacity: var(--dwell, 0);
-  transform: translateY(calc((1 - var(--dwell, 0)) * 28px)) scale(calc(0.94 + var(--dwell, 0) * 0.06));
-  transform-origin: left center;
+  opacity: 0;
+  transform: translateY(28px) scale(0.94);
+  transform-origin: 30% 80%;
+  transition: opacity 220ms ease, transform 260ms ease;
 }
 
-.tour-film .tour-card[data-on="false"] {
-  pointer-events: none;
+.tour-film .tour-card > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 200ms ease, transform 200ms ease;
 }
 
-/* Keyboard and screen-reader path: a focused card is always shown and usable. */
+.tour-film .tour-card[data-on="true"],
 .tour-film .tour-card:focus-within {
   opacity: 1;
   transform: none;
-  pointer-events: auto;
+  transition: opacity 320ms ease, transform 720ms var(--tour-spring);
+}
+
+.tour-film .tour-card[data-on="true"] > *,
+.tour-film .tour-card:focus-within > * {
+  opacity: 1;
+  transform: none;
+  transition: opacity 360ms ease, transform 620ms var(--tour-spring);
+}
+
+.tour-film .tour-card[data-on="true"] > :nth-child(2) { transition-delay: 60ms; }
+.tour-film .tour-card[data-on="true"] > :nth-child(3) { transition-delay: 120ms; }
+.tour-film .tour-card[data-on="true"] > :nth-child(4) { transition-delay: 180ms; }
+.tour-film .tour-card[data-on="true"] > :nth-child(5) { transition-delay: 240ms; }
+
+.tour-film .tour-card[data-on="false"]:not(:focus-within) {
+  pointer-events: none;
+}
+
+/* ---------- loader (until the first 3D frames are on screen) ---------- */
+
+.tour-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 1rem;
+  background: linear-gradient(#36b3ff, #c8f0ff);
+  color: #0d3b66;
+  font-weight: 800;
+  transition: opacity 500ms ease, visibility 0s 500ms;
+  animation: tour-loader-out 0s 12s forwards; /* never strand anyone behind it */
+}
+
+.tour-film[data-ready] .tour-loader {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.tour-loader-blob {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding-top: 26px;
+  width: 78px;
+  height: 96px;
+  border-radius: 40px;
+  background: #58cc02;
+  box-shadow: inset 0 -10px 0 rgb(0 0 0 / 0.12);
+  animation: tour-hop 900ms var(--tour-spring) infinite;
+}
+
+.tour-loader-blob span {
+  width: 22px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff radial-gradient(circle at 55% 60%, #2b2d42 0 5px, transparent 6px);
+}
+
+@keyframes tour-hop {
+  0%, 100% { transform: translateY(0) scale(1.08, 0.9); }
+  40% { transform: translateY(-28px) scale(0.94, 1.08); }
+  70% { transform: translateY(0) scale(1.06, 0.92); }
+}
+
+@keyframes tour-loader-out {
+  to { opacity: 0; visibility: hidden; }
+}
+
+/* ---------- progress bar, scroll hint, rail ---------- */
+
+.tour-progress {
+  position: absolute;
+  top: var(--tour-header);
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 4px;
+  background: rgb(255 255 255 / 0.45);
+}
+
+.tour-progress span {
+  display: block;
+  height: 100%;
+  background: var(--tour-grad);
+  transform-origin: left;
+  transform: scaleX(var(--p, 0));
+}
+
+.tour-scrollhint {
+  position: absolute;
+  left: 50%;
+  bottom: 4.6rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  color: #1b2027;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transform: translateX(-50%);
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.tour-film[data-moved] .tour-scrollhint {
+  opacity: 0;
+  transform: translate(-50%, 10px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tour-scrollhint svg { animation: tour-nudge 1.4s var(--tour-spring) infinite; }
+}
+
+@keyframes tour-nudge {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+.tour-rail {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1rem;
+  z-index: 3;
+  transform: translateX(-50%);
+}
+
+.tour-rail ol {
+  position: relative;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.8);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 0.1);
+  backdrop-filter: blur(6px);
+}
+
+.tour-rail button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+}
+
+.tour-rail button::before {
+  content: "";
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--role, #1b2027);
+  transition: transform 260ms var(--tour-spring), background 160ms ease;
+}
+
+.tour-rail button[aria-current="step"]::before {
+  background: var(--role, #1b2027);
+  transform: scale(1.5);
+}
+
+.tour-rail-label {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  white-space: nowrap;
+  padding: 0.25rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #1b2027;
+  color: #fff;
+  opacity: 0;
+  transform: translate(-50%, 6px);
+  pointer-events: none;
+  transition: opacity 140ms ease, transform 240ms var(--tour-spring);
+}
+
+.tour-rail button:hover .tour-rail-label,
+.tour-rail button:focus-visible .tour-rail-label {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 /* ---------- card ---------- */
@@ -72,6 +275,12 @@
   border: 2px solid var(--mk-line);
   border-top: 8px solid var(--role, var(--mk-accent));
   box-shadow: 0 6px 0 var(--mk-line), 0 24px 48px -24px rgb(0 0 0 / 0.35);
+}
+
+.tour-stop[data-stop="finale"] .tour-card {
+  max-width: 34rem;
+  border-image: var(--tour-grad) 1;
+  border-image-width: 8px 0 0 0;
 }
 
 .tour-eyebrow {
@@ -122,22 +331,6 @@
   color: var(--mk-muted);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .tour-film .tour-hint svg {
-    animation: tour-nudge 1.4s var(--tour-ease) infinite;
-  }
-}
-
-@keyframes tour-nudge {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(4px);
-  }
-}
-
 /* ---------- chunky buttons (press down onto their own shadow) ---------- */
 
 .tour-btn {
@@ -151,18 +344,11 @@
   background: var(--role, var(--mk-accent));
   color: #10141a; /* dark text keeps contrast on every role accent */
   box-shadow: 0 4px 0 color-mix(in srgb, var(--role, var(--mk-accent)) 62%, #000);
-  transition: transform 120ms var(--tour-ease), box-shadow 120ms ease, filter 120ms ease;
+  transition: transform 120ms var(--tour-spring), box-shadow 120ms ease, filter 120ms ease;
 }
 
-.tour-btn:hover {
-  filter: brightness(1.06);
-  transform: translateY(-1px);
-}
-
-.tour-btn:active {
-  transform: translateY(4px);
-  box-shadow: 0 0 0 transparent;
-}
+.tour-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.tour-btn:active { transform: translateY(4px); box-shadow: 0 0 0 transparent; }
 
 .tour-btn:focus-visible,
 .tour-icon-btn:focus-visible,
@@ -179,73 +365,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tour-btn {
-    transition: none;
-  }
-}
-
-/* ---------- progress rail ---------- */
-
-.tour-rail {
-  position: absolute;
-  right: clamp(0.75rem, 2vw, 1.75rem);
-  top: 50%;
-  z-index: 3;
-  transform: translateY(-50%);
-}
-
-.tour-rail ol {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.tour-rail button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 999px;
-}
-
-.tour-rail button::before {
-  content: "";
-  width: 0.8rem;
-  height: 0.8rem;
-  border-radius: 999px;
-  background: #fff;
-  border: 3px solid var(--role, var(--mk-accent));
-  box-shadow: 0 2px 0 rgb(0 0 0 / 0.18);
-  transition: transform 220ms var(--tour-ease), background 160ms ease;
-}
-
-.tour-rail button[aria-current="step"]::before {
-  background: var(--role, var(--mk-accent));
-  transform: scale(1.45);
-}
-
-.tour-rail-label {
-  position: absolute;
-  right: 2.4rem;
-  white-space: nowrap;
-  padding: 0.2rem 0.6rem;
-  border-radius: 10px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  background: var(--mk-bg);
-  color: var(--mk-fg);
-  box-shadow: 0 3px 0 var(--mk-line);
-  opacity: 0;
-  transform: translateX(6px);
-  pointer-events: none;
-  transition: opacity 140ms ease, transform 200ms var(--tour-ease);
-}
-
-.tour-rail button:hover .tour-rail-label,
-.tour-rail button:focus-visible .tour-rail-label {
-  opacity: 1;
-  transform: none;
+  .tour-btn { transition: none; }
 }
 
 /* ---------- features dialog ---------- */
@@ -263,22 +383,14 @@
   overflow: auto;
 }
 
-.tour-dialog::backdrop {
-  background: rgb(10 20 30 / 0.55);
-  backdrop-filter: blur(4px);
-}
+.tour-dialog::backdrop { background: rgb(10 20 30 / 0.55); backdrop-filter: blur(4px); }
 
 @media (prefers-reduced-motion: no-preference) {
-  .tour-dialog[open] {
-    animation: tour-pop 380ms var(--tour-ease);
-  }
+  .tour-dialog[open] { animation: tour-pop 380ms var(--tour-spring); }
 }
 
 @keyframes tour-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.92) translateY(12px);
-  }
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
 }
 
 .tour-dialog-head,
@@ -291,10 +403,7 @@
   padding: 0.9rem 1.1rem;
 }
 
-.tour-dialog-head h2 {
-  font-size: 1.2rem;
-  font-weight: 800;
-}
+.tour-dialog-head h2 { font-size: 1.2rem; font-weight: 800; }
 
 .tour-icon-btn {
   display: grid;
@@ -305,20 +414,30 @@
   border: 2px solid var(--mk-line);
 }
 
-.tour-player {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  background: #000;
+.tour-player { position: relative; aspect-ratio: 16 / 9; background: #000; }
+.tour-player-wait { display: grid; place-items: center; height: 100%; color: #fff; }
+
+/* ---------- phones: lighter 3D, card docked at the bottom, rail under the progress bar ---------- */
+
+@media (max-width: 899px) {
+  .tour-pin {
+    align-items: flex-end;
+    justify-content: center;
+    padding: calc(var(--tour-header) + 3rem) 0.75rem 0.75rem;
+  }
+  .tour-film .tour-card { width: 100%; max-width: 32rem; padding: 1rem 1.1rem; transform-origin: 50% 100%; }
+  .tour-film .tour-title { font-size: 1.65rem; }
+  .tour-film .tour-tagline { font-size: 0.95rem; margin-top: 0.35rem; }
+  .tour-film .tour-actions { margin-top: 0.8rem; gap: 0.5rem; }
+  .tour-film .tour-btn { min-height: 2.6rem; padding: 0 0.9rem; font-size: 0.9rem; }
+  .tour-film .tour-hint { display: none; }
+  .tour-rail { top: calc(var(--tour-header) + 0.7rem); bottom: auto; }
+  .tour-rail button { width: 1.6rem; height: 1.6rem; }
+  .tour-rail-label { top: calc(100% + 0.4rem); bottom: auto; }
+  .tour-scrollhint { display: none; }
 }
 
-.tour-player-wait {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: #fff;
-}
-
-/* ---------- fallback (no WebGL / reduced motion / narrow portrait) ---------- */
+/* ---------- fallback (no WebGL / reduced motion) ---------- */
 
 .tour-static {
   display: grid;
@@ -328,26 +447,10 @@
   padding: clamp(2rem, 6vw, 4.5rem) 1rem;
 }
 
-.tour-static-stop {
-  display: grid;
-  gap: 1.5rem;
-  align-items: center;
-  scroll-margin-top: 5rem;
-}
-
-.tour-static .tour-card {
-  max-width: 34rem;
-}
-
-.tour-video {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: var(--tour-radius);
-  background: #000;
-}
+.tour-static-stop { display: grid; gap: 1.5rem; align-items: center; scroll-margin-top: 5rem; }
+.tour-static .tour-card { max-width: 34rem; }
+.tour-video { width: 100%; aspect-ratio: 16 / 9; border-radius: var(--tour-radius); background: #000; }
 
 @media (min-width: 900px) {
-  .tour-static-stop:has(.tour-video) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-  }
+  .tour-static-stop:has(.tour-video) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
 }

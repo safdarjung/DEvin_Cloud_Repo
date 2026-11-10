@@ -4,23 +4,32 @@ import { Instance, Instances, RoundedBoxGeometry } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef, type ReactNode } from "react";
 import * as THREE from "three";
-import { CORRIDOR_END_Z, CORRIDOR_HALF, DOOR_HALF, ROOM_HALF, ROOM_ORDER, ROOMS, ROOM_X } from "../path";
+import { BACK_DOOR, CORRIDOR_END_Z, CORRIDOR_HALF, DOOR_H, DOOR_HALF, ROOM_HALF, ROOM_ORDER, ROOMS, ROOM_X } from "../path";
 import { TOUR_ROLES, type TourRoleKey } from "../roles";
-import { Ball, C, Cyl, Label, RBox, spring, stepSpring, toon } from "./kit";
+import { Bunting, EdgeShade, Plant } from "./decor";
+import { Ball, C, Label, RBox, shade, spring, stepSpring, toon } from "./kit";
 
 export const WALL_H = 3.6;
-const DOOR_H = 2.9;
 const START_Z = -0.4;
 const LENGTH = START_Z - CORRIDOR_END_Z;
 export const ROLE = Object.fromEntries(TOUR_ROLES.map((r) => [r.key, r])) as Record<TourRoleKey, (typeof TOUR_ROLES)[number]>;
 const doorsOn = (side: number) => ROOM_ORDER.filter((k) => ROOMS[k].side === side).map((k) => ROOMS[k].z);
-const LOCKER_COLOURS = [C.blue, C.orange, C.purple, C.green, C.red];
+const LOCKER_COLOURS = [C.blue, C.orange, C.purple, C.green, C.red].map((c) => shade(c, 1.12));
 /** Spots on the corridor walls kept free of lockers: notice board and plants. */
 const FEATURES: { side: 1 | -1; z: number; half: number }[] = [
   { side: -1, z: -15, half: 1.9 },
   { side: 1, z: -23, half: 0.7 },
   { side: -1, z: -30.5, half: 0.6 },
   { side: 1, z: -40, half: 0.7 },
+  { side: -1, z: -42.6, half: 0.9 },
+];
+/** Posters above the lockers: side, z, text, colour. */
+const POSTERS: [1 | -1, number, string, string][] = [
+  [1, -4, "BE KIND", C.red],
+  [-1, -11, "READ!", C.blue],
+  [1, -20, "SCIENCE FAIR", C.green],
+  [-1, -27.5, "SPORTS DAY", C.orange],
+  [1, -36.5, "ART CLUB", C.purple],
 ];
 
 const flat = (color: string) => new THREE.MeshBasicMaterial({ color });
@@ -30,6 +39,7 @@ export function Interior() {
   return (
     <group>
       <Corridor ceiling={ceiling} />
+      <BackDoor />
       {ROOM_ORDER.map((k) => (
         <RoomShell key={k} roleKey={k} ceiling={ceiling} />
       ))}
@@ -40,8 +50,7 @@ export function Interior() {
 /* ---------- corridor ---------- */
 
 function wallSegments(side: number): [number, number][] {
-  const cuts = doorsOn(side).flatMap((z) => [z + DOOR_HALF, z - DOOR_HALF]);
-  const edges = [START_Z, ...cuts, CORRIDOR_END_Z];
+  const edges = [START_Z, ...doorsOn(side).flatMap((z) => [z + DOOR_HALF, z - DOOR_HALF]), CORRIDOR_END_Z];
   const segs: [number, number][] = [];
   for (let i = 0; i < edges.length; i += 2) segs.push([edges[i], edges[i + 1]]);
   return segs;
@@ -74,6 +83,9 @@ function Corridor({ ceiling }: { ceiling: THREE.Material }) {
           <Instance key={`${x}:${z}`} position={[x, 0.03, z]} />
         ))}
       </Instances>
+      {([-1, 1] as const).map((s) => (
+        <EdgeShade key={s} len={LENGTH} depth={0.7} position={[s * (CORRIDOR_HALF - 0.5), 0, START_Z - LENGTH / 2]} rotationY={s > 0 ? -Math.PI / 2 : Math.PI / 2} />
+      ))}
       <mesh material={ceiling} position={[0, WALL_H, START_Z - LENGTH / 2]} rotation-x={Math.PI / 2}>
         <planeGeometry args={[CORRIDOR_HALF * 2 + 0.4, LENGTH]} />
       </mesh>
@@ -89,10 +101,16 @@ function Corridor({ ceiling }: { ceiling: THREE.Material }) {
             <group key={a}>
               <RBox size={[0.2, WALL_H, a - b]} radius={0.02} color={C.wall} position={[s * (CORRIDOR_HALF + 0.1), WALL_H / 2, (a + b) / 2]} />
               <RBox size={[0.06, 1.1, a - b]} radius={0.02} color="#9be7d8" position={[s * (CORRIDOR_HALF - 0.02), 0.55, (a + b) / 2]} />
+              <RBox size={[0.08, 0.12, a - b]} radius={0.02} color="#5fc9b4" position={[s * (CORRIDOR_HALF - 0.03), 0.06, (a + b) / 2]} />
             </group>
           ))}
           {doorsOn(s).map((z) => (
-            <RBox key={z} size={[0.2, WALL_H - DOOR_H, DOOR_HALF * 2]} radius={0.02} color={C.wall} position={[s * (CORRIDOR_HALF + 0.1), (WALL_H + DOOR_H) / 2, z]} />
+            <group key={z}>
+              <RBox size={[0.2, WALL_H - DOOR_H, DOOR_HALF * 2]} radius={0.02} color={C.wall} position={[s * (CORRIDOR_HALF + 0.1), (WALL_H + DOOR_H) / 2, z]} />
+              {[-1, 1].map((e) => (
+                <RBox key={e} size={[0.16, DOOR_H, 0.16]} radius={0.05} color={C.white} position={[s * (CORRIDOR_HALF - 0.02), DOOR_H / 2, z + e * DOOR_HALF]} />
+              ))}
+            </group>
           ))}
         </group>
       ))}
@@ -104,7 +122,7 @@ function Corridor({ ceiling }: { ceiling: THREE.Material }) {
           </group>
         );
       })}
-      <Instances material={toon(C.white)} castShadow receiveShadow limit={200}>
+      <Instances material={toon(C.white)} receiveShadow limit={200}>
         <RoundedBoxGeometry args={[0.44, 1.95, 0.5]} radius={0.06} smoothness={2} />
         {lockers.map(({ s, z, c }) => (
           <Instance key={`${s}:${z}`} position={[s * (CORRIDOR_HALF - 0.27), 0.98, z]} rotation-y={Math.PI / 2} color={c} />
@@ -116,15 +134,25 @@ function Corridor({ ceiling }: { ceiling: THREE.Material }) {
           <Instance key={`${s}:${z}`} position={[s * (CORRIDOR_HALF - 0.53), 1.05, z - 0.13]} />
         ))}
       </Instances>
+      <Instances material={toon("#ffffff")} limit={200}>
+        <boxGeometry args={[0.04, 0.03, 0.3]} />
+        {lockers.flatMap(({ s, z }) => [1.62, 1.7, 1.78].map((y) => <Instance key={`${s}:${z}:${y}`} position={[s * (CORRIDOR_HALF - 0.52), y, z]} color="#e8e8e8" />))}
+      </Instances>
+      {POSTERS.map(([s, z, text, c]) => (
+        <group key={z} position={[s * (CORRIDOR_HALF - 0.04), 2.55, z]} rotation={[0, -s * (Math.PI / 2), s * 0.04]}>
+          <RBox size={[1.5, 0.62, 0.04]} radius={0.04} color={C.white} />
+          <Label text={text} w={1.36} h={0.48} bg={c} fg={C.white} position={[0, 0, 0.03]} />
+        </group>
+      ))}
       <NoticeBoard />
       {FEATURES.slice(1).map((f) => (
-        <Plant key={f.z} position={[f.side * (CORRIDOR_HALF - 0.45), 0, f.z]} />
+        <Plant key={f.z} position={[f.side * (CORRIDOR_HALF - 0.45), 0, f.z]} leaf={f.z < -35 ? C.grassDark : C.green} />
       ))}
-      <group position={[0, 0, CORRIDOR_END_Z]}>
-        <RBox size={[CORRIDOR_HALF * 2 + 0.4, WALL_H, 0.2]} radius={0.02} color={C.wall} position={[0, WALL_H / 2, -0.1]} />
-        <RBox size={[2.6, 1.8, 0.1]} radius={0.08} color={C.white} position={[0, 1.9, 0.02]} />
-        <RBox size={[2.3, 1.5, 0.1]} radius={0.06} color={C.window} position={[0, 1.9, 0.05]} />
+      <group position={[0, 3.05, -2.2]}>
+        <RBox size={[2.6, 0.5, 0.06]} radius={0.08} color={C.yellow} />
+        <Label text="WELCOME!" w={2.4} h={0.4} bg={C.yellow} fg={C.ink} position={[0, 0, 0.04]} />
       </group>
+      <Bunting a={[-CORRIDOR_HALF, 3.45, -1.2]} b={[CORRIDOR_HALF, 3.45, -1.2]} n={9} sag={0.25} />
     </group>
   );
 }
@@ -155,43 +183,41 @@ function NoticeBoard() {
   );
 }
 
-function Plant({ position }: { position: [number, number, number] }) {
+/** Garden doors at the end of the corridor; they swing out (with a bounce) as the camera comes. */
+function BackDoor() {
+  const left = useRef<THREE.Group>(null);
+  const right = useRef<THREE.Group>(null);
+  const open = useRef(spring(0));
+  const { half, height } = BACK_DOOR;
+  useFrame((state, dt) => {
+    const near = state.camera.position.z < CORRIDOR_END_Z + 7 ? 1 : 0;
+    const a = stepSpring(open.current, near * 1.5, dt, 70, 6);
+    if (left.current) left.current.rotation.y = a;
+    if (right.current) right.current.rotation.y = -a;
+  });
+  const sidesW = CORRIDOR_HALF + 0.2 - half;
   return (
-    <group position={position}>
-      <Cyl r={0.26} rTop={0.32} h={0.6} color={C.trim} position={[0, 0.3, 0]} cast />
-      <Ball r={0.42} color={C.green} position={[0, 0.95, 0]} cast />
-      <Ball r={0.3} color={C.grassDark} position={[0.2, 1.25, 0.1]} cast />
-      <Ball r={0.26} color="#89e219" position={[-0.18, 1.2, -0.12]} cast />
+    <group position={[0, 0, CORRIDOR_END_Z]}>
+      {[-1, 1].map((s) => (
+        <RBox key={s} size={[sidesW, WALL_H, 0.2]} radius={0.02} color={C.wall} position={[s * (half + sidesW / 2), WALL_H / 2, -0.1]} />
+      ))}
+      <RBox size={[half * 2, WALL_H - height, 0.2]} radius={0.02} color={C.wall} position={[0, (WALL_H + height) / 2, -0.1]} />
+      {[-1, 1].map((s) => (
+        <RBox key={s} size={[0.2, height + 0.1, 0.32]} radius={0.06} color={C.trim} position={[s * (half + 0.05), height / 2, -0.05]} />
+      ))}
+      <RBox size={[half * 2 + 0.3, 0.24, 0.32]} radius={0.08} color={C.trim} position={[0, height + 0.05, -0.05]} />
+      {([-1, 1] as const).map((s) => (
+        <group key={s} ref={s < 0 ? left : right} position={[s * half, 0, -0.12]}>
+          <RBox size={[half - 0.03, height - 0.06, 0.1]} radius={0.05} color={C.green} position={[-s * (half / 2), height / 2, 0]} />
+          <RBox size={[half - 0.4, height * 0.45, 0.12]} radius={0.05} color={C.window} position={[-s * (half / 2), height * 0.64, 0]} />
+          <Ball r={0.07} color={C.yellow} position={[-s * (half - 0.2), 1.4, 0.07]} detail={10} />
+        </group>
+      ))}
     </group>
   );
 }
 
 /* ---------- rooms ---------- */
-
-function RoomShell({ roleKey, ceiling }: { roleKey: TourRoleKey; ceiling: THREE.Material }) {
-  const accent = ROLE[roleKey].accent;
-  const tint = useMemo(() => `#${new THREE.Color(accent).lerp(new THREE.Color("#ffffff"), 0.78).getHexString()}`, [accent]);
-  const { x: hx, z: hz } = ROOM_HALF;
-  return (
-    <InRoom roleKey={roleKey}>
-      <RBox size={[hx * 2, 0.1, hz * 2]} radius={0.03} color="#f3d9a4" position={[0, -0.03, 0]} />
-      <RBox size={[0.2, WALL_H, hz * 2 + 0.4]} radius={0.02} color={tint} position={[hx + 0.1, WALL_H / 2, 0]} />
-      {[-1, 1].map((s) => (
-        <RBox key={s} size={[hx * 2, WALL_H, 0.2]} radius={0.02} color={tint} position={[0.1, WALL_H / 2, s * (hz + 0.1)]} />
-      ))}
-      <RBox size={[0.06, 0.9, hz * 2]} radius={0.02} color={accent} position={[hx - 0.02, 0.45, 0]} />
-      <mesh material={ceiling} position={[0, WALL_H, 0]} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[hx * 2 + 0.4, hz * 2 + 0.4]} />
-      </mesh>
-      <group position={[hx - 0.05, 2, -1.7]} rotation-y={-Math.PI / 2}>
-        <RBox size={[2.4, 1.6, 0.1]} radius={0.08} color={C.white} />
-        <RBox size={[2.15, 1.35, 0.1]} radius={0.06} color={C.window} position={[0, 0, 0.03]} />
-        <Ball r={0.22} color={C.yellow} position={[0.6, 0.3, 0.08]} scale={[1, 1, 0.2]} />
-      </group>
-      <RoomDoors accent={accent} />
-    </InRoom>
-  );
-}
 
 /** Room-local frame: +x away from the corridor, origin at the room's floor centre. */
 export function InRoom({ roleKey, children }: { roleKey: TourRoleKey; children: ReactNode }) {
@@ -200,6 +226,41 @@ export function InRoom({ roleKey, children }: { roleKey: TourRoleKey; children: 
     <group position={[side * ROOM_X, 0, z]} rotation-y={side === 1 ? 0 : Math.PI}>
       {children}
     </group>
+  );
+}
+
+/** Wall tinted by the role accent, darker wainscot, chair rail, skirting and crown, shaded floor edges. */
+function RoomShell({ roleKey, ceiling }: { roleKey: TourRoleKey; ceiling: THREE.Material }) {
+  const accent = ROLE[roleKey].accent;
+  const tone = useMemo(() => ({ wall: shade(accent, 1.8), dado: shade(accent, 1.55), floor: "#f1d39b" }), [accent]);
+  const { x: hx, z: hz } = ROOM_HALF;
+  const walls: { size: [number, number]; pos: [number, number]; rot: number }[] = [
+    { size: [hz * 2, 0], pos: [hx, 0], rot: -Math.PI / 2 },
+    { size: [hx * 2, 0], pos: [0.1, -hz], rot: 0 },
+    { size: [hx * 2, 0], pos: [0.1, hz], rot: Math.PI },
+  ];
+  return (
+    <InRoom roleKey={roleKey}>
+      <RBox size={[hx * 2, 0.1, hz * 2]} radius={0.03} color={tone.floor} position={[0, -0.03, 0]} />
+      {walls.map(({ size: [len], pos: [x, z], rot }) => (
+        <group key={rot} position={[x, 0, z]} rotation-y={rot}>
+          <RBox size={[len + 0.2, WALL_H, 0.2]} radius={0.02} color={tone.wall} position={[0, WALL_H / 2, -0.1]} />
+          <RBox size={[len, 1.05, 0.05]} radius={0.02} color={tone.dado} position={[0, 0.53, 0.02]} />
+          <RBox size={[len, 0.08, 0.1]} radius={0.03} color={C.white} position={[0, 1.07, 0.03]} />
+          <RBox size={[len, 0.14, 0.08]} radius={0.03} color={shade(accent, 0.75)} position={[0, 0.07, 0.04]} />
+          <RBox size={[len, 0.12, 0.12]} radius={0.04} color={C.white} position={[0, WALL_H - 0.06, 0.04]} />
+          <EdgeShade len={len} position={[0, 0, 0.05]} />
+        </group>
+      ))}
+      <mesh material={ceiling} position={[0, WALL_H, 0]} rotation-x={Math.PI / 2}>
+        <planeGeometry args={[hx * 2 + 0.4, hz * 2 + 0.4]} />
+      </mesh>
+      <mesh position={[1, WALL_H - 0.03, 0]}>
+        <cylinderGeometry args={[0.55, 0.55, 0.05, 24]} />
+        <meshBasicMaterial color="#fffbe0" />
+      </mesh>
+      <RoomDoors accent={accent} />
+    </InRoom>
   );
 }
 
@@ -212,7 +273,7 @@ function RoomDoors({ accent }: { accent: string }) {
   useFrame((state, dt) => {
     a.current?.parent?.localToWorld(centre.current.set(-ROOM_HALF.x, 1.4, 0));
     const near = state.camera.position.distanceTo(centre.current) < 7.5 ? 1 : 0;
-    const angle = stepSpring(open.current, near * 1.45, dt, 80, 6.5);
+    const angle = stepSpring(open.current, near * 1.7, dt, 80, 6.5);
     if (a.current) a.current.rotation.y = -angle;
     if (b.current) b.current.rotation.y = angle;
   });
@@ -220,7 +281,7 @@ function RoomDoors({ accent }: { accent: string }) {
     <group>
       {([1, -1] as const).map((s) => (
         <group key={s} ref={s > 0 ? a : b} position={[-ROOM_HALF.x + 0.12, 0, s * DOOR_HALF]}>
-          <RBox size={[0.12, DOOR_H - 0.05, DOOR_HALF - 0.04]} radius={0.04} color={accent} position={[0, (DOOR_H - 0.05) / 2, -s * (DOOR_HALF / 2)]} cast />
+          <RBox size={[0.12, DOOR_H - 0.05, DOOR_HALF - 0.04]} radius={0.04} color={accent} position={[0, (DOOR_H - 0.05) / 2, -s * (DOOR_HALF / 2)]} />
           <Ball r={0.22} color={C.window} position={[0.02, 2.05, -s * (DOOR_HALF / 2)]} scale={[0.35, 1, 1]} />
           <Ball r={0.07} color={C.yellow} position={[0.1, 1.35, -s * (DOOR_HALF - 0.25)]} detail={10} />
         </group>

@@ -3,71 +3,95 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { STOPS, cameraAt } from "../path";
+import { FINALE_Z, MASCOT_SPOT, STOPS, cameraAt, dwellAmount, pathParamAt, roomToWorld, stopIndexAt, type StopKey } from "../path";
 import { clamp01, damp, useProgress } from "./kit";
 
 const UP = new THREE.Vector3(0, 1, 0);
 /** No input for this long: render idle loops at half rate. */
 const IDLE_MS = 4000;
+/** Footsteps over the whole path (bob phase per unit of arc-length fraction). */
+const STRIDE = 260;
+
+/** Portrait screens dock the card at the bottom, so frame each subject centred and high. */
+function portraitFocus(key: StopKey, out: THREE.Vector3): THREE.Vector3 {
+  if (key === "gate") return out.set(0, 2.4, 4);
+  if (key === "finale") return out.set(0, 0.2, FINALE_Z);
+  const [x, , z] = roomToWorld(key, MASCOT_SPOT);
+  return out.set(x, 0.25, z);
+}
 
 /**
- * Camera follows the scroll path (smoothed), plus pointer parallax: big at the gate (the toy),
- * subtle inside. The sun rides along so one small shadow map always covers what is on screen.
+ * Camera follows the scroll path (smoothed), with a footstep bob and a bank into turns while it moves,
+ * and pointer parallax: big at the gate (the toy), subtle inside.
  */
 export function CameraRig() {
   const progress = useProgress();
-  const sun = useRef<THREE.DirectionalLight>(null);
-  const live = useRef({ p: progress.current, px: 0, py: 0, fwd: new THREE.Vector3(), right: new THREE.Vector3() });
+  const live = useRef({ p: progress.current, u: 0, walk: 0, roll: 0, yaw: 0, px: 0, py: 0, fwd: new THREE.Vector3(), right: new THREE.Vector3(), focus: new THREE.Vector3() });
 
   useFrame((state, dt) => {
     const s = live.current;
+    const cam = state.camera as THREE.PerspectiveCamera;
+    const portrait = state.size.width / state.size.height < 0.9;
+    const fov = portrait ? 64 : 50;
+    if (cam.fov !== fov) {
+      cam.fov = fov;
+      cam.updateProjectionMatrix();
+    }
+
     s.p = damp(s.p, progress.current, 4.5, dt);
     const { position, lookAt } = cameraAt(s.p);
+    const u = pathParamAt(s.p);
+    const speed = Math.abs(u - s.u) / Math.max(dt, 1e-3);
+    s.u = u;
+    s.walk = damp(s.walk, clamp01(speed * 14), 5, dt);
+
+    const stop = STOPS[stopIndexAt(s.p)];
+    if (portrait) {
+      const here = dwellAmount(s.p, stop);
+      lookAt.lerp(portraitFocus(stop.key, s.focus), here * 0.9);
+      lookAt.y -= 0.35;
+      // Outdoors there is room to step back so the whole gate / all five mascots fit a narrow screen.
+      if (stop.key === "finale" || stop.key === "gate") position.add(s.fwd.subVectors(position, lookAt).setY(0).normalize().multiplyScalar(here * 4.5));
+    }
+
     s.px = damp(s.px, state.pointer.x, 3, dt);
     s.py = damp(s.py, state.pointer.y, 3, dt);
     const toy = 1 - clamp01(s.p / STOPS[0].dwell[1]);
-    const amt = 0.18 + toy * 1.1;
+    const amt = (0.15 + toy * 1.1) * (portrait ? 0.4 : 1);
     s.fwd.subVectors(lookAt, position).normalize();
     s.right.crossVectors(s.fwd, UP).normalize();
-    position.addScaledVector(s.right, s.px * amt).addScaledVector(UP, s.py * amt * 0.45);
+    position.addScaledVector(s.right, s.px * amt).addScaledVector(UP, s.py * amt * 0.45 + Math.sin(u * STRIDE) * 0.035 * s.walk);
     lookAt.addScaledVector(s.right, s.px * amt * 0.3);
-    state.camera.position.copy(position);
-    state.camera.lookAt(lookAt);
+    cam.position.copy(position);
+    cam.lookAt(lookAt);
 
-    const l = sun.current;
-    if (!l) return;
-    s.fwd.y = 0;
-    const focus = position.addScaledVector(s.fwd.normalize(), 8);
-    l.position.set(focus.x + 7, 14, focus.z + 6);
-    l.target.position.set(focus.x, 0, focus.z);
-    l.target.updateMatrixWorld();
+    // Bank gently into turns, like a handheld walk-through.
+    const yaw = Math.atan2(s.fwd.x, s.fwd.z);
+    let dYaw = yaw - s.yaw;
+    if (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    if (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    s.yaw = yaw;
+    s.roll = damp(s.roll, THREE.MathUtils.clamp((-dYaw / Math.max(dt, 1e-3)) * 0.04, -0.07, 0.07) + Math.sin(u * STRIDE * 0.5) * 0.008 * s.walk, 4, dt);
+    cam.rotateZ(s.roll);
   });
 
-  return (
-    <directionalLight
-      ref={sun}
-      intensity={1.3}
-      castShadow
-      shadow-mapSize={[1024, 1024]}
-      shadow-camera-left={-14}
-      shadow-camera-right={14}
-      shadow-camera-top={14}
-      shadow-camera-bottom={-14}
-      shadow-camera-near={1}
-      shadow-camera-far={45}
-      shadow-bias={-0.0004}
-      shadow-normalBias={0.03}
-    />
-  );
+  return null;
 }
 
 /**
  * frameloop="demand": render only when asked. Ask every frame while the canvas is on screen,
  * every other frame once the visitor has been idle (loops keep moving, battery is spared).
+ * Also tells the page when the first frames are on screen (hides the loader).
  */
-export function Ticker() {
+export function Ticker({ onReady }: { onReady?: () => void }) {
   const invalidate = useThree((s) => s.invalidate);
   const canvas = useThree((s) => s.gl.domElement);
+  const frames = useRef(0);
+
+  useFrame(() => {
+    frames.current++;
+    if (frames.current === 3) onReady?.();
+  });
 
   useEffect(() => {
     let visible = true;

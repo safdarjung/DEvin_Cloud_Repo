@@ -10,6 +10,9 @@ import * as THREE from "three";
 /** Scroll progress 0..1, written by the DOM scroll trigger, read every frame inside the canvas. */
 export const ProgressContext = createContext<RefObject<number>>({ current: 0 });
 export const useProgress = () => useContext(ProgressContext);
+/** Phones/tablets in portrait run a lighter scene (fewer critters, no shadow maps). */
+export const LiteContext = createContext(false);
+export const useLite = () => useContext(LiteContext);
 
 /* ---------- palette (bright, flat, Duolingo-ish) ---------- */
 
@@ -140,3 +143,57 @@ export function Label({ text, w, h, bg, fg, px = 512, ...rest }: MeshProps & { t
     </mesh>
   );
 }
+
+/* ---------- colour + cached canvas textures ---------- */
+
+/** k<1 darkens, k>1 mixes toward white (k=1.6 → 60% white). */
+export function shade(color: string, k: number): string {
+  const c = new THREE.Color(color);
+  return `#${(k < 1 ? c.multiplyScalar(k) : c.lerp(new THREE.Color("#ffffff"), k - 1)).getHexString()}`;
+}
+
+const textures = new Map<string, THREE.CanvasTexture>();
+/** Draw once into a small canvas (≤512px) and share the texture by key. */
+export function canvasTexture(key: string, w: number, h: number, draw: (g: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
+  let t = textures.get(key);
+  if (t) return t;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  draw(canvas.getContext("2d")!);
+  t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  textures.set(key, t);
+  return t;
+}
+
+const basics = new Map<string, THREE.MeshBasicMaterial>();
+/** Unlit transparent material over a cached texture: blob shadows, floor-edge shading, sky in windows. */
+export function decal(key: string, map: THREE.Texture, opacity = 1): THREE.MeshBasicMaterial {
+  const id = `${key}:${opacity}`;
+  let m = basics.get(id);
+  if (!m) {
+    m = new THREE.MeshBasicMaterial({ map, transparent: true, opacity, depthWrite: false, toneMapped: false });
+    basics.set(id, m);
+  }
+  return m;
+}
+
+export const blobTexture = () =>
+  canvasTexture("blob", 128, 128, (g) => {
+    const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, "rgba(40,30,60,0.55)");
+    r.addColorStop(0.55, "rgba(40,30,60,0.28)");
+    r.addColorStop(1, "rgba(40,30,60,0)");
+    g.fillStyle = r;
+    g.fillRect(0, 0, 128, 128);
+  });
+
+export const edgeTexture = () =>
+  canvasTexture("edge", 4, 64, (g) => {
+    const r = g.createLinearGradient(0, 0, 0, 64);
+    r.addColorStop(0, "rgba(70,40,30,0.32)");
+    r.addColorStop(1, "rgba(70,40,30,0)");
+    g.fillStyle = r;
+    g.fillRect(0, 0, 4, 64);
+  });

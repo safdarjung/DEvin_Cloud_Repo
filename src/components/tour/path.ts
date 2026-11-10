@@ -5,7 +5,7 @@ import type { TourRoleKey } from "./roles";
  * Pure camera path for the scroll tour. World units ≈ metres, +z points back at the visitor:
  * gate at z=10, school facade at z=0, corridor runs down -z with rooms off both sides.
  */
-export type StopKey = "gate" | TourRoleKey;
+export type StopKey = "gate" | TourRoleKey | "finale";
 export type Vec3 = readonly [number, number, number];
 export interface TourStop {
   key: StopKey;
@@ -20,8 +20,13 @@ export interface TourStop {
 export const GATE_Z = 10;
 export const CORRIDOR_HALF = 2.2;
 export const CORRIDOR_END_Z = -44;
-/** Half-width of each room doorway in the corridor wall. */
+/** Room doorways in the corridor wall: half-width and height. */
 export const DOOR_HALF = 1.8;
+export const DOOR_H = 2.9;
+/** Garden door at the far end of the corridor; the finale is out there. */
+export const BACK_DOOR = { half: 1.3, height: 3 } as const;
+/** Where the five mascots line up for the closing shot. */
+export const FINALE_Z = -57;
 /** Room centre distance from the corridor axis; room half-size in its own frame. */
 export const ROOM_X = 6.7;
 export const ROOM_HALF = { x: 4.5, z: 3.6 } as const;
@@ -43,30 +48,33 @@ export function roomToWorld(key: TourRoleKey, [x, y, z]: Vec3): Vec3 {
 }
 
 /* Scroll length in "units" (the page maps one unit to a fixed share of viewport height). */
-const GATE_DWELL = 0.5;
-const ENTRY_TRANSIT = 2;
-const ROOM_DWELL = 1;
-const ROOM_TRANSIT = 0.9;
-export const TOUR_UNITS = GATE_DWELL + ENTRY_TRANSIT + ROOM_ORDER.length * ROOM_DWELL + (ROOM_ORDER.length - 1) * ROOM_TRANSIT;
+const DWELL_UNITS = [0.5, ...ROOM_ORDER.map(() => 1), 1.1];
+const TRANSIT_UNITS = [2, ...ROOM_ORDER.slice(1).map(() => 0.9), 1.4];
+export const TOUR_UNITS = [...DWELL_UNITS, ...TRANSIT_UNITS].reduce((a, b) => a + b, 0);
 const FADE = 0.3 / TOUR_UNITS;
 
 type Key = { position: Vec3; target: Vec3; stop?: StopKey };
 const at = (x: number, y: number, z: number): Vec3 => [x, y, z];
 
+/**
+ * Control points. Between rooms the camera backs out looking down the corridor (a walk, not a stare
+ * at the lockers), then swings across to face the next doorway square-on before going in.
+ */
 function buildKeys(): Key[] {
   const keys: Key[] = [
     { position: at(0, 3, 21), target: at(0, 3.4, 2), stop: "gate" },
     { position: at(0, 2.3, 13), target: at(0, 2.2, 0) },
     { position: at(0, 2, 5), target: at(0, 1.9, -4) },
-    { position: at(0, 1.9, 1.2), target: at(0, 1.8, -8) },
+    { position: at(0, 1.9, 1.2), target: at(0, 1.8, -10) },
   ];
-  ROOM_ORDER.forEach((key, i) => {
-    const rz = ROOMS[key].z;
-    keys.push({ position: at(0, 1.85, rz + 2.5), target: roomToWorld(key, [0.5, 1.3, 0]) });
-    keys.push({ position: roomToWorld(key, [-2.6, 1.6, 0.3]), target: roomToWorld(key, [1.7, 0.95, -0.7]), stop: key });
-    const next = ROOM_ORDER[i + 1];
-    if (next) keys.push({ position: at(0, 1.85, rz - 2.5), target: at(ROOMS[next].side * CORRIDOR_HALF, 1.6, ROOMS[next].z) });
+  ROOM_ORDER.forEach((key) => {
+    const { side, z } = ROOMS[key];
+    keys.push({ position: at(-side * 0.7, 1.75, z + 1.6), target: roomToWorld(key, [0.5, 1.2, -0.3]) });
+    keys.push({ position: roomToWorld(key, [-3.1, 1.7, 0.3]), target: roomToWorld(key, [1.7, 0.95, -0.7]), stop: key });
+    keys.push({ position: at(-side * 0.5, 1.75, z - 2.2), target: at(0, 1.55, z - 14) });
   });
+  keys.push({ position: at(0, 1.95, CORRIDOR_END_Z - 1.2), target: at(0, 1.2, FINALE_Z - 2) });
+  keys.push({ position: at(0, 2.5, FINALE_Z + 9.5), target: at(0, 0.6, FINALE_Z), stop: "finale" });
   return keys;
 }
 
@@ -80,13 +88,10 @@ const lengths = posCurve.getLengths();
 const total = lengths[lengths.length - 1];
 
 function buildStops(): TourStop[] {
-  const spans = ROOM_ORDER.map(() => ROOM_DWELL);
-  const transits = [ENTRY_TRANSIT, ...ROOM_ORDER.slice(1).map(() => ROOM_TRANSIT)];
-  const dwellUnits = [GATE_DWELL, ...spans];
   let cursor = 0;
-  const dwells = dwellUnits.map((d, i) => {
+  const dwells = DWELL_UNITS.map((d, i) => {
     const range = [cursor / TOUR_UNITS, Math.min(1, (cursor + d) / TOUR_UNITS)] as const;
-    cursor += d + (transits[i] ?? 0);
+    cursor += d + (TRANSIT_UNITS[i] ?? 0);
     return range;
   });
   const stopKeys = KEYS.filter((k) => k.stop);
