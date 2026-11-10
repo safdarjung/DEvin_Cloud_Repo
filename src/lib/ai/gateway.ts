@@ -11,6 +11,7 @@ import { estimateCost } from "@/lib/ai/pricing";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import * as providers from "@/lib/ai/providers";
 import { streamCloudAgent } from "@/lib/ai/cloud-stream";
+import { tolerateNullOptionals } from "@/lib/ai/tool-nulls";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 
 // 06 §W10 — local 60s, cloud 30s.
@@ -386,7 +387,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
         model,
         system: redacted.text,
         messages,
-        tools,
+        tools: tolerateNullOptionals(tools),
         stopWhen,
         maxOutputTokens,
         toolCallConcurrency,

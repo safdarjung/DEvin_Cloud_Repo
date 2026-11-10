@@ -9,6 +9,7 @@ import "server-only";
 // `streamChat` can import it (rule 6: every model call goes through the
 // gateway); existing callers (executor.ts, the 3 agent routes) just
 // updated their import path, no behavior change.
+import { tolerateNullOptionals } from "@/lib/ai/tool-nulls";
 import { APICallError, stepCountIs, streamText, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
 import type { ErrorCode } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
@@ -133,7 +134,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
     model,
     system,
     messages,
-    tools,
+    tools: tolerateNullOptionals(tools),
     stopWhen: stepCountIs(6),
     // Fix round 1 (security review, MED, carried over): `stepCountIs(6)`
     // bounds the number of steps, not the cost of any one of them —
