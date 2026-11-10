@@ -3,8 +3,8 @@
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { ROOM_ORDER, roomToWorld } from "../path";
-import { C, toon } from "./kit";
+import { ROOM_ORDER, roomToWorld } from "../../path";
+import { C, mat } from "../kit";
 
 type V3 = [number, number, number];
 
@@ -22,7 +22,7 @@ export function PaperPlane({ centre, radius, speed = 0.5, phase = 0 }: { centre:
   });
   return (
     <group ref={ref}>
-      <mesh material={toon(C.white)} rotation-x={Math.PI / 2} scale={[1, 1, 0.18]} castShadow>
+      <mesh material={mat(C.white)} rotation-x={Math.PI / 2} scale={[1, 1, 0.18]} castShadow>
         <coneGeometry args={[0.14, 0.42, 3]} />
       </mesh>
     </group>
@@ -109,7 +109,7 @@ export function Birds({ y = 15, z = -35, speed = 1.2, phase = 0 }: { y?: number;
               }}
               scale={[s, 1, 1]}
             >
-              <mesh material={toon(C.ink)} position={[0.22, 0, 0]} rotation-z={0.25}>
+              <mesh material={mat(C.ink)} position={[0.22, 0, 0]} rotation-z={0.25}>
                 <boxGeometry args={[0.42, 0.04, 0.12]} />
               </mesh>
             </group>

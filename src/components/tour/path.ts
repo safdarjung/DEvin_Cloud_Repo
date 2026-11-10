@@ -25,7 +25,7 @@ export const DOOR_HALF = 1.8;
 export const DOOR_H = 2.9;
 /** Garden door at the far end of the corridor; the finale is out there. */
 export const BACK_DOOR = { half: 1.3, height: 3 } as const;
-/** Where the five mascots line up for the closing shot. */
+/** Where the five people line up for the closing shot. */
 export const FINALE_Z = -57;
 /** Room centre distance from the corridor axis; room half-size in its own frame. */
 export const ROOM_X = 6.7;
@@ -38,7 +38,7 @@ export const ROOMS: Readonly<Record<TourRoleKey, { side: 1 | -1; z: number }>> =
   student: { side: 1, z: -31 },
   parent: { side: -1, z: -39 },
 };
-/** Where each room's mascot stands, room-local; the dwell camera frames it right of centre (cards sit left). */
+/** Where each room's person stands, room-local; the dwell camera frames it right of centre (cards sit left). */
 export const MASCOT_SPOT: Vec3 = [0.8, 0, 0.6];
 
 /** Room-local → world. Local +x points away from the corridor; left rooms are right rooms turned 180°. */
@@ -70,11 +70,11 @@ function buildKeys(): Key[] {
   ROOM_ORDER.forEach((key) => {
     const { side, z } = ROOMS[key];
     keys.push({ position: at(-side * 0.7, 1.75, z + 1.6), target: roomToWorld(key, [0.5, 1.2, -0.3]) });
-    keys.push({ position: roomToWorld(key, [-3.1, 1.7, 0.3]), target: roomToWorld(key, [1.7, 0.95, -0.7]), stop: key });
+    keys.push({ position: roomToWorld(key, [-2.4, 1.62, 0.3]), target: roomToWorld(key, [1.7, 1.02, -0.7]), stop: key });
     keys.push({ position: at(-side * 0.5, 1.75, z - 2.2), target: at(0, 1.55, z - 14) });
   });
   keys.push({ position: at(0, 1.95, CORRIDOR_END_Z - 1.2), target: at(0, 1.2, FINALE_Z - 2) });
-  keys.push({ position: at(0, 2.5, FINALE_Z + 9.5), target: at(0, 0.6, FINALE_Z), stop: "finale" });
+  keys.push({ position: at(0, 2.25, FINALE_Z + 7.6), target: at(0, 0.95, FINALE_Z), stop: "finale" });
   return keys;
 }
 

@@ -3,10 +3,12 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import { Blob, Clock, Frame, Plant, SkyWindow } from "../decor";
-import { InRoom, ROLE } from "../Interior";
-import { Ball, C, Cyl, Label, RBox, canvasTexture, shade, spring, stepSpring, toon } from "../kit";
-import { Mascot, stopFor } from "../Mascot";
+import { Blob, Clock, Frame, Plant, Rug, SkyWindow } from "../decor";
+import { InRoom, ROLE } from "../Rooms";
+import { Bag, Bottle, Certificate } from "../props";
+import { Ball, C, Cyl, Label, RBox, canvasTexture, glow, mat, shade, spring, stepSpring } from "../../kit";
+import { Person, stopFor } from "../../characters/Person";
+import { LOOKS } from "../../characters/parts";
 
 const FAR = -Math.PI / 2;
 
@@ -30,7 +32,7 @@ function Steam({ position }: { position: [number, number, number] }) {
           ref={(el) => {
             puffs.current[i] = el;
           }}
-          material={toon(C.white)}
+          material={mat(C.white)}
         >
           <sphereGeometry args={[1, 10, 8]} />
         </mesh>
@@ -49,15 +51,15 @@ function Notification({ accent }: { accent: string }) {
     const s = stepSpring(pop.current, k > 0.12 && k < 0.85 ? 1 : 0, dt, 220, 10);
     if (ref.current) {
       ref.current.scale.setScalar(Math.max(0.001, s) * 0.62);
-      ref.current.position.y = 1.76 + Math.sin(t * 2) * 0.03;
+      ref.current.position.y = 1.78 + Math.sin(t * 2) * 0.03;
     }
   });
   return (
-    <group ref={ref} position={[0.13, 1.76, 1.35]} rotation-y={-1.9}>
+    <group ref={ref} position={[0.42, 1.78, 1.0]} rotation-y={-1.9}>
       <RBox size={[1.2, 0.4, 0.08]} radius={0.14} color={C.white} cast />
       <Label text="Report card ready" w={0.98} h={0.22} bg={C.white} fg={C.ink} position={[0.08, 0, 0.05]} />
       <Ball r={0.07} color={accent} position={[-0.48, 0, 0.06]} detail={10} />
-      <mesh material={toon(C.white)} position={[-0.32, -0.24, 0]} rotation-z={Math.PI}>
+      <mesh material={mat(C.white)} position={[-0.32, -0.24, 0]} rotation-z={Math.PI}>
         <coneGeometry args={[0.09, 0.14, 3]} />
       </mesh>
     </group>
@@ -91,7 +93,7 @@ export function ParentLounge() {
   const role = ROLE.parent;
   return (
     <InRoom roleKey="parent">
-      <Cyl r={1.8} h={0.03} color={shade(role.accent, 1.75)} position={[1.6, 0.02, 0.4]} seg={40} />
+      <Rug r={1.8} accent={role.accent} position={[1.6, 0.02, 0.4]} />
       <SkyWindow position={[4.42, 1.9, -1.9]} rotationY={FAR} w={1.3} h={1.3} curtain={shade(role.accent, 1.25)} />
       <Clock position={[4.42, 2.95, 2.75]} rotationY={FAR} rim={role.accent} r={0.26} />
       <group position={[4.42, 2.05, 2.75]} rotation-y={FAR}>
@@ -131,7 +133,7 @@ export function ParentLounge() {
         </group>
         <group position={[0.36, 0.5, 0.18]}>
           <Cyl r={0.08} h={0.16} color={C.white} position={[0, 0.08, 0]} />
-          <mesh material={toon(C.white)} position={[0.09, 0.08, 0]} rotation-x={Math.PI / 2}>
+          <mesh material={mat(C.white)} position={[0.09, 0.08, 0]} rotation-x={Math.PI / 2}>
             <torusGeometry args={[0.045, 0.015, 6, 12]} />
           </mesh>
           <Steam position={[0, 0.2, 0]} />
@@ -144,18 +146,25 @@ export function ParentLounge() {
         <Cyl r={0.3} rTop={0.18} h={0.35} color={C.yellow} position={[0, 1.7, 0]} cast />
         <Blob w={0.7} position={[0, 0, 0]} />
       </group>
+      {[C.blue, C.red, "#f3f1ea"].map((c, i) => (
+        <RBox key={c} size={[0.3, 0.012, 0.22]} radius={0.004} color={c} position={[2.35 + i * 0.03, 0.51 + i * 0.012, -1.62 + i * 0.02]} rotation-y={0.3 + i * 0.25} />
+      ))}
+      <Bag position={[3.0, 0, 2.3]} rotationY={-0.4} colour="#6d597a" />
+      <Bottle position={[1.75, 0.5, -1.25]} colour={C.blue} />
+      <Certificate position={[4.43, 1.7, -0.15]} rotationY={FAR} accent={role.accent} w={0.44} />
       <Plant position={[2.5, 0, 2.95]} scale={1.15} pot={shade(role.accent, 0.85)} />
       <Notification accent={role.accent} />
-      <Mascot
-        color={role.accent}
+      <Person
+        look={LOOKS.parent(role.accent)}
         action="phone"
-        accessory="bow"
         stop={stopFor("parent")}
         seed={5}
         handL={
-          <group position={[0, -0.06, 0.04]} rotation-x={-0.4}>
-            <RBox size={[0.16, 0.26, 0.04]} radius={0.03} color={C.ink} />
-            <RBox size={[0.13, 0.21, 0.01]} radius={0.01} color="#9fe0ff" position={[0, 0, 0.022]} />
+          <group position={[0, -0.05, 0.035]}>
+            <RBox size={[0.085, 0.17, 0.012]} radius={0.01} color={C.ink} />
+            <mesh position={[0, 0, 0.0065]} material={glow("#bfe6ff")}>
+              <planeGeometry args={[0.072, 0.15]} />
+            </mesh>
           </group>
         }
       />

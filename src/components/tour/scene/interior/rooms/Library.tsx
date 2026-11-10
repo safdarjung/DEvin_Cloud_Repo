@@ -4,10 +4,12 @@ import { Instance, Instances } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
-import { Blob, Plant, SkyWindow } from "../decor";
-import { InRoom, ROLE } from "../Interior";
-import { Ball, C, Cyl, Label, RBox, shade, toon } from "../kit";
-import { Mascot, stopFor } from "../Mascot";
+import { Blob, Plant, Rug, SkyWindow } from "../decor";
+import { InRoom, ROLE } from "../Rooms";
+import { Bag, Bottle, Chair } from "../props";
+import { Ball, C, Cyl, Label, RBox, shade, mat } from "../../kit";
+import { Person, stopFor } from "../../characters/Person";
+import { LOOKS } from "../../characters/parts";
 
 const FAR = -Math.PI / 2;
 const BOOK_COLOURS = [C.red, C.blue, C.yellow, C.green, C.purple, C.orange, "#ff6fae", "#4a4e69"];
@@ -37,7 +39,7 @@ function Shelf({ z, seed, width = 2.4 }: { z: number; seed: number; width?: numb
       {[0.12, 0.72, 1.32, 1.92].map((y) => (
         <RBox key={y} size={[0.5, 0.05, width - 0.15]} radius={0.01} color={C.woodDark} position={[-0.05, y, 0]} />
       ))}
-      <Instances material={toon(C.white)} limit={120}>
+      <Instances material={mat(C.white)} limit={120}>
         <boxGeometry args={[0.3, 1, 1]} />
         {books.map((b, i) => (
           <Instance key={i} position={[-0.12, b.y + b.h / 2, b.z]} scale={[1, b.h, b.w]} rotation-x={b.tilt} color={b.c} />
@@ -94,7 +96,7 @@ function Tablet() {
     if (bar.current) bar.current.scale.x = Math.max(0.05, Math.min(1, k * 1.4));
   });
   return (
-    <group position={[0, 0.58, 0.5]} rotation-x={-0.6}>
+    <group position={[0.02, 0.3, 0.37]} rotation-x={-1.0} scale={0.72}>
       <RBox size={[0.42, 0.3, 0.03]} radius={0.03} color={C.ink} />
       <mesh position={[0, 0, 0.017]}>
         <planeGeometry args={[0.36, 0.24]} />
@@ -120,7 +122,7 @@ export function Library() {
   const role = ROLE.student;
   return (
     <InRoom roleKey="student">
-      <Cyl r={1.7} h={0.03} color={shade(role.accent, 1.7)} position={[1.5, 0.02, 0.5]} seg={40} />
+      <Rug r={1.7} accent={role.accent} position={[1.5, 0.02, 0.5]} />
       <Shelf z={-1.55} seed={1} />
       <Shelf z={2.3} seed={2} width={2.2} />
       <SkyWindow position={[4.42, 1.95, 0.4]} rotationY={FAR} w={1.05} h={1.25} curtain={shade(role.accent, 1.35)} />
@@ -161,8 +163,11 @@ export function Library() {
       {[C.green, C.orange, C.purple].map((c, i) => (
         <RBox key={c} size={[0.42, 0.09, 0.3]} radius={0.02} color={c} position={[3.2, 0.05 + i * 0.09, -0.15]} rotation-y={i * 0.3} />
       ))}
+      <Chair position={[1.7, 0, -1.9]} rotationY={Math.PI / 2 + 0.3} colour={C.wood} />
+      <Bag position={[1.65, 0, 1.55]} rotationY={0.5} colour={C.orange} />
+      <Bottle position={[2.2, 0.81, -2.35]} colour={C.green} />
       <Plant position={[3.9, 0, -3.1]} scale={1.1} pot={C.white} />
-      <Mascot color={role.accent} action="read" accessory="cap" stop={stopFor("student")} seed={4} front={<Tablet />} />
+      <Person look={LOOKS.student(role.accent)} action="read" stop={stopFor("student")} seed={4} front={<Tablet />} />
     </InRoom>
   );
 }

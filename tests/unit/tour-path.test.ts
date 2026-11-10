@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { JOINTS, REST, poseAt, stampLift, type Action } from "@/components/tour/scene/characters/rig";
 import { BACK_DOOR, CORRIDOR_END_Z, CORRIDOR_HALF, DOOR_HALF, FINALE_Z, GATE_Z, ROOM_HALF, ROOM_ORDER, ROOM_X, ROOMS, STOPS, cameraAt, dwellAmount, pathParamAt, stopAt } from "@/components/tour/path";
 
 const ORDER = ["gate", "principal", "admin", "teacher", "student", "parent", "finale"];
@@ -114,5 +115,42 @@ describe("tour path", () => {
     expect(dwellAmount(mid(principal.dwell), principal)).toBe(1);
     expect(dwellAmount(principal.start, principal)).toBe(0);
     expect(dwellAmount(STOPS[3].dwell[0], principal)).toBe(0);
+  });
+});
+
+describe("person rig poses", () => {
+  const ACTIONS: Action[] = ["point", "stamp", "write", "read", "phone", "wave", "walk", "swing", "sit", "stand"];
+
+  test("every action yields finite joint angles within a human range at any time", () => {
+    const pose = { ...REST };
+    for (const action of ACTIONS)
+      for (let t = 0; t < 30; t += 0.37) {
+        poseAt(action, t, t % 2 > 1 ? 1 : 0, pose);
+        for (const joint of JOINTS) {
+          expect(Number.isFinite(pose[joint]), `${action}.${joint}`).toBe(true);
+          expect(Math.abs(pose[joint]), `${action}.${joint}`).toBeLessThan(Math.PI);
+        }
+      }
+  });
+
+  test("the greeting lifts the right arm above the shoulder and leaves the left arm alone", () => {
+    const idle = poseAt("stand", 1, 0, { ...REST });
+    const waving = poseAt("stand", 1, 1, { ...REST });
+    expect(waving.rSz).toBeLessThan(-1.6);
+    expect(waving.lSz).toBe(idle.lSz);
+  });
+
+  test("the stamp is lifted slowly and comes down fast, staying between 0 and 1", () => {
+    let rising = 0;
+    let falling = 0;
+    for (let t = 0; t < 1 / 0.85; t += 0.005) {
+      const now = stampLift(t);
+      expect(now).toBeGreaterThanOrEqual(0);
+      expect(now).toBeLessThanOrEqual(1);
+      const delta = stampLift(t + 0.005) - now;
+      if (delta > 1e-4) rising++;
+      else if (delta < -1e-4) falling++;
+    }
+    expect(rising).toBeGreaterThan(falling * 1.5);
   });
 });

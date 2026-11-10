@@ -3,10 +3,12 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import { Blob, Clock, Frame, Plant, SkyWindow } from "../decor";
-import { InRoom, ROLE } from "../Interior";
-import { Ball, C, Cyl, Label, RBox, shade, toon } from "../kit";
-import { Mascot, stopFor } from "../Mascot";
+import { Blob, Clock, Frame, Plant, Rug, SkyWindow } from "../decor";
+import { InRoom, ROLE } from "../Rooms";
+import { Bag, Certificate, Chair, Computer, Drawers, Mug, OfficeChair, Papers, PinBoard } from "../props";
+import { Ball, C, Cyl, Label, RBox, shade, mat } from "../../kit";
+import { Person, stopFor } from "../../characters/Person";
+import { LOOKS } from "../../characters/parts";
 
 /* Room-local: far wall x=+4.5 (faces -x), side wall z=-3.6 is on the left of the dwell shot. */
 const FAR = -Math.PI / 2;
@@ -42,10 +44,10 @@ function Dashboard({ accent }: { accent: string }) {
         </group>
       ))}
       <group ref={donut} position={[0.68, -0.08, 0.08]}>
-        <mesh material={toon(C.green)}>
+        <mesh material={mat(C.green)}>
           <torusGeometry args={[0.32, 0.09, 8, 28, Math.PI * 1.4]} />
         </mesh>
-        <mesh material={toon("#4a4e69")} rotation-z={Math.PI * 1.4}>
+        <mesh material={mat("#4a4e69")} rotation-z={Math.PI * 1.4}>
           <torusGeometry args={[0.32, 0.09, 8, 20, Math.PI * 0.6]} />
         </mesh>
       </group>
@@ -65,7 +67,7 @@ function Trophy({ position, color = C.yellow, scale = 1 }: { position: [number, 
       <Cyl r={0.05} h={0.16} color={color} position={[0, 0.18, 0]} seg={10} />
       <Cyl r={0.08} rTop={0.2} h={0.24} color={color} position={[0, 0.38, 0]} cast />
       {[-1, 1].map((s) => (
-        <mesh key={s} material={toon(color)} position={[s * 0.2, 0.4, 0]} rotation-y={Math.PI / 2}>
+        <mesh key={s} material={mat(color)} position={[s * 0.2, 0.4, 0]} rotation-y={Math.PI / 2}>
           <torusGeometry args={[0.07, 0.02, 6, 12]} />
         </mesh>
       ))}
@@ -78,7 +80,7 @@ export function PrincipalOffice() {
   const role = ROLE.principal;
   return (
     <InRoom roleKey="principal">
-      <Cyl r={1.8} h={0.03} color={shade(role.accent, 1.65)} position={[1.5, 0.02, 0.4]} seg={40} />
+      <Rug r={1.8} accent={role.accent} position={[1.5, 0.02, 0.4]} />
       <Dashboard accent={role.accent} />
       <Clock position={[4.42, 2.85, 0.25]} rotationY={FAR} rim={role.accent} />
       <Frame w={0.9} h={0.7} position={[4.43, 2.55, 1.2]} rotationY={FAR} inner="#fff7e0" wood={C.yellow}>
@@ -110,15 +112,33 @@ export function PrincipalOffice() {
         {[C.red, C.green, C.yellow].map((c, i) => (
           <Cyl key={c} r={0.012} h={0.2} color={c} position={[0.08 + i * 0.03, 1.05, 0.33 + i * 0.02]} rotation-z={(i - 1) * 0.2} seg={6} />
         ))}
-        <group position={[0.75, 0, 0]}>
-          <RBox size={[0.6, 0.12, 0.6]} radius={0.06} color={C.ink} position={[0, 0.5, 0]} />
-          <RBox size={[0.12, 0.8, 0.6]} radius={0.06} color={C.ink} position={[0.25, 0.95, 0]} />
-          <Cyl r={0.05} h={0.45} color="#9aa0a6" position={[0, 0.22, 0]} seg={8} />
-        </group>
+        <OfficeChair position={[0.85, 0, 0.1]} rotationY={-Math.PI / 2 + 0.25} colour="#3a3f4d" />
+        <Drawers position={[-0.535, 0.4, -0.55]} rotationY={-Math.PI / 2} w={0.7} h={0.6} />
+        <Computer position={[0.05, 0.84, -0.75]} rotationY={Math.PI / 2 - 0.35} accent={role.accent} />
+        <Mug position={[-0.25, 0.84, 0.75]} colour={role.accent} rotationY={1} />
+        <Papers position={[-0.1, 0.84, 0.15]} rotationY={0.3} />
         <Blob w={1.7} d={2.8} position={[0.2, 0, 0]} />
       </group>
+      <Chair position={[1.55, 0, -1.75]} rotationY={Math.PI / 2 + 0.2} colour="#6b7280" />
+      <Chair position={[1.5, 0, -0.75]} rotationY={Math.PI / 2 - 0.15} colour="#6b7280" />
+      <Certificate position={[4.43, 2.0, 0.28]} rotationY={FAR} accent={role.accent} w={0.42} />
+      <Certificate position={[4.43, 1.52, 0.28]} rotationY={FAR} accent={C.blue} w={0.42} />
+      <Certificate position={[4.43, 1.6, 1.15]} rotationY={FAR} accent={C.green} w={0.5} />
+      <PinBoard position={[1.6, 2.0, -3.57]} w={1.8} h={1.0} seed={3} />
+      <Bag position={[3.55, 0, 0.55]} rotationY={-1.2} colour="#5b4636" />
       <Plant position={[2.4, 0, 2.95]} scale={1.15} pot={shade(role.accent, 0.9)} />
-      <Mascot color={role.accent} action="point" accessory="tie" stop={stopFor("principal")} seed={1} />
+      <Person
+        look={LOOKS.principal(role.accent)}
+        action="point"
+        stop={stopFor("principal")}
+        seed={1}
+        handL={
+          <group position={[0, -0.02, 0.05]} rotation-x={0.25}>
+            <RBox size={[0.24, 0.31, 0.02]} radius={0.01} color="#3d4a66" />
+            <RBox size={[0.2, 0.26, 0.012]} radius={0.005} color={C.cream} position={[0, 0, 0.014]} />
+          </group>
+        }
+      />
     </InRoom>
   );
 }

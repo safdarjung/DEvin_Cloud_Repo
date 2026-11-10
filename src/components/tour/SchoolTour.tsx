@@ -9,6 +9,7 @@ import { TOUR_ROLES, type TourRoleKey } from "./roles";
 import { DemoForm, FinaleCard, GateCard, ROLE, RoleCard, accentVar, roleAt } from "./TourCards";
 import { TourFilm } from "./TourFilm";
 import "./tour.css";
+import "./tour-cards.css";
 
 const ExplainerPlayer = dynamic(() => import("./explainer/ExplainerPlayer"), {
   ssr: false,

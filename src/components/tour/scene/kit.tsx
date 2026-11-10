@@ -1,58 +1,113 @@
 "use client";
 
 import { RoundedBox } from "@react-three/drei";
-import type { ThreeElements } from "@react-three/fiber";
-import { createContext, useContext, useMemo, type RefObject } from "react";
+import { useFrame, type ThreeElements } from "@react-three/fiber";
+import { createContext, useContext, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
+import { surface, track, type SurfaceKind } from "./materials/textures";
 
 /* ---------- shared state ---------- */
 
 /** Scroll progress 0..1, written by the DOM scroll trigger, read every frame inside the canvas. */
 export const ProgressContext = createContext<RefObject<number>>({ current: 0 });
 export const useProgress = () => useContext(ProgressContext);
-/** Phones/tablets in portrait run a lighter scene (fewer critters, no shadow maps). */
+/** Low quality tier (see pickTier): no shadow maps, no crowd or critters, less grass. */
 export const LiteContext = createContext(false);
 export const useLite = () => useContext(LiteContext);
 
-/* ---------- palette (bright, flat, Duolingo-ish) ---------- */
+/**
+ * Draws its children only while the camera's depth (world z) is between `min` and `max`. The camera walks one
+ * way down the school, so whole wings can be switched off when they are behind it or still far ahead:
+ * frustum culling alone would keep drawing every room that happens to sit behind a wall in view.
+ */
+export function Zone({ min = -Infinity, max = Infinity, children }: { min?: number; max?: number; children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    const z = state.camera.position.z;
+    if (ref.current) ref.current.visible = z > min && z < max;
+  });
+  return <group ref={ref}>{children}</group>;
+}
+
+/* ---------- quality tier ---------- */
+
+export type Tier = "high" | "low";
+/** Phones, and laptops with little memory or few cores, get the low tier: no shadow maps, no crowd, less grass. */
+export function pickTier(lite: boolean): Tier {
+  if (lite) return "low";
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  return (nav.deviceMemory ?? 8) <= 4 || (nav.hardwareConcurrency ?? 8) <= 4 ? "low" : "high";
+}
+
+/* ---------- palette (natural, slightly warm: a film set, not a toy box) ---------- */
 
 export const C = {
-  sky: "#a8e4ff",
-  grass: "#7ed957",
-  grassDark: "#58c23a",
-  path: "#f6dfae",
-  wall: "#fff3df",
-  trim: "#ff7a59",
-  window: "#8fd8ff",
-  white: "#ffffff",
-  yellow: "#ffc800",
-  blue: "#1cb0f6",
-  green: "#58cc02",
-  red: "#ff4b4b",
-  purple: "#ce82ff",
-  orange: "#ff9600",
-  wood: "#c98a4b",
-  woodDark: "#9b6b43",
+  sky: "#a8d8f5",
+  grass: "#6fae4a",
+  grassDark: "#4e8f3c",
+  path: "#d8c8a6",
+  wall: "#f2e7d3",
+  trim: "#b4553b",
+  window: "#9fd0ea",
+  white: "#f8f6f0",
+  yellow: "#f0b52e",
+  blue: "#2f8fd8",
+  green: "#5aa832",
+  red: "#e0524a",
+  purple: "#a877dc",
+  orange: "#ee8a26",
+  wood: "#b98352",
+  woodDark: "#86593a",
   ink: "#2b2d42",
-  cream: "#fffaf0",
+  cream: "#fbf5e6",
+  brass: "#c9a24a",
+  steel: "#9aa3ad",
 } as const;
 
-/* ---------- materials ---------- */
+/* ---------- materials (PBR, shared by key) ---------- */
 
-let gradient: THREE.DataTexture | null = null;
-const materials = new Map<string, THREE.MeshToonMaterial>();
+export interface Finish {
+  rough?: number;
+  metal?: number;
+  surface?: SurfaceKind;
+}
+const materials = new Map<string, THREE.MeshStandardMaterial>();
+const WOODS: readonly string[] = [C.wood, C.woodDark];
 
-/** Three-step cel shading: flat colour with a soft lit/unlit split. One material per colour, shared. */
-export function toon(color: string): THREE.MeshToonMaterial {
-  let m = materials.get(color);
+/** One standard material per colour + finish. Wood colours pick up a grain automatically. */
+export function mat(color: string, { rough, metal = 0, surface: kind = WOODS.includes(color) ? "grain" : undefined }: Finish = {}): THREE.MeshStandardMaterial {
+  const key = `${color}|${rough}|${metal}|${kind}`;
+  let m = materials.get(key);
   if (m) return m;
-  if (!gradient) {
-    gradient = new THREE.DataTexture(new Uint8Array([150, 205, 255]), 3, 1, THREE.RedFormat);
-    gradient.minFilter = gradient.magFilter = THREE.NearestFilter;
-    gradient.needsUpdate = true;
+  m = new THREE.MeshStandardMaterial({ color, roughness: rough ?? (kind ? 0.85 : 0.68), metalness: metal });
+  if (kind) {
+    const s = surface(kind);
+    m.map = s.map;
+    m.bumpMap = s.bumpMap;
+    m.bumpScale = kind === "grain" || kind === "fabric" ? 0.6 : 1.6;
+    if (s.roughnessMap) {
+      m.roughnessMap = s.roughnessMap;
+      m.roughness = 1;
+    }
   }
-  m = new THREE.MeshToonMaterial({ color, gradientMap: gradient });
-  materials.set(color, m);
+  materials.set(key, m);
+  return m;
+}
+
+/** A painted surface (brick, planks, …), optionally tinted. */
+export const surf = (kind: SurfaceKind, tint = "#ffffff", rough?: number) => mat(tint, { surface: kind, rough });
+/** Window glass: a dark mirror of the sky. */
+export const glass = () => mat("#a9cfe6", { rough: 0.06, metal: 0.92 });
+export const metal = (color: string = C.steel, rough = 0.35) => mat(color, { rough, metal: 0.85 });
+
+const glows = new Map<string, THREE.MeshBasicMaterial>();
+/** Unlit, over-bright: lamps and screens. Reads as "on" without a bloom pass. */
+export function glow(color: string): THREE.MeshBasicMaterial {
+  let m = glows.get(color);
+  if (!m) {
+    m = new THREE.MeshBasicMaterial({ color, toneMapped: false });
+    glows.set(color, m);
+  }
   return m;
 }
 
@@ -74,7 +129,7 @@ export function useLabel(text: string, bg: string, fg: string, w = 512, h = 128)
     const size = Math.min(h / (lines.length + 0.6), (w * 1.6) / Math.max(...lines.map((l) => l.length)));
     g.font = `800 ${size}px ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif`;
     lines.forEach((line, i) => g.fillText(line, w / 2, h / 2 + (i - (lines.length - 1) / 2) * size * 1.1));
-    const tex = new THREE.CanvasTexture(canvas);
+    const tex = track(new THREE.CanvasTexture(canvas));
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 4;
     return tex;
@@ -89,13 +144,19 @@ export interface Spring {
 }
 export const spring = (x = 0): Spring => ({ x, v: 0 });
 
-/** Under-damped spring step (overshoot = the bounce). dt is clamped so a paused tab can't explode it. */
+/**
+ * Under-damped spring step (overshoot = the bounce). Long frames are integrated in small sub-steps, so on a slow
+ * device a door still opens in real time instead of in slow motion; a paused tab is capped at a quarter second.
+ */
 export function stepSpring(s: Spring, target: number, dt: number, stiffness = 170, damping = 11): number {
-  const d = Math.min(dt, 1 / 30);
-  s.v += ((target - s.x) * stiffness - s.v * damping) * d;
-  s.x += s.v * d;
+  for (let left = Math.min(dt, 0.25); left > 1e-5; left -= SPRING_STEP) {
+    const d = Math.min(left, SPRING_STEP);
+    s.v += ((target - s.x) * stiffness - s.v * damping) * d;
+    s.x += s.v * d;
+  }
   return s.x;
 }
+const SPRING_STEP = 1 / 60;
 
 /** Pointer cursor for clickable scene objects (the canvas itself has no DOM targets). */
 export const cursor = (on: boolean) => () => {
@@ -111,29 +172,29 @@ export const damp = (from: number, to: number, rate: number, dt: number) => from
 type MeshProps = Omit<ThreeElements["mesh"], "args" | "ref">;
 type Shadow = { cast?: boolean };
 
-/** Chunky rounded box in a flat toon colour. */
-export function RBox({ size, radius = 0.08, color, cast = false, ...rest }: MeshProps & Shadow & { size: [number, number, number]; radius?: number; color: string }) {
+/** Rounded box. `m` overrides the colour with a ready material (brick, glass, …). */
+export function RBox({ size, radius = 0.08, color = C.white, m, cast = false, ...rest }: MeshProps & Shadow & { size: [number, number, number]; radius?: number; color?: string; m?: THREE.Material }) {
   const r = Math.min(radius, ...size.map((s) => s / 2 - 0.001));
-  return <RoundedBox args={size} radius={r} smoothness={3} material={toon(color)} castShadow={cast} receiveShadow {...rest} />;
+  return <RoundedBox args={size} radius={r} smoothness={2} material={m ?? mat(color)} castShadow={cast} receiveShadow {...rest} />;
 }
 
-export function Ball({ r, color, cast = false, detail = 20, ...rest }: MeshProps & Shadow & { r: number; color: string; detail?: number }) {
+export function Ball({ r, color = C.white, m, cast = false, detail = 20, ...rest }: MeshProps & Shadow & { r: number; color?: string; m?: THREE.Material; detail?: number }) {
   return (
-    <mesh material={toon(color)} castShadow={cast} receiveShadow {...rest}>
+    <mesh material={m ?? mat(color)} castShadow={cast} receiveShadow {...rest}>
       <sphereGeometry args={[r, detail, Math.round(detail * 0.75)]} />
     </mesh>
   );
 }
 
-export function Cyl({ r, h, color, rTop, seg = 18, cast = false, ...rest }: MeshProps & Shadow & { r: number; h: number; color: string; rTop?: number; seg?: number }) {
+export function Cyl({ r, h, color = C.white, m, rTop, seg = 18, cast = false, ...rest }: MeshProps & Shadow & { r: number; h: number; color?: string; m?: THREE.Material; rTop?: number; seg?: number }) {
   return (
-    <mesh material={toon(color)} castShadow={cast} receiveShadow {...rest}>
+    <mesh material={m ?? mat(color)} castShadow={cast} receiveShadow {...rest}>
       <cylinderGeometry args={[rTop ?? r, r, h, seg]} />
     </mesh>
   );
 }
 
-/** Flat unlit label plane (signs, plaques) so text stays crisp under toon lighting. */
+/** Flat unlit label plane (signs, plaques) so text stays crisp. */
 export function Label({ text, w, h, bg, fg, px = 512, ...rest }: MeshProps & { text: string; w: number; h: number; bg: string; fg: string; px?: number }) {
   const map = useLabel(text, bg, fg, px, Math.round((px * h) / w));
   return (
@@ -161,7 +222,7 @@ export function canvasTexture(key: string, w: number, h: number, draw: (g: Canva
   canvas.width = w;
   canvas.height = h;
   draw(canvas.getContext("2d")!);
-  t = new THREE.CanvasTexture(canvas);
+  t = track(new THREE.CanvasTexture(canvas));
   t.colorSpace = THREE.SRGBColorSpace;
   textures.set(key, t);
   return t;

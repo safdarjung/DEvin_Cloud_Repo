@@ -3,17 +3,17 @@
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import * as THREE from "three";
-import { CORRIDOR_END_Z, FINALE_Z, STOPS } from "../path";
-import { TOUR_ROLES } from "../roles";
-import { Blob, Bunting } from "./decor";
-import { Tree } from "./Exterior";
-import { Ball, C, Cyl, RBox, shade } from "./kit";
-import { Mascot, type MascotAction } from "./Mascot";
+import { CORRIDOR_END_Z, FINALE_Z, STOPS } from "../../path";
+import { TOUR_ROLES } from "../../roles";
+import { Blob, Bunting } from "../interior/decor";
+import { Tree } from "./Trees";
+import { Ball, C, Cyl, RBox, shade } from "../kit";
+import { Person } from "../characters/Person";
+import { LOOKS } from "../characters/parts";
 
 const FINALE = STOPS.find((s) => s.key === "finale")!;
 const CAMERA_Z = FINALE.pose.position[2];
-const GEAR = { principal: "tie", admin: "glasses", teacher: undefined, student: "cap", parent: "bow" } as const;
-const XS = [-2.8, -1.4, 0, 1.4, 2.8];
+const XS = [-2.3, -1.15, 0, 1.15, 2.3];
 
 /** One balloon on a string, bobbing and swaying on its own rhythm. */
 function Balloon({ position, colour, seed }: { position: [number, number, number]; colour: string; seed: number }) {
@@ -34,32 +34,22 @@ function Balloon({ position, colour, seed }: { position: [number, number, number
   );
 }
 
-/** Closing shot in the back garden: all five mascots on a little stage, waving, at golden hour. */
+/** Closing shot in the back garden: all five people on a little stage, waving, at golden hour. */
 export function Finale() {
   return (
     <group>
       <RBox size={[2.6, 0.06, Math.abs(FINALE_Z - CORRIDOR_END_Z) - 2]} radius={0.03} color={C.path} position={[0, 0.03, (FINALE_Z + CORRIDOR_END_Z) / 2 + 1.5]} />
       <group position={[0, 0, FINALE_Z - 0.2]}>
-        <RBox size={[7.8, 0.32, 2.3]} radius={0.14} color={C.white} position={[0, 0.16, 0]} cast />
+        <RBox size={[6.6, 0.32, 2.3]} radius={0.14} color={C.white} position={[0, 0.16, 0]} cast />
         {TOUR_ROLES.map((r, i) => (
-          <RBox key={r.key} size={[1.52, 0.2, 0.06]} radius={0.06} color={r.accent} position={[XS[i], 0.16, 1.16]} />
+          <RBox key={r.key} size={[1.28, 0.2, 0.06]} radius={0.06} color={r.accent} position={[XS[i], 0.16, 1.16]} />
         ))}
         <Blob w={9} d={3.4} position={[0, 0, 0]} />
       </group>
       {TOUR_ROLES.map((r, i) => {
-        const z = FINALE_Z + (Math.abs(XS[i]) > 2 ? 0.25 : Math.abs(XS[i]) > 1 ? 0 : -0.15);
+        const z = FINALE_Z + (Math.abs(XS[i]) > 2 ? 0.3 : Math.abs(XS[i]) > 1 ? 0 : -0.15);
         return (
-          <Mascot
-            key={r.key}
-            color={r.accent}
-            action={"wave" satisfies MascotAction}
-            accessory={GEAR[r.key]}
-            stop={FINALE}
-            seed={i * 1.3}
-            delay={i * 0.14}
-            position={[XS[i], 0.32, z]}
-            rotationY={Math.atan2(-XS[i], CAMERA_Z - z)}
-          />
+          <Person key={r.key} look={LOOKS[r.key](r.accent)} action="wave" stop={FINALE} seed={i * 1.3} delay={i * 0.14} position={[XS[i], 0.32, z]} rotationY={Math.atan2(-XS[i], CAMERA_Z - z)} />
         );
       })}
       {[-1, 1].map((s) => (

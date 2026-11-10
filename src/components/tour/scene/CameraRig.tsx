@@ -9,15 +9,17 @@ import { clamp01, damp, useProgress } from "./kit";
 const UP = new THREE.Vector3(0, 1, 0);
 /** No input for this long: render idle loops at half rate. */
 const IDLE_MS = 4000;
+/** Camera drift while standing still, metres. */
+const HANDHELD = 0.012;
 /** Footsteps over the whole path (bob phase per unit of arc-length fraction). */
 const STRIDE = 260;
 
 /** Portrait screens dock the card at the bottom, so frame each subject centred and high. */
 function portraitFocus(key: StopKey, out: THREE.Vector3): THREE.Vector3 {
   if (key === "gate") return out.set(0, 2.4, 4);
-  if (key === "finale") return out.set(0, 0.2, FINALE_Z);
+  if (key === "finale") return out.set(0, 0.7, FINALE_Z);
   const [x, , z] = roomToWorld(key, MASCOT_SPOT);
-  return out.set(x, 0.25, z);
+  return out.set(x, 0.75, z);
 }
 
 /**
@@ -62,6 +64,9 @@ export function CameraRig() {
     s.right.crossVectors(s.fwd, UP).normalize();
     position.addScaledVector(s.right, s.px * amt).addScaledVector(UP, s.py * amt * 0.45 + Math.sin(u * STRIDE) * 0.035 * s.walk);
     lookAt.addScaledVector(s.right, s.px * amt * 0.3);
+    // Handheld: the operator is never perfectly still, even during a dwell.
+    const t = state.clock.elapsedTime;
+    position.addScaledVector(s.right, Math.sin(t * 0.7) * HANDHELD + Math.sin(t * 1.9 + 1) * HANDHELD * 0.4).addScaledVector(UP, Math.sin(t * 0.9 + 2) * HANDHELD * 0.8);
     cam.position.copy(position);
     cam.lookAt(lookAt);
 
@@ -72,7 +77,7 @@ export function CameraRig() {
     if (dYaw < -Math.PI) dYaw += Math.PI * 2;
     s.yaw = yaw;
     s.roll = damp(s.roll, THREE.MathUtils.clamp((-dYaw / Math.max(dt, 1e-3)) * 0.04, -0.07, 0.07) + Math.sin(u * STRIDE * 0.5) * 0.008 * s.walk, 4, dt);
-    cam.rotateZ(s.roll);
+    cam.rotateZ(s.roll + Math.sin(t * 0.6 + 0.5) * 0.003);
   });
 
   return null;
@@ -88,9 +93,11 @@ export function Ticker({ onReady }: { onReady?: () => void }) {
   const canvas = useThree((s) => s.gl.domElement);
   const frames = useRef(0);
 
-  useFrame(() => {
+  useFrame(({ gl }) => {
     frames.current++;
     if (frames.current === 3) onReady?.();
+    // Dev-only budget check: last frame's draw calls and triangles (shadow pass included), read as window.__tourInfo.
+    if (process.env.NODE_ENV !== "production") (window as Window & { __tourInfo?: object }).__tourInfo = { calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures, geometries: gl.info.memory.geometries };
   });
 
   useEffect(() => {
