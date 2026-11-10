@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  coastDistance, dotField, fibonacciSphere, frontIndex, frontRotation, frontRotationNear, idleEase, matchApp, micLevel,
-  nearestAngle, orbState, pickDot, rippleHeight, rotateYX, scatterEnvelope, spinStretch, springStep, waveFor,
+  coastDistance, dotField, featureSlots, fibonacciSphere, frontIndex, frontRotation, frontRotationNear, iconSize, idleEase, matchApp, micLevel,
+  nearestAngle, nudgeAway, orbState, pickDot, rippleHeight, rotateYX, scatterEnvelope, spinStretch, springStep, waveFor,
 } from "@/modules/ai/components/orb/orb-layout";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
@@ -162,6 +162,68 @@ describe("dotField", () => {
       const octants = new Set(filler.map((f) => `${f[0] > 0}${f[1] > 0}${f[2] > 0}`));
       expect(octants.size).toBe(8);
     }
+  });
+});
+
+describe("featureSlots (apps + AI features on one sphere)", () => {
+  it("mixed icons stay well separated for 8+6, 20+10 and 35+12", () => {
+    for (const [apps, features] of [[8, 6], [20, 10], [35, 12]] as const) {
+      const n = apps + features;
+      const pts = dotField(n, 300).apps;
+      let min = Infinity;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) min = Math.min(min, angle(pts[i], pts[j]));
+      expect(min).toBeGreaterThan(0.85 * Math.sqrt((4 * Math.PI) / n));
+    }
+  });
+
+  it("marks exactly the feature count and spreads features over the whole sphere", () => {
+    for (const [apps, features] of [[8, 6], [20, 10], [35, 12], [9, 0], [0, 5], [3, 9]] as const) {
+      const slots = featureSlots(apps, features);
+      expect(slots).toHaveLength(apps + features);
+      expect(slots.filter(Boolean)).toHaveLength(features);
+      if (features < 4 || apps < features) continue;
+      // Lattice index runs pole to pole: features must not clump in one half, nor sit side by side.
+      const top = slots.slice(0, Math.ceil(slots.length / 2)).filter(Boolean).length;
+      expect(Math.abs(top - features / 2)).toBeLessThanOrEqual(1);
+      for (let i = 1; i < slots.length; i++) expect(slots[i] && slots[i - 1]).toBe(false);
+    }
+  });
+});
+
+describe("iconSize", () => {
+  it("few icons are large, many are smaller, and neighbours never touch", () => {
+    expect(iconSize(10, 237)).toBeGreaterThan(iconSize(51, 237));
+    for (const [n, r] of [[10, 237], [14, 144], [30, 237], [51, 237], [51, 144], [51, 60]] as const) {
+      // Typical gap between neighbours on the front of the sphere.
+      expect(iconSize(n, r)).toBeLessThan(0.6 * r * Math.sqrt((4 * Math.PI) / n));
+    }
+  });
+
+  it("stays tappable and bounded: 30..68 px (16 px floor only on a tiny sphere, e.g. phone with the transcript open)", () => {
+    expect(iconSize(51, 60)).toBe(16);
+    expect(iconSize(200, 100)).toBe(30);
+    expect(iconSize(1, 400)).toBe(68);
+    expect(iconSize(0, 400)).toBe(68);
+  });
+});
+
+describe("nudgeAway (neighbours part around a bulging icon)", () => {
+  const h = [0, 0, 1] as const;
+
+  it("moves a near neighbour away along the sphere, most when closest, and leaves far ones alone", () => {
+    const near = [Math.sin(0.3), 0, Math.cos(0.3)] as const;
+    const mid = [Math.sin(0.8), 0, Math.cos(0.8)] as const;
+    const far = [Math.sin(1.3), 0, Math.cos(1.3)] as const;
+    const n = nudgeAway(near, h, 0.12);
+    expect(len(n)).toBeCloseTo(1, 6);
+    expect(angle(n, h) - 0.3).toBeGreaterThan(angle(nudgeAway(mid, h, 0.12), h) - 0.8);
+    expect(angle(nudgeAway(mid, h, 0.12), h)).toBeGreaterThan(0.8);
+    expect(nudgeAway(far, h, 0.12)).toEqual(far);
+  });
+
+  it("does not move the bulging icon itself, and does nothing at zero strength", () => {
+    expect(nudgeAway(h, h, 0.12)).toEqual(h);
+    expect(nudgeAway([1, 0, 0], h, 0)).toEqual([1, 0, 0]);
   });
 });
 

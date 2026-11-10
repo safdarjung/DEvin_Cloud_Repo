@@ -1,7 +1,9 @@
 // Capability chips for the App Orb: every enabled AI capability gets one.
 // Chat capabilities send a concrete starter prompt; page tasks link to the
 // page that runs them (or fall back to the matching chat prompt).
+import type { ModuleKey } from "@/lib/modules/catalog";
 import { CAPABILITIES, type CapabilityKey } from "@/modules/ai/capabilities/catalog";
+import type { OrbIconKey } from "./orb-icons";
 
 export type OrbChipKind = "ask" | "create" | "open";
 
@@ -9,6 +11,8 @@ export interface OrbChip {
   key: string;
   label: string;
   kind: OrbChipKind;
+  /** Icon on the orb, by the capability's module. */
+  icon: OrbIconKey;
   /** Chat chips: the message sent on click. */
   prompt?: string;
   /** "open" chips: the page that runs the task. */
@@ -81,6 +85,14 @@ const TASK_PAGES: Partial<Record<CapabilityKey, string>> = {
   practice_quiz: "/portal/practice",
 };
 
+const MODULE_ICONS: Partial<Record<ModuleKey, OrbIconKey>> = {
+  attendance: "CalendarCheck", exams: "GraduationCap", fees: "Banknote", finance_plus: "Banknote", admissions: "ClipboardList",
+  timetable: "CalendarClock", assignments: "FileText", lesson_plans: "BookOpen", mastery: "Target", insights: "Lightbulb",
+  messaging: "MessagesSquare", announcements: "Megaphone", calendar: "CalendarDays", people: "Users", question_bank: "ListChecks",
+  practice: "Puzzle", diary: "NotebookPen", student_leave: "CalendarOff", website: "Globe", ai_briefings: "Sun", ai_student: "Book",
+  ai_teacher: "Bot",
+};
+
 const ORDER: Record<OrbChipKind, number> = { ask: 0, create: 1, open: 2 };
 
 export function orbChips(
@@ -93,8 +105,9 @@ export function orbChips(
     const [kind, prompt] = STARTERS[key];
     const page = cap.kind === "task" ? TASK_PAGES[key] : undefined;
     const href = page ? `/${opts.slug}${page}` : undefined;
-    if (href && opts.appHrefs.includes(href)) chips.push({ key, label: cap.label, kind: "open", href });
-    else if (opts.chatOn) chips.push({ key, label: cap.label, kind, prompt });
+    const icon = MODULE_ICONS[cap.module] ?? "Sparkles";
+    if (href && opts.appHrefs.includes(href)) chips.push({ key, label: cap.label, kind: "open", icon, href });
+    else if (opts.chatOn) chips.push({ key, label: cap.label, kind, icon, prompt });
   }
   return chips.sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 }

@@ -34,6 +34,43 @@ export function dotField(nApps: number, nFiller: number): { apps: Vec3[]; filler
   return { apps, filler };
 }
 
+/**
+ * Which of the nApps + nFeatures lattice slots hold an AI feature (true) rather than an app:
+ * features are interleaved evenly along the lattice, so they spread over the whole sphere.
+ */
+export function featureSlots(nApps: number, nFeatures: number): boolean[] {
+  const n = nApps + nFeatures;
+  return Array.from({ length: n }, (_, i) => Math.floor(((i + 0.5) * nFeatures) / n + 0.5) > Math.floor(((i - 0.5) * nFeatures) / n + 0.5));
+}
+
+const MIN_ICON_PX = 30;
+/** A tiny sphere (phone with the transcript open) is for looking, not tapping. */
+const TINY_RADIUS_PX = 100;
+const TINY_MIN_ICON_PX = 16;
+const MAX_ICON_PX = 68;
+
+/** Front icon diameter in px for n icons on a sphere of `radius` px: a share of the gap between neighbours. */
+export function iconSize(n: number, radius: number): number {
+  const gap = radius * Math.sqrt((4 * Math.PI) / Math.max(n, 1));
+  return clamp(gap * 0.42, radius < TINY_RADIUS_PX ? TINY_MIN_ICON_PX : MIN_ICON_PX, MAX_ICON_PX);
+}
+
+/**
+ * Neighbours part around a bulging icon: p slides away from h along the sphere by up to
+ * `amount`, most when closest. Mirrors `part()` in orb-shaders.ts (same 0.5..1 cosine window).
+ */
+export function nudgeAway(p: Vec3, h: Vec3, amount: number): Vec3 {
+  const d = dot(p, h);
+  const x = clamp((d - 0.5) / 0.5, 0, 1);
+  const w = x * x * (3 - 2 * x) * amount;
+  if (w < 1e-6 || d > 0.9999) return p;
+  const t: Vec3 = [p[0] - h[0] * d, p[1] - h[1] * d, p[2] - h[2] * d];
+  const tl = Math.hypot(t[0], t[1], t[2]) || 1;
+  const q: Vec3 = [p[0] + (t[0] / tl) * w, p[1] + (t[1] / tl) * w, p[2] + (t[2] / tl) * w];
+  const ql = Math.hypot(q[0], q[1], q[2]);
+  return [q[0] / ql, q[1] / ql, q[2] / ql];
+}
+
 /** Dots at or behind this depth take no pointer events. */
 const PICK_MIN_Z = 0.1;
 

@@ -2,19 +2,30 @@
 
 /* eslint-disable react-hooks/immutability -- useFrame mutates three.js uniforms, refs and DOM styles by design (imperative per-frame loop) */
 
-// The orb itself: ONE draw call of points (app dots + filler dots) and the
-// per-frame loop that drives it: AI state -> dot motion, sphere rotation
-// (wheel momentum -> springy snap, drag inertia, eased idle spin), app-dot
-// screen positions for hit-testing and the hovered dot's DOM label.
+// The orb itself: ONE draw call of point sprites (app and AI-feature icons from
+// a baked atlas, plus a faint dust) and the per-frame loop that drives it:
+// AI state -> motion, sphere rotation (wheel momentum -> springy snap, drag
+// inertia, eased idle spin), icon screen positions for hit-testing and the
+// hovered icon's DOM label.
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Matrix3, Matrix4, NormalBlending, ShaderMaterial, Vector3, Vector4 } from "three";
+import { BufferAttribute, BufferGeometry, Color, Matrix3, Matrix4, ShaderMaterial, Vector3, Vector4, type Texture } from "three";
 import {
-  coastDistance, dotField, frontIndex, idleEase, nearestAngle, rippleHeight, rotateYX, scatterEnvelope, spinStretch,
+  coastDistance, dotField, frontIndex, iconSize, idleEase, nearestAngle, nudgeAway, rippleHeight, rotateYX, scatterEnvelope, spinStretch,
   springStep, waveFor, type OrbState, type Vec3,
 } from "./orb-layout";
 import { DOTS_FRAGMENT, DOTS_VERTEX } from "./orb-shaders";
+import { ATLAS_GRID } from "./orb-atlas";
 import { ORB_ERROR } from "./orb-theme";
+
+/** What the stage needs to draw one icon. */
+export interface OrbSprite {
+  /** AI feature (ringed) rather than an app. */
+  feature: boolean;
+  /** Atlas cell. */
+  cell: number;
+  tint: string;
+}
 
 /** Live inputs written outside React: mic loudness (0..1) and a keystroke pulse. */
 export interface OrbSignals {
@@ -44,7 +55,8 @@ export interface OrbShared {
 
 export const CAMERA_Z = 7.5;
 export const FOV = 45;
-const FILLER_DOTS = 1100;
+/** A sparse, faint dust that only hints the sphere's form behind the icons. */
+const DUST_DOTS = 320;
 /** Sphere radius as a share of the smaller canvas side. */
 const RADIUS_SHARE = 0.37;
 const AUTO_SPIN = 0.12;
@@ -54,12 +66,15 @@ const FRICTION = 2.4;
 const SNAP_SPEED = 0.9;
 const WHEEL_QUIET_MS = 90;
 const ENTRANCE_S = 1.6;
-/** Filler dot diameter in CSS px on a 250px-radius sphere. */
-const DOT_PX = 5;
-/** App dot sprite (core + glow) relative to a filler dot. */
-const APP_DOT_SIZE = 4.8;
-// Mirror the app-dot terms in orb-shaders.ts.
+/** Dust dot diameter in CSS px. */
+const DOT_PX = 3.5;
+/** Below this many icons the dust is drawn stronger, so the sphere keeps its form. */
+const FEW_ICONS = 20;
+// Mirror the icon terms in orb-shaders.ts.
 const HOT_PUSH = 0.2;
+const PART = 0.12;
+const PART_DIP = 0.05;
+const BREATHE = 0.02;
 const CONTRACT = 0.14;
 const LEVEL_PUSH = 0.1;
 const RIPPLE_PUSH = 0.07;
@@ -71,7 +86,10 @@ const pxPerWorldUnit = (h: number) => h / (2 * CAMERA_Z * Math.tan((FOV * Math.P
 const worldRadius = (w: number, h: number) => (RADIUS_SHARE * Math.min(w, h)) / pxPerWorldUnit(h);
 
 interface Props {
-  count: number;
+  sprites: OrbSprite[];
+  atlas: Texture;
+  /** CSS colour of the page's card surface (icon chips are drawn in it). */
+  card: string;
   state: OrbState;
   reduced: boolean;
   dark: boolean;
@@ -80,11 +98,12 @@ interface Props {
   signals: React.RefObject<OrbSignals>;
   label: React.RefObject<HTMLElement | null>;
   glow: React.RefObject<HTMLElement | null>;
-  /** Highlight app dot i and spring it to the front (null releases the highlight). */
+  /** Highlight icon i and spring it to the front (null releases the highlight). */
   onSnap: (i: number | null) => void;
 }
 
-export function OrbStage({ count, state, reduced, dark, accent, shared, signals, label, glow, onSnap }: Props) {
+export function OrbStage({ sprites, atlas, card, state, reduced, dark, accent, shared, signals, label, glow, onSnap }: Props) {
+  const count = sprites.length;
   const stateRef = useRef(state);
   const snapRef = useRef(onSnap);
   const size = useThree((s) => s.size);
@@ -97,41 +116,44 @@ export function OrbStage({ count, state, reduced, dark, accent, shared, signals,
     invalidate();
   });
 
-  const field = useMemo(() => dotField(count, FILLER_DOTS), [count]);
+  const field = useMemo(() => dotField(count, DUST_DOTS), [count]);
   const geo = useMemo(() => {
     const all = [...field.apps, ...field.filler];
     const g = new BufferGeometry();
     g.setAttribute("position", new BufferAttribute(new Float32Array(all.flat()), 3));
-    g.setAttribute("aApp", new BufferAttribute(new Float32Array(all.map((_, i) => (i < count ? 1 : 0))), 1));
+    const tint = new Color();
+    g.setAttribute("aKind", new BufferAttribute(new Float32Array(all.map((_, i) => (i >= count ? 0 : sprites[i].feature ? 2 : 1))), 1));
+    g.setAttribute("aCell", new BufferAttribute(new Float32Array(all.map((_, i) => sprites[i]?.cell ?? 0)), 1));
+    g.setAttribute("aTint", new BufferAttribute(new Float32Array(all.flatMap((_, i) => (i < count ? tint.set(sprites[i].tint).multiplyScalar(dark ? 1 : 0.82).toArray() : [0, 0, 0]))), 3));
     // Golden-ratio sequence: a stable, well-mixed 0..1 seed per dot.
     g.setAttribute("aSeed", new BufferAttribute(new Float32Array(all.map((_, i) => (i * 0.61803398875) % 1)), 1));
     return g;
-  }, [field, count]);
+  }, [field, count, sprites, dark]);
   useEffect(() => () => geo.dispose(), [geo]);
   const u = useMemo(
     () => ({
       uRot: { value: new Matrix3() }, uTime: { value: 0 }, uClock: { value: 0 }, uAmp: { value: 0.035 }, uRipple: { value: 0 },
       uRipplePhase: { value: 0 }, uLevel: { value: 0 }, uContract: { value: 0 }, uSwirl: { value: 0 }, uJitter: { value: 0 },
-      uScatter: { value: 0 }, uIntro: { value: 0 }, uPx: { value: 1 }, uAppSize: { value: APP_DOT_SIZE }, uStretch: { value: 0 }, uOmega: { value: new Vector3() },
+      uScatter: { value: 0 }, uIntro: { value: 0 }, uPx: { value: 1 }, uIconPx: { value: 30 }, uAtlas: { value: null as Texture | null }, uGrid: { value: ATLAS_GRID }, uStretch: { value: 0 }, uOmega: { value: new Vector3() },
       uHotA: { value: new Vector4() }, uHotB: { value: new Vector4() }, uGlow: { value: 0.35 }, uErr: { value: 0 }, uFill: { value: 1 },
-      uColorA: { value: new Color() }, uColorB: { value: new Color() }, uAppCore: { value: new Color() }, uErrColor: { value: new Color(ORB_ERROR) },
+      uColorA: { value: new Color() }, uColorB: { value: new Color() }, uCard: { value: new Color() }, uErrColor: { value: new Color(ORB_ERROR) },
     }),
     [],
   );
   // Built by hand so the uniform objects written each frame are the ones the material reads.
   const mat = useMemo(
-    () => new ShaderMaterial({ vertexShader: DOTS_VERTEX, fragmentShader: DOTS_FRAGMENT, uniforms: u, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }),
+    // Depth-tested so a front icon's chip hides whatever is behind it (sprites are not sorted).
+    () => new ShaderMaterial({ vertexShader: DOTS_VERTEX, fragmentShader: DOTS_FRAGMENT, uniforms: u, transparent: true, toneMapped: false }),
     [u],
   );
   useEffect(() => () => mat.dispose(), [mat]);
   useEffect(() => {
-    mat.blending = dark ? AdditiveBlending : NormalBlending;
-    // Dark: light dots add up on black. Light: deep, saturated dots on the pale page.
+    u.uAtlas.value = atlas;
+    u.uCard.value.set(card);
     u.uColorA.value.set(accent[0]).lerp(new Color(accent[1]), dark ? 0.5 : 0);
-    u.uColorB.value.set(accent[1]).lerp(new Color(dark ? "#ffffff" : accent[0]), dark ? 0.2 : 0.45);
-    u.uAppCore.value.set(dark ? "#ffffff" : accent[0]).lerp(new Color(accent[1]), dark ? 0.25 : 0);
-    u.uFill.value = dark ? 1.25 : 1.6;
-  }, [accent, dark, u, mat]);
+    u.uColorB.value.set(accent[1]).lerp(new Color(accent[0]), dark ? 0 : 0.45);
+    u.uFill.value = (dark ? 1 : 1.6) * (count < FEW_ICONS ? 1.8 : 1);
+  }, [accent, dark, u, atlas, card, count]);
 
   const local = useRef({ errT: 0, intro: 0, ripple: 0, idle: 0, hot: null as number | null, hotV: 0 });
   const m4 = useMemo(() => [new Matrix4(), new Matrix4()] as const, []);
@@ -228,19 +250,34 @@ export function OrbStage({ count, state, reduced, dark, accent, shared, signals,
     const pxPerUnit = pxPerWorldUnit(H);
     const Rpx = RADIUS_SHARE * Math.min(W, H);
     const R = worldRadius(W, H);
-    // Small spheres (phone, transcript open): finer filler dots, app dots kept findable.
+    // Small spheres (phone, transcript open): finer dust, icons kept legible.
     const dotScale = Math.min(1.3, Math.max(0.45, Rpx / 250));
     u.uPx.value = DOT_PX * dpr * dotScale;
-    u.uAppSize.value = APP_DOT_SIZE / Math.sqrt(dotScale);
+    u.uIconPx.value = iconSize(count, Rpx) * dpr;
     if (glow.current) glow.current.style.opacity = String(Math.min(1, 0.45 + u.uGlow.value * 0.6));
 
-    // App dots on the CPU (same radial terms as the shader) for hit-testing and the label.
+    // Icons on the CPU (same terms as the shader) for hit-testing and the label.
     const ready = lo.intro >= ENTRANCE_S;
+    const clock = u.uClock.value;
+    const breathe = 1 + BREATHE * Math.sin(clock * 1.3);
+    const hotB: Vec3 = [b.x, b.y, b.z];
     for (let i = 0; i < field.apps.length; i++) {
-      const n: Vec3 = rotateYX(field.apps[i], r.y, r.x);
+      let p = field.apps[i];
+      // Thinking twist about the vertical axis.
+      const tw = u.uSwirl.value * (0.55 * Math.sin(clock * 1.3 + p[1] * 2.6) + p[1] * 0.8);
+      if (tw !== 0) p = [p[0] * Math.cos(tw) + p[2] * Math.sin(tw), p[1], -p[0] * Math.sin(tw) + p[2] * Math.cos(tw)];
       const hot = i === lo.hot ? a.w : 0;
+      let dip = 0;
+      // Neighbours part around the bulging icon (and the one easing back).
+      for (const [h, k, own] of [[lo.hot !== null ? field.apps[lo.hot] : null, a.w, i === lo.hot], [hotB, b.w, false]] as const) {
+        if (!h || own || k < 1e-3) continue;
+        const moved = nudgeAway(p, h, PART * k);
+        if (moved !== p) dip += PART_DIP * k * Math.min(1, Math.hypot(moved[0] - p[0], moved[1] - p[1], moved[2] - p[2]) / (PART * k));
+        p = moved;
+      }
+      const n: Vec3 = rotateYX(p, r.y, r.x);
       const radial =
-        (1 + hot * HOT_PUSH + u.uRipple.value * RIPPLE_PUSH * rippleHeight(n[2], u.uRipplePhase.value) + u.uLevel.value * LEVEL_PUSH) *
+        (breathe - dip + hot * HOT_PUSH + u.uRipple.value * RIPPLE_PUSH * rippleHeight(n[2], u.uRipplePhase.value) + u.uLevel.value * LEVEL_PUSH) *
           (1 - u.uContract.value * CONTRACT) +
         u.uScatter.value * SCATTER_PUSH;
       const rr = R * radial;
@@ -256,7 +293,7 @@ export function OrbStage({ count, state, reduced, dark, accent, shared, signals,
         // Label sits beside the dot, on the side with more room.
         const left = px > W * 0.58;
         el.dataset.side = left ? "left" : "right";
-        el.style.transform = `translate(${px}px, ${py}px) translate(${left ? "calc(-100% + 1.25rem)" : "-1.25rem"}, -50%)`;
+        el.style.transform = `translate(${px}px, ${py}px) translate(${left ? "calc(-100% + 2.5rem)" : "-2.5rem"}, -50%)`;
         el.style.opacity = String(Math.min(1, a.w * 1.4));
       }
     }

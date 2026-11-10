@@ -137,7 +137,7 @@ export function OrbView({ institutionSlug, role, apps, chat, chips, starters }: 
     >
       <div className="relative min-h-0 lg:col-start-1 lg:row-start-1">
         {use3d ? (
-          <OrbScene apps={apps} state={state} reduced={reduced} dark={dark} accent={accent} signals={signals} />
+          <OrbScene apps={apps} features={chips} onPrompt={send} state={state} reduced={reduced} dark={dark} accent={accent} signals={signals} />
         ) : (
           <AppGrid apps={apps} />
         )}
