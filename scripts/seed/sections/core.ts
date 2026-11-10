@@ -57,8 +57,19 @@ async function getOrCreateAuthUser(
   throw error ?? new Error(`createUser(${email}) returned no user and no error`);
 }
 
+// Demo only: teacher/student/guardian AI chat on so their orbs and chats work.
+// Real schools keep the role defaults (guardian off, student behind its flag).
+export function demoInstitutionSettings() {
+  return InstitutionSettingsSchema.parse({
+    ...DEFAULT_INSTITUTION_SETTINGS,
+    modules: allModulesOn(),
+    features: { ...DEFAULT_INSTITUTION_SETTINGS.features, student_ai_study: true, student_ai_visuals: true, student_ai_notebook: true },
+    ai_roles: { teacher: { enabled: true }, student: { enabled: true }, guardian: { enabled: true } },
+  });
+}
+
 export async function run(ctx: SeedContext): Promise<void> {
-  const settings = InstitutionSettingsSchema.parse({ ...DEFAULT_INSTITUTION_SETTINGS, modules: allModulesOn() });
+  const settings = demoInstitutionSettings();
 
   ctx.institutionId = uuidV5("core", "st-josephs-demo");
   await ctx.admin.from("institutions").upsert({
