@@ -8,6 +8,7 @@ export const NAV = [
   { href: "/security", label: "Security" },
   { href: "/pricing", label: "Pricing" },
   { href: "/roles", label: "Roles" },
+  { href: "/tour", label: "Tour" },
 ] as const;
 
 export const NAV_MORE = [

@@ -38,6 +38,9 @@ export default function Home() {
               <ButtonLink href="/demo" variant="secondary">
                 Try a demo
               </ButtonLink>
+              <ButtonLink href="/tour" variant="secondary">
+                Take the 3D school tour
+              </ButtonLink>
             </div>
           </div>
           <HeroPreview className={REVEAL} />
