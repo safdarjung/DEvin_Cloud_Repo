@@ -1,3 +1,4 @@
+import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { closeRolesHelper, createTestInstitution, withTwoInstitutions } from "../helpers/roles";
@@ -226,18 +227,23 @@ describe("documents migration (0067) RLS", () => {
 
   it("deleted row stays readable to admin but status cannot move back to active", async () => {
     const inst = await createTestInstitution("documents-status-machine");
+    const bucket = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SECRET_KEY as string).storage.from("tenant-docs");
+    let path = "";
     try {
       const [{ student_id: studentId }] = await sql`
         select student_id from public.memberships
         where institution_id = ${inst.institutionId} and user_id = ${inst.users.student.id}
       `;
+      path = `${inst.institutionId}/student/${studentId}/status.pdf`;
       const docId = await insertDocument({
         institutionId: inst.institutionId,
         entityType: "student",
         entityId: studentId,
         createdBy: inst.users.admin.id,
-        path: `${inst.institutionId}/student/${studentId}/status.pdf`,
+        path,
       });
+      // 0142: a document goes live only once its stored object exists.
+      expect((await bucket.upload(path, new TextEncoder().encode("%PDF-1.4\n"), { contentType: "application/pdf" })).error).toBeNull();
 
       const activate = await inst.clientAs("admin").from("documents").update({ status: "active" }).eq("id", docId);
       expect(activate.error).toBeNull();
@@ -256,6 +262,7 @@ describe("documents migration (0067) RLS", () => {
       expect(error).toBeNull();
       expect(data).toEqual([{ id: docId, status: "deleted" }]);
     } finally {
+      if (path) await bucket.remove([path]);
       await inst.cleanup();
     }
   });

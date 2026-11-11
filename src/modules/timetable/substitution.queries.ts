@@ -9,7 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { staffUnavailableOn } from "@/modules/people/hr.queries";
-import { defaultPublishedVersionId, maxPeriodsPerWeek, toHHMM } from "./queries";
+import { defaultPublishedVersionId, loadRules, toHHMM } from "./queries";
+import { rankSubstitutes } from "./checks";
 
 interface PeriodInfo {
   seq: number;
@@ -107,6 +108,9 @@ export interface SubstitutionCandidateRow {
   name: string;
   periodsWeek: number;
   maxPeriods: number;
+  /** 0141: rank score under rules.substitute_ranking (0 when the rule is off) and the facts behind it. */
+  score: number;
+  why: string;
 }
 
 /**
@@ -115,13 +119,15 @@ export interface SubstitutionCandidateRow {
  * not unavailable (leave/absent) on the date — the same candidate rules
  * assign_substitution itself enforces (0070 part 2), so the picker never
  * offers a teacher the RPC would reject. Sorted by periodsWeek ascending,
- * then name. Requires timetable.manage.
+ * then name — or, with 0141's substitute_ranking rule on, by its points
+ * (same subject, same grade, fewest periods that day, not covering), each
+ * row saying why. Requires timetable.manage.
  */
 export async function timetableSubstitutionCandidates(ctx: TenantContext, slotId: string, date: string): Promise<SubstitutionCandidateRow[]> {
   const supabase = await createClient();
   const { data: slot, error: slotError } = await supabase
     .from("timetable_slots")
-    .select("id, version_id, teacher_id, weekday, period_id")
+    .select("id, version_id, teacher_id, weekday, period_id, subject_id, subjects(name), class_sections(grade_id)")
     .eq("institution_id", ctx.institution.id)
     .eq("id", slotId)
     .maybeSingle();
@@ -167,23 +173,45 @@ export async function timetableSubstitutionCandidates(ctx: TenantContext, slotId
   const free = candidates.filter((row) => !busy.has(row.id) && !assigned.has(row.id) && !unavailable.has(row.id));
   if (free.length === 0) return [];
 
-  const { data: loadRows, error: loadError } = await supabase
-    .from("timetable_slots")
-    .select("teacher_id")
-    .eq("institution_id", ctx.institution.id)
-    .eq("version_id", slot.version_id)
-    .in(
-      "teacher_id",
-      free.map((row) => row.id),
-    );
-  if (loadError) throw loadError;
+  const freeIds = free.map((row) => row.id);
+  const [loadResult, taughtResult, coveringResult, rules] = await Promise.all([
+    supabase.from("timetable_slots").select("teacher_id, weekday").eq("institution_id", ctx.institution.id).eq("version_id", slot.version_id).in("teacher_id", freeIds),
+    supabase.from("subject_assignments").select("teacher_id, subject_id, class_sections(grade_id)").eq("institution_id", ctx.institution.id).in("teacher_id", freeIds),
+    supabase.from("substitutions").select("substitute_teacher_id").eq("institution_id", ctx.institution.id).eq("date", date).eq("status", "assigned").in("substitute_teacher_id", freeIds),
+    loadRules(ctx),
+  ]);
+  if (loadResult.error) throw loadResult.error;
+  if (taughtResult.error) throw taughtResult.error;
+  if (coveringResult.error) throw coveringResult.error;
   const periodsByTeacher = new Map<string, number>();
-  for (const row of loadRows ?? []) periodsByTeacher.set(row.teacher_id, (periodsByTeacher.get(row.teacher_id) ?? 0) + 1);
+  const todayByTeacher = new Map<string, number>();
+  for (const row of loadResult.data ?? []) {
+    periodsByTeacher.set(row.teacher_id, (periodsByTeacher.get(row.teacher_id) ?? 0) + 1);
+    if (row.weekday === slot.weekday) todayByTeacher.set(row.teacher_id, (todayByTeacher.get(row.teacher_id) ?? 0) + 1);
+  }
+  const gradeId = (slot.class_sections as { grade_id: string } | null)?.grade_id;
+  const teachesSubject = new Set((taughtResult.data ?? []).filter((r) => r.subject_id === slot.subject_id).map((r) => r.teacher_id));
+  const teachesGrade = new Set(
+    (taughtResult.data ?? []).filter((r) => (r.class_sections as { grade_id: string } | null)?.grade_id === gradeId).map((r) => r.teacher_id),
+  );
+  const covering = new Map<string, number>();
+  for (const row of coveringResult.data ?? []) covering.set(row.substitute_teacher_id, (covering.get(row.substitute_teacher_id) ?? 0) + 1);
 
-  const maxPeriods = maxPeriodsPerWeek(ctx);
-  return free
-    .map((row) => ({ staffId: row.id, name: row.full_name, periodsWeek: periodsByTeacher.get(row.id) ?? 0, maxPeriods }))
-    .sort((a, b) => a.periodsWeek - b.periodsWeek || a.name.localeCompare(b.name));
+  const maxPeriods = rules.max_teacher_per_week.value;
+  const ranked = rankSubstitutes(
+    free.map((row) => ({
+      staffId: row.id,
+      name: row.full_name,
+      periodsWeek: periodsByTeacher.get(row.id) ?? 0,
+      periodsToday: todayByTeacher.get(row.id) ?? 0,
+      teachesSubject: teachesSubject.has(row.id),
+      teachesGrade: teachesGrade.has(row.id),
+      coveringToday: covering.get(row.id) ?? 0,
+    })),
+    rules,
+    (slot.subjects as { name: string } | null)?.name,
+  );
+  return ranked.map((c) => ({ staffId: c.staffId, name: c.name, periodsWeek: c.periodsWeek, maxPeriods, score: c.score, why: c.why }));
 }
 
 export interface SubstitutionListRow {

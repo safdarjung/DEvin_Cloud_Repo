@@ -76,6 +76,14 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  {
+    // 0143: ai_proposals has no authenticated UPDATE (07 §4, `orb_tasks`
+    // caller) — this factory is its only caller, from src/modules/ai/tasks/proposals.ts.
+    files: ["src/modules/ai/tasks/service-role.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

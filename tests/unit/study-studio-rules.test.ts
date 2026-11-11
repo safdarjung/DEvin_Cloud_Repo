@@ -131,7 +131,8 @@ const SAMPLES: Record<Exclude<StudyFormat, "quiz" | "flashcards">, unknown> = {
 describe("format content schemas", () => {
   it("lists ten summary formats plus quiz, each with its own model rules", () => {
     expect(STUDY_FORMATS).toHaveLength(11);
-    expect(new Set(Object.values(FORMAT_RULES)).size).toBe(11);
+    // 0140: plus the teacher-only worksheet, which has its own rules too.
+    expect(new Set(Object.values(FORMAT_RULES)).size).toBe(12);
   });
 
   it.each(Object.entries(SAMPLES))("%s: a well-formed draft is accepted; an extra key or an over-long field is refused", (format, sample) => {

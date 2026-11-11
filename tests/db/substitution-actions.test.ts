@@ -122,6 +122,7 @@ describe("timetable.substitution.assign / timetable.substitution.cancel (M08-T9)
         slotId: base.slotId,
         date: base.date,
         substituteId,
+        note: "Teacher is on leave",
       });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
@@ -151,10 +152,10 @@ describe("timetable.substitution.assign / timetable.substitution.cancel (M08-T9)
         returning id
       `;
 
-      const first = await callAs(inst, "admin", assignSubstitution, { slotId: base.slotId, date: base.date, substituteId });
+      const first = await callAs(inst, "admin", assignSubstitution, { slotId: base.slotId, date: base.date, substituteId, note: "Teacher is on leave" });
       expect(first.ok).toBe(true);
 
-      const second = await callAs(inst, "admin", assignSubstitution, { slotId: otherSlot.id as string, date: base.date, substituteId });
+      const second = await callAs(inst, "admin", assignSubstitution, { slotId: otherSlot.id as string, date: base.date, substituteId, note: "Teacher is on leave" });
       expect(second.ok).toBe(false);
       if (second.ok) return;
       expect(second.error.code).toBe("conflict");
@@ -170,7 +171,7 @@ describe("timetable.substitution.assign / timetable.substitution.cancel (M08-T9)
       const base = await buildPublishedSlot(inst);
       const substituteId = await createOtherTeacher(inst.institutionId);
 
-      const result = await callAs(inst, "teacher", assignSubstitution, { slotId: base.slotId, date: base.date, substituteId });
+      const result = await callAs(inst, "teacher", assignSubstitution, { slotId: base.slotId, date: base.date, substituteId, note: "Teacher is on leave" });
       expect(result.ok).toBe(false);
       if (result.ok) return;
       expect(result.error.code).toBe("forbidden");
@@ -185,7 +186,7 @@ describe("timetable.substitution.assign / timetable.substitution.cancel (M08-T9)
       const base = await buildPublishedSlot(inst);
       const substituteId = await createOtherTeacher(inst.institutionId);
 
-      const assigned = await callAs(inst, "admin", assignSubstitution, { slotId: base.slotId, date: base.date, substituteId });
+      const assigned = await callAs(inst, "admin", assignSubstitution, { slotId: base.slotId, date: base.date, substituteId, note: "Teacher is on leave" });
       expect(assigned.ok).toBe(true);
       if (!assigned.ok) return;
 

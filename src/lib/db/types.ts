@@ -189,6 +189,38 @@ isOneToOne: false
       referencedColumns: ["id","institution_id"]
     }
                   ]
+                },"ai_proposals": {
+                  Row: {
+                    "action": string,"changed_keys": (string)[] | null,"created_at": string,"created_by": string,"depends_on": string | null,"error_code": string | null,"expires_at": string,"id": string,"institution_id": string,"proposed": NonNullable<Json>,"result_ref": Json | null,"status": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"changed_keys"?: (string)[] | null,"created_at"?: string,"created_by": string,"depends_on"?: string | null,"error_code"?: string | null,"expires_at"?: string,"id"?: string,"institution_id": string,"proposed"?: NonNullable<Json>,"result_ref"?: Json | null,"status"?: string,"updated_at"?: string
+                  }
+                  Update: {
+                    "action"?: string,"changed_keys"?: (string)[] | null,"created_at"?: string,"created_by"?: string,"depends_on"?: string | null,"error_code"?: string | null,"expires_at"?: string,"id"?: string,"institution_id"?: string,"proposed"?: NonNullable<Json>,"result_ref"?: Json | null,"status"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ai_proposals_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "ai_proposals_depends_on_fk"
+      columns: ["depends_on","institution_id"]
+isOneToOne: false
+      referencedRelation: "ai_proposals"
+      referencedColumns: ["id","institution_id"]
+    },{
+      foreignKeyName: "ai_proposals_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"ai_usage_events": {
                   Row: {
                     "agent_run_id": string | null,"cost_estimate_usd": number,"created_at": string,"error_code": string | null,"feature": string,"id": string,"input_tokens": number,"institution_id": string,"latency_ms": number,"model": string,"ok": boolean,"output_tokens": number,"provider": string,"redactions": number,"role": string | null,"user_id": string | null
@@ -505,14 +537,14 @@ isOneToOne: false
                   ]
                 },"assignments": {
                   Row: {
-                    "ai_generated": boolean,"class_section_id": string,"content": Json | null,"created_at": string,"created_by": string,"curriculum_unit_id": string | null,"due_at": string | null,"id": string,"institution_id": string,"instructions": string | null,"status": string,"subject_id": string,"title": string,"updated_at": string
+                    "ai_generated": boolean,"class_section_id": string,"content": Json | null,"created_at": string,"created_by": string,"curriculum_unit_id": string | null,"due_at": string | null,"id": string,"institution_id": string,"instructions": string | null,"status": string,"study_material_id": string | null,"subject_id": string,"title": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "ai_generated"?: boolean,"class_section_id": string,"content"?: Json | null,"created_at"?: string,"created_by": string,"curriculum_unit_id"?: string | null,"due_at"?: string | null,"id"?: string,"institution_id": string,"instructions"?: string | null,"status"?: string,"subject_id": string,"title": string,"updated_at"?: string
+                    "ai_generated"?: boolean,"class_section_id": string,"content"?: Json | null,"created_at"?: string,"created_by": string,"curriculum_unit_id"?: string | null,"due_at"?: string | null,"id"?: string,"institution_id": string,"instructions"?: string | null,"status"?: string,"study_material_id"?: string | null,"subject_id": string,"title": string,"updated_at"?: string
                   }
                   Update: {
-                    "ai_generated"?: boolean,"class_section_id"?: string,"content"?: Json | null,"created_at"?: string,"created_by"?: string,"curriculum_unit_id"?: string | null,"due_at"?: string | null,"id"?: string,"institution_id"?: string,"instructions"?: string | null,"status"?: string,"subject_id"?: string,"title"?: string,"updated_at"?: string
+                    "ai_generated"?: boolean,"class_section_id"?: string,"content"?: Json | null,"created_at"?: string,"created_by"?: string,"curriculum_unit_id"?: string | null,"due_at"?: string | null,"id"?: string,"institution_id"?: string,"instructions"?: string | null,"status"?: string,"study_material_id"?: string | null,"subject_id"?: string,"title"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -538,6 +570,12 @@ isOneToOne: false
       columns: ["institution_id"]
 isOneToOne: false
       referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "assignments_study_material_id_fkey"
+      columns: ["study_material_id"]
+isOneToOne: false
+      referencedRelation: "study_materials"
       referencedColumns: ["id"]
     },{
       foreignKeyName: "assignments_subject_id_fkey"
@@ -5325,6 +5363,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"study_ai_consents": {
+                  Row: {
+                    "created_at": string,"institution_id": string,"kind": string,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"institution_id": string,"kind": string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"institution_id"?: string,"kind"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "study_ai_consents_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_ai_consents_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"study_deck_progress": {
                   Row: {
                     "created_at": string,"institution_id": string,"last_reviewed_at": string | null,"material_id": string,"reviews": number,"state": NonNullable<Json>,"student_id": string,"updated_at": string
@@ -5359,14 +5423,14 @@ isOneToOne: false
                   ]
                 },"study_items": {
                   Row: {
-                    "content": NonNullable<Json>,"created_at": string,"folder": string | null,"id": string,"institution_id": string,"kind": string,"pinned": boolean,"source_chat_id": string | null,"title": string,"updated_at": string,"user_id": string
+                    "content": NonNullable<Json>,"created_at": string,"folder": string | null,"id": string,"institution_id": string,"kind": string,"pinned": boolean,"scope": Json | null,"source_chat_id": string | null,"title": string,"updated_at": string,"user_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "content": NonNullable<Json>,"created_at"?: string,"folder"?: string | null,"id"?: string,"institution_id": string,"kind": string,"pinned"?: boolean,"source_chat_id"?: string | null,"title": string,"updated_at"?: string,"user_id": string
+                    "content": NonNullable<Json>,"created_at"?: string,"folder"?: string | null,"id"?: string,"institution_id": string,"kind": string,"pinned"?: boolean,"scope"?: Json | null,"source_chat_id"?: string | null,"title": string,"updated_at"?: string,"user_id": string
                   }
                   Update: {
-                    "content"?: NonNullable<Json>,"created_at"?: string,"folder"?: string | null,"id"?: string,"institution_id"?: string,"kind"?: string,"pinned"?: boolean,"source_chat_id"?: string | null,"title"?: string,"updated_at"?: string,"user_id"?: string
+                    "content"?: NonNullable<Json>,"created_at"?: string,"folder"?: string | null,"id"?: string,"institution_id"?: string,"kind"?: string,"pinned"?: boolean,"scope"?: Json | null,"source_chat_id"?: string | null,"title"?: string,"updated_at"?: string,"user_id"?: string
                   }
                   Relationships: [
                     {
@@ -5423,14 +5487,14 @@ isOneToOne: false
                   ]
                 },"study_materials": {
                   Row: {
-                    "ai_generated": boolean,"content": NonNullable<Json>,"created_at": string,"curriculum_unit_id": string | null,"format": string,"id": string,"institution_id": string,"owner_role": string,"resource_id": string | null,"source_kind": string,"subject_id": string | null,"title": string,"updated_at": string,"user_id": string
+                    "ai_generated": boolean,"bundle_id": string | null,"content": NonNullable<Json>,"created_at": string,"curriculum_unit_id": string | null,"focus_unit_ids": (string)[],"format": string,"id": string,"institution_id": string,"language": string,"owner_role": string,"resource_id": string | null,"source_kind": string,"source_material_id": string | null,"subject_id": string | null,"title": string,"updated_at": string,"user_id": string,"variant_of": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "ai_generated"?: boolean,"content": NonNullable<Json>,"created_at"?: string,"curriculum_unit_id"?: string | null,"format": string,"id"?: string,"institution_id": string,"owner_role": string,"resource_id"?: string | null,"source_kind": string,"subject_id"?: string | null,"title": string,"updated_at"?: string,"user_id"?: string
+                    "ai_generated"?: boolean,"bundle_id"?: string | null,"content": NonNullable<Json>,"created_at"?: string,"curriculum_unit_id"?: string | null,"focus_unit_ids"?: (string)[],"format": string,"id"?: string,"institution_id": string,"language"?: string,"owner_role": string,"resource_id"?: string | null,"source_kind": string,"source_material_id"?: string | null,"subject_id"?: string | null,"title": string,"updated_at"?: string,"user_id"?: string,"variant_of"?: string | null
                   }
                   Update: {
-                    "ai_generated"?: boolean,"content"?: NonNullable<Json>,"created_at"?: string,"curriculum_unit_id"?: string | null,"format"?: string,"id"?: string,"institution_id"?: string,"owner_role"?: string,"resource_id"?: string | null,"source_kind"?: string,"subject_id"?: string | null,"title"?: string,"updated_at"?: string,"user_id"?: string
+                    "ai_generated"?: boolean,"bundle_id"?: string | null,"content"?: NonNullable<Json>,"created_at"?: string,"curriculum_unit_id"?: string | null,"focus_unit_ids"?: (string)[],"format"?: string,"id"?: string,"institution_id"?: string,"language"?: string,"owner_role"?: string,"resource_id"?: string | null,"source_kind"?: string,"source_material_id"?: string | null,"subject_id"?: string | null,"title"?: string,"updated_at"?: string,"user_id"?: string,"variant_of"?: string | null
                   }
                   Relationships: [
                     {
@@ -5452,6 +5516,12 @@ isOneToOne: false
       referencedRelation: "resources"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "study_materials_source_material_id_fkey"
+      columns: ["source_material_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_materials"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "study_materials_subject_id_fkey"
       columns: ["subject_id"]
 isOneToOne: false
@@ -5463,6 +5533,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_materials_variant_fk"
+      columns: ["variant_of","institution_id"]
+isOneToOne: false
+      referencedRelation: "study_materials"
+      referencedColumns: ["id","institution_id"]
     }
                   ]
                 },"study_plans": {
@@ -5517,6 +5593,62 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"study_questions": {
+                  Row: {
+                    "answer": string | null,"answered_at": string | null,"answered_by": string | null,"asked_by": string,"class_section_id": string,"context_excerpt": string | null,"context_kind": string,"created_at": string,"id": string,"institution_id": string,"material_id": string | null,"question": string,"student_id": string,"subject_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answer"?: string | null,"answered_at"?: string | null,"answered_by"?: string | null,"asked_by"?: string,"class_section_id": string,"context_excerpt"?: string | null,"context_kind": string,"created_at"?: string,"id"?: string,"institution_id": string,"material_id"?: string | null,"question": string,"student_id": string,"subject_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "answer"?: string | null,"answered_at"?: string | null,"answered_by"?: string | null,"asked_by"?: string,"class_section_id"?: string,"context_excerpt"?: string | null,"context_kind"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"material_id"?: string | null,"question"?: string,"student_id"?: string,"subject_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "study_questions_answered_by_fkey"
+      columns: ["answered_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_questions_asked_by_fkey"
+      columns: ["asked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_questions_class_section_id_fkey"
+      columns: ["class_section_id"]
+isOneToOne: false
+      referencedRelation: "class_sections"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_questions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_questions_material_id_fkey"
+      columns: ["material_id"]
+isOneToOne: false
+      referencedRelation: "study_materials"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_questions_student_id_fkey"
+      columns: ["student_id"]
+isOneToOne: false
+      referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "study_questions_subject_id_fkey"
+      columns: ["subject_id"]
+isOneToOne: false
+      referencedRelation: "subjects"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"study_quiz_attempts": {
                   Row: {
                     "ai_checks": NonNullable<Json>,"ai_max": number,"ai_points": number,"answers": NonNullable<Json>,"auto_max": number,"auto_score": number,"created_at": string,"curriculum_unit_id": string | null,"difficulty": string,"duration_seconds": number | null,"id": string,"institution_id": string,"material_id": string | null,"questions": NonNullable<Json>,"student_id": string,"subject_id": string | null,"title": string,"updated_at": string
@@ -5563,17 +5695,23 @@ isOneToOne: false
                   ]
                 },"study_sessions": {
                   Row: {
-                    "activity": string,"created_at": string,"id": string,"institution_id": string,"material_id": string | null,"minutes": number,"started_at": string,"student_id": string,"subject_id": string | null,"updated_at": string
+                    "activity": string,"created_at": string,"curriculum_unit_id": string | null,"id": string,"institution_id": string,"material_id": string | null,"minutes": number,"started_at": string,"student_id": string,"subject_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "activity": string,"created_at"?: string,"id"?: string,"institution_id": string,"material_id"?: string | null,"minutes": number,"started_at"?: string,"student_id": string,"subject_id"?: string | null,"updated_at"?: string
+                    "activity": string,"created_at"?: string,"curriculum_unit_id"?: string | null,"id"?: string,"institution_id": string,"material_id"?: string | null,"minutes": number,"started_at"?: string,"student_id": string,"subject_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "activity"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"material_id"?: string | null,"minutes"?: number,"started_at"?: string,"student_id"?: string,"subject_id"?: string | null,"updated_at"?: string
+                    "activity"?: string,"created_at"?: string,"curriculum_unit_id"?: string | null,"id"?: string,"institution_id"?: string,"material_id"?: string | null,"minutes"?: number,"started_at"?: string,"student_id"?: string,"subject_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "study_sessions_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "study_sessions_institution_id_fkey"
       columns: ["institution_id"]
 isOneToOne: false
@@ -5639,14 +5777,14 @@ isOneToOne: false
                   ]
                 },"subject_textbooks": {
                   Row: {
-                    "chapter_titles": NonNullable<Json>,"created_at": string,"created_by": string,"custom_chapters": number | null,"custom_publisher": string | null,"custom_title": string | null,"custom_url": string | null,"grade_id": string,"id": string,"institution_id": string,"ncert_code": string | null,"position": number,"subject_id": string,"updated_at": string
+                    "chapter_titles": NonNullable<Json>,"created_at": string,"created_by": string,"custom_chapters": number | null,"custom_publisher": string | null,"custom_title": string | null,"custom_url": string | null,"grade_id": string,"id": string,"institution_id": string,"ncert_code": string | null,"position": number,"school_url": string | null,"subject_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"grade_id": string,"id"?: string,"institution_id": string,"ncert_code"?: string | null,"position"?: number,"subject_id": string,"updated_at"?: string
+                    "chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"grade_id": string,"id"?: string,"institution_id": string,"ncert_code"?: string | null,"position"?: number,"school_url"?: string | null,"subject_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"grade_id"?: string,"id"?: string,"institution_id"?: string,"ncert_code"?: string | null,"position"?: number,"subject_id"?: string,"updated_at"?: string
+                    "chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"grade_id"?: string,"id"?: string,"institution_id"?: string,"ncert_code"?: string | null,"position"?: number,"school_url"?: string | null,"subject_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -5911,6 +6049,76 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"timetable_changes": {
+                  Row: {
+                    "action": string,"actor_id": string | null,"actor_name": string | null,"after": Json | null,"before": Json | null,"class_section_id": string | null,"created_at": string,"id": string,"institution_id": string,"kind": string,"label": string | null,"on_date": string | null,"period_id": string | null,"prev_teacher_id": string | null,"reason": string,"reverts_change_id": string | null,"rule_codes": (string)[],"substitution_id": string | null,"teacher_id": string | null,"updated_at": string,"version_id": string | null,"weekday": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "action": string,"actor_id"?: string | null,"actor_name"?: string | null,"after"?: Json | null,"before"?: Json | null,"class_section_id"?: string | null,"created_at"?: string,"id"?: string,"institution_id": string,"kind": string,"label"?: string | null,"on_date"?: string | null,"period_id"?: string | null,"prev_teacher_id"?: string | null,"reason": string,"reverts_change_id"?: string | null,"rule_codes"?: (string)[],"substitution_id"?: string | null,"teacher_id"?: string | null,"updated_at"?: string,"version_id"?: string | null,"weekday"?: number | null
+                  }
+                  Update: {
+                    "action"?: string,"actor_id"?: string | null,"actor_name"?: string | null,"after"?: Json | null,"before"?: Json | null,"class_section_id"?: string | null,"created_at"?: string,"id"?: string,"institution_id"?: string,"kind"?: string,"label"?: string | null,"on_date"?: string | null,"period_id"?: string | null,"prev_teacher_id"?: string | null,"reason"?: string,"reverts_change_id"?: string | null,"rule_codes"?: (string)[],"substitution_id"?: string | null,"teacher_id"?: string | null,"updated_at"?: string,"version_id"?: string | null,"weekday"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "timetable_changes_actor_id_fkey"
+      columns: ["actor_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_changes_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_changes_reverts_change_id_fkey"
+      columns: ["reverts_change_id"]
+isOneToOne: true
+      referencedRelation: "timetable_changes"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_changes_substitution_id_fkey"
+      columns: ["substitution_id"]
+isOneToOne: false
+      referencedRelation: "substitutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_changes_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "timetable_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"timetable_rules": {
+                  Row: {
+                    "created_at": string,"institution_id": string,"rules": NonNullable<Json>,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"institution_id": string,"rules"?: NonNullable<Json>,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "created_at"?: string,"institution_id"?: string,"rules"?: NonNullable<Json>,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "timetable_rules_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: true
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_rules_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"timetable_slots": {
                   Row: {
                     "class_section_id": string,"created_at": string,"id": string,"institution_id": string,"period_id": string,"room_id": string | null,"subject_id": string,"teacher_id": string,"updated_at": string,"version_id": string,"weekday": number
@@ -5961,6 +6169,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "timetable_slots_version_id_fkey"
+      columns: ["version_id"]
+isOneToOne: false
+      referencedRelation: "timetable_versions"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"timetable_snapshots": {
+                  Row: {
+                    "created_at": string,"created_by": string,"id": string,"institution_id": string,"name": string,"slots": NonNullable<Json>,"updated_at": string,"version_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by"?: string,"id"?: string,"institution_id": string,"name": string,"slots": NonNullable<Json>,"updated_at"?: string,"version_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"slots"?: NonNullable<Json>,"updated_at"?: string,"version_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "timetable_snapshots_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_snapshots_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timetable_snapshots_version_id_fkey"
       columns: ["version_id"]
 isOneToOne: false
       referencedRelation: "timetable_versions"
@@ -6339,6 +6579,37 @@ isOneToOne: false
 "apply_school_template":
 { Args: { "p_institution_id": string,"p_template": Json }; Returns: Json
                            },
+"apply_timetable_changes":
+{ Args: { "p_changes": Json,"p_kind": string,"p_note"?: string,"p_reverts_change_id"?: string,"p_version_id": string }; Returns: {
+              "action": string,
+"actor_id": string | null,
+"actor_name": string | null,
+"after": Json | null,
+"before": Json | null,
+"class_section_id": string | null,
+"created_at": string,
+"id": string,
+"institution_id": string,
+"kind": string,
+"label": string | null,
+"on_date": string | null,
+"period_id": string | null,
+"prev_teacher_id": string | null,
+"reason": string,
+"reverts_change_id": string | null,
+"rule_codes": (string)[],
+"substitution_id": string | null,
+"teacher_id": string | null,
+"updated_at": string,
+"version_id": string | null,
+"weekday": number | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "timetable_changes"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "assert_forecast_window":
 { Args: { "p_from": string,"p_to": string }; Returns: undefined
                            },
@@ -7076,6 +7347,11 @@ isOneToOne: false
               "full_name": string,"is_class_teacher": boolean,"staff_id": string,"subject_names": (string)[]
             }[]
                            },
+"my_exam_paper_scope":
+{ Args: { "p_paper_id": string }; Returns: {
+              "duration_minutes": number,"exam_name": string,"paper_id": string,"scheduled_at": string,"subject_id": string,"subject_name": string,"unit_ids": (string)[]
+            }[]
+                           },
 "my_open_forms":
 { Args: { "p_institution_id": string }; Returns: {
               "description": string,"fields": Json,"id": string,"published_at": string,"responded": boolean,"student_id": string,"student_name": string,"title": string
@@ -7086,6 +7362,11 @@ isOneToOne: false
               "closes_at": string,"description": string,"id": string,"is_anonymous": boolean,"questions": Json,"responded": boolean,"title": string
             }[]
                            },
+"my_section_covers":
+{ Args: { "p_date": string,"p_institution_id": string }; Returns: {
+              "class_section_id": string,"cover_teacher": string,"on_date": string,"period_id": string,"subject": string
+            }[]
+                           },
 "my_upcoming_exam_papers":
 { Args: { "p_days"?: number,"p_student_id": string }; Returns: {
               "duration_minutes": number,"exam_id": string,"exam_name": string,"paper_id": string,"scheduled_at": string,"subject_name": string
@@ -7093,6 +7374,9 @@ isOneToOne: false
                            },
 "open_marks_entry":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: Json
+                           },
+"patch_institution_settings":
+{ Args: { "p_institution_id": string,"p_patch": Json }; Returns: Json
                            },
 "peek_platform_invite_code":
 { Args: { "p_code": string,"p_email": string }; Returns: boolean
@@ -7188,6 +7472,28 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"publish_timetable_version":
+{ Args: { "p_note"?: string,"p_version_id": string }; Returns: {
+              "academic_year_id": string,
+"created_at": string,
+"created_by": string,
+"id": string,
+"institution_id": string,
+"name": string,
+"published_at": string | null,
+"published_by": string | null,
+"status": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "timetable_versions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
+"purge_ai_proposals":
+{ Args: { "p_older_than"?: string }; Returns: number
+                           },
 "raise_helpdesk_ticket":
 { Args: { "p_body": string,"p_category": string,"p_institution_id": string,"p_priority": string,"p_subject": string }; Returns: Json
                            },
@@ -7367,6 +7673,20 @@ isOneToOne: false
 "set_invoice_instalments":
 { Args: { "p_invoice_id": string,"p_parts": Json }; Returns: number
                            },
+"set_timetable_rules":
+{ Args: { "p_institution_id": string,"p_reason": string,"p_reverts_change_id"?: string,"p_rules": Json }; Returns: {
+              "created_at": string,
+"institution_id": string,
+"rules": NonNullable<Json>,
+"updated_at": string,
+"updated_by": string | null
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "timetable_rules"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "sign_up_club_event":
 { Args: { "p_event_id": string,"p_student_id": string }; Returns: {
               "created_at": string,
@@ -7516,6 +7836,29 @@ isOneToOne: false
               "collected": number,"due": number,"invoice_count": number
             }[]
                            },
+"undo_substitution":
+{ Args: { "p_change_id": string,"p_note"?: string }; Returns: {
+              "cancelled_at": string | null,
+"created_at": string,
+"created_by": string | null,
+"date": string,
+"id": string,
+"institution_id": string,
+"leave_request_id": string | null,
+"note": string | null,
+"original_teacher_id": string,
+"period_id": string,
+"slot_id": string,
+"status": string,
+"substitute_teacher_id": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "substitutions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "update_helpdesk_ticket":
 { Args: { "p_assignee_staff_id": string,"p_institution_id": string,"p_status": string,"p_ticket_id": string }; Returns: Json
                            },

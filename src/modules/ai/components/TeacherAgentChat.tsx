@@ -176,6 +176,7 @@ function MessageParts({ message, institutionSlug, aiPolicy, teachableSections }:
                     action={parsed.action}
                     input={parsed.input}
                     summary={parsed.summary}
+                    proposal={parsed.proposal}
                   />
                 </div>
               );

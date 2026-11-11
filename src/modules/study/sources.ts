@@ -7,6 +7,8 @@ import "server-only";
 import { AppError } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
+import { classWeakUnitsSource, fileSource, teacherUnitsSource, weakUnitsSource } from "@/modules/study/help-sources";
+import { scopeSource } from "@/modules/study/scope-source";
 import type { StudySource } from "@/modules/study/schemas";
 
 export interface ResolvedSource {
@@ -18,14 +20,20 @@ export interface ResolvedSource {
   subjectId: string | null;
   unitId: string | null;
   resourceId: string | null;
+  /** 0140: the curriculum file the material is made from (file source). */
+  sourceMaterialId?: string | null;
+  /** 0140: units a revision pack targets. */
+  focusUnitIds?: string[];
+  /** 0140: bytes for the multimodal path, fetched under the caller's RLS. */
+  file?: { bytes: Uint8Array; mime: string; fileName: string };
 }
 
-type Client = Awaited<ReturnType<typeof createClient>>;
+export type Client = Awaited<ReturnType<typeof createClient>>;
 const notFound = (): never => {
   throw new AppError("not_found", "That source was not found.");
 };
 
-async function names(supabase: Client, gradeId: string | null, subjectId: string | null) {
+export async function names(supabase: Client, gradeId: string | null, subjectId: string | null) {
   const [grade, subject] = await Promise.all([
     gradeId ? supabase.from("grades").select("display_name").eq("id", gradeId).maybeSingle() : Promise.resolve({ data: null, error: null }),
     subjectId ? supabase.from("subjects").select("name").eq("id", subjectId).maybeSingle() : Promise.resolve({ data: null, error: null }),
@@ -35,7 +43,7 @@ async function names(supabase: Client, gradeId: string | null, subjectId: string
 }
 
 /** The student's active section, or null for staff. */
-async function studentSection(supabase: Client, ctx: TenantContext): Promise<string | null> {
+export async function studentSection(supabase: Client, ctx: TenantContext): Promise<string | null> {
   if (!ctx.membership.studentId) return null;
   const { data, error } = await supabase
     .from("enrolments")
@@ -195,5 +203,19 @@ export async function resolveStudySource(ctx: TenantContext, source: StudySource
       return pasteSource(supabase, ctx, source.text, source.subjectId);
     case "textbook":
       return textbookSource(supabase, ctx, source.unitId, source.text, audience === "student");
+    case "file":
+      return fileSource(supabase, ctx, source.materialId, audience);
+    case "weak_units":
+      if (audience !== "student") throw new AppError("forbidden", "A revision pack is made from your own practice.");
+      return weakUnitsSource(supabase, ctx);
+    case "class_weak_units":
+      if (audience !== "teacher") throw new AppError("forbidden", "Only a teacher makes a class revision pack.");
+      return classWeakUnitsSource(supabase, ctx, source.sectionId);
+    case "scope":
+      if (audience !== "student") throw new AppError("forbidden", "Study scopes belong to students.");
+      return scopeSource(ctx, source.itemId);
+    case "units":
+      if (audience !== "teacher") throw new AppError("forbidden", "Pick a scope on the Study with AI page.");
+      return teacherUnitsSource(supabase, ctx, source.unitIds);
   }
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
@@ -33,6 +34,9 @@ function lockReason(locked: CapabilityLock, moduleKey: keyof typeof MODULES): st
       return `The ${MODULES[moduleKey].label} module is off.`;
     case "role_off":
       return "Turn on this role's AI chat above to use this.";
+    case "mode_off":
+    case "group_off":
+      return "Switched off in the control centre for this role.";
   }
 }
 
@@ -83,6 +87,9 @@ export default async function AiRoleSettingsPage({
   return (
     <div className="space-y-4">
       <PageHeader title="AI roles" description="Configure what each role's AI can do, on the cloud, and its usage limit." />
+      <p className="text-sm text-muted-foreground">
+        Want everything in one place, with search and presets? Open the <Link href={`/${institutionSlug}/settings/control-centre`} className="font-medium text-foreground underline underline-offset-2">Control centre</Link>.
+      </p>
       <FadeIn>
         <AiRoleSettings institutionSlug={institutionSlug} roles={roles} />
       </FadeIn>

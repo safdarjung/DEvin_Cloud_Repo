@@ -33,6 +33,8 @@ const EMPTY_IN_DEMO = new Set<string>([
   "student_lifecycle_events", // M14: no lifecycle event recorded in the demo tenant
   "dashboard_preferences", // 0135: no custom layout saved in the demo tenant
   "curriculum_materials", // 0139: uploads need a real stored file; none is uploaded in the demo tenant
+  "timetable_snapshots", // 0141: snapshots are saved by a manager before a risky edit; none is saved in the demo tenant
+  "ai_proposals", // 0143: task cards exist only while a person is working in the orb; none is seeded
 ]);
 
 // Roles that read only the rows they take part in. The demo seed gives the demo teacher, guardian and student

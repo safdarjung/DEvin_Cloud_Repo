@@ -81,10 +81,12 @@ describe("M23-T20 seed section workflows", () => {
     expect(rows[0]!.next_run_at).toBeNull();
   });
 
-  it("creates no workflow_runs and no jobs rows", async () => {
-    const runs = await sql`select id from public.workflow_runs where institution_id = ${institutionId}`;
-    expect(runs.length).toBe(0);
-    const jobs = await sql`select id from public.jobs where institution_id = ${institutionId} and type = 'workflow.run'`;
+  // The workflow-runs seed section adds finished history for the demo (done, failed, awaiting approval).
+  // Nothing may be left running or queued: a reseed must never make the job runner execute a workflow.
+  it("seeds only finished or waiting runs and queues no workflow jobs", async () => {
+    const live = await sql`select id from public.workflow_runs where institution_id = ${institutionId} and status in ('running', 'queued')`;
+    expect(live.length).toBe(0);
+    const jobs = await sql`select id from public.jobs where institution_id = ${institutionId} and type = 'workflow.run' and status in ('queued', 'running')`;
     expect(jobs.length).toBe(0);
   });
 

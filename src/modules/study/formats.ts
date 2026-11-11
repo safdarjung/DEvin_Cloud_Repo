@@ -4,6 +4,7 @@
 // generationSchema(f) enforces the format's full size; contentSchema(f) is
 // what a saved (possibly hand-edited, shortened) copy must satisfy.
 import { z } from "zod";
+import { WORKSHEET_RULE, WorksheetContentSchema, WorksheetGenerationSchema, toWorksheet } from "./worksheet";
 
 export const SUMMARY_FORMATS = [
   "quick_summary",
@@ -19,6 +20,9 @@ export const SUMMARY_FORMATS = [
 ] as const;
 export const STUDY_FORMATS = [...SUMMARY_FORMATS, "quiz"] as const;
 export type StudyFormat = (typeof STUDY_FORMATS)[number];
+/** 0140: a teacher-only worksheet and a student mock exam are stored as study materials too, but are not studio "Make" choices. */
+export type MaterialFormat = StudyFormat | "worksheet" | "mock_exam";
+export type GeneratedFormat = StudyFormat | "worksheet";
 
 export const QUIZ_TYPES = ["mcq", "true_false", "short"] as const;
 export type QuizType = (typeof QUIZ_TYPES)[number];
@@ -26,7 +30,9 @@ export const QUIZ_LENGTHS = [5, 10, 15] as const;
 export const DIFFICULTIES = ["easy", "medium", "hard"] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 
-export const FORMAT_LABELS: Record<StudyFormat, string> = {
+export const FORMAT_LABELS: Record<MaterialFormat, string> = {
+  worksheet: "Worksheet",
+  mock_exam: "Mock exam",
   quick_summary: "Quick summary",
   revision_notes: "Revision notes",
   cheat_sheet: "Cheat sheet",
@@ -40,7 +46,8 @@ export const FORMAT_LABELS: Record<StudyFormat, string> = {
   quiz: "Quiz",
 };
 
-export const FORMAT_RULES: Record<StudyFormat, string> = {
+export const FORMAT_RULES: Record<GeneratedFormat, string> = {
+  worksheet: WORKSHEET_RULE,
   quick_summary: "Write a quick summary: one plain paragraph of at most 120 words, then 3 to 5 key points of one sentence each.",
   revision_notes:
     "Write revision notes: 2 to 8 sections in teaching order, each with a short heading and 1 to 8 bullet points of at most 30 words.",
@@ -109,7 +116,7 @@ export type Flashcard = z.infer<typeof FlashcardSchema>;
 
 // Quiz: the model fills a flat, every-key-present frame; toStoredContent maps
 // it onto the typed question union and drops anything malformed.
-const QuizGenerationQuestionSchema = z
+export const QuizGenerationQuestionSchema = z
   .object({
     type: z.enum(QUIZ_TYPES),
     stem: text(500),
@@ -132,17 +139,38 @@ export const QuizQuestionSchema = z.discriminatedUnion("type", [
 export type QuizQuestion = z.infer<typeof QuizQuestionSchema>;
 const QuizContentSchema = z.object({ difficulty: z.enum(DIFFICULTIES), questions: z.array(QuizQuestionSchema).min(1).max(15) }).strict();
 
+/** 0140 mock exam: questions ordered by section (MCQ, true/false, short); questionUnits[i] indexes `units` (-1 = none). */
+export const MockContentSchema = z
+  .object({
+    difficulty: z.enum(DIFFICULTIES),
+    durationMinutes: z.number().int().min(5).max(180),
+    examLabel: z.string().trim().min(1).max(160).nullable(),
+    paperId: z.string().uuid().nullable(),
+    units: z.array(z.object({ id: z.string().uuid(), title: text(200) }).strict()).min(1).max(12),
+    questions: z.array(QuizQuestionSchema).min(1).max(15),
+    questionUnits: z.array(z.number().int().min(-1).max(11)).min(1).max(15),
+  })
+  .strict()
+  .refine((m) => m.questionUnits.length === m.questions.length && m.questionUnits.every((u) => u < m.units.length), {
+    message: "every question needs a unit index",
+    path: ["questionUnits"],
+  });
+export type MockContent = z.infer<typeof MockContentSchema>;
+
 /** What the model must return for `format`. */
-export function generationSchema(format: StudyFormat): z.ZodType<unknown> {
+export function generationSchema(format: GeneratedFormat): z.ZodType<unknown> {
   if (format === "flashcards") return FlashcardGenerationSchema;
   if (format === "quiz") return QuizGenerationSchema;
+  if (format === "worksheet") return WorksheetGenerationSchema;
   return GENERATION[format];
 }
 
 /** What a saved copy (after teacher/student edits) must satisfy. */
-export function contentSchema(format: StudyFormat): z.ZodType<unknown> {
+export function contentSchema(format: MaterialFormat): z.ZodType<unknown> {
   if (format === "flashcards") return FlashcardDeckSchema;
   if (format === "quiz") return QuizContentSchema;
+  if (format === "worksheet") return WorksheetContentSchema;
+  if (format === "mock_exam") return MockContentSchema;
   return STORED[format];
 }
 
@@ -154,7 +182,7 @@ export interface QuizOptions {
 
 const distinct = (values: readonly string[]): boolean => new Set(values.map((v) => v.trim().toLowerCase())).size === values.length;
 
-function toQuizQuestion(q: z.infer<typeof QuizGenerationQuestionSchema>): QuizQuestion | null {
+export function toQuizQuestion(q: z.infer<typeof QuizGenerationQuestionSchema>): QuizQuestion | null {
   const explanationText = q.explanation;
   if (q.type === "mcq") {
     if (q.options.length !== 4 || !distinct(q.options) || q.answerIndex < 0) return null;
@@ -166,7 +194,8 @@ function toQuizQuestion(q: z.infer<typeof QuizGenerationQuestionSchema>): QuizQu
 }
 
 /** Model output -> stored content for `format`, validated whole. Invalid output is rejected, never partly saved. */
-export function toStoredContent(format: StudyFormat, raw: unknown, opts: QuizOptions): { ok: true; content: unknown } | { ok: false } {
+export function toStoredContent(format: GeneratedFormat, raw: unknown, opts: QuizOptions): { ok: true; content: unknown } | { ok: false } {
+  if (format === "worksheet") return toWorksheet(raw);
   const gen = generationSchema(format).safeParse(raw);
   if (!gen.success) return { ok: false };
   let content: unknown = gen.data;

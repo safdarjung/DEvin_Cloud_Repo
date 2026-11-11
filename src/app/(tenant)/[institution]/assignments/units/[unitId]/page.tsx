@@ -5,10 +5,12 @@ import { EmptyState } from "@/components/states";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { FadeIn } from "@/components/motion";
+import { StudyFromFileLinks } from "@/modules/study/components/StudyFromFileLinks";
 import { MaterialsPanel } from "@/modules/textbooks/components/MaterialsPanel";
 import { BookList } from "@/modules/textbooks/components/BookLinks";
 import { UnitChapterForm } from "@/modules/textbooks/components/UnitChapterForm";
@@ -123,6 +125,7 @@ export default async function CurriculumUnitQuizPage({
             emptyText="No files for this unit yet."
             upload={canManage ? { target: { gradeId: unit.grade_id, subjectId: unit.subject_id, unitId: unit.id }, label: "Upload notes or a chapter PDF" } : undefined}
           />
+          {ctx.membership.role === "teacher" && isModuleEnabled(ctx, "ai_teacher") && <StudyFromFileLinks files={files} hrefBase={`/${institutionSlug}/study-studio?file=`} />}
           {canManage && (
             <MaterialsPanel
               institutionSlug={institutionSlug}

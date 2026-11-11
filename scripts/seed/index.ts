@@ -28,6 +28,7 @@ import { run as runPtm } from "./sections/ptm.ts";
 import { run as runAlumni } from "./sections/alumni.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
+import { run as runTimetableControl } from "./sections/timetable-control.ts";
 import { run as runHealth } from "./sections/health.ts";
 import { run as runHelpdesk } from "./sections/helpdesk.ts";
 import { run as runHostel } from "./sections/hostel.ts";
@@ -142,6 +143,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "study-studio", run: runStudyStudio },
   // 0139: needs academics subject_assignments/units and core demo logins; NCERT links only, no rng draws.
   { name: "textbooks", run: runTextbooks },
+  // 0141: needs timetable (published version, periods, rooms), academics sections and core demo logins; no rng draws.
+  { name: "timetable-control", run: runTimetableControl },
   { name: "finance-extras", run: runFinanceExtras },
   { name: "data-ops", run: runDataOps },
   { name: "people-history", run: runPeopleHistory },

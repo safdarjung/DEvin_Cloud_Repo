@@ -6,8 +6,21 @@
 import { z } from "zod";
 import { defineQuery } from "@/lib/actions/define-query";
 import { uuid } from "@/lib/schemas/common";
-import { CoverNeededSchema, ForSectionSchema, ForStudentSchema, ForTeacherSchema, SubstitutionCandidatesSchema, SubstitutionsSchema, SuggestFillSchema, VersionQuerySchema } from "./schemas";
 import {
+  ChangesQuerySchema,
+  CompareVersionsSchema,
+  CoverNeededSchema,
+  DayViewSchema,
+  ForSectionSchema,
+  ForStudentSchema,
+  ForTeacherSchema,
+  SubstitutionCandidatesSchema,
+  SubstitutionsSchema,
+  SuggestFillSchema,
+  VersionQuerySchema,
+} from "./schemas";
+import {
+  loadRules,
   timetableConflicts,
   timetableForSection,
   timetableForStudent,
@@ -17,7 +30,8 @@ import {
   timetableTodayFor,
 } from "./queries";
 import { timetableCoverNeeded, timetableSubstitutionCandidates, timetableSubstitutions } from "./substitution.queries";
-import { suggestTimetableFill } from "./suggest.queries";
+import { suggestTimetableFill, timetableViolations } from "./suggest.queries";
+import { timetableChanges, timetableCompare, timetableDay } from "./control.queries";
 
 export const timetableForSectionQuery = defineQuery({
   name: "timetable.forSection",
@@ -107,4 +121,47 @@ export const timetableSuggestQuery = defineQuery({
   schema: SuggestFillSchema,
   permission: "timetable.manage",
   handler: (input, ctx) => suggestTimetableFill(ctx, input),
+});
+
+// 0141: timetable control reads. changes/day gate on timetable.read (RLS
+// narrows non-managers to rows explaining their own timetable); the rest
+// are manager-only.
+export const timetableChangesQuery = defineQuery({
+  name: "timetable.changes",
+  module: "timetable",
+  schema: ChangesQuerySchema,
+  permission: "timetable.read",
+  handler: (input, ctx) => timetableChanges(ctx, input),
+});
+
+export const timetableDayQuery = defineQuery({
+  name: "timetable.day",
+  module: "timetable",
+  schema: DayViewSchema,
+  permission: "timetable.read",
+  handler: (input, ctx) => timetableDay(ctx, input),
+});
+
+export const timetableViolationsQuery = defineQuery({
+  name: "timetable.violations",
+  module: "timetable",
+  schema: VersionQuerySchema,
+  permission: "timetable.manage",
+  handler: (input, ctx) => timetableViolations(ctx, input.versionId),
+});
+
+export const timetableCompareQuery = defineQuery({
+  name: "timetable.compare",
+  module: "timetable",
+  schema: CompareVersionsSchema,
+  permission: "timetable.manage",
+  handler: (input, ctx) => timetableCompare(ctx, input.fromVersionId, input.toVersionId),
+});
+
+export const timetableRulesQuery = defineQuery({
+  name: "timetable.rules",
+  module: "timetable",
+  schema: z.object({}).strict(),
+  permission: "timetable.manage",
+  handler: (_input, ctx) => loadRules(ctx),
 });

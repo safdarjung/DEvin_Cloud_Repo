@@ -11,6 +11,7 @@ import { resolvePortalSelection } from "@/modules/people/portal";
 import { istNowHHMM, weekdayOf } from "@/modules/people/portal-dates";
 import { timetableForStudent, toHHMM, type SectionTimetableSlot } from "@/modules/timetable/queries";
 import { TimetableBookLink } from "@/modules/textbooks/components/BookLinks";
+import { timetableDay } from "@/modules/timetable/control.queries";
 import { textbooksForStudent } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Timetable" };
@@ -38,7 +39,13 @@ export default async function PortalTimetablePage({
   requirePermission(ctx, "timetable.read");
 
   const selection = await resolvePortalSelection(ctx, allParams.student, `/${institutionSlug}/portal/timetable`, allParams);
-  const [slots, books] = await Promise.all([timetableForStudent(ctx, selection.studentId), textbooksForStudent(ctx, selection.studentId)]);
+  const [slots, books, today] = await Promise.all([
+    timetableForStudent(ctx, selection.studentId),
+    textbooksForStudent(ctx, selection.studentId),
+    // 0141: today's substitutions, holidays and changes, each with its reason. Never blocks the grid.
+    timetableDay(ctx, { studentId: selection.studentId }).catch(() => null),
+  ]);
+  const todayOverlays = new Map((today?.periods ?? []).filter((p) => p.overlays.length > 0).map((p) => [p.seq, p.overlays]));
 
   const todayWeekday = weekdayOf(todayInInstitutionTimezone(ctx));
   const nowHHMM = istNowHHMM();
@@ -59,6 +66,21 @@ export default async function PortalTimetablePage({
       ) : (
         <FadeIn key={selection.studentId}>
           <p className="mb-3 text-sm text-muted-foreground">{selection.studentName}&apos;s weekly timetable. Today is highlighted.</p>
+          {today && (today.banners.length > 0 || todayOverlays.size > 0) && (
+            <div role="status" className="mb-3 space-y-1 rounded-xl border border-warning/40 bg-warning/5 p-3 text-sm">
+              <p className="font-medium">Changes today</p>
+              {today.banners.map((b, i) => (
+                <p key={`b${i}`}>
+                  {b.text}. <span className="text-muted-foreground">Reason: {b.reason}</span>
+                </p>
+              ))}
+              {[...todayOverlays].filter(([, os]) => os[0].kind !== "holiday").map(([seq, os]) => (
+                <p key={seq}>
+                  {today.periods.find((p) => p.seq === seq)?.name}: {os[0].text}. <span className="text-muted-foreground">Reason: {os[0].reason}</span>
+                </p>
+              ))}
+            </div>
+          )}
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
@@ -97,6 +119,11 @@ export default async function PortalTimetablePage({
                                 <span className="block font-medium">{s.subject?.name ?? "—"}</span>
                                 <span className="block text-xs text-muted-foreground">{[s.teacher.name, s.room?.name].filter(Boolean).join(" · ")}</span>
                                 {s.subject && <TimetableBookLink books={books.bySubject[s.subject.id]} subjectName={s.subject.name} />}
+                                {d.n === todayWeekday && todayOverlays.get(p.seq)?.map((o, i) => (
+                                  <span key={i} className="mt-1 block text-xs text-warning">
+                                    {o.text}. Reason: {o.reason}
+                                  </span>
+                                ))}
                                 {current && <Badge variant="info" className="mt-1">Now</Badge>}
                               </>
                             ) : (

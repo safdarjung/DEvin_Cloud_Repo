@@ -2,6 +2,7 @@
 // src/modules/notifications/announcements.schemas.ts (seed-script safe).
 import { z } from "zod";
 import { uuid, isoDate } from "../../lib/schemas/common.ts"
+import { TimetableRulesSchema } from "./rules.ts";
 
 const timePattern = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Invalid time format, use HH:MM");
 
@@ -57,11 +58,14 @@ export const SaveSlotsSchema = z
     versionId: uuid,
     slots: z.array(SlotInputSchema).min(1).max(500),
     replaceSectionIds: z.array(uuid).max(100).optional(),
+    note: z.string().trim().max(300).optional(),
   })
   .strict();
 export type SaveSlotsInput = z.infer<typeof SaveSlotsSchema>;
 
-export const PublishVersionSchema = z.object({ versionId: uuid }).strict();
+// 0141: `note` is required (checked in the action) when the draft still breaks
+// a rule, and by the database when restoring an archived version.
+export const PublishVersionSchema = z.object({ versionId: uuid, note: z.string().trim().max(300).optional() }).strict();
 export type PublishVersionInput = z.infer<typeof PublishVersionSchema>;
 
 export const ForSectionSchema = z
@@ -93,7 +97,8 @@ export const SubstitutionAssignSchema = z
     date: isoDate,
     substituteId: uuid,
     leaveRequestId: uuid.optional(),
-    note: z.string().trim().max(200).optional(),
+    // 0141: the reason shown to leaders and the two teachers ("Ms Iyer is on leave"); students/guardians get a fixed line.
+    note: z.string().trim().min(1, "Say why this cover is needed.").max(200),
   })
   .strict();
 export type SubstitutionAssignInput = z.infer<typeof SubstitutionAssignSchema>;
@@ -132,3 +137,66 @@ export const SuggestFillSchema = z
   })
   .strict();
 export type SuggestFillInput = z.infer<typeof SuggestFillSchema>;
+
+// 0141: timetable control — change log, rules, snapshots, rollback, day view.
+const CellContentSchema = z.object({ subjectId: uuid, teacherId: uuid, roomId: uuid.nullable().optional() }).strict();
+
+export const CellChangeSchema = z
+  .object({
+    classSectionId: uuid,
+    weekday: z.number().int().min(1).max(6),
+    periodId: uuid,
+    /** null clears the period. */
+    after: CellContentSchema.nullable(),
+    reason: z.string().trim().max(500).optional(),
+    rules: z.array(z.string().max(40)).max(12).optional(),
+  })
+  .strict();
+export type CellChangeInput = z.infer<typeof CellChangeSchema>;
+
+export const ApplyChangesSchema = z
+  .object({
+    versionId: uuid,
+    kind: z.enum(["manual", "suggestion"]),
+    changes: z.array(CellChangeSchema).min(1).max(200),
+    note: z.string().trim().max(300).optional(),
+  })
+  .strict();
+export type ApplyChangesInput = z.infer<typeof ApplyChangesSchema>;
+
+export const RollbackChangeSchema = z.object({ changeId: uuid, note: z.string().trim().max(300).optional() }).strict();
+export type RollbackChangeInput = z.infer<typeof RollbackChangeSchema>;
+
+export const SetRulesSchema = z
+  .object({ rules: TimetableRulesSchema, reason: z.string().trim().min(1, "Say why the rules are changing.").max(300) })
+  .strict();
+export type SetRulesInput = z.infer<typeof SetRulesSchema>;
+
+export const SnapshotCreateSchema = z.object({ versionId: uuid, name: z.string().trim().min(1).max(60) }).strict();
+export type SnapshotCreateInput = z.infer<typeof SnapshotCreateSchema>;
+
+export const SnapshotRestoreSchema = z.object({ snapshotId: uuid, note: z.string().trim().max(300).optional() }).strict();
+export type SnapshotRestoreInput = z.infer<typeof SnapshotRestoreSchema>;
+
+export const CHANGE_KINDS = ["manual", "suggestion", "substitution", "rollback", "restore", "publish", "rules"] as const;
+
+export const ChangesQuerySchema = z
+  .object({
+    versionId: uuid.optional(),
+    classSectionId: uuid.optional(),
+    teacherId: uuid.optional(),
+    from: isoDate.optional(),
+    to: isoDate.optional(),
+    kind: z.enum(CHANGE_KINDS).optional(),
+    limit: z.number().int().min(1).max(200).default(100),
+  })
+  .strict();
+export type ChangesQueryInput = z.infer<typeof ChangesQuerySchema>;
+
+export const DayViewSchema = z
+  .object({ date: isoDate.optional(), classSectionId: uuid.optional(), teacherId: uuid.optional(), studentId: uuid.optional() })
+  .strict();
+export type DayViewInput = z.infer<typeof DayViewSchema>;
+
+export const CompareVersionsSchema = z.object({ fromVersionId: uuid, toVersionId: uuid }).strict();
+export type CompareVersionsInput = z.infer<typeof CompareVersionsSchema>;

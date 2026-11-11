@@ -20,7 +20,7 @@ export const AddTextbookSchema = z
     gradeId: uuid,
     subjectId: uuid,
     book: z.discriminatedUnion("source", [
-      z.object({ source: z.literal("ncert"), code: z.string().trim().regex(/^[a-z0-9]{3,12}$/) }).strict(),
+      z.object({ source: z.literal("ncert"), code: z.string().trim().regex(/^[a-z0-9]{3,12}$/), schoolUrl: httpsUrl.optional() }).strict(),
       z
         .object({
           source: z.literal("custom"),
@@ -37,6 +37,17 @@ export type AddTextbookInput = z.infer<typeof AddTextbookSchema>;
 
 export const TextbookIdSchema = z.object({ textbookId: uuid }).strict();
 export type TextbookIdInput = z.infer<typeof TextbookIdSchema>;
+
+/** The school's own link on a book (an e-book, a scan); null clears it. NCERT rows keep their official link separately. */
+export const SetTextbookLinkSchema = z.object({ textbookId: uuid, url: httpsUrl.nullable() }).strict();
+export type SetTextbookLinkInput = z.infer<typeof SetTextbookLinkSchema>;
+
+/** Whole books run past the 10 MB cap of other files; textbook PDFs only (migration 0142). */
+export const MAX_TEXTBOOK_FILE_BYTES = 52428800;
+export const RequestTextbookFileSchema = z
+  .object({ textbookId: uuid, fileName: z.string().trim().min(1).max(200), sizeBytes: z.number().int().min(1).max(MAX_TEXTBOOK_FILE_BYTES) })
+  .strict();
+export type RequestTextbookFileInput = z.infer<typeof RequestTextbookFileSchema>;
 
 /** The school's own chapter names ("1" -> "Patterns in Mathematics"); an empty string clears one. */
 export const SetChapterTitlesSchema = z

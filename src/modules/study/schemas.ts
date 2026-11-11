@@ -1,7 +1,12 @@
 // Study studio request and action schemas. Every object is .strict().
 import { z } from "zod";
 import { uuid } from "@/lib/schemas/common";
-import { DIFFICULTIES, QUIZ_LENGTHS, QUIZ_TYPES, QuizQuestionSchema, STUDY_FORMATS, contentSchema, type StudyFormat } from "@/modules/study/formats";
+import { DIFFICULTIES, QUIZ_LENGTHS, QUIZ_TYPES, QuizQuestionSchema, STUDY_FORMATS, contentSchema, type MaterialFormat } from "@/modules/study/formats";
+import { MOCK_DURATIONS, MOCK_LENGTHS, MOCK_MAX_UNITS, MockContentSchema } from "@/modules/study/mock";
+import { VARIANT_LANGUAGES } from "@/modules/study/variants";
+import { WORKSHEET_LEVELS, WorksheetContentSchema } from "@/modules/study/worksheet";
+import { StudyScopeSchema } from "@/modules/study/scope";
+import { UIMessageRequestSchema } from "@/lib/ai/ui-message-schema";
 import { REVIEW_GRADES } from "@/modules/study/srs";
 import { SHORT_ANSWER_MAX } from "@/modules/study/quiz";
 
@@ -18,10 +23,20 @@ const resourceSource = z.object({ kind: z.literal("resource"), resourceId: uuid 
 const lessonPlanSource = z.object({ kind: z.literal("lesson_plan"), lessonPlanId: uuid }).strict();
 // 0139: a unit's linked textbook chapter (book + chapter reference only; the AI never reads the PDF) plus optional pasted text.
 const textbookSource = z.object({ kind: z.literal("textbook"), unitId: uuid, text: z.string().trim().max(PASTE_MAX_CHARS).optional() }).strict();
+// 0140: a curriculum_materials upload the caller may read (re-checked server-side; bytes fetched under their RLS).
+const fileSource = z.object({ kind: z.literal("file"), materialId: uuid }).strict();
+// 0140: the student's own weakest units (revision pack), chosen server-side.
+const weakUnitsSource = z.object({ kind: z.literal("weak_units") }).strict();
+// 0140: a taught section's weakest units (class revision pack), aggregate only.
+const classWeakUnitsSource = z.object({ kind: z.literal("class_weak_units"), sectionId: uuid }).strict();
+// 0140 item 8: a student's saved "study with AI" scope (study_items id), rebuilt server-side.
+const scopeSource = z.object({ kind: z.literal("scope"), itemId: uuid }).strict();
+// 0140 item 8 (teacher): chosen units of subjects the teacher teaches.
+const unitsSource = z.object({ kind: z.literal("units"), unitIds: z.array(uuid).min(1).max(12) }).strict();
 
-export const StudentSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, textbookSource]);
-export const TeacherSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, lessonPlanSource, textbookSource]);
-export type StudySource = z.infer<typeof TeacherSourceSchema>;
+export const StudentSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, textbookSource, fileSource, weakUnitsSource, scopeSource]);
+export const TeacherSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, lessonPlanSource, textbookSource, fileSource, classWeakUnitsSource, unitsSource]);
+export type StudySource = z.infer<typeof TeacherSourceSchema> | z.infer<typeof StudentSourceSchema>;
 
 const QuizRequestSchema = z
   .object({
@@ -31,10 +46,11 @@ const QuizRequestSchema = z
   })
   .strict();
 
-const generateBase = { institutionSlug, format: z.enum(STUDY_FORMATS), quiz: QuizRequestSchema.optional() };
-export const StudyGenerateRequestSchema = z.object({ ...generateBase, source: StudentSourceSchema }).strict();
-export const TeacherStudyGenerateRequestSchema = z.object({ ...generateBase, source: TeacherSourceSchema }).strict();
-export type StudyGenerateRequest = z.infer<typeof TeacherStudyGenerateRequestSchema>;
+const generateBase = { institutionSlug, quiz: QuizRequestSchema.optional() };
+export const StudyGenerateRequestSchema = z.object({ ...generateBase, format: z.enum(STUDY_FORMATS), source: StudentSourceSchema }).strict();
+// Teachers may also draft a three-level worksheet (0140).
+export const TeacherStudyGenerateRequestSchema = z.object({ ...generateBase, format: z.enum([...STUDY_FORMATS, "worksheet"]), source: TeacherSourceSchema }).strict();
+export type StudyGenerateRequest = Omit<z.infer<typeof TeacherStudyGenerateRequestSchema>, "source"> & { source: StudySource };
 
 export const StudyCheckRequestSchema = z
   .object({
@@ -68,7 +84,7 @@ export type AiCheck = z.infer<typeof StudyCheckGenerationSchema>["results"][numb
 // ---------------------------------------------------------------------------
 
 const title = z.string().trim().min(1).max(160);
-const formatContent = <T extends { format: StudyFormat; content?: unknown }>(d: T, ctx: z.RefinementCtx) => {
+const formatContent = <T extends { format: MaterialFormat; content?: unknown }>(d: T, ctx: z.RefinementCtx) => {
   const parsed = contentSchema(d.format).safeParse(d.content);
   if (!parsed.success) ctx.addIssue({ code: "custom", message: "content does not match the format", path: ["content"] });
 };
@@ -78,9 +94,13 @@ const materialFields = {
   title,
   subjectId: uuid.optional(),
   unitId: uuid.optional(),
-  sourceKind: z.enum(["unit", "paste", "resource", "lesson_plan", "textbook"]),
+  sourceKind: z.enum(["unit", "paste", "resource", "lesson_plan", "textbook", "file", "revision_pack", "class_pack", "scope"]),
   resourceId: uuid.optional(),
   content: z.unknown(),
+  // 0140
+  sourceMaterialId: uuid.optional(),
+  bundleId: uuid.optional(),
+  focusUnitIds: z.array(uuid).max(12).optional(),
 };
 
 export const SaveMaterialSchema = z.object(materialFields).strict().superRefine(formatContent);
@@ -139,3 +159,67 @@ export const LogSessionSchema = z
     materialId: uuid.optional(),
   })
   .strict();
+
+// ---------------------------------------------------------------------------
+// 0140 study help
+// ---------------------------------------------------------------------------
+
+export const MockRequestSchema = z
+  .object({
+    institutionSlug,
+    scope: z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("paper"), paperId: uuid }).strict(),
+      z.object({ kind: z.literal("units"), subjectId: uuid, unitIds: z.array(uuid).min(1).max(MOCK_MAX_UNITS), durationMinutes: z.union([z.literal(MOCK_DURATIONS[0]), z.literal(MOCK_DURATIONS[1]), z.literal(MOCK_DURATIONS[2]), z.literal(MOCK_DURATIONS[3]), z.literal(MOCK_DURATIONS[4])]) }).strict(),
+    ]),
+    count: z.union([z.literal(MOCK_LENGTHS[0]), z.literal(MOCK_LENGTHS[1])]),
+    difficulty: z.enum(DIFFICULTIES),
+  })
+  .strict();
+export type MockRequest = z.infer<typeof MockRequestSchema>;
+
+export const SaveMockSchema = z
+  .object({ title, subjectId: uuid.optional(), content: MockContentSchema, focusUnitIds: z.array(uuid).min(1).max(12) })
+  .strict();
+
+export const SaveWorksheetSchema = z
+  .object({ title, subjectId: uuid.optional(), unitId: uuid.optional(), sourceKind: z.enum(["unit", "paste", "resource", "lesson_plan", "textbook", "file"]), sourceMaterialId: uuid.optional(), content: WorksheetContentSchema })
+  .strict();
+
+export const AssignMaterialSchema = z
+  .object({
+    materialId: uuid,
+    sectionId: uuid,
+    subjectId: uuid.optional(),
+    level: z.enum([...WORKSHEET_LEVELS, "all"]).optional(),
+    dueAt: z.string().datetime().optional(),
+    publish: z.boolean(),
+  })
+  .strict();
+export type AssignMaterialInput = z.infer<typeof AssignMaterialSchema>;
+
+/** A translated copy of `baseId` (re-read under RLS by the action; format and metadata come from the base, never the client). */
+export const SaveVariantSchema = z.object({ baseId: uuid, title, language: z.enum(VARIANT_LANGUAGES), content: z.unknown() }).strict();
+export type SaveVariantInput = z.infer<typeof SaveVariantSchema>;
+
+export const TranslateMaterialRequestSchema = z.object({ institutionSlug, materialId: uuid, language: z.enum(VARIANT_LANGUAGES) }).strict();
+
+export const FileConsentSchema = z.object({ agree: z.literal(true) }).strict();
+
+export const ASK_CONTEXT_KINDS = ["material", "quiz_question", "flashcard", "general"] as const;
+export const AskQuestionSchema = z
+  .object({
+    subjectId: uuid,
+    contextKind: z.enum(ASK_CONTEXT_KINDS),
+    materialId: uuid.optional(),
+    contextExcerpt: z.string().trim().min(1).max(1000).optional(),
+    question: z.string().trim().min(3).max(1000),
+  })
+  .strict();
+export type AskQuestionInput = z.infer<typeof AskQuestionSchema>;
+
+export const AnswerQuestionSchema = z.object({ questionId: uuid, answer: z.string().trim().min(1).max(2000) }).strict();
+
+// 0140 item 8: open / save / log a scoped study session.
+export const OpenScopeSchema = z.object({ scope: StudyScopeSchema, title: z.string().trim().min(1).max(120).optional() }).strict();
+export const SaveScopeMessagesSchema = z.object({ itemId: uuid, messages: z.array(UIMessageRequestSchema).max(50) }).strict();
+export const LogScopeTimeSchema = z.object({ itemId: uuid, minutes: z.number().int().min(1).max(180) }).strict();

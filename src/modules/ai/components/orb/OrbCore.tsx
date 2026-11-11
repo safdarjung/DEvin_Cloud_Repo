@@ -3,19 +3,24 @@
 /* eslint-disable react-hooks/immutability -- useFrame mutates three.js uniforms by design (imperative per-frame loop) */
 
 // The living orb: one draw call of dust points whose motion follows the AI state
-// (idle / listening / thinking / answering / error). Decoration only: the page
-// works without it (no WebGL, reduced motion), so nothing here takes input.
+// (idle / listening / thinking / answering / proposing / waiting / done / error).
+// Decoration only: the page works without it (no WebGL, reduced motion), so nothing
+// here takes input. It renders inside motion's frame loop (frameloop "never" +
+// advance), so the page runs one requestAnimationFrame loop, paused when the tab is
+// hidden or the orb is off-screen.
 import { useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, advance, useFrame, useThree } from "@react-three/fiber";
+import { cancelFrame, frame, type FrameData } from "motion/react";
 import { BufferAttribute, BufferGeometry, Color, Matrix3, Matrix4, ShaderMaterial } from "three";
 import { fibonacciSphere, scatterEnvelope, waveFor, type OrbState } from "./orb-layout";
 import { DOTS_FRAGMENT, DOTS_VERTEX } from "./orb-shaders";
 import { ORB_ERROR } from "./orb-theme";
 
-/** Live inputs written outside React: mic loudness (0..1) and a keystroke pulse. */
+/** Live inputs written outside React: mic loudness (0..1), a keystroke/hover pulse and the drag/flick turn (radians). */
 export interface OrbSignals {
   level: number;
   pulse: number;
+  spin: number;
 }
 
 const CAMERA_Z = 7.5;
@@ -25,6 +30,7 @@ const RADIUS_SHARE = 0.4;
 const AUTO_SPIN = 0.12;
 const ENTRANCE_S = 1.6;
 const DOT_PX = 2.4;
+const MAX_DPR = 1.5;
 
 const lerp = (a: number, b: number, k: number) => a + (b - a) * Math.min(1, k);
 const pxPerWorldUnit = (h: number) => h / (2 * CAMERA_Z * Math.tan((FOV * Math.PI) / 360));
@@ -62,11 +68,18 @@ function Dust({ state, dark, accent, signals }: Props) {
   );
   const mat = useMemo(() => new ShaderMaterial({ vertexShader: DOTS_VERTEX, fragmentShader: DOTS_FRAGMENT, uniforms: u, transparent: true, toneMapped: false }), [u]);
   useEffect(() => () => mat.dispose(), [mat]);
+  // Mode/theme changes ease the colours over in the frame loop instead of snapping.
+  const target = useMemo(() => ({ a: new Color(), b: new Color(), first: true }), []);
   useEffect(() => {
-    u.uColorA.value.set(accent[0]).lerp(new Color(accent[1]), dark ? 0.5 : 0);
-    u.uColorB.value.set(accent[1]).lerp(new Color(accent[0]), dark ? 0 : 0.45);
+    target.a.set(accent[0]).lerp(new Color(accent[1]), dark ? 0.5 : 0);
+    target.b.set(accent[1]).lerp(new Color(accent[0]), dark ? 0 : 0.45);
+    if (target.first) {
+      u.uColorA.value.copy(target.a);
+      u.uColorB.value.copy(target.b);
+      target.first = false;
+    }
     u.uFill.value = dark ? 1.4 : 2.2;
-  }, [accent, dark, u]);
+  }, [accent, dark, u, target]);
 
   const local = useRef({ intro: 0, errT: 0, ripple: 0, ry: 0 });
   const m4 = useMemo(() => [new Matrix4(), new Matrix4()] as const, []);
@@ -94,8 +107,10 @@ function Dust({ state, dark, accent, signals }: Props) {
     u.uClock.value += dt;
     u.uRipplePhase.value += dt * 5;
     u.uIntro.value = lo.intro / ENTRANCE_S;
+    u.uColorA.value.lerp(target.a, Math.min(1, dt * 4));
+    u.uColorB.value.lerp(target.b, Math.min(1, dt * 4));
     lo.ry += dt * AUTO_SPIN * wave.spin;
-    u.uRot.value.setFromMatrix4(m4[0].makeRotationX(0.3).multiply(m4[1].makeRotationY(lo.ry)));
+    u.uRot.value.setFromMatrix4(m4[0].makeRotationX(0.3).multiply(m4[1].makeRotationY(lo.ry + sig.spin)));
     u.uPx.value = DOT_PX * dpr * Math.min(1.3, Math.max(0.6, (RADIUS_SHARE * Math.min(size.width, size.height)) / 90));
   });
 
@@ -103,10 +118,37 @@ function Dust({ state, dark, accent, signals }: Props) {
   return <points geometry={geo} material={mat} scale={scale} frustumCulled={false} />;
 }
 
+const tick = ({ timestamp }: FrameData) => advance(timestamp / 1000);
+
 export default function OrbCore(props: Props) {
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let onScreen = true;
+    let running = false;
+    const sync = () => {
+      const want = onScreen && !document.hidden;
+      if (want && !running) frame.update(tick, true);
+      else if (!want && running) cancelFrame(tick);
+      running = want;
+    };
+    const io = new IntersectionObserver(([e]) => {
+      onScreen = e?.isIntersecting ?? true;
+      sync();
+    });
+    if (host.current) io.observe(host.current);
+    document.addEventListener("visibilitychange", sync);
+    sync();
+    return () => {
+      io.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+      cancelFrame(tick);
+    };
+  }, []);
   return (
-    <Canvas camera={{ position: [0, 0, CAMERA_Z], fov: FOV }} dpr={[1, 2]} gl={{ antialias: true, alpha: true }}>
-      <Dust {...props} />
-    </Canvas>
+    <div ref={host} className="size-full">
+      <Canvas frameloop="never" camera={{ position: [0, 0, CAMERA_Z], fov: FOV }} dpr={[1, MAX_DPR]} gl={{ antialias: true, alpha: true }}>
+        <Dust {...props} />
+      </Canvas>
+    </div>
   );
 }

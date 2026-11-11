@@ -13,15 +13,19 @@ import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { FEATURE_CATALOG, type FeatureKey } from "@/lib/auth/entitlements";
+import type { Json } from "@/lib/db/types";
 import { isModuleEnabled, MODULE_KEYS, MODULES, type ModuleKey } from "@/lib/modules/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { emailChannel, resendConfigured } from "@/modules/notifications/channels/resend";
 import { getWebsite } from "@/modules/website/queries";
 import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
+import { mergeRoleConfig } from "@/modules/core/control-centre/merge";
+import { catalogRow } from "@/modules/ai/tasks/catalog";
 import {
   AcademicYearUpsertSchema,
   AI_ROLES,
   AiRoleConfigSchema,
+  AiRoleConfigPatchSchema,
   InstitutionSettingsSchema,
   InviteMemberSchema,
   RevokeInvitationSchema,
@@ -72,13 +76,13 @@ export const setFeatureEnabled = defineAction({
     if (!parsedFeatures.success) {
       throw new AppError("validation_failed", "This institution's settings could not be updated safely.");
     }
-    const settings = { ...ctx.institution.settings, features: parsedFeatures.data };
 
+    // 0144: send only this key; the row is merged as it is now, so a concurrent save is not reverted.
     const supabase = await createClient();
-    const { error } = await supabase
-      .from("institutions")
-      .update({ settings })
-      .eq("id", ctx.institution.id);
+    const { error } = await supabase.rpc("patch_institution_settings", {
+      p_institution_id: ctx.institution.id,
+      p_patch: { features: { [key]: enabled } },
+    });
     if (error) {
       const mapped = mapSqlError(error);
       if (mapped.ok) throw new AppError("internal", "Unexpected error.");
@@ -97,10 +101,15 @@ export const setFeatureEnabled = defineAction({
   },
 });
 
+function isClassifiedTaskName(name: string): boolean {
+  const row = catalogRow(name);
+  return row !== undefined && row.excluded === undefined;
+}
+
 export const setAiRoleConfig = defineAction({
   name: "core.ai_role.set",
   module: "core",
-  schema: z.object({ role: z.enum(AI_ROLES), patch: AiRoleConfigSchema }).strict(),
+  schema: z.object({ role: z.enum(AI_ROLES), patch: AiRoleConfigPatchSchema }).strict(),
   permission: "institution.settings.manage",
   handler: async ({ role, patch }, ctx) => {
     // Validate that all capability keys in the patch are known.
@@ -112,25 +121,17 @@ export const setAiRoleConfig = defineAction({
         throw new AppError("validation_failed", "Unknown capability keys in patch.");
       }
     }
+    // Task keys must be classified (not excluded, not unclassified) rows of the orb task catalog.
+    if (patch.tasks && Object.keys(patch.tasks).some((name) => !isClassifiedTaskName(name))) {
+      throw new AppError("validation_failed", "Unknown task names in patch.");
+    }
 
     const existingAiRoles = ctx.institution.settings.ai_roles;
     const existingRoleConfig = (typeof existingAiRoles === "object" && existingAiRoles !== null
       ? (existingAiRoles as Record<string, AiRoleConfig>)[role]
       : undefined) || {};
 
-    // Patch merge: capabilities merge key-wise, other fields replace.
-    const mergedRoleConfig: AiRoleConfig = {
-      ...existingRoleConfig,
-      ...patch,
-      ...(patch.capabilities && existingRoleConfig.capabilities
-        ? {
-            capabilities: {
-              ...existingRoleConfig.capabilities,
-              ...patch.capabilities,
-            },
-          }
-        : {}),
-    };
+    const mergedRoleConfig = mergeRoleConfig(existingRoleConfig, patch);
 
     // Validate the merged config against AiRoleConfigSchema.
     const parsedRoleConfig = AiRoleConfigSchema.safeParse(mergedRoleConfig);
@@ -149,13 +150,12 @@ export const setAiRoleConfig = defineAction({
       throw new AppError("validation_failed", "This institution's settings could not be updated safely.");
     }
 
-    const settings = { ...ctx.institution.settings, ai_roles: aiRoles };
-
+    // 0144: the patch itself (null removes an override) merged into the row as it is now.
     const supabase = await createClient();
-    const { error } = await supabase
-      .from("institutions")
-      .update({ settings })
-      .eq("id", ctx.institution.id);
+    const { error } = await supabase.rpc("patch_institution_settings", {
+      p_institution_id: ctx.institution.id,
+      p_patch: { ai_roles: { [role]: patch } } as Json,
+    });
     if (error) {
       const mapped = mapSqlError(error);
       if (mapped.ok) throw new AppError("internal", "Unexpected error.");
@@ -172,7 +172,7 @@ export const setAiRoleConfig = defineAction({
       action: "core.ai_role.set",
       entityType: "institution",
       entityId: ctx.institution.id,
-      after: { role, ...Object.fromEntries(changedKeys.map((k) => [k, patch[k as keyof AiRoleConfig]])) },
+      after: { role, ...Object.fromEntries(changedKeys.map((k) => [k, (patch as Record<string, unknown>)[k]])) },
     });
 
     revalidatePath(`/${ctx.institution.slug}/settings/ai`);
@@ -488,10 +488,12 @@ export const setModuleEnabled = defineAction({
     if (!parsedModules.success) {
       throw new AppError("validation_failed", "This institution's settings could not be updated safely.");
     }
-    const settings = { ...ctx.institution.settings, modules: parsedModules.data };
-
+    // 0144: send only this key; the row is merged as it is now, so a concurrent save is not reverted.
     const supabase = await createClient();
-    const { error } = await supabase.from("institutions").update({ settings }).eq("id", ctx.institution.id);
+    const { error } = await supabase.rpc("patch_institution_settings", {
+      p_institution_id: ctx.institution.id,
+      p_patch: { modules: { [key]: enabled } },
+    });
     if (error) throwMapped(error);
 
     await audit(ctx, {

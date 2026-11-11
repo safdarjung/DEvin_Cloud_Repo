@@ -5,6 +5,8 @@
 // 1-4 pick an option (1 = True, 2 = False), ← → move between questions.
 // MCQ and true/false are marked automatically; short answers go to the AI
 // check and are labelled AI-checked practice. Nothing here is a mark.
+// 0140: a mock exam runs here too, timed to the paper's duration, and its
+// result adds a per-section and per-unit breakdown with what to revise.
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,7 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { describeActionError } from "@/lib/action-error";
 import { submitStudyQuiz } from "@/modules/study/actions";
-import type { Difficulty, QuizQuestion } from "@/modules/study/formats";
+import type { Difficulty, MockContent, QuizQuestion } from "@/modules/study/formats";
+import { mockBreakdown } from "@/modules/study/mock";
+import { AskTeacher } from "./AskTeacher";
 import type { QuizAnswer, Verdict } from "@/modules/study/quiz";
 
 interface Saved {
@@ -61,7 +65,7 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-export function QuizRunner({ institutionSlug, materialId, title, subjectId, unitId, difficulty, questions, backHref }: {
+export function QuizRunner({ institutionSlug, materialId, title, subjectId, unitId, difficulty, questions, backHref, mock, canAsk }: {
   institutionSlug: string;
   materialId: string;
   title: string;
@@ -70,6 +74,10 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
   difficulty: Difficulty;
   questions: QuizQuestion[];
   backHref: string;
+  /** 0140: a mock exam paper (fixed timer, breakdown on the result). */
+  mock?: MockContent;
+  /** 0140: show "Ask my teacher" on each reviewed question (needs a subject). */
+  canAsk?: boolean;
 }) {
   const router = useRouter();
   const key = `study-quiz:${materialId}`;
@@ -82,7 +90,7 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
       return null;
     }
   }, [raw, questions.length]);
-  const [timer, setTimer] = useState(0);
+  const [timer, setTimer] = useState(mock?.durationMinutes ?? 0);
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
@@ -206,6 +214,7 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
           <p className="mt-1 text-xs text-muted-foreground">Practice only. This never goes into your marks or report card.</p>
           {!result.aiChecked && <p className="mt-1 text-xs text-muted-foreground">Short answers were not checked this time, so they are not scored.</p>}
         </div>
+        {mock && <MockResult mock={mock} verdicts={result.verdicts} checks={result.aiChecked ? result.checks.filter((c): c is { score: number; feedback: string } => c !== null) : []} />}
         <ol className="space-y-3">
           {questions.map((q, i) => {
             const a = result.answers[i] ?? null;
@@ -242,6 +251,9 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
                   </>
                 )}
                 {q.explanation && <p className="mt-1 text-xs text-muted-foreground">{q.explanation}</p>}
+                {canAsk && subjectId && (
+                  <AskTeacher institutionSlug={institutionSlug} subjectId={subjectId} contextKind="quiz_question" materialId={materialId} excerpt={q.stem} compact />
+                )}
               </li>
             );
           })}
@@ -259,6 +271,9 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
         <p className="text-sm">
           {questions.length} questions · {difficulty}. Multiple choice and true/false are marked straight away; short answers are AI-checked practice.
         </p>
+        {mock ? (
+          <p className="text-sm font-medium tabular-nums">Timed: {mock.durationMinutes} minutes{mock.examLabel ? ` (as the real paper: ${mock.examLabel})` : ""}. Practice only, never a mark.</p>
+        ) : (
         <fieldset className="flex flex-wrap items-center gap-2">
           <legend className="mb-2 text-sm font-medium">Timer</legend>
           {TIMERS.map((m) => (
@@ -273,6 +288,7 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
             </button>
           ))}
         </fieldset>
+        )}
         <Button
           size="lg"
           onClick={() => {
@@ -280,7 +296,7 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
             update({ answers: questions.map(() => null), startedAt, deadline: timer ? startedAt + timer * 60_000 : null, index: 0 });
           }}
         >
-          Start quiz
+          {mock ? "Start mock exam" : "Start quiz"}
         </Button>
       </div>
     );
@@ -366,6 +382,53 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
       <p className="text-xs text-muted-foreground" aria-hidden>
         Keys: 1–4 choose · ← → move
       </p>
+    </div>
+  );
+}
+
+function MockResult({ mock, verdicts, checks }: { mock: MockContent; verdicts: Verdict[]; checks: { score: number }[] }) {
+  const r = mockBreakdown(mock, verdicts, checks);
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <section aria-labelledby="mock-sections" className="rounded-xl border p-4">
+        <h4 id="mock-sections" className="text-sm font-semibold">By section</h4>
+        <ul className="mt-2 space-y-1 text-sm tabular-nums">
+          {r.sections.map((s) => (
+            <li key={s.type} className="flex justify-between gap-2">
+              <span>{s.label}</span>
+              <span>
+                {s.correct}/{s.total}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-labelledby="mock-units" className="rounded-xl border p-4">
+        <h4 id="mock-units" className="text-sm font-semibold">By unit</h4>
+        <ul className="mt-2 space-y-1 text-sm tabular-nums">
+          {r.units.map((u) => (
+            <li key={u.unitId} className="flex justify-between gap-2">
+              <span className="min-w-0 truncate">{u.title}</span>
+              <span className="shrink-0">{u.percent}%</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-labelledby="mock-revise" className="rounded-xl border p-4 sm:col-span-2">
+        <h4 id="mock-revise" className="text-sm font-semibold">What to revise</h4>
+        {r.revise.length === 0 ? (
+          <p className="mt-1 text-sm text-muted-foreground">No unit under 60% this time. Keep practising with flashcards.</p>
+        ) : (
+          <ol className="mt-1 ml-4 list-decimal space-y-0.5 text-sm">
+            {r.revise.map((u) => (
+              <li key={u.unitId}>
+                {u.title} <span className="text-muted-foreground tabular-nums">({u.percent}%)</span>
+              </li>
+            ))}
+          </ol>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">Mock exam: practice only. It never goes into your marks or report card.</p>
+      </section>
     </div>
   );
 }

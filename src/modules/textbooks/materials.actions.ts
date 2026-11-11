@@ -18,8 +18,9 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
-import { MAGIC_PREFIX_BYTES, matchesMagic } from "./file-check";
+import { matchesMagic } from "./file-check";
 import { attachTargets } from "./materials.queries";
+import { objectHead } from "./object-head";
 import {
   AttachMaterialSchema,
   MaterialIdSchema,
@@ -124,15 +125,6 @@ export const requestMaterialUpload = defineAction({
     return { materialId, documentId, path, token: signed.token, signedUrl: signed.signedUrl };
   },
 });
-
-/** First bytes of the stored object through a short signed URL (caller's own access). */
-async function objectHead(supabase: Client, path: string): Promise<Uint8Array | null> {
-  const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 30);
-  if (error || !data) return null;
-  const res = await fetch(data.signedUrl, { headers: { Range: `bytes=0-${MAGIC_PREFIX_BYTES - 1}` }, cache: "no-store" });
-  if (!res.ok) return null;
-  return new Uint8Array(await res.arrayBuffer()).slice(0, MAGIC_PREFIX_BYTES);
-}
 
 export const confirmMaterialUpload = defineAction({
   name: "curriculum.material.confirmUpload",

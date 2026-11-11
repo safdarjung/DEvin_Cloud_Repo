@@ -255,7 +255,13 @@ async function SubstitutionsTab({ ctx, slug }: { ctx: TenantContext; slug: strin
                         ) : cand && !cand.ok ? (
                           <span className="text-sm text-destructive">Could not load teachers</span>
                         ) : (
-                          <AssignSubstituteForm institutionSlug={slug} slotId={c.slotId} date={today} candidates={cand?.ok ? cand.data : []} />
+                          <AssignSubstituteForm
+                            institutionSlug={slug}
+                            slotId={c.slotId}
+                            date={today}
+                            candidates={cand?.ok ? cand.data : []}
+                            defaultReason={`${c.teacher.name} is ${c.reason === "leave" ? "on leave" : "absent"}`}
+                          />
                         )}
                       </TableCell>
                     </TableRow>

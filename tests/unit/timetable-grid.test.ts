@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildTimetableGrid } from "../../src/modules/timetable/grid";
+import { buildTimetableGrid, subjectPeriodRows } from "../../src/modules/timetable/grid";
 import type { SectionTimetableSlot } from "../../src/modules/timetable/queries";
 
 const slot = (weekday: number, seq: number): SectionTimetableSlot => ({
@@ -24,5 +24,30 @@ describe("buildTimetableGrid", () => {
   });
   test("empty input yields no rows", () => {
     expect(buildTimetableGrid([]).rows).toEqual([]);
+  });
+});
+
+describe("buildTimetableGrid with periods (0141 editor)", () => {
+  test("empty periods still get a row so they can be filled", () => {
+    const g = buildTimetableGrid([slot(1, 2)], [
+      { seq: 1, name: "P1", startsAt: "08:00", endsAt: "08:45" },
+      { seq: 2, name: "P2", startsAt: "08:45", endsAt: "09:30" },
+    ]);
+    expect(g.rows.map((r) => [r.seq, r.cells.size])).toEqual([
+      [1, 0],
+      [2, 1],
+    ]);
+  });
+});
+
+describe("subjectPeriodRows", () => {
+  const withSubject = (name?: string) => ({ subject: name ? { id: name, name } : null });
+  test("counts periods per subject, most first, with the real count as display text", () => {
+    const rows = subjectPeriodRows([withSubject("Art"), withSubject("Maths"), withSubject("Maths"), withSubject()]);
+    expect(rows).toEqual([
+      { label: "Maths", value: 2, display: "2" },
+      { label: "Art", value: 1, display: "1" },
+      { label: "Period", value: 1, display: "1" },
+    ]);
   });
 });

@@ -17,16 +17,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { parseTaskProposalOutput } from "@/modules/ai/components/task-card/parse";
+import TaskCard from "@/modules/ai/components/task-card/TaskCard";
+import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 
 export interface ActionDraftFields {
   action: string;
   input: Record<string, unknown>;
   summary: string;
+  /** Set for `propose_task` outputs: the card renders from this and ignores action/input. */
+  proposal?: TaskProposalOutput;
 }
 
 /** A tool-call chat part is a draft card candidate iff its type is this shape. */
 export function isDraftToolPartType(type: string): boolean {
-  return type.startsWith("tool-draft_") || type === "tool-createTask";
+  return type.startsWith("tool-draft_") || type === "tool-createTask" || type === "tool-propose_task";
 }
 
 /**
@@ -38,6 +43,9 @@ export function isDraftToolPartType(type: string): boolean {
 export function parseDraftToolOutput(output: unknown): ActionDraftFields | { error: string } | null {
   if (typeof output === "string") return { error: output };
   if (typeof output !== "object" || output === null) return null;
+
+  const proposal = parseTaskProposalOutput(output);
+  if (proposal) return { action: proposal.view.action, input: {}, summary: proposal.view.title, proposal };
 
   const o = output as Record<string, unknown>;
   if (typeof o.action !== "string" || typeof o.input !== "object" || o.input === null) return null;
@@ -83,9 +91,15 @@ export interface ActionDraftCardProps {
   action: string;
   input: Record<string, unknown>;
   summary: string;
+  proposal?: TaskProposalOutput;
 }
 
-export function ActionDraftCard({ institutionSlug, action, input, summary }: ActionDraftCardProps) {
+export function ActionDraftCard({ proposal, ...rest }: ActionDraftCardProps) {
+  if (proposal) return <TaskCard proposal={proposal} institutionSlug={rest.institutionSlug} />;
+  return <LegacyDraftCard {...rest} />;
+}
+
+function LegacyDraftCard({ institutionSlug, action, input, summary }: Omit<ActionDraftCardProps, "proposal">) {
   const idPrefix = useId();
   const [fields, setFields] = useState<Record<string, unknown>>(input);
   const [status, setStatus] = useState<SaveStatus>("editing");

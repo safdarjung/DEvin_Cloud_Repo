@@ -126,6 +126,8 @@ export const CreateAssignmentSchema = z
     dueAt: z.string().datetime().optional(),
     content: QuizContentSchema.optional(),
     aiGenerated: z.boolean().optional(),
+    /** 0140: the teacher's own study-studio material this homework is about (RLS binds it). */
+    studyMaterialId: uuid.optional(),
   })
   .strict();
 

@@ -7,7 +7,7 @@ import type { Role } from "@/lib/auth/permissions";
 import { ROLE_ACCENTS } from "@/modules/ai/components/orb/orb-theme";
 import { AskAiOrb } from "./ask-ai/AskAiOrb";
 import { AskAiBubble } from "./ask-ai/AskAiBubble";
-import { AskAiPanel, type Corner, type JumpItem } from "./ask-ai/AskAiPanel";
+import { AskAiPanel, type Corner, type JumpItem, type LauncherTask } from "./ask-ai/AskAiPanel";
 import { KIND_META } from "./ask-ai/nudge-kind";
 import { orbUrl, pageTitleFor } from "./ask-ai/suggestions";
 import { useNudgeBubble } from "./ask-ai/use-nudge-bubble";
@@ -29,7 +29,7 @@ function readCorner(): Corner {
 
 // Floating Ask AI launcher: draggable orb (snaps to a corner) opening an anchored panel.
 // The base position is bottom-right (above the mobile bottom nav); x/y are offsets to the other corners.
-export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutionSlug: string; role: Role; jumpItems: JumpItem[] }) {
+export function AskAiLauncher({ institutionSlug, role, jumpItems, tasks = [] }: { institutionSlug: string; role: Role; jumpItems: JumpItem[]; tasks?: LauncherTask[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const reduced = useReducedMotion() ?? false;
@@ -256,6 +256,7 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutio
             pathname={pathname}
             title={pageTitleFor(pathname, jumpItems)}
             items={jumpItems}
+            tasks={tasks}
             corner={corner}
             reduced={reduced}
             focus={focus}

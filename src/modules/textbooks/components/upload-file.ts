@@ -17,7 +17,7 @@ export type UploadOutcome =
   | { ok: true; materialId: string; fileName: string; sizeBytes: number; targets: { gradeId: string; gradeName: string; subjectId: string; subjectName: string; units: { id: string; title: string }[] }[] }
   | { ok: false; error: string };
 
-function put(url: string, file: File, onProgress: (pct: number) => void): Promise<boolean> {
+export function put(url: string, file: File, onProgress: (pct: number) => void): Promise<boolean> {
   return new Promise((resolve) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);

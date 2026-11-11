@@ -1,15 +1,22 @@
 "use client";
 
-// The orb's conversation panel: streaming transcript, draft cards (a human
-// saves; the AI never writes), provider badge (rule 7), and a clear error.
+// The orb's conversation panel: streaming transcript, approval cards (a human
+// approves; the AI never writes), draft cards, provider badge (rule 7), and a clear
+// error. Task cards come only from a tool OUTPUT of kind "task_proposal" (never the
+// tool-call input); one answer's cards share a stack, and cards opened from a feature
+// click sit in the timeline where they were opened.
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { isToolUIPart, type UIMessage } from "ai";
 import { ChevronDown, RotateCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
+import TaskStack from "@/modules/ai/components/task-card/TaskStack";
+import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
+import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
 import { navigateLink, plainChatText, readToolLabel, sourceLabel } from "@/modules/ai/chat-text";
+import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 
 export type OrbMessage = UIMessage<{ provider?: "local" | "cloud"; sources?: Array<{ query: string }> }>;
 
@@ -17,16 +24,46 @@ export type OrbMessage = UIMessage<{ provider?: "local" | "cloud"; sources?: Arr
 const EDITOR_DRAFT_TOOLS = new Set(["tool-generateQuiz", "tool-draftResultRemark"]);
 
 /** "tool-getAttendanceSummary" -> "get attendance summary". */
-const toolName = (type: string) => type.replace(/^tool-/, "").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+const toolName = (type: string) => type.replace(/^tool-/, "").replace(/([a-z])([A-Z])/g, "$1 $2").replace(/_/g, " ").toLowerCase();
 
-function ToolPart({ part, institutionSlug }: { part: OrbMessage["parts"][number]; institutionSlug: string }) {
+type Part = OrbMessage["parts"][number];
+
+/** Proposals in one message, read from finished tool OUTPUTS only. */
+export function proposalsIn(parts: readonly Part[]): TaskProposalOutput[] {
+  return parts.flatMap((p) => {
+    if (!isToolUIPart(p) || p.state !== "output-available") return [];
+    const proposal = taskProposalFromPart(p);
+    return proposal ? [proposal] : [];
+  });
+}
+
+/** A card opened from a feature click (no model call): shown after the first `at` messages. */
+export interface LocalCard {
+  proposal: TaskProposalOutput;
+  at: number;
+}
+
+type CardHandlers = Pick<TaskCardProps, "onResolved" | "onStart">;
+
+/** The jump target for the "Waiting for you" tray: `[data-proposals~="<id>"]`. */
+function Cards({ proposals, institutionSlug, handlers }: { proposals: TaskProposalOutput[]; institutionSlug: string; handlers: CardHandlers }) {
+  if (proposals.length === 0) return null;
+  return (
+    <div data-proposals={proposals.map((p) => p.proposalId).join(" ")} tabIndex={-1} className="rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <TaskStack proposals={proposals} institutionSlug={institutionSlug} onResolved={handlers.onResolved} onStart={handlers.onStart} />
+    </div>
+  );
+}
+
+function ToolPart({ part, institutionSlug }: { part: Part; institutionSlug: string }) {
   if (!isToolUIPart(part)) return null;
+  if (part.state === "output-available" && taskProposalFromPart(part)) return null; // rendered by <Cards>
   if (part.state !== "output-available") {
     if (part.state === "output-error") return null;
     return (
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="size-1.5 animate-pulse rounded-full bg-current" aria-hidden />
-        Checking {readToolLabel(part.type.replace(/^tool-/, "")) ?? toolName(part.type)}…
+        {part.type === "tool-propose_task" ? "Preparing a card…" : `Checking ${readToolLabel(part.type.replace(/^tool-/, "")) ?? toolName(part.type)}…`}
       </p>
     );
   }
@@ -52,7 +89,7 @@ function ToolPart({ part, institutionSlug }: { part: OrbMessage["parts"][number]
   return <ActionDraftCard institutionSlug={institutionSlug} action={parsed.action} input={parsed.input} summary={parsed.summary} />;
 }
 
-function Message({ message, institutionSlug, streaming }: { message: OrbMessage; institutionSlug: string; streaming: boolean }) {
+function Message({ message, institutionSlug, streaming, handlers }: { message: OrbMessage; institutionSlug: string; streaming: boolean; handlers: CardHandlers }) {
   const text = plainChatText(message.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
   const tools = message.parts.filter((p) => isToolUIPart(p));
   if (!text && tools.length === 0) return null;
@@ -64,6 +101,7 @@ function Message({ message, institutionSlug, streaming }: { message: OrbMessage;
   return (
     <div className="min-w-0 max-w-full space-y-2">
       {tools.map((part, i) => <ToolPart key={i} part={part} institutionSlug={institutionSlug} />)}
+      <Cards proposals={proposalsIn(message.parts)} institutionSlug={institutionSlug} handlers={handlers} />
       {text && (
         <p className="whitespace-pre-wrap leading-relaxed">
           {text}
@@ -76,9 +114,10 @@ function Message({ message, institutionSlug, streaming }: { message: OrbMessage;
   );
 }
 
-interface Props {
+interface Props extends CardHandlers {
   institutionSlug: string;
   messages: OrbMessage[];
+  localCards: readonly LocalCard[];
   status: string;
   error: string | null;
   accent: string;
@@ -88,7 +127,11 @@ interface Props {
   onCollapse: () => void;
 }
 
-export function OrbTranscript({ institutionSlug, messages, status, error, accent, onRetry, onDismissError, onNewChat, onCollapse }: Props) {
+export function OrbTranscript({
+  institutionSlug, messages, localCards, status, error, accent, onRetry, onDismissError, onNewChat, onCollapse, onResolved, onStart,
+}: Props) {
+  const handlers: CardHandlers = { onResolved, onStart };
+  const localAt = (n: number) => localCards.filter((c) => c.at === n).map((c) => c.proposal);
   const scroller = useRef<HTMLDivElement>(null);
   const last = messages.at(-1);
   const answerShown = last?.role === "assistant" && last.parts.some((p) => (p.type === "text" && p.text) || isToolUIPart(p));
@@ -99,7 +142,7 @@ export function OrbTranscript({ institutionSlug, messages, status, error, accent
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, status, error]);
+  }, [messages, localCards, status, error]);
 
   return (
     <section aria-label="Conversation" className="flex size-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)] backdrop-blur">
@@ -117,8 +160,16 @@ export function OrbTranscript({ institutionSlug, messages, status, error, accent
         </div>
       </header>
       <div ref={scroller} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 text-sm" aria-live="polite">
-        {messages.map((m) => (
-          <Message key={m.id} message={m} institutionSlug={institutionSlug} streaming={status === "streaming" && m === last} />
+        {localAt(0).map((p) => (
+          <Cards key={p.proposalId} proposals={[p]} institutionSlug={institutionSlug} handlers={handlers} />
+        ))}
+        {messages.map((m, i) => (
+          <Fragment key={m.id}>
+            <Message message={m} institutionSlug={institutionSlug} streaming={status === "streaming" && m === last} handlers={handlers} />
+            {localAt(i + 1).map((p) => (
+              <Cards key={p.proposalId} proposals={[p]} institutionSlug={institutionSlug} handlers={handlers} />
+            ))}
+          </Fragment>
         ))}
         {thinking && (
           <p className="flex items-center gap-1 text-muted-foreground" aria-label="Thinking">

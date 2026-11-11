@@ -135,22 +135,28 @@ export function AssignSubstituteForm({
   slotId,
   date,
   candidates,
+  defaultReason,
 }: {
   institutionSlug: string;
   slotId: string;
   date: string;
-  candidates: { staffId: string; name: string; periodsWeek: number; maxPeriods: number }[];
+  candidates: { staffId: string; name: string; periodsWeek: number; maxPeriods: number; why?: string }[];
+  /** Prefilled reason the class and teachers see ("Ms Iyer is on leave"); required by the action. */
+  defaultReason: string;
 }) {
   const { pending, errors, run } = useRun();
   const [substituteId, setSubstituteId] = useState("");
+  const [note, setNote] = useState(defaultReason);
   const selectId = `sub-${slotId}`;
+  const noteId = `sub-note-${slotId}`;
   if (candidates.length === 0) return <span className="text-sm text-muted-foreground">No free teacher</span>;
+  const chosen = candidates.find((c) => c.staffId === substituteId);
   return (
     <form
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => assignSubstitution(institutionSlug, { slotId, date, substituteId }), "Substitute assigned");
+        run(() => assignSubstitution(institutionSlug, { slotId, date, substituteId, note }), "Substitute assigned");
       }}
     >
       <Label htmlFor={selectId} className="sr-only">
@@ -164,9 +170,15 @@ export function AssignSubstituteForm({
           </option>
         ))}
       </select>
-      <Button type="submit" size="sm" disabled={pending || !substituteId}>
+      <Label htmlFor={noteId} className="sr-only">
+        Reason for the cover, seen by school leaders and the two teachers (the class sees only that the regular teacher is unavailable)
+      </Label>
+      <Input id={noteId} className="h-10 min-w-48 flex-1" value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} aria-invalid={Boolean(errors.note)} placeholder="Reason, e.g. Ms Iyer is on leave" />
+      <Button type="submit" size="sm" disabled={pending || !substituteId || !note.trim()}>
         Assign
       </Button>
+      {chosen?.why && <p className="w-full text-xs text-muted-foreground">Why this teacher: {chosen.why}</p>}
+      <FieldError errors={errors.note} />
     </form>
   );
 }

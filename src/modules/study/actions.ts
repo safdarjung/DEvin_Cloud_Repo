@@ -27,14 +27,12 @@ import {
   TeacherSaveMaterialSchema,
   TogglePlanItemSchema,
 } from "@/modules/study/schemas";
+import { insertMaterial } from "@/modules/study/material-write";
 import { DeckStateSchema, reviewCard } from "@/modules/study/srs";
 import { timetableForStudent } from "@/modules/timetable/queries";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
 type JsonValue = NonNullable<Json>;
-
-// A backstop against unbounded growth, not a product limit (same reasoning as study_items).
-const MAX_MATERIALS_PER_USER = 300;
 
 function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
@@ -45,48 +43,6 @@ function throwMapped(error: unknown): never {
 function ownStudentId(ctx: TenantContext): string {
   if (!ctx.membership.studentId) throw new AppError("forbidden", "The study studio is for students.");
   return ctx.membership.studentId;
-}
-
-async function assertUnderMaterialCap(supabase: Client, ctx: TenantContext): Promise<void> {
-  const { count, error } = await supabase
-    .from("study_materials")
-    .select("id", { count: "exact", head: true })
-    .eq("institution_id", ctx.institution.id)
-    .eq("user_id", ctx.user.id);
-  if (error) throwMapped(error);
-  if ((count ?? 0) >= MAX_MATERIALS_PER_USER) throw new AppError("validation_failed", `You can keep up to ${MAX_MATERIALS_PER_USER} items. Delete some first.`);
-}
-
-interface MaterialFields {
-  format: string;
-  title: string;
-  subjectId?: string;
-  unitId?: string;
-  sourceKind: string;
-  resourceId?: string;
-  content: unknown;
-}
-
-async function insertMaterial(supabase: Client, ctx: TenantContext, input: MaterialFields, ownerRole: "student" | "teacher"): Promise<string> {
-  await assertUnderMaterialCap(supabase, ctx);
-  const { data, error } = await supabase
-    .from("study_materials")
-    .insert({
-      institution_id: ctx.institution.id,
-      user_id: ctx.user.id,
-      owner_role: ownerRole,
-      format: input.format,
-      title: input.title,
-      subject_id: input.subjectId ?? null,
-      curriculum_unit_id: input.unitId ?? null,
-      source_kind: input.sourceKind,
-      resource_id: input.resourceId ?? null,
-      content: input.content as JsonValue,
-    })
-    .select("id")
-    .single();
-  if (error) throwMapped(error);
-  return data.id;
 }
 
 // ---------------------------------------------------------------------------

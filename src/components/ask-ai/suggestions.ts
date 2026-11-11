@@ -28,7 +28,9 @@ export function pageTitleFor(pathname: string, items: readonly { href: string; l
   return hit?.label ?? "this page";
 }
 
-export function orbUrl(slug: string, from: string, question?: string): string {
+/** `mode` opens that orb mode; `task` opens that task's card on arrival (the orb page re-checks it is enabled). */
+export function orbUrl(slug: string, from: string, question?: string, open?: { mode?: string; task?: string }): string {
   const q = question?.trim();
-  return `/${slug}/orb?from=${encodeURIComponent(from)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+  const extra = (["mode", "task"] as const).map((k) => (open?.[k] ? `&${k}=${encodeURIComponent(open[k])}` : "")).join("");
+  return `/${slug}/orb?from=${encodeURIComponent(from)}${q ? `&q=${encodeURIComponent(q)}` : ""}${extra}`;
 }

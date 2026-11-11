@@ -16,20 +16,26 @@ import { upcomingExamsForStudent } from "@/modules/exams/queries";
 import { getStudentProfile } from "@/modules/people/queries";
 import { istDay } from "@/modules/practice/scoring";
 import { portalResources } from "@/modules/resources/queries";
+import { AskTeacher } from "@/modules/study/components/AskTeacher";
 import { DeckDrill } from "@/modules/study/components/DeckDrill";
 import { DeleteMaterialButton } from "@/modules/study/components/DeleteMaterialButton";
 import { AiLabel, MaterialView } from "@/modules/study/components/MaterialView";
+import { LanguageVersions } from "@/modules/study/components/LanguageVersions";
+import { MockExamBuilder } from "@/modules/study/components/MockExamBuilder";
 import { QuizRunner } from "@/modules/study/components/QuizRunner";
+import { RevisionPack } from "@/modules/study/components/RevisionPack";
 import { StudyCreate } from "@/modules/study/components/StudyCreate";
 import { PlanBuilder, PlanView } from "@/modules/study/components/StudyPlan";
 import { StudyProgressView } from "@/modules/study/components/StudyProgressView";
-import { FORMAT_LABELS, type Difficulty, type QuizQuestion } from "@/modules/study/formats";
+import { FORMAT_LABELS, MockContentSchema, type Difficulty, type QuizQuestion } from "@/modules/study/formats";
+import { hasFileConsent, latestPackUnitIds, materialVariants, studentQuestions, studyFileOptions } from "@/modules/study/help.queries";
 import { activeStudyPlan, deckForDrill, deckSummaries, getStudyMaterial, studyLibrary, studyProgress } from "@/modules/study/queries";
 
 export const metadata: Metadata = { title: "Study studio" };
 
 const TABS = [
   { key: "create", label: "Create" },
+  { key: "prep", label: "Exam prep" },
   { key: "library", label: "Library" },
   { key: "cards", label: "Flashcards" },
   { key: "quiz", label: "Quizzes" },
@@ -54,7 +60,7 @@ export default async function StudyStudioPage({
   searchParams,
 }: {
   params: Promise<{ institution: string }>;
-  searchParams: Promise<{ tab?: string; item?: string; deck?: string; quiz?: string; unit?: string }>;
+  searchParams: Promise<{ tab?: string; item?: string; deck?: string; quiz?: string; unit?: string; file?: string }>;
 }) {
   const { institution: slug } = await params;
   const sp = await searchParams;
@@ -65,29 +71,59 @@ export default async function StudyStudioPage({
   if (!studentId) redirect(`/${slug}/portal`);
 
   const tab: Tab = TABS.some((t) => t.key === sp.tab) ? (sp.tab as Tab) : "create";
+  const aiOn = isAiCapabilityEnabled(ctx, "study_studio");
+  const canExams = isModuleEnabled(ctx, "exams") && hasPermission(ctx, "exam.result.read");
   const base = `/${slug}/portal/study/studio`;
   const today = istDay(new Date());
 
   let body: React.ReactNode;
   if (tab === "create") {
-    const [subjects, resources] = await Promise.all([
+    const [subjects, resources, files, consent] = await Promise.all([
       mySubjects(ctx, studentId),
       isModuleEnabled(ctx, "resources") && hasPermission(ctx, "resource.read") ? portalResources(ctx, studentId) : Promise.resolve([]),
+      studyFileOptions(ctx),
+      hasFileConsent(ctx),
     ]);
     body = (
       <StudyCreate
         audience="student"
         institutionSlug={slug}
-        aiOn={isAiCapabilityEnabled(ctx, "study_studio")}
+        aiOn={aiOn}
         subjects={subjects}
         resources={resources.map((r) => ({ id: r.id, title: r.title, subjectName: r.subjectName }))}
         initialUnitId={validId(sp.unit)}
+        files={files.map((f) => ({ id: f.id, title: f.title, fileName: f.fileName, kind: f.kind, tooBig: f.tooBig }))}
+        fileConsent={consent}
+        initialFileId={validId(sp.file)}
       />
+    );
+  } else if (tab === "prep") {
+    const [subjects, exams] = await Promise.all([mySubjects(ctx, studentId), canExams ? upcomingExamsForStudent(ctx, studentId, 120) : Promise.resolve([])]);
+    body = aiOn ? (
+      <div className="space-y-8">
+        <section aria-labelledby="pack-h" className="space-y-3 rounded-2xl border bg-card p-4">
+          <h2 id="pack-h" className="text-base font-semibold">Revision pack from your weak topics</h2>
+          <RevisionPack audience="student" institutionSlug={slug} />
+        </section>
+        <section aria-labelledby="mock-h" className="space-y-3 rounded-2xl border bg-card p-4">
+          <h2 id="mock-h" className="text-base font-semibold">Mock exam</h2>
+          <MockExamBuilder
+            institutionSlug={slug}
+            papers={exams
+              .filter((e) => istDay(e.scheduledAt) > today)
+              .map((e) => ({ paperId: e.paperId, label: `${e.examName} — ${e.subjectName}`, date: istDay(e.scheduledAt), durationMinutes: e.durationMinutes }))}
+            subjects={subjects}
+          />
+        </section>
+      </div>
+    ) : (
+      <EmptyState title="AI study help is switched off" description="Your school has turned this feature off. Saved items, flashcards and plans still work." />
     );
   } else if (tab === "library") {
     const itemId = validId(sp.item);
     const item = itemId ? await getStudyMaterial(ctx, itemId) : null;
     if (item) {
+      const versions = await materialVariants(ctx, item.variantOf ?? item.id);
       body = (
         <article className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -98,9 +134,9 @@ export default async function StudyStudioPage({
                   Drill
                 </Link>
               )}
-              {item.format === "quiz" && (
+              {(item.format === "quiz" || item.format === "mock_exam") && (
                 <Link href={`${base}?tab=quiz&quiz=${item.id}`} className={buttonVariants({ size: "sm" })}>
-                  Take quiz
+                  {item.format === "mock_exam" ? "Start mock exam" : "Take quiz"}
                 </Link>
               )}
               {item.isMine && <DeleteMaterialButton institutionSlug={slug} materialId={item.id} audience="student" afterHref={`${base}?tab=library`} />}
@@ -110,9 +146,11 @@ export default async function StudyStudioPage({
           <p className="text-xs text-muted-foreground">
             {[FORMAT_LABELS[item.format], item.subjectName, dateFmt.format(new Date(item.createdAt))].filter(Boolean).join(" · ")}
           </p>
+          <LanguageVersions audience="student" institutionSlug={slug} current={{ id: item.id, language: item.language }} versions={versions} hrefFor={`${base}?tab=library&item=`} canTranslate={aiOn && item.format !== "worksheet"} />
           <div className="rounded-xl border bg-card p-4">
-            {item.format === "quiz" ? <p className="text-sm text-muted-foreground">Take the quiz to see the questions.</p> : <MaterialView format={item.format} content={item.content} />}
+            {item.format === "quiz" || item.format === "mock_exam" ? <p className="text-sm text-muted-foreground">Start it to see the questions.</p> : <MaterialView format={item.format} content={item.content} />}
           </div>
+          {item.subjectId && <AskTeacher institutionSlug={slug} subjectId={item.subjectId} contextKind="material" materialId={item.id} excerpt={item.title} />}
           <Link href={`${base}?tab=library`} className="inline-flex min-h-10 items-center text-sm underline underline-offset-4">
             Back to library
           </Link>
@@ -128,12 +166,13 @@ export default async function StudyStudioPage({
             {items.map((m) => (
               <li key={m.id}>
                 <Link
-                  href={m.format === "flashcards" ? `${base}?tab=cards&deck=${m.id}` : m.format === "quiz" ? `${base}?tab=quiz&quiz=${m.id}` : `${base}?tab=library&item=${m.id}`}
+                  href={m.format === "flashcards" ? `${base}?tab=cards&deck=${m.id}` : m.format === "quiz" || m.format === "mock_exam" ? `${base}?tab=quiz&quiz=${m.id}` : `${base}?tab=library&item=${m.id}`}
                   className="block min-h-16 rounded-xl border bg-card p-3 outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
                 >
                   <span className="flex items-center gap-2">
                     <Badge variant="outline">{FORMAT_LABELS[m.format]}</Badge>
                     {m.fromTeacher && <Badge>From your teacher</Badge>}
+                    {m.language === "hi" && <Badge variant="secondary">हिन्दी · AI translation</Badge>}
                   </span>
                   <span className="mt-1.5 block truncate text-sm font-medium">{m.title}</span>
                   <span className="block text-xs text-muted-foreground">{[m.subjectName, dateFmt.format(new Date(m.createdAt))].filter(Boolean).join(" · ")}</span>
@@ -153,7 +192,7 @@ export default async function StudyStudioPage({
             <h2 className="text-lg font-semibold">{deck.title}</h2>
             <AiLabel fromTeacher={deck.fromTeacher} />
           </div>
-          <DeckDrill institutionSlug={slug} deckId={deck.id} subjectId={deck.subjectId} cards={deck.cards} queue={deck.queue} backHref={`${base}?tab=cards`} />
+          <DeckDrill institutionSlug={slug} deckId={deck.id} subjectId={deck.subjectId} cards={deck.cards} queue={deck.queue} backHref={`${base}?tab=cards`} canAsk />
         </div>
       );
     } else {
@@ -186,8 +225,9 @@ export default async function StudyStudioPage({
   } else if (tab === "quiz") {
     const quizId = validId(sp.quiz);
     const quiz = quizId ? await getStudyMaterial(ctx, quizId) : null;
-    if (quiz && quiz.format === "quiz") {
+    if (quiz && (quiz.format === "quiz" || quiz.format === "mock_exam")) {
       const content = quiz.content as { difficulty: Difficulty; questions: QuizQuestion[] };
+      const mock = quiz.format === "mock_exam" ? MockContentSchema.safeParse(quiz.content) : null;
       body = (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -203,12 +243,14 @@ export default async function StudyStudioPage({
             difficulty={content.difficulty}
             questions={content.questions}
             backHref={`${base}?tab=quiz`}
+            mock={mock?.success ? mock.data : undefined}
+            canAsk
           />
         </div>
       );
     } else {
       const [items, progress] = await Promise.all([studyLibrary(ctx), studyProgress(ctx, studentId)]);
-      const quizzes = items.filter((m) => m.format === "quiz");
+      const quizzes = items.filter((m) => m.format === "quiz" || m.format === "mock_exam");
       body = (
         <div className="space-y-4">
           {quizzes.length === 0 ? (
@@ -259,12 +301,12 @@ export default async function StudyStudioPage({
       );
     }
   } else if (tab === "plan") {
-    const canExams = isModuleEnabled(ctx, "exams") && hasPermission(ctx, "exam.result.read");
-    const [plan, exams, subjects, progress] = await Promise.all([
+    const [plan, exams, subjects, progress, packUnits] = await Promise.all([
       activeStudyPlan(ctx, studentId),
       canExams ? upcomingExamsForStudent(ctx, studentId, 120) : Promise.resolve([]),
       mySubjects(ctx, studentId),
       studyProgress(ctx, studentId),
+      latestPackUnitIds(ctx),
     ]);
     body = (
       <div className="space-y-6">
@@ -280,15 +322,35 @@ export default async function StudyStudioPage({
             .filter((e) => istDay(e.scheduledAt) > today)
             .map((e) => ({ id: e.paperId, label: `${e.examName} — ${e.subjectName}`, date: istDay(e.scheduledAt), subjectName: e.subjectName }))}
           subjects={subjects}
-          weakUnitIds={progress.weak.flatMap((w) => (w.unitId ? [w.unitId] : []))}
+          weakUnitIds={[...new Set([...progress.weak.flatMap((w) => (w.unitId ? [w.unitId] : [])), ...packUnits])]}
           timetableOn={isModuleEnabled(ctx, "timetable")}
           hasPlan={Boolean(plan)}
         />
       </div>
     );
   } else {
-    const [progress, decks] = await Promise.all([studyProgress(ctx, studentId), deckSummaries(ctx, studentId)]);
-    body = <StudyProgressView progress={progress} dueCards={decks.reduce((n, d) => n + d.due, 0)} studioHref={base} />;
+    const [progress, decks, questions] = await Promise.all([studyProgress(ctx, studentId), deckSummaries(ctx, studentId), studentQuestions(ctx, studentId)]);
+    body = (
+      <div className="space-y-8">
+        <StudyProgressView progress={progress} dueCards={decks.reduce((n, d) => n + d.due, 0)} studioHref={base} />
+        <section aria-labelledby="q-h" className="space-y-2">
+          <h2 id="q-h" className="text-base font-semibold">Your questions to teachers</h2>
+          {questions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Use “Ask my teacher” on a material, a quiz question or a flashcard.</p>
+          ) : (
+            <ul className="space-y-2">
+              {questions.map((q) => (
+                <li key={q.id} className="rounded-xl border p-3 text-sm">
+                  <p className="text-xs text-muted-foreground">{[q.subjectName, dateFmt.format(new Date(q.createdAt))].filter(Boolean).join(" · ")}</p>
+                  <p className="mt-1 font-medium">{q.question}</p>
+                  {q.answer ? <p className="mt-1 rounded-md bg-muted/50 px-2 py-1">Teacher: {q.answer}</p> : <p className="mt-1 text-muted-foreground">Waiting for an answer.</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -299,6 +361,11 @@ export default async function StudyStudioPage({
         back={{ href: `/${slug}/portal`, label: "Back" }}
         compact
       />
+      {aiOn && (
+        <Link href={`/${slug}/portal/study/scope`} className={`${buttonVariants({ variant: "outline", size: "sm" })} mb-3`}>
+          Study with AI on chosen chapters or topics
+        </Link>
+      )}
       <nav aria-label="Study studio sections" className="-mx-4 mb-5 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <ul className="flex min-w-max gap-1 border-b">
           {TABS.map((t) => (

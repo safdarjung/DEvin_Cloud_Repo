@@ -67,6 +67,16 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "ai.study.item.update": { permission: "ai.study", input: () => ({ itemId: U(), pinned: true }) },
   "ai.study.item.delete": { permission: "ai.study", input: () => ({ itemId: U() }) },
   "ai.study.language.update": { permission: "ai.study", input: () => ({ language: "hi" }) },
+  // 0143 orb task bridge. start: the task's own taskState gate runs in the handler, so roles
+  // without library.manage (or with AI off by default) are refused there; the rest reach the insert.
+  "ai.proposal.start": {
+    permission: "ai.chat",
+    input: () => ({ action: "library.loan.issue", values: { accessionNo: "ACC-1" } }),
+    rolesForbidden: ["admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+  },
+  "ai.proposal.approve": { permission: "ai.chat", input: () => ({ proposalId: U(), values: {} }) },
+  "ai.proposal.discard": { permission: "ai.chat", input: () => ({ proposalId: U() }) },
+  "ai.proposal.opened": { permission: "ai.chat", input: () => ({ proposalId: U() }) },
   "job.requeue": { permission: "job.manage", input: () => ({ jobId: U() }) },
   "library.book.upsert": { permission: "library.manage", input: () => ({ title: "Probe", author: "Probe" }) },
   "library.copies.add": { permission: "library.manage", input: () => ({ bookId: U(), accessionNos: ["LIB-PROBE"] }) },
@@ -309,6 +319,44 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ format: "quick_summary", title: "Probe", sourceKind: "paste", content: { summary: "Probe.", keyPoints: ["a"] }, sectionIds: [U()] }),
   },
   "study.teacher.material.delete": { permission: "resource.manage", input: () => ({ materialId: U() }) },
+  // 0140 study help.
+  "study.fileConsent.give": { permission: "ai.study", input: () => ({ agree: true }) },
+  "study.teacher.fileConsent.give": { permission: "resource.manage", input: () => ({ agree: true }) },
+  "study.mock.save": {
+    permission: "ai.study",
+    input: () => {
+      const unit = U();
+      return {
+        title: "Mock exam: Probe",
+        focusUnitIds: [unit],
+        content: {
+          difficulty: "easy",
+          durationMinutes: 15,
+          examLabel: null,
+          paperId: null,
+          units: [{ id: unit, title: "Probe" }],
+          questions: [{ type: "true_false", stem: "Probe?", answer: true, explanation: "" }],
+          questionUnits: [0],
+        },
+      };
+    },
+  },
+  "study.material.saveVariant": { permission: "ai.study", input: () => ({ baseId: U(), title: "Probe", language: "hi", content: {} }) },
+  "study.teacher.material.saveVariant": { permission: "resource.manage", input: () => ({ baseId: U(), title: "Probe", language: "hi", content: {} }) },
+  "study.teacher.worksheet.save": {
+    permission: "resource.manage",
+    input: () => ({
+      title: "Probe worksheet",
+      sourceKind: "paste",
+      content: { levels: ["support", "core", "stretch"].map((level) => ({ level, instructions: "Do it.", questions: [{ prompt: "Probe?", answer: "Yes." }] })) },
+    }),
+  },
+  "study.teacher.assign": { permission: "assignment.manage", input: () => ({ materialId: U(), sectionId: U(), publish: false }) },
+  "study.question.ask": { permission: "ai.study", input: () => ({ subjectId: U(), contextKind: "general", question: "Probe question?" }) },
+  "study.question.answer": { permission: "resource.manage", input: () => ({ questionId: U(), answer: "Probe answer." }) },
+  "study.scope.open": { permission: "ai.study", input: () => ({ scope: { subjectIds: [U()] } }) },
+  "study.scope.saveMessages": { permission: "ai.study", input: () => ({ itemId: U(), messages: [] }) },
+  "study.scope.logTime": { permission: "ai.study", input: () => ({ itemId: U(), minutes: 10 }) },
   // 0139 textbooks + curriculum materials. Upload/attach: staff or students only (guardian and
   // office roles hold academics.read but own no class files); suggest: students only.
   "textbook.suggestNcert": { permission: "resource.manage", input: () => ({}) },
@@ -335,6 +383,12 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "curriculum.material.review": { permission: "resource.manage", input: () => ({ materialId: U(), decision: "approve" }) },
   "curriculum.material.delete": { permission: "academics.read", input: () => ({ materialId: U() }) },
   "curriculum.material.readUrl": { permission: "academics.read", input: () => ({ materialId: U() }) },
+  // 0142 textbook link + PDF (documents entity 'subject_textbook').
+  "textbook.link.set": { permission: "resource.manage", input: () => ({ textbookId: U(), url: "https://example.com/book" }) },
+  "textbook.file.requestUpload": { permission: "resource.manage", input: () => ({ textbookId: U(), fileName: "book.pdf", sizeBytes: 100 }) },
+  "textbook.file.confirmUpload": { permission: "resource.manage", input: () => ({ textbookId: U() }) },
+  "textbook.file.remove": { permission: "resource.manage", input: () => ({ textbookId: U() }) },
+  "textbook.file.readUrl": { permission: "academics.read", input: () => ({ textbookId: U() }) },
   "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
   "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
   "people.guardian.link": {
@@ -395,9 +449,38 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "timetable.publish": { permission: "timetable.manage", input: () => ({ versionId: U() }) },
   "timetable.substitution.assign": {
     permission: "timetable.manage",
-    input: () => ({ slotId: U(), date: "2026-11-09", substituteId: U() }),
+    input: () => ({ slotId: U(), date: "2026-11-09", substituteId: U(), note: "Probe teacher is on leave" }),
   },
   "timetable.substitution.cancel": { permission: "timetable.manage", input: () => ({ substitutionId: U() }) },
+  "timetable.change.apply": {
+    permission: "timetable.manage",
+    input: () => ({
+      versionId: U(),
+      kind: "manual",
+      changes: [{ classSectionId: U(), weekday: 1, periodId: U(), after: { subjectId: U(), teacherId: U() } }],
+      note: "Probe",
+    }),
+  },
+  "timetable.change.rollback": { permission: "timetable.manage", input: () => ({ changeId: U() }) },
+  "timetable.rules.set": {
+    permission: "timetable.manage",
+    input: () => ({
+      rules: {
+        max_same_subject_per_day: { enabled: true, value: 2 },
+        max_consecutive_teacher: { enabled: false, value: 4 },
+        max_teacher_per_day: { enabled: false, value: 6 },
+        max_teacher_per_week: { enabled: true, value: 36 },
+        subject_time_band: { enabled: false, value: [] },
+        lab_rooms: { enabled: false, value: [] },
+        spread_across_week: { enabled: false, value: 1 },
+        teacher_unavailable: { enabled: true, value: [] },
+        substitute_ranking: { enabled: false, value: { sameSubject: 4, sameGrade: 2, fewestToday: 1, notCovering: 3 } },
+      },
+      reason: "Probe",
+    }),
+  },
+  "timetable.snapshot.create": { permission: "timetable.manage", input: () => ({ versionId: U(), name: "Probe" }) },
+  "timetable.snapshot.restore": { permission: "timetable.manage", input: () => ({ snapshotId: U() }) },
   "calendar.event.upsert": {
     permission: "academics.manage",
     input: () => ({ academicYearId: U(), kind: "event", title: "Probe", startsOn: "2026-04-10", endsOn: "2026-04-10" }),

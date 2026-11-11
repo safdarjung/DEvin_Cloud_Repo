@@ -11,6 +11,9 @@ import type { QuizQuestion } from "../../../src/modules/study/formats.ts";
 // classmates' attempts and reviews so the engagement view has counts. Deterministic uuidV5
 // ids, insert-if-missing (safe to rerun), no rng draws. Content is hand-written, not AI output,
 // but flagged ai_generated like real studio items so the UI labels match.
+// 0140 study help: a Hindi version of the forces summary, a three-level worksheet for
+// teacher.x-a, a saved mock exam with one attempt, two "ask my teacher" questions (one
+// answered) and teacher.x-a's file-reading consent (student.one still sees the tick).
 
 const S = "study-studio";
 const id = (key: string) => uuidV5(S, key);
@@ -276,4 +279,144 @@ export async function run(ctx: SeedContext): Promise<void> {
       { id: id("plan:active"), institution_id: inst, student_id: me.student_id, title: "Revision plan: Mathematics and Science", start_date: today, target_date: target, minutes_per_day: 45, items },
     ]);
   }
+
+  await seedStudyHelp(ctx, { inst, studentUser, teacherUser, studentId: me.student_id, sectionId: me.section_id, quadratic, forces, matter });
+}
+
+async function seedStudyHelp(
+  ctx: SeedContext,
+  p: { inst: string; studentUser: string; teacherUser: string; studentId: string; sectionId: string; quadratic: Unit; forces: Unit; matter: Unit },
+): Promise<void> {
+  // One batch upsert: every row names every column (PostgREST sends null, not the default, for a missing key).
+  const base = { institution_id: p.inst, ai_generated: true, language: "en", variant_of: null, focus_unit_ids: [] as string[], curriculum_unit_id: null as string | null };
+  const mock = {
+    difficulty: "medium",
+    durationMinutes: 30,
+    examLabel: null,
+    paperId: null,
+    units: [
+      { id: p.forces.id, title: p.forces.title },
+      { id: p.matter.id, title: p.matter.title },
+    ],
+    questions: [
+      mcq("The SI unit of power is", ["Joule", "Newton", "Watt", "Pascal"], 2, "Power is measured in watts."),
+      mcq("Which of these is a compound?", ["Oxygen", "Water", "Iron", "Air"], 1, "Water is hydrogen and oxygen chemically combined."),
+      tf("Potential energy depends on height.", true, "PE = mgh."),
+      tf("A mixture has a fixed composition.", false, "Mixtures can be in any ratio."),
+      { type: "short", stem: "Why is air called a mixture?", modelAnswer: "Its gases are not chemically combined and their proportions can vary.", rubric: ["not chemically combined", "proportions vary"], explanation: "Air can be separated physically." },
+    ],
+    questionUnits: [0, 1, 0, 1, 1],
+  };
+  await insertOnce(ctx.admin, "study_materials", [
+    {
+      ...base,
+      id: id("material:summary-hi"),
+      user_id: p.studentUser,
+      owner_role: "student",
+      format: "quick_summary",
+      title: `त्वरित सारांश: ${p.forces.title}`,
+      subject_id: p.forces.subject_id,
+      curriculum_unit_id: p.forces.id,
+      source_kind: "unit",
+      language: "hi",
+      variant_of: id("material:summary"),
+      content: {
+        summary: "बल एक धक्का या खिंचाव है। जब बल किसी वस्तु को हिलाता है, तो कार्य होता है और ऊर्जा स्थानांतरित होती है। ऊर्जा रूप बदलती है, जैसे गतिज से स्थितिज, पर कुल ऊर्जा समान रहती है।",
+        keyPoints: ["कार्य = बल × विस्थापन", "गतिज ऊर्जा = ½ mv²", "स्थितिज ऊर्जा = mgh", "शक्ति = कार्य ÷ समय"],
+      },
+      created_at: isoAt(-11, 10),
+    },
+    {
+      ...base,
+      id: id("material:t-worksheet"),
+      user_id: p.teacherUser,
+      owner_role: "teacher",
+      format: "worksheet",
+      title: `Worksheet: ${p.quadratic.title}`,
+      subject_id: p.quadratic.subject_id,
+      curriculum_unit_id: p.quadratic.id,
+      source_kind: "unit",
+      content: {
+        levels: [
+          { level: "support", instructions: "Use the hint in each question.", questions: [{ prompt: "Write x² − 9 = 0 in the form ax² + bx + c = 0. What are a, b and c? (Hint: b is the coefficient of x.)", answer: "a = 1, b = 0, c = −9." }, { prompt: "Find the discriminant of x² + 2x + 1 = 0.", answer: "D = 4 − 4 = 0." }] },
+          { level: "core", instructions: "Show your working.", questions: [{ prompt: "Solve x² − 7x + 12 = 0 by factorisation.", answer: "(x − 3)(x − 4) = 0, so x = 3 or 4." }, { prompt: "State the nature of the roots of 2x² + 3x + 5 = 0.", answer: "D = 9 − 40 < 0, so no real roots." }] },
+          { level: "stretch", instructions: "Explain each step.", questions: [{ prompt: "For what value of k does x² + kx + 9 = 0 have equal roots?", answer: "k² − 36 = 0, so k = ±6." }, { prompt: "The product of two consecutive positive integers is 132. Form a quadratic and find them.", answer: "n(n + 1) = 132, n² + n − 132 = 0, n = 11; the integers are 11 and 12." }] },
+        ],
+      },
+      created_at: isoAt(-4, 9),
+    },
+    {
+      ...base,
+      id: id("material:mock"),
+      user_id: p.studentUser,
+      owner_role: "student",
+      format: "mock_exam",
+      title: "Mock exam: Science practice",
+      subject_id: p.forces.subject_id,
+      source_kind: "mock_exam",
+      focus_unit_ids: [p.forces.id, p.matter.id],
+      content: mock,
+      created_at: isoAt(-2, 17),
+    },
+  ]);
+
+  const answers: QuizAnswer[] = [2, 0, true, true, "The gases are just mixed."];
+  const marked = autoMark(mock.questions as QuizQuestion[], answers);
+  await insertOnce(ctx.admin, "study_quiz_attempts", [
+    {
+      id: id("attempt:mock-1"),
+      institution_id: p.inst,
+      student_id: p.studentId,
+      material_id: id("material:mock"),
+      subject_id: p.forces.subject_id,
+      title: "Mock exam: Science practice",
+      difficulty: "medium",
+      questions: mock.questions,
+      answers,
+      ai_checks: [{ score: 1, feedback: "Right idea: also say the proportions can change." }],
+      auto_score: marked.autoScore,
+      auto_max: marked.autoMax,
+      ai_points: 1,
+      ai_max: 2,
+      duration_seconds: 1500,
+      created_at: isoAt(-2, 18),
+    },
+  ]);
+
+  await insertOnce(ctx.admin, "study_questions", [
+    {
+      id: id("question:answered"),
+      institution_id: p.inst,
+      student_id: p.studentId,
+      class_section_id: p.sectionId,
+      subject_id: p.quadratic.subject_id,
+      asked_by: p.studentUser,
+      context_kind: "flashcard",
+      material_id: id("material:deck"),
+      context_excerpt: "D = 0 means — Two equal real roots",
+      question: "Why are the roots equal when the discriminant is zero?",
+      answer: "Because ±√0 is 0, the formula gives x = −b/2a twice. We will do one example in class tomorrow.",
+      answered_by: p.teacherUser,
+      answered_at: isoAt(-1, 16),
+      created_at: isoAt(-2, 20),
+    },
+    {
+      id: id("question:open"),
+      institution_id: p.inst,
+      student_id: p.studentId,
+      class_section_id: p.sectionId,
+      subject_id: p.forces.subject_id,
+      asked_by: p.studentUser,
+      context_kind: "quiz_question",
+      material_id: id("material:quiz"),
+      context_excerpt: "Work is done when you push a wall that does not move.",
+      question: "My muscles get tired pushing the wall. Isn't that work?",
+      created_at: isoAt(0, 8),
+    },
+  ]);
+
+  const { error } = await ctx.admin
+    .from("study_ai_consents")
+    .upsert({ institution_id: p.inst, user_id: p.teacherUser, kind: "file_reading" }, { onConflict: "institution_id,user_id,kind", ignoreDuplicates: true });
+  if (error) throw new Error(`study-studio: consent failed: ${error.message}`);
 }

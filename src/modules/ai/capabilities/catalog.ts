@@ -1214,7 +1214,8 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   study_studio: {
     key: "study_studio",
     label: "Study studio",
-    description: "Make summaries, flashcards and practice quizzes from your units or notes, with AI-checked short answers. Practice only.",
+    description:
+      "Make summaries, flashcards, practice quizzes, revision packs and mock exams from your units, notes or your own uploaded files, with AI-checked short answers. Practice only. An uploaded PDF or photo is sent as it is to the school's cloud AI provider to be read (a file cannot be screened for names first); you agree once before the first use. NCERT books are links and are not read.",
     kind: "task",
     roles: ["student"],
     permission: "ai.study",
@@ -1225,7 +1226,8 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   teacher_study_studio: {
     key: "teacher_study_studio",
     label: "Study material builder",
-    description: "Draft summaries, flashcard decks or quizzes from a unit, lesson plan or your notes. You review, edit and share them with your sections.",
+    description:
+      "Draft summaries, flashcard decks, quizzes, three-level worksheets and class revision packs from a unit, lesson plan, your notes or a class file. You review, edit and share them with your sections. A class file is sent as it is to the school's cloud AI provider to be read (a file cannot be screened for names first).",
     kind: "task",
     roles: ["teacher"],
     permission: "ai.generate",

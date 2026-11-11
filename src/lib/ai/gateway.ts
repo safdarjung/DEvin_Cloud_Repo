@@ -19,6 +19,7 @@ import {
   structuredCloudPlan,
   userFacingAiError,
 } from "@/lib/ai/provider-fallback";
+import { FILE_UNREADABLE_NOW, countPdfPages, fileReadGate } from "@/lib/ai/file-input";
 import { TOKEN_CEILING, estimateTokens, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
 import { tolerateNullOptionals } from "@/lib/ai/tool-nulls";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
@@ -262,6 +263,118 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
   }
 
   return fail(lastFailure.code, lastFailure.message);
+}
+
+// 0140 — the narrow multimodal structured path (study from an uploaded file).
+// One file per request, Gemini only (file-input.ts says why), only with the
+// role's cloud switch on, within the byte/page caps. The caller fetched the
+// bytes server-side through the user's own RLS-checked access; nothing here
+// takes a URL. The text prompt and instructions are redacted as usual; the
+// file's bytes cannot be (the capability description and the UI say so). No
+// fallback: a text-only model would answer without having read the file.
+export interface RunStructuredFileInput<T> extends Omit<RunStructuredInput<T>, "agentCloud" | "strictSchema"> {
+  file: { bytes: Uint8Array; mime: string; fileName: string };
+}
+
+const FILE_TIMEOUT_MS = 90_000;
+
+export async function runStructuredFile<T>(input: RunStructuredFileInput<T>): Promise<ActionResult<RunStructuredOutput<T>>> {
+  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate", file } = input;
+  if (!hasPermission(ctx, permission)) return fail("forbidden", "You do not have permission to use AI features.");
+
+  const gate = fileReadGate({
+    geminiKey: configuredCloudKeys().gemini,
+    cloudSwitch: roleAiConfig(ctx, ctx.membership.role).cloud,
+    mime: file.mime,
+    sizeBytes: file.bytes.byteLength,
+    pages: file.mime === "application/pdf" ? countPdfPages(file.bytes) : null,
+  });
+  if (!gate.ok) return fail(gate.code, gate.message);
+
+  const modelId = providers.geminiModelId();
+  const failUsage = (errorCode: ErrorCode, latencyMs: number, redactions: number) =>
+    logUsage({ ctx, feature, provider: "cloud", model: modelId, inputTokens: 0, outputTokens: 0, latencyMs, costEstimateUsd: 0, ok: false, errorCode, redactions });
+
+  let limits: Awaited<ReturnType<typeof checkLimits>>;
+  try {
+    limits = await checkLimits(ctx, feature);
+  } catch {
+    return fail("dependency_failed", "AI usage limits could not be checked; please try again.");
+  }
+  if (!limits.ok) {
+    await failUsage(limits.code, 0, 0);
+    return fail(limits.code, limits.code === "quota_exceeded" ? "Daily AI usage quota exceeded for this institution." : "Too many AI requests; please slow down and try again.");
+  }
+  if (!acquireConcurrencySlot(ctx.institution.id, "cloud", aiSettingsFor(ctx).max_concurrent_cloud)) {
+    return fail("rate_limited", "AI concurrency limit reached; please try again shortly.");
+  }
+
+  const startedAt = Date.now();
+  let redactions = 0;
+  const forCloud = (text: string): string => {
+    const redacted = redact(text, denyNames);
+    redactions += redacted.count;
+    return redacted.text;
+  };
+  try {
+    const { model } = await cloudModelWithFallback("gemini", null);
+    const effectiveInstructions = forCloud(instructions);
+    const messages: ModelMessage[] = [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: forCloud(prompt) },
+          // A neutral name: the real one can carry a student's name or number (07 §5); the gate allows only pdf/jpeg/png.
+          { type: "file", data: file.bytes, mediaType: file.mime, filename: `document.${file.mime.split("/")[1]}` },
+        ],
+      },
+    ];
+    const attempt = (repairNote?: string) =>
+      generateText({
+        model,
+        instructions: repairNote ? `${effectiveInstructions}\n\n${forCloud(repairNote)}` : effectiveInstructions,
+        messages,
+        output: Output.object({ schema }),
+        timeout: FILE_TIMEOUT_MS,
+        maxOutputTokens,
+      });
+    let result;
+    try {
+      result = await attempt();
+    } catch (err) {
+      if (!isSchemaValidationError(err)) throw err;
+      const detail = err instanceof Error ? err.message : String(err);
+      result = await attempt(`Your previous response was invalid: ${detail}. Return valid JSON that matches the schema exactly, with no extra text.`);
+    }
+    const inputTokens = result.usage.inputTokens ?? 0;
+    const outputTokens = result.usage.outputTokens ?? 0;
+    await logUsage({
+      ctx,
+      feature,
+      provider: "cloud",
+      model: modelId,
+      inputTokens,
+      outputTokens,
+      latencyMs: Date.now() - startedAt,
+      costEstimateUsd: estimateCost("cloud", modelId, inputTokens, outputTokens),
+      ok: true,
+      errorCode: null,
+      redactions,
+    });
+    return ok({ data: result.output, provider: "cloud", model: modelId, fallback: false });
+  } catch (err) {
+    const info = classifyAiError(err);
+    console.warn("[ai-structured-file] call failed", { feature, provider: "gemini", ...info });
+    const { code, message } = isSchemaValidationError(err)
+      ? { code: "ai_invalid_output" as const, message: "The AI could not turn this file into study material. Try another format, or paste the text." }
+      : info.kind === "busy"
+        ? { code: "rate_limited" as const, message: "The AI service is busy right now. Please try again in a minute." }
+        : { code: "ai_unavailable" as const, message: FILE_UNREADABLE_NOW };
+    await failUsage(code, Date.now() - startedAt, redactions);
+    return fail(code, message);
+  } finally {
+    releaseConcurrencySlot(ctx.institution.id, "cloud");
+  }
 }
 
 // D31/D32/GU-05 — the streaming counterpart to `runStructured`, for a
@@ -563,12 +676,20 @@ function redactDeep(value: unknown, tally: { count: number }): unknown {
 // can reach a cloud provider; the count folds into `tally` so
 // `streamCloudAgent`'s usage log (read lazily via its `redactions` thunk)
 // reflects it.
-function redactToolResults<TOOLS extends ToolSet>(tools: TOOLS, tally: { count: number }): TOOLS {
+export function redactToolResults<TOOLS extends ToolSet>(tools: TOOLS, tally: { count: number }): TOOLS {
   const wrapped: Record<string, unknown> = {};
   for (const [name, tool] of Object.entries(tools)) {
     const execute = (tool as { execute?: (...args: unknown[]) => unknown }).execute;
     if (typeof execute !== "function") {
       wrapped[name] = tool;
+      continue;
+    }
+    // A tool with toModelOutput sends the model only that (orb task cards: ids and
+    // names go to the browser, never the model), so redact what the model gets and
+    // leave the browser's copy intact (redacting it corrupted ids with 12-digit runs).
+    const toModelOutput = (tool as { toModelOutput?: (options: unknown) => unknown }).toModelOutput;
+    if (typeof toModelOutput === "function") {
+      wrapped[name] = { ...tool, toModelOutput: async (options: unknown) => redactDeep(await toModelOutput(options), tally) };
       continue;
     }
     wrapped[name] = {

@@ -1,6 +1,7 @@
 // Colour for the App Orb only. The app chrome stays monochrome (globals.css);
 // the orb core carries a per-role accent.
 import type { Role } from "@/lib/auth/permissions";
+import type { OrbMode } from "@/modules/ai/tasks/types";
 
 /** [deep, bright] gradient stops for the core. */
 export const ROLE_ACCENTS: Record<Role, readonly [string, string]> = {
@@ -17,3 +18,14 @@ export const ROLE_ACCENTS: Record<Role, readonly [string, string]> = {
 
 /** Error tint for the core (matches --destructive in spirit; shaders need a literal). */
 export const ORB_ERROR = "#E5484D";
+
+/** The active mode tints the core; Ask keeps the role's own accent. */
+const MODE_ACCENTS: Record<Exclude<OrbMode, "ask">, readonly [string, string]> = {
+  do: ["#0369A1", "#22D3EE"],
+  create: ["#9D174D", "#F9A8D4"],
+  teach: ["#115E59", "#6EE7B7"],
+  learn: ["#B45309", "#FCD34D"],
+  manage: ["#334155", "#A5B4FC"],
+};
+
+export const orbAccent = (role: Role, mode: OrbMode): readonly [string, string] => (mode === "ask" ? ROLE_ACCENTS[role] : MODE_ACCENTS[mode]);

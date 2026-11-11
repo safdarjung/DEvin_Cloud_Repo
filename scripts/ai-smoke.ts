@@ -110,7 +110,25 @@ async function lookups() {
         and term_id is not null and due_on < current_date order by due_on limit 1`,
     "overdue invoice",
   );
-  return { maths, unit, xaStudent, result, viaSection, enquiry, ticket, sub, lab, invoice };
+  // 0140 study help: student.one's own summary and a Science unit of their section; teacher.x-a's shared deck.
+  const studentUser = await one(sql`select u.id from auth.users u where u.email = ${EMAIL.student}`, "student.one login");
+  const studentMaterial = await one(
+    sql`select id from study_materials where institution_id = ${inst.id} and user_id = ${studentUser.id} and format = 'quick_summary' and language = 'en' and variant_of is null order by created_at limit 1`,
+    "student.one summary",
+  );
+  const teacherMaterial = await one(
+    sql`select id from study_materials where institution_id = ${inst.id} and user_id = ${xa.user_id} and owner_role = 'teacher' and format = 'flashcards' order by created_at limit 1`,
+    "teacher.x-a deck",
+  );
+  const studentUnit = await one(
+    sql`select cu.id, cu.subject_id from memberships m join enrolments e on e.student_id = m.student_id and e.status = 'active'
+        join subject_assignments sa on sa.class_section_id = e.class_section_id join subjects s on s.id = sa.subject_id and s.code = 'SCI'
+        join class_sections cs on cs.id = e.class_section_id
+        join curriculum_units cu on cu.subject_id = s.id and cu.grade_id = cs.grade_id
+        where m.institution_id = ${inst.id} and m.user_id = ${studentUser.id} order by cu.sequence limit 1`,
+    "student.one Science unit",
+  );
+  return { maths, unit, xaStudent, result, viaSection, enquiry, ticket, sub, lab, invoice, studentMaterial, teacherMaterial, studentUnit };
 }
 
 // ---- features -----------------------------------------------------------------
@@ -195,6 +213,20 @@ const FEATURES: Feature[] = [
   { name: "workflow-draft", email: EMAIL.principal, path: "workflow-draft",
     body: () => ({ description: "Every Monday at 9 am, if any fee invoice is overdue, send the parents a reminder and tell the accountant." }),
     output: z.object({ name: text, form: z.unknown() }).passthrough() },
+  // 0140 study help
+  { name: "study-teacher-generate(worksheet)", email: EMAIL.teacherXA, path: "study-teacher-generate",
+    body: (i) => ({ format: "worksheet", source: { kind: "unit", unitId: i.unit.id } }),
+    output: z.object({ format: z.literal("worksheet"), content: z.object({ levels: z.array(z.unknown()).length(3) }), ...provider }).passthrough() },
+  { name: "study-generate(revision pack)", email: EMAIL.student, path: "study-generate",
+    body: () => ({ format: "revision_notes", source: { kind: "weak_units" } }),
+    output: z.object({ sourceKind: z.literal("revision_pack"), focusUnitIds: z.array(z.string()).min(1), ...provider }).passthrough() },
+  { name: "study-mock", email: EMAIL.student, path: "study-mock",
+    body: (i) => ({ scope: { kind: "units", subjectId: i.studentUnit.subject_id, unitIds: [i.studentUnit.id], durationMinutes: 15 }, count: 10, difficulty: "easy" }),
+    output: z.object({ content: z.object({ questions: z.array(z.unknown()).min(1) }).passthrough(), ...provider }).passthrough() },
+  { name: "study-translate", email: EMAIL.student, path: "study-translate",
+    body: (i) => ({ materialId: i.studentMaterial.id, language: "hi" }), output: z.object({ language: z.literal("hi"), content: z.unknown(), ...provider }).passthrough() },
+  { name: "study-teacher-translate", email: EMAIL.teacherXA, path: "study-teacher-translate",
+    body: (i) => ({ materialId: i.teacherMaterial.id, language: "hi" }), output: z.object({ language: z.literal("hi"), content: z.unknown(), ...provider }).passthrough() },
   { name: "chat:assistant", email: EMAIL.admin, path: "agent/assistant", chat: true, body: () => user("How many enquiries are open right now?") },
   { name: "chat:teacher", email: EMAIL.teacherXA, path: "agent/teacher", chat: true, body: () => user("Which of my classes has the lowest attendance this week?") },
   { name: "chat:student", email: EMAIL.student, path: "agent/student", chat: true, body: () => user("Explain what a quadratic equation is in two lines.") },

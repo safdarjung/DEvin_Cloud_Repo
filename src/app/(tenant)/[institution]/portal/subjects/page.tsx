@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { BarList } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
+import { isModuleEnabled } from "@/lib/modules/catalog";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { listPortalSubjects } from "@/modules/academics/portal-subjects.queries";
 import { SubjectCurriculum } from "@/modules/academics/components/SubjectCurriculum";
@@ -11,6 +13,7 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { getStudentProfile } from "@/modules/people/queries";
 import { BookList } from "@/modules/textbooks/components/BookLinks";
+import { StudyFromFileLinks } from "@/modules/study/components/StudyFromFileLinks";
 import { MaterialsPanel } from "@/modules/textbooks/components/MaterialsPanel";
 import { classMaterials, panelItems, studentShelf, type MaterialItem } from "@/modules/textbooks/materials.queries";
 import { textbooksForSection, unitChapters as loadUnitChapters } from "@/modules/textbooks/queries";
@@ -36,6 +39,7 @@ export default async function PortalSubjectsPage({
   const sectionId = profile?.enrolment?.classSectionId;
   const subjects = sectionId ? await listPortalSubjects(ctx, sectionId) : null;
   const isStudent = ctx.membership.role === "student";
+  const canStudy = hasPermission(ctx, "ai.study") && isModuleEnabled(ctx, "ai_student");
   const books = sectionId ? await textbooksForSection(ctx, sectionId) : { gradeId: null, bySubject: {} };
   const [chapters, classFiles, shelf] = await Promise.all([
     loadUnitChapters(ctx, (subjects ?? []).flatMap((s) => s.units.map((u) => u.id))),
@@ -69,6 +73,17 @@ export default async function PortalSubjectsPage({
           emptyText="No files yet."
           upload={isStudent && books.gradeId ? { target: { gradeId: books.gradeId, subjectId: sub.id }, label: "Add a file" } : undefined}
         />
+        {isStudent && canStudy && (
+          <Link href={`/${institutionSlug}/portal/study/scope?subject=${sub.id}`} className="inline-flex min-h-10 items-center rounded-md border px-3 text-sm font-medium hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
+            Study this with AI
+          </Link>
+        )}
+        {isStudent && (
+          <StudyFromFileLinks
+            files={[...classFiles.filter((m) => m.subjectId === sub.id), ...shelf.filter((m) => m.subjectId === sub.id)]}
+            hrefBase={`/${institutionSlug}/portal/study/studio?tab=create&file=`}
+          />
+        )}
       </div>,
     ]),
   );

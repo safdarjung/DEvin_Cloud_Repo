@@ -89,7 +89,7 @@ export const addTextbook = defineAction({
     if (countError) throw countError;
     const book =
       input.book.source === "ncert"
-        ? { ncert_code: input.book.code }
+        ? { ncert_code: input.book.code, school_url: input.book.schoolUrl ?? null }
         : {
             custom_title: input.book.title,
             custom_publisher: input.book.publisher ?? null,
@@ -121,6 +121,15 @@ export const removeTextbook = defineAction({
   permission: "resource.manage",
   handler: async ({ textbookId }: TextbookIdInput, ctx) => {
     const supabase = await createClient();
+    // Retire the school's PDF first (same who-may rule as the row), so no live file outlives its book.
+    const { error: fileError } = await supabase
+      .from("documents")
+      .update({ status: "deleted" })
+      .eq("entity_type", "subject_textbook")
+      .eq("entity_id", textbookId)
+      .eq("institution_id", ctx.institution.id)
+      .eq("status", "active");
+    if (fileError) throwWrite(fileError, "You cannot remove that book.");
     const { data, error } = await supabase
       .from("subject_textbooks")
       .delete()

@@ -6,6 +6,7 @@ import { BookOpen, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { isSafeHttpsUrl } from "@/modules/resources/schemas";
 import type { BookView, UnitChapterView } from "@/modules/textbooks/queries";
+import { SchoolPdfButton } from "./SchoolCopy";
 
 const EXT = { target: "_blank", rel: "noopener noreferrer" } as const;
 const safe = (url: string | null) => (url && isSafeHttpsUrl(url) ? url : null);
@@ -25,6 +26,7 @@ function ChapterLink({ book, no, title, url, kind }: { book: BookView; no: numbe
 /** One book: title, source line, full-book link and a collapsible chapter list. */
 export function BookCard({ book }: { book: BookView }) {
   const bookHref = safe(book.bookUrl);
+  const schoolHref = safe(book.schoolUrl);
   return (
     <div className="rounded-md border border-border p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -35,11 +37,20 @@ export function BookCard({ book }: { book: BookView }) {
           </p>
           {book.subtitle && <p className="text-xs text-muted-foreground">{book.subtitle}</p>}
         </div>
-        {bookHref && (
-          <a href={bookHref} {...EXT} className="inline-flex min-h-8 items-center gap-1 text-sm underline-offset-4 hover:underline" aria-label={`Full book: ${book.title} (opens in a new tab)`}>
-            Full book <ExternalLink className="size-3.5" aria-hidden />
-          </a>
-        )}
+        <div className="flex flex-wrap items-center gap-x-3">
+          {/* The official NCERT link always comes first; a custom book's own link is the school's. */}
+          {bookHref && (
+            <a href={bookHref} {...EXT} className="inline-flex min-h-8 items-center gap-1 text-sm underline-offset-4 hover:underline" aria-label={`${book.source === "ncert" ? "Full book" : "School link"}: ${book.title} (opens in a new tab)`}>
+              {book.source === "ncert" ? "Full book" : "School link"} <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+          )}
+          {schoolHref && (
+            <a href={schoolHref} {...EXT} className="inline-flex min-h-8 items-center gap-1 text-sm underline-offset-4 hover:underline" aria-label={`School link: ${book.title} (opens in a new tab)`}>
+              School link <ExternalLink className="size-3.5" aria-hidden />
+            </a>
+          )}
+          {book.file && <SchoolPdfButton textbookId={book.id} bookTitle={book.title} />}
+        </div>
       </div>
       {book.source === "ncert" && (
         <p className="mt-1 text-xs text-muted-foreground">
@@ -98,6 +109,7 @@ export function TimetableBookLink({ books, subjectName }: { books: BookView[] | 
       <ul className="mt-1 space-y-1">
         {books.map((b) => {
           const href = safe(b.bookUrl);
+          const schoolHref = safe(b.schoolUrl);
           return (
             <li key={b.id} className="break-words">
               {href ? (
@@ -108,6 +120,20 @@ export function TimetableBookLink({ books, subjectName }: { books: BookView[] | 
                 b.title
               )}
               {b.source === "ncert" && <span className="text-muted-foreground"> · NCERT</span>}
+              {schoolHref && (
+                <>
+                  {" · "}
+                  <a href={schoolHref} {...EXT} className="underline-offset-4 hover:underline">
+                    School link
+                  </a>
+                </>
+              )}
+              {b.file && (
+                <>
+                  {" · "}
+                  <SchoolPdfButton textbookId={b.id} bookTitle={b.title} />
+                </>
+              )}
             </li>
           );
         })}

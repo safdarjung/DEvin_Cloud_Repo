@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowUp, ArrowUpRight, CornerDownRight, Search } from "lucide-react";
+import { ArrowUp, ArrowUpRight, ClipboardCheck, CornerDownRight, Search } from "lucide-react";
 import type { Nudge } from "@/modules/ai/nudges";
+import { MODES, sectionForPath, type OrbGroupId, type OrbMode } from "@/modules/ai/components/orb/orb-modes";
 import { KIND_META } from "./nudge-kind";
 import { motion } from "motion/react";
 import Link from "next/link";
@@ -15,6 +16,14 @@ export interface JumpItem {
   label: string;
   group: string;
 }
+/** An enabled orb task (from listEnabledTasks on the server). */
+export interface LauncherTask {
+  action: string;
+  label: string;
+  mode: Exclude<OrbMode, "ask">;
+  groupId: OrbGroupId;
+}
+const PAGE_TASKS_MAX = 3;
 
 // Mobile: full-width sheet beside the orb (above the bottom nav). lg: 360px, anchored to the orb's side.
 const POS: Record<Corner, string> = {
@@ -33,6 +42,8 @@ interface Props {
   pathname: string;
   title: string;
   items: JumpItem[];
+  /** Enabled orb tasks: mode chips and this page's top tasks deep-link into the orb. */
+  tasks: readonly LauncherTask[];
   corner: Corner;
   reduced: boolean;
   /** Which field takes focus on open: the ask box, or the jump filter (shortcut). */
@@ -43,7 +54,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function AskAiPanel({ slug, pathname, title, items, corner, reduced, focus, nudges, onAskNudge, onClose }: Props) {
+export function AskAiPanel({ slug, pathname, title, items, tasks, corner, reduced, focus, nudges, onAskNudge, onClose }: Props) {
   const router = useRouter();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -53,6 +64,11 @@ export function AskAiPanel({ slug, pathname, title, items, corner, reduced, focu
   const [filter, setFilter] = useState("");
   const [active, setActive] = useState(0);
   const suggestions = useMemo(() => suggestionsFor(pathname), [pathname]);
+  const modes = useMemo(() => MODES.filter((m) => m.id === "ask" || tasks.some((t) => t.mode === m.id)), [tasks]);
+  const pageTasks = useMemo(() => {
+    const section = sectionForPath(pathname.slice(`/${slug}`.length) || "/");
+    return section ? tasks.filter((t) => t.groupId === section).slice(0, PAGE_TASKS_MAX) : [];
+  }, [tasks, pathname, slug]);
   const matches = useMemo(() => {
     const q = filter.trim().toLowerCase();
     return (q ? items.filter((i) => i.label.toLowerCase().includes(q) || i.group.toLowerCase().includes(q)) : items).slice(0, 30);
@@ -170,6 +186,39 @@ export function AskAiPanel({ slug, pathname, title, items, corner, reduced, focu
                 </li>
               );
             })}
+          </ul>
+        </section>
+      )}
+
+      {modes.length > 1 && (
+        <nav aria-label="Orb modes" className="flex flex-wrap gap-1.5">
+          {modes.map((m) => (
+            <Link key={m.id} href={orbUrl(slug, pathname, undefined, { mode: m.id })} onClick={onClose} title={m.hint} className={`${CHIP} inline-flex min-h-11 items-center`}>
+              {m.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {pageTasks.length > 0 && (
+        <section aria-label="On this page you can">
+          <h2 className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">On this page you can…</h2>
+          <ul className="space-y-1">
+            {pageTasks.map((t) => (
+              <li key={t.action}>
+                <Link
+                  href={orbUrl(slug, pathname, undefined, { mode: t.mode, task: t.action })}
+                  onClick={onClose}
+                  className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  <span>{t.label}</span>
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                    Opens a card to approve
+                    <ClipboardCheck className="size-3.5" aria-hidden />
+                  </span>
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
       )}

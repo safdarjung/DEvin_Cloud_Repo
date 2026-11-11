@@ -27,6 +27,10 @@ export interface BookView {
   /** "NCERT · Class 6 · English" or the custom publisher. */
   subtitle: string | null;
   bookUrl: string | null;
+  /** The school's own link beside an NCERT book's official one (custom books use bookUrl for theirs). */
+  schoolUrl: string | null;
+  /** The school's uploaded PDF (open it through textbook.file.readUrl). */
+  file: { name: string; sizeBytes: number } | null;
   verified: boolean;
   code: string | null;
   chapters: ChapterView[];
@@ -41,12 +45,14 @@ interface MappingRow {
   custom_publisher: string | null;
   custom_url: string | null;
   custom_chapters: number | null;
+  school_url: string | null;
   chapter_titles: unknown;
   position: number;
   ncert_textbooks: CatalogueRow | null;
+  file?: BookView["file"];
 }
 
-const MAPPING_COLUMNS = `id, grade_id, subject_id, ncert_code, custom_title, custom_publisher, custom_url, custom_chapters, chapter_titles, position, ncert_textbooks(${CATALOGUE_COLUMNS})`;
+const MAPPING_COLUMNS = `id, grade_id, subject_id, ncert_code, custom_title, custom_publisher, custom_url, custom_chapters, school_url, chapter_titles, position, ncert_textbooks(${CATALOGUE_COLUMNS})`;
 
 function toBookView(row: MappingRow): BookView {
   const titles = (row.chapter_titles && typeof row.chapter_titles === "object" ? row.chapter_titles : {}) as Record<string, string>;
@@ -60,6 +66,8 @@ function toBookView(row: MappingRow): BookView {
       title: b.title,
       subtitle: ["NCERT", b.classLevel ? `Class ${b.classLevel}` : "Classes 11-12", b.medium].join(" · "),
       bookUrl: b.bookUrl,
+      schoolUrl: row.school_url,
+      file: row.file ?? null,
       verified: b.verified,
       code: b.code,
       chapters: chapterLinks(b).map((c) => ({ ...c, title: titles[String(c.no)] ?? null })),
@@ -73,6 +81,8 @@ function toBookView(row: MappingRow): BookView {
     title: row.custom_title ?? "Textbook",
     subtitle: row.custom_publisher,
     bookUrl: row.custom_url,
+    schoolUrl: row.school_url,
+    file: row.file ?? null,
     verified: false,
     code: null,
     chapters: Array.from({ length: row.custom_chapters ?? 0 }, (_, i) => ({
@@ -90,7 +100,20 @@ async function mappingRows(supabase: Client, ctx: TenantContext, filter: { grade
   if (filter.ids) q = q.in("id", filter.ids);
   const { data, error } = await q.order("position").order("created_at");
   if (error) throw error;
-  return (data ?? []) as unknown as MappingRow[];
+  const rows = (data ?? []) as unknown as MappingRow[];
+  if (rows.length === 0) return rows;
+  // The school's PDFs (RLS: the same people who read the book's class files); newest live copy wins.
+  const { data: docs, error: docError } = await supabase
+    .from("documents")
+    .select("entity_id, file_name, size_bytes")
+    .eq("institution_id", ctx.institution.id)
+    .eq("entity_type", "subject_textbook")
+    .eq("status", "active")
+    .in("entity_id", rows.map((r) => r.id))
+    .order("created_at");
+  if (docError) throw docError;
+  const files = new Map((docs ?? []).map((d) => [d.entity_id, { name: d.file_name, sizeBytes: d.size_bytes }]));
+  return rows.map((r) => ({ ...r, file: files.get(r.id) ?? null }));
 }
 
 /** One grade's books keyed by subject id. */

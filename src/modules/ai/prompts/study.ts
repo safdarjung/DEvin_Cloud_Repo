@@ -3,7 +3,8 @@
 // untrusted DATA inside the shared nonce-delimited data block
 // (./data-block.ts). Student prompts carry the same student-safety persona as
 // the study chat (BASE_INSTRUCTIONS) plus a hints-first rule.
-import { FORMAT_LABELS, FORMAT_RULES, type QuizType, type StudyFormat } from "@/modules/study/formats";
+import { FORMAT_LABELS, FORMAT_RULES, type GeneratedFormat, type QuizType } from "@/modules/study/formats";
+import { MOCK_RULE } from "@/modules/study/mock";
 import { DATA_IS_NOT_INSTRUCTIONS as DATA_RULE, dataBlock, sanitizeForDataBlock } from "./data-block";
 import { BASE_INSTRUCTIONS as STUDENT_PERSONA } from "./student-skills";
 
@@ -17,7 +18,7 @@ const HINTS_FIRST =
   "Hints first: where you explain how to solve a problem, show the method and a hint so the student can try it " +
   "themselves, rather than only stating a final answer. ";
 
-export function studyInstructions(audience: "student" | "teacher", format: StudyFormat): string {
+export function studyInstructions(audience: "student" | "teacher", format: GeneratedFormat): string {
   const persona =
     audience === "student"
       ? `${STUDENT_PERSONA} You are making study help for this student. ${HINTS_FIRST}`
@@ -27,7 +28,7 @@ export function studyInstructions(audience: "student" | "teacher", format: Study
 }
 
 export interface StudyPromptInput {
-  format: StudyFormat;
+  format: GeneratedFormat;
   gradeLabel: string | null;
   subjectName: string | null;
   /** Fixed description of the source kind, written by us (never user text). */
@@ -69,4 +70,45 @@ export function buildStudyCheckPrompt(items: readonly { stem: string; modelAnswe
       `Student's answer: ${item.answer}`,
     ]),
   );
+}
+
+// 0140 mock exam: units (titles + outlines from the DB) are DATA; counts per section are ours.
+export function mockInstructions(): string {
+  return `${STUDENT_PERSONA} You are writing a practice mock exam for this student. It is practice only, never a mark. ${MOCK_RULE} ${OUTPUT_RULES}${DATA_RULE}`;
+}
+
+export function buildMockPrompt(input: {
+  subjectName: string | null;
+  examLabel: string | null;
+  difficulty: string;
+  plan: Readonly<Record<QuizType, number>>;
+  units: readonly { title: string; description: string | null }[];
+}): string {
+  const task = [
+    "Make: a mock exam paper.",
+    input.subjectName ? `Subject: ${input.subjectName}.` : "",
+    input.examLabel ? `For the exam: ${input.examLabel}.` : "",
+    `Difficulty: ${input.difficulty}.`,
+    `Questions: exactly ${input.plan.mcq} mcq, ${input.plan.true_false} true_false and ${input.plan.short} short.`,
+    `Units: ${input.units.length}, numbered 1 to ${input.units.length} below.`,
+  ].filter(Boolean);
+  return dataBlock(
+    sanitizeForDataBlock(task.join(" ")),
+    input.units.flatMap((u, i) => [`Unit ${i + 1}: ${u.title}`, `Outline: ${u.description ?? "(no outline written; use the unit title)"}`]),
+  );
+}
+
+// 0140 language variants: a flat list of the material's own strings, translated item by item.
+export function variantInstructions(languageName: string): string {
+  return (
+    `You translate school study material into ${languageName} for students at an Indian school. Translate each item of ` +
+    "the list in the data block on its own, keeping its meaning, numbers, formulas, chemical symbols and units exactly. " +
+    "Use simple, standard school language (Devanagari script for Hindi). Return exactly one translated item per input " +
+    "item, in the same order, with the same count, without the [n] item numbers. Translate only; never add, drop, merge or answer anything. Respond " +
+    `with JSON only, matching the schema. ${DATA_RULE}`
+  );
+}
+
+export function buildVariantPrompt(items: readonly string[], languageName: string): string {
+  return dataBlock(`Translate these ${items.length} items into ${languageName}, in order.`, items.map((t, i) => `[${i + 1}] ${t.replace(/\s+/g, " ")}`));
 }

@@ -14,6 +14,7 @@ import type { TimetablePeriod } from "@/components/widgets/timetable-widget";
 import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { approvedLeaveDates } from "@/modules/people/hr.queries";
 import type { RoomSlot } from "@/modules/exams/schedule-conflicts";
+import { resolveRules, type TimetableRules } from "@/modules/timetable/rules";
 
 const PAGE_SIZE = 1000;
 
@@ -64,6 +65,19 @@ export function maxPeriodsPerWeek(ctx: TenantContext): number {
   return typeof raw === "number" && raw > 0 ? raw : DEFAULT_MAX_PERIODS_WEEK;
 }
 
+/** 0141: the school's timetable rules (defaults for any missing or invalid key; RLS shows the row to owner/principal/admin only). */
+export async function loadRules(ctx: TenantContext): Promise<TimetableRules> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("timetable_rules").select("rules").eq("institution_id", ctx.institution.id).maybeSingle();
+  if (error) throw error;
+  return resolveRules(data?.rules, maxPeriodsPerWeek(ctx));
+}
+
+/** The weekly teacher cap the rules page shows (the rule's value even when switched off, so loads still have a yardstick). */
+async function weeklyCap(ctx: TenantContext): Promise<number> {
+  return (await loadRules(ctx)).max_teacher_per_week.value;
+}
+
 /**
  * The most recently published version, or null if none. Not joined to
  * academic_years: guardians/students can't read that table (staff-only RLS),
@@ -105,7 +119,7 @@ function bySlot(a: SectionTimetableSlot, b: SectionTimetableSlot): number {
  * timetable_slots.subject_id (0069, amended) is the direct source of
  * subject — no subject_assignments inference needed.
  */
-async function fetchSlots(
+export async function fetchSlots(
   ctx: TenantContext,
   versionId: string,
   filter: { classSectionId?: string; teacherId?: string; weekday?: number },
@@ -175,7 +189,7 @@ export async function timetableForTeacher(
 }
 
 /** `studentId`'s active-enrolment section, or null; RLS decides visibility (a guardian outside that student's family reads no enrolment row at all). Shared by timetableForStudent and timetableTodayFor's studentId path. */
-async function activeSectionIdForStudent(ctx: TenantContext, studentId: string): Promise<string | null> {
+export async function activeSectionIdForStudent(ctx: TenantContext, studentId: string): Promise<string | null> {
   const supabase = await createClient();
   const { data: enrolment, error } = await supabase
     .from("enrolments")
@@ -342,7 +356,7 @@ export async function timetableConflicts(ctx: TenantContext, versionId: string):
     });
   }
 
-  const maxPeriods = maxPeriodsPerWeek(ctx);
+  const maxPeriods = await weeklyCap(ctx);
   const periodsByTeacher = new Map<string, number>();
   for (const row of rows) periodsByTeacher.set(row.teacher_id, (periodsByTeacher.get(row.teacher_id) ?? 0) + 1);
   const overloaded = [...periodsByTeacher.entries()].filter(([, n]) => n > maxPeriods);
@@ -391,7 +405,7 @@ export async function timetableTeacherWorkload(ctx: TenantContext, versionId: st
   if (teachersError) throw teachersError;
   const nameById = new Map((teachers ?? []).map((t) => [t.id, t.full_name]));
 
-  const maxPeriods = maxPeriodsPerWeek(ctx);
+  const maxPeriods = await weeklyCap(ctx);
   const byTeacher = new Map<string, { periodsWeek: number; subjects: Set<string>; sections: Set<string> }>();
   for (const row of rows) {
     const subject = row.subjects as { name: string } | null;

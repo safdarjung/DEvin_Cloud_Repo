@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { AskTeacher } from "./AskTeacher";
 import { describeActionError } from "@/lib/action-error";
 import { logStudySession, reviewStudyCard } from "@/modules/study/actions";
 import type { ReviewGrade } from "@/modules/study/srs";
@@ -25,13 +26,15 @@ const GRADES: { grade: ReviewGrade; label: string; key: string; className: strin
   { grade: "knew", label: "Knew it", key: "3", className: "border-emerald-600/40 hover:bg-emerald-600/10" },
 ];
 
-export function DeckDrill({ institutionSlug, deckId, subjectId, cards, queue: initialQueue, backHref }: {
+export function DeckDrill({ institutionSlug, deckId, subjectId, cards, queue: initialQueue, backHref, canAsk }: {
   institutionSlug: string;
   deckId: string;
   subjectId: string | null;
   cards: Card[];
   queue: string[];
   backHref: string;
+  /** 0140: "Ask my teacher" about the card on screen (needs a subject). */
+  canAsk?: boolean;
 }) {
   const router = useRouter();
   const [queue, setQueue] = useState(initialQueue);
@@ -147,6 +150,7 @@ export function DeckDrill({ institutionSlug, deckId, subjectId, cards, queue: in
           </Button>
         ))}
       </div>
+      {canAsk && subjectId && <AskTeacher key={card.id} institutionSlug={institutionSlug} subjectId={subjectId} contextKind="flashcard" materialId={deckId} excerpt={`${card.front} — ${card.back}`} compact />}
     </div>
   );
 }

@@ -8,6 +8,8 @@ import type { TenantContext } from "@/lib/auth/types";
 import { isFeatureEnabled } from "@/lib/auth/entitlements";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import type { AiRoleConfig } from "@/modules/core/schemas";
+import { groupIdFor } from "@/modules/ai/components/orb/orb-groups";
+import { SECTIONS } from "@/modules/ai/components/orb/orb-modes";
 import { CAPABILITIES, CAPABILITY_KEYS, type CapabilityKey } from "./catalog";
 
 export interface ResolvedRoleAiConfig {
@@ -17,11 +19,13 @@ export interface ResolvedRoleAiConfig {
   dailyTokenQuota: number | null;
 }
 
-export type CapabilityLock = null | "role" | "permission" | "module" | "role_off";
+export type CapabilityLock = null | "role" | "permission" | "module" | "role_off" | "mode_off" | "group_off";
 
 export interface CapabilityState {
   on: boolean;
   locked: CapabilityLock;
+  /** Why it is off, for mode/group switches (control centre). */
+  reason?: string;
 }
 
 // Roles whose overall AI switch has no legacy feature flag behind it
@@ -74,7 +78,15 @@ export function capabilityState(ctx: TenantContext, role: Role, key: CapabilityK
   // switch, so turning a role's chat off never removes a task it has today.
   if (cap.kind === "chat_tool" && !roleAiConfig(ctx, role).enabled) return { on: false, locked: "role_off" };
 
-  const stored = storedRoleConfig(ctx, role).capabilities?.[key];
+  // Orb control centre switches (narrowing only; both default on): a chat tool
+  // sits in Ask, a page task in Create, each in its orb group.
+  const config = storedRoleConfig(ctx, role);
+  const mode = cap.kind === "chat_tool" ? "ask" : "create";
+  if (config.modes?.[mode] === false) return { on: false, locked: "mode_off", reason: `${mode === "ask" ? "Ask" : "Create"} mode is off for this role.` };
+  const group = groupIdFor(key);
+  if (config.groups?.[group] === false) return { on: false, locked: "group_off", reason: `The ${SECTIONS[group].label} group is off for this role.` };
+
+  const stored = config.capabilities?.[key];
   const legacy = cap.legacyFeature ? isFeatureEnabled(ctx, cap.legacyFeature) : undefined;
   const on = typeof stored === "boolean" ? stored : legacy ?? cap.defaultOn.includes(role);
   return { on, locked: null };

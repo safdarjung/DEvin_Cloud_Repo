@@ -149,6 +149,7 @@ export const createAssignment = defineAction({
         due_at: input.dueAt ?? null,
         created_by: ctx.membership.staffId,
         ai_generated: input.aiGenerated ?? false,
+        study_material_id: input.studyMaterialId ?? null,
       })
       .select("id")
       .single();

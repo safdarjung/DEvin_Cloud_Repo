@@ -3,7 +3,7 @@
 // F18 §H — setup wizard writes. Gate permission is institution.settings.manage
 // (owner/principal/admin); public.apply_school_template narrows step 1 to the
 // active owner in SQL. Settings writes follow core.feature.set: only the
-// touched sub-key is validated, then the whole settings object is written.
+// touched sub-key is validated, then only the changed keys are patched (0144).
 import { revalidatePath } from "next/cache";
 import type { TenantContext } from "@/lib/auth/types";
 import { defineAction } from "@/lib/actions/define-action";
@@ -35,9 +35,9 @@ function asObject(value: unknown): Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
+// 0144: a merge patch (null removes a key) applied to the row as it is now, so a concurrent save is not reverted.
 async function writeSettings(supabase: Supabase, ctx: TenantContext, patch: Record<string, unknown>): Promise<void> {
-  const settings = { ...ctx.institution.settings, ...patch } as { [key: string]: Json };
-  const { error } = await supabase.from("institutions").update({ settings }).eq("id", ctx.institution.id);
+  const { error } = await supabase.rpc("patch_institution_settings", { p_institution_id: ctx.institution.id, p_patch: patch as Json });
   if (error) throwMapped(error);
 }
 
@@ -87,7 +87,9 @@ export const saveBranding = defineAction({
     if (!parsed.success || !parsed.data) {
       throw new AppError("validation_failed", "This school's branding could not be updated safely.");
     }
-    await writeSettings(supabase, ctx, { branding: parsed.data });
+    await writeSettings(supabase, ctx, {
+      branding: { ...(logoPath !== undefined ? { logo_path: logoPath } : {}), ...(primaryColor !== undefined ? { primary_color: primaryColor } : {}) },
+    });
     await audit(ctx, { action: "core.setup.branding_saved", entityType: "institution", entityId: ctx.institution.id });
     revalidatePath(`/${ctx.institution.slug}`, "layout");
     return parsed.data;
@@ -106,7 +108,7 @@ export const setProgress = defineAction({
     if (!parsed.success || !parsed.data) {
       throw new AppError("validation_failed", "This school's setup progress could not be updated safely.");
     }
-    await writeSettings(supabase, ctx, { setup: parsed.data });
+    await writeSettings(supabase, ctx, { setup: { [step]: state === "todo" ? null : state } });
     revalidatePath(`/${ctx.institution.slug}/setup`);
     return parsed.data;
   },

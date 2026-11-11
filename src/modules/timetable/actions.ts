@@ -4,15 +4,18 @@
 // timetable.version.create / timetable.saveDraft / timetable.publish
 // (M07-tasks.md rulings; migration 0069). Upsert semantics mirror
 // academics/setup.actions.ts's upsertGrade (update when `id` given, else
-// insert). saveDraft/publish mirror announcements.actions.ts's
-// createAnnouncement (two-step write, documented partial-failure note) and
-// publishAnnouncement (thin RPC wrapper — publish_timetable already raises
-// `code:forbidden`/`code:invalid_state`/`code:not_found`, mapped by
-// mapSqlError, so no extra handling needed here).
+// insert). 0141: saveDraft writes through apply_timetable_changes (one
+// atomic, logged write) and publish through publish_timetable_version (logs
+// the publish, restores archived versions); both definers raise
+// `code:forbidden`/`code:invalid_state`/`code:not_found`, mapped by mapSqlError.
 import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { createClient } from "@/lib/supabase/server";
+import { applyCellChanges, conflictIndex } from "@/modules/timetable/apply";
+import type { CellChange } from "@/modules/timetable/checks";
+import { versionCells } from "@/modules/timetable/control.queries";
+import { timetableViolations } from "@/modules/timetable/suggest.queries";
 import {
   PeriodUpsertSchema,
   PublishVersionSchema,
@@ -23,7 +26,6 @@ import {
   type PublishVersionInput,
   type RoomUpsertInput,
   type SaveSlotsInput,
-  type SlotInput,
   type VersionCreateInput,
 } from "@/modules/timetable/schemas";
 
@@ -47,41 +49,6 @@ function isRlsViolation(error: unknown): boolean {
 }
 
 type SlotConflictKind = "teacher" | "room" | "section";
-
-// Maps the constraint named in the 23505 error (0069's naming convention) to
-// the kind the caller sees, then uses the error's `details` ("Key (col,
-// ...)=(val, ...) already exists.") to find which input slot it was — a
-// single multi-row insert aborts entirely on the first violation (Postgres
-// statement-level atomicity), so the DB state after a conflict is always
-// unchanged; this only improves the message.
-function identifySlotConflict(error: unknown, slots: SlotInput[]): { kind: SlotConflictKind; index: number } | null {
-  const message = String((error as { message?: unknown } | null)?.message ?? "");
-  let kind: SlotConflictKind | null = null;
-  if (message.includes("timetable_slots_teacher_slot_key")) kind = "teacher";
-  else if (message.includes("timetable_slots_section_slot_key")) kind = "section";
-  else if (message.includes("timetable_slots_room_unique_idx")) kind = "room";
-  if (!kind) return null;
-
-  const details = String((error as { details?: unknown } | null)?.details ?? "");
-  const match = /\(([^)]+)\)=\(([^)]+)\)/.exec(details);
-  let index = 0;
-  if (match) {
-    const cols = match[1].split(",").map((c) => c.trim());
-    const vals = match[2].split(",").map((v) => v.trim());
-    const byCol = new Map(cols.map((c, i) => [c, vals[i]]));
-    const keyField = kind === "teacher" ? "teacher_id" : kind === "room" ? "room_id" : "class_section_id";
-    const keyVal = byCol.get(keyField);
-    const weekday = byCol.get("weekday");
-    const periodId = byCol.get("period_id");
-    const found = slots.findIndex((s) => {
-      const field = kind === "teacher" ? s.teacherId : kind === "room" ? s.roomId : s.classSectionId;
-      return field !== undefined && String(field) === keyVal && String(s.weekday) === weekday && s.periodId === periodId;
-    });
-    if (found >= 0) index = found;
-  }
-
-  return { kind, index };
-}
 
 export const upsertRoom = defineAction({
   name: "timetable.room.upsert",
@@ -240,7 +207,7 @@ export const saveDraft = defineAction({
   module: "timetable",
   schema: SaveSlotsSchema,
   permission: "timetable.manage",
-  handler: async ({ versionId, slots, replaceSectionIds }: SaveSlotsInput, ctx) => {
+  handler: async ({ versionId, slots, replaceSectionIds, note }: SaveSlotsInput, ctx) => {
     const supabase = await createClient();
 
     const version = await assertVersionInInstitution(supabase, versionId, ctx.institution.id);
@@ -248,60 +215,51 @@ export const saveDraft = defineAction({
       throw new AppError("invalid_state", `Timetable version must be draft to edit slots; current status is ${version.status}.`);
     }
 
-    // Two-step write (delete stale slots, then insert the new ones), same
-    // documented trade-off as announcements.actions.ts's createAnnouncement:
-    // if the insert below fails, the deleted sections are simply empty and
-    // the caller can retry saveDraft (still draft, so always re-editable).
-    if (replaceSectionIds && replaceSectionIds.length > 0) {
-      const { error: deleteError } = await supabase
-        .from("timetable_slots")
-        .delete()
-        .eq("version_id", versionId)
-        .eq("institution_id", ctx.institution.id)
-        .in("class_section_id", replaceSectionIds);
-      if (deleteError) throwMapped(deleteError);
-    }
+    // 0141: one logged write through apply_timetable_changes instead of
+    // delete-then-insert. Replaced sections' periods missing from `slots` are
+    // cleared first; a period outside the replaced sections must be empty
+    // (expect: null), as the old plain insert required.
+    const key = (c: { classSectionId: string; weekday: number; periodId: string }) => `${c.classSectionId}|${c.weekday}|${c.periodId}`;
+    const replaced = new Set(replaceSectionIds ?? []);
+    const current = replaced.size ? (await versionCells(ctx, versionId)).filter((c) => replaced.has(c.classSectionId)) : [];
+    const incoming = new Set(slots.map(key));
+    const existing = new Set(current.map(key));
+    const clears: CellChange[] = current
+      .filter((c) => !incoming.has(key(c)))
+      .map((c) => ({ classSectionId: c.classSectionId, weekday: c.weekday, periodId: c.periodId, after: null }));
+    const sets: CellChange[] = slots.map((s) => ({
+      classSectionId: s.classSectionId,
+      weekday: s.weekday,
+      periodId: s.periodId,
+      after: { subjectId: s.subjectId, teacherId: s.teacherId, roomId: s.roomId ?? null },
+      ...(existing.has(key(s)) ? {} : { expect: null }),
+    }));
 
-    const { data: inserted, error: insertError } = await supabase
-      .from("timetable_slots")
-      .insert(
-        slots.map((s) => ({
-          institution_id: ctx.institution.id,
-          version_id: versionId,
-          class_section_id: s.classSectionId,
-          subject_id: s.subjectId,
-          teacher_id: s.teacherId,
-          room_id: s.roomId ?? null,
-          weekday: s.weekday,
-          period_id: s.periodId,
-        })),
-      )
-      .select("id");
-    if (insertError) {
-      if (isUniqueViolation(insertError)) {
-        const conflict = identifySlotConflict(insertError, slots);
-        const kind = conflict?.kind ?? "teacher";
-        const index = conflict?.index ?? 0;
-        throw new AppError("conflict", "One of these slots is already booked.", {
-          slots: [`${index}: ${kind} double-booked`],
-        });
+    try {
+      await applyCellChanges(versionId, "manual", [...clears, ...sets], note || "Draft saved in bulk");
+    } catch (e) {
+      if (!(e instanceof AppError)) throw e;
+      if (e.code === "conflict") {
+        const kind: SlotConflictKind = /^teacher/.test(e.message) ? "teacher" : /^room/.test(e.message) ? "room" : "section";
+        const index = Math.max(0, (conflictIndex(e.message) ?? clears.length) - clears.length);
+        throw new AppError("conflict", "One of these slots is already booked.", { slots: [`${index}: ${kind} double-booked`] });
       }
-      if (isRlsViolation(insertError)) {
+      if (e.code === "validation_failed" && /unknown/.test(e.message)) {
         throw new AppError("validation_failed", "A slot references a section, teacher, room, or period outside this institution.", {
           slots: ["Unknown section, teacher, room, or period."],
         });
       }
-      throwMapped(insertError);
+      throw e;
     }
 
     await audit(ctx, {
       action: "timetable.save_draft",
       entityType: "timetable_version",
       entityId: versionId,
-      after: { slotCount: inserted?.length ?? 0, replacedSectionCount: replaceSectionIds?.length ?? 0 },
+      after: { slotCount: slots.length, replacedSectionCount: replaceSectionIds?.length ?? 0 },
     });
 
-    return { versionId, slotCount: inserted?.length ?? 0 };
+    return { versionId, slotCount: slots.length };
   },
 });
 
@@ -310,10 +268,21 @@ export const publishVersion = defineAction({
   module: "timetable",
   schema: PublishVersionSchema,
   permission: "timetable.manage",
-  handler: async ({ versionId }: PublishVersionInput) => {
+  handler: async ({ versionId, note }: PublishVersionInput, ctx) => {
     const supabase = await createClient();
 
-    const { data, error } = await supabase.rpc("publish_timetable", { p_version_id: versionId });
+    // 0141: a draft that still breaks a timetable rule publishes only with a
+    // note saying why; an archived version is restored (the definer needs a note).
+    const version = await assertVersionInInstitution(supabase, versionId, ctx.institution.id);
+    if (version.status === "draft" && !note) {
+      const violations = await timetableViolations(ctx, versionId);
+      if (violations.length > 0) {
+        const message = `This draft breaks ${violations.length} timetable rule${violations.length === 1 ? "" : "s"}. Add a note saying why it is published anyway.`;
+        throw new AppError("validation_failed", message, { note: [message] });
+      }
+    }
+
+    const { data, error } = await supabase.rpc("publish_timetable_version", { p_version_id: versionId, p_note: note || undefined });
     if (error) throwMapped(error);
 
     return { versionId: data.id as string, status: data.status as "draft" | "published" | "archived" };

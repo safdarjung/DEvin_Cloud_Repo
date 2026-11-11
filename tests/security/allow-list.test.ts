@@ -14,6 +14,7 @@ const ADMIN_IMPORT_ALLOWED = [
   "src/modules/website/with-service-role.ts",
   "src/modules/finance/with-service-role.ts",
   "src/modules/agents/service-role.ts",
+  "src/modules/ai/tasks/service-role.ts",
   "src/modules/insights/briefings.service-role.ts",
   "src/modules/core/setup/with-service-role.ts",
 ];

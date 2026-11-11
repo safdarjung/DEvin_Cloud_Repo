@@ -15,15 +15,18 @@ const validUuid = '550e8400-e29b-41d4-a716-446655440000'
 
 describe('M08 Timetable Substitution Schemas', () => {
   describe('SubstitutionAssignSchema', () => {
-    it('parses valid assign input', () => {
+    it('parses valid assign input (0141: the reason note is required)', () => {
       const input = {
         slotId: validUuid,
         date: '2025-01-15',
         substituteId: validUuid,
+        note: 'Ms Iyer is on leave',
       }
       const result = SubstitutionAssignSchema.safeParse(input)
       expect(result.success).toBe(true)
       expect(result.data).toEqual(input)
+      expect(SubstitutionAssignSchema.safeParse({ ...input, note: undefined }).success).toBe(false)
+      expect(SubstitutionAssignSchema.safeParse({ ...input, note: '   ' }).success).toBe(false)
     })
 
     it('parses with optional leaveRequestId and note', () => {

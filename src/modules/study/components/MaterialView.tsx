@@ -1,10 +1,11 @@
-// Renders one saved or draft study item by format. No hooks: used from server
+// Renders one saved or draft study item by format (0140: worksheet levels with
+// the key only for its teacher; a mock exam renders like a quiz). No hooks: used from server
 // pages and client components alike. Answers to active-recall prompts and
 // exam questions sit behind native <details> (keyboard and screen-reader
 // friendly, no script). Plain text only: React escapes everything.
 import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { QuizQuestion, StudyFormat } from "@/modules/study/formats";
+import type { MaterialFormat, QuizQuestion } from "@/modules/study/formats";
 
 type C = Record<string, unknown>;
 const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
@@ -55,7 +56,7 @@ function Pairs({ rows, dense }: { rows: [string, string][]; dense?: boolean }) {
   );
 }
 
-export function MaterialView({ format, content, showQuizAnswers }: { format: StudyFormat; content: unknown; showQuizAnswers?: boolean }) {
+export function MaterialView({ format, content, showQuizAnswers }: { format: MaterialFormat; content: unknown; showQuizAnswers?: boolean }) {
   const c = (content ?? {}) as C;
   switch (format) {
     case "quick_summary":
@@ -160,6 +161,26 @@ export function MaterialView({ format, content, showQuizAnswers }: { format: Stu
           ))}
         </ul>
       );
+    case "worksheet":
+      return (
+        <div className="space-y-4">
+          {arr<C>(c.levels).map((l, i) => (
+            <section key={i} className="space-y-1.5">
+              <h3 className="text-sm font-semibold capitalize">{str(l.level)}</h3>
+              <p className="text-sm text-muted-foreground">{str(l.instructions)}</p>
+              <ol className="ml-4 list-decimal space-y-1 text-sm">
+                {arr<C>(l.questions).map((q, j) => (
+                  <li key={j}>
+                    {str(q.prompt)}
+                    {showQuizAnswers && <span className="block text-muted-foreground">Answer key: {str(q.answer)}</span>}
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ))}
+        </div>
+      );
+    case "mock_exam":
     case "quiz": {
       const questions = arr<QuizQuestion>(c.questions);
       return (

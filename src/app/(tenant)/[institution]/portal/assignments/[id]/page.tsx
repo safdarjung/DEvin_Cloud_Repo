@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { FadeIn } from "@/components/motion";
@@ -82,6 +83,14 @@ export default async function PortalAssignmentDetailPage({
             </CardHeader>
             <CardContent className="whitespace-pre-line text-sm">{assignment.instructions}</CardContent>
           </Card>
+        )}
+        {isStudent && assignment.studyMaterialId && (
+          <Link
+            href={`/${institutionSlug}/portal/study/studio?tab=library&item=${assignment.studyMaterialId}`}
+            className="inline-flex min-h-11 items-center rounded-lg border bg-card px-4 text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Open the study material
+          </Link>
         )}
 
         {isStudent && !graded && !closed ? (

@@ -1,0 +1,204 @@
+import "server-only";
+// Orb task bridge — entity pickers (design §1 "Pickers and the registered query
+// behind each"). Every read goes through the owning module's queries.ts under
+// the caller's own RLS client, and only when the caller passes that module's
+// registered query gate (its permission and module), so a picker never shows
+// more than the person could already read. An entity type with no backing
+// query returns no options; a model-supplied id for it is dropped.
+import "@/app/api/v1/query/all-queries"; // query meta (permission + module) for the gates below
+import { getQueryMeta } from "@/lib/actions/define-query";
+import { hasPermission } from "@/lib/auth/require";
+import type { TenantContext } from "@/lib/auth/types";
+import { isModuleEnabled } from "@/lib/modules/catalog";
+import { listSectionSubjects, listCurriculumUnits, listTeachableSections, listTeacherAssignments } from "@/modules/academics/assignments.queries";
+import { listEnquiriesByStage } from "@/modules/admissions/queries";
+import { getTodaySectionsForTeacher } from "@/modules/attendance/queries";
+import { clubsList } from "@/modules/clubs/queries";
+import { listSectionOptions, listSubjectOptions, listTermOptions as examTermOptions } from "@/modules/exams/queries";
+import { expenseCategories } from "@/modules/expenses/queries";
+import { listAcademicYears, listGradeOptions, listTermOptions as financeTermOptions } from "@/modules/finance/queries";
+import { formList } from "@/modules/forms/queries";
+import { listTickets } from "@/modules/helpdesk/queries";
+import { listInsights } from "@/modules/insights/queries";
+import { ListInsightsSchema } from "@/modules/insights/schemas";
+import { leaveRequests } from "@/modules/people/hr.queries";
+import { getStudentProfile, listStudents, searchStaff } from "@/modules/people/queries";
+import { ptmEvents } from "@/modules/ptm/queries";
+import { schoolLabs } from "@/modules/school-labs/queries";
+import { studentLeaveRequests } from "@/modules/student-leave/queries";
+import type { EntityOption, EntityType } from "./types";
+
+export const MAX_OPTIONS = 20;
+
+/** Sibling values that narrow a picker (section → subject → unit). */
+export type EntityScope = Readonly<Record<string, string>>;
+
+interface EntitySource {
+  /** Registered query whose permission and module this source follows. */
+  query: string;
+  /** Null when this source cannot serve the scope (the next source is tried). */
+  list: (ctx: TenantContext, search: string | undefined, scope: EntityScope) => Promise<EntityOption[] | null>;
+  /** Exact lookup for paged or searched lists. */
+  byId?: (ctx: TenantContext, id: string) => Promise<EntityOption | null>;
+}
+
+const name = (first: string, last: string | null): string => [first, last].filter(Boolean).join(" ");
+const opt = (id: string, label: string, hint?: string | null): EntityOption => (hint ? { id, label, hint } : { id, label });
+
+async function sectionGrade(ctx: TenantContext, classSectionId: string | undefined): Promise<string | undefined> {
+  if (!classSectionId) return undefined;
+  return (await listTeachableSections(ctx)).find((s) => s.id === classSectionId)?.gradeId;
+}
+
+const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
+  student: [
+    {
+      query: "people.searchStudents",
+      list: async (ctx, search) =>
+        (await listStudents(ctx, search, 1)).students.map((s) =>
+          opt(s.id, name(s.firstName, s.lastName), [s.gradeName, s.sectionName].filter(Boolean).join(" ") || s.admissionNo),
+        ),
+      byId: async (ctx, id) => {
+        const s = await getStudentProfile(ctx, id);
+        return s ? opt(s.id, name(s.firstName, s.lastName), s.enrolment ? `${s.enrolment.gradeName} ${s.enrolment.sectionName}` : s.admissionNo) : null;
+      },
+    },
+  ],
+  staff: [
+    {
+      query: "people.searchStaff",
+      list: async (ctx, search) => (await searchStaff(ctx, { query: search })).map((s) => opt(s.id, s.fullName, s.designation)),
+      byId: async (ctx, id) => {
+        const [s] = await searchStaff(ctx, { id });
+        return s ? opt(s.id, s.fullName, s.designation) : null;
+      },
+    },
+  ],
+  classSection: [
+    { query: "exams.listSectionOptions", list: async (ctx) => (await listSectionOptions(ctx)).map((s) => opt(s.id, s.label)) },
+    {
+      // Teachers: sections they teach; the class-teacher list carries the grade code ("8-B"), so "8B" matches.
+      query: "academics.listTeachableSections",
+      list: async (ctx) => {
+        const [teachable, register] = await Promise.all([listTeachableSections(ctx), getTodaySectionsForTeacher(ctx)]);
+        const labels = new Map(register.map((s) => [s.id, s.label]));
+        return teachable.map((s) => opt(s.id, labels.get(s.id) ?? s.label));
+      },
+    },
+  ],
+  subject: [
+    {
+      query: "academics.listSectionSubjects",
+      list: async (ctx, _s, scope) => (scope.classSectionId ? (await listSectionSubjects(ctx, scope.classSectionId)).map((s) => opt(s.id, s.name)) : null),
+    },
+    { query: "exams.listSubjectOptions", list: async (ctx) => (await listSubjectOptions(ctx)).map((s) => opt(s.id, s.name)) },
+  ],
+  grade: [{ query: "finance.listGradeOptions", list: async (ctx) => (await listGradeOptions(ctx)).map((g) => opt(g.id, g.label)) }],
+  curriculumUnit: [
+    {
+      query: "academics.listCurriculumUnits",
+      list: async (ctx, _s, scope) => {
+        const gradeId = scope.gradeId ?? (await sectionGrade(ctx, scope.classSectionId));
+        if (!gradeId || !scope.subjectId) return null;
+        return (await listCurriculumUnits(ctx, { gradeId, subjectId: scope.subjectId })).map((u) => opt(u.id, u.title, `Unit ${u.sequence}`));
+      },
+    },
+  ],
+  term: [
+    { query: "exams.listTermOptions", list: async (ctx) => (await examTermOptions(ctx)).map((t) => opt(t.id, t.label)) },
+    { query: "finance.listTermOptions", list: async (ctx) => (await financeTermOptions(ctx)).map((t) => opt(t.id, t.label)) },
+  ],
+  academicYear: [{ query: "finance.listAcademicYears", list: async (ctx) => (await listAcademicYears(ctx)).map((y) => opt(y.id, y.label)) }],
+  staffLeave: [
+    {
+      query: "people.leaveRequests",
+      list: async (ctx) =>
+        (await leaveRequests(ctx, { status: "pending", limit: 50 })).map((l) =>
+          opt(l.id, `${l.staffName}: ${l.leaveType} leave`, `${l.startDate} to ${l.endDate}`),
+        ),
+    },
+  ],
+  studentLeave: [
+    {
+      query: "studentLeave.list",
+      list: async (ctx) =>
+        (await studentLeaveRequests(ctx, { status: "pending", limit: 50 })).map((l) =>
+          opt(l.id, `${l.studentName}: leave`, `${l.classSection}, ${l.startDate} to ${l.endDate}`),
+        ),
+    },
+  ],
+  "clubs.club": [{ query: "clubs.list", list: async (ctx) => (await clubsList(ctx)).map((c) => opt(c.id, c.name, c.patronName)) }],
+  "helpdesk.ticket": [
+    { query: "helpdesk.tickets", list: async (ctx) => (await listTickets(ctx, {})).rows.map((t) => opt(t.id, t.subject, `${t.raisedByName}, ${t.status}`)) },
+  ],
+  "admissions.enquiry": [
+    {
+      query: "admissions.listEnquiriesByStage",
+      list: async (ctx) =>
+        Object.values(await listEnquiriesByStage(ctx))
+          .flat()
+          .map((e) => opt(e.id, e.childName, `${e.guardianName}, ${e.status}`)),
+    },
+  ],
+  insight: [{ query: "insights.list", list: async (ctx) => (await listInsights(ctx, ListInsightsSchema.parse({}))).map((i) => opt(i.id, i.title)) }],
+  "expenses.category": [
+    { query: "expenses.categories", list: async (ctx) => (await expenseCategories(ctx)).filter((c) => c.isActive).map((c) => opt(c.id, c.name)) },
+  ],
+  "schoolLabs.lab": [{ query: "schoolLabs.labs", list: async (ctx) => (await schoolLabs(ctx)).map((l) => opt(l.id, l.name, l.kind)) }],
+  "ptm.event": [{ query: "ptm.events", list: async (ctx) => (await ptmEvents(ctx, false)).map((e) => opt(e.id, e.title, e.eventDate)) }],
+  "forms.form": [{ query: "form.list", list: async (ctx) => (await formList(ctx)).map((f) => opt(f.id, f.title, f.status)) }],
+  assignment: [
+    { query: "academics.listTeacherAssignments", list: async (ctx) => (await listTeacherAssignments(ctx)).map((a) => opt(a.id, a.title, a.status)) },
+  ],
+};
+
+/** Entity types with at least one source; the rest have no backing query (design C1 gaps). */
+export const SEARCHABLE_ENTITIES: readonly EntityType[] = Object.keys(SOURCES) as EntityType[];
+
+function allowed(ctx: TenantContext, source: EntitySource): boolean {
+  const meta = getQueryMeta().get(source.query);
+  if (!meta || typeof meta.permission !== "string") return false;
+  return hasPermission(ctx, meta.permission) && (meta.module === undefined || isModuleEnabled(ctx, meta.module));
+}
+
+/** Lower-case letters and digits only, minus filler words, so "Class 8B" matches "8-B" and "Ms. Rao" matches "Rao". */
+export function normalizeLabel(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\b(class|grade|section|std|mr|mrs|ms|dr|sir|madam)\b\.?/g, " ")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function matches(option: EntityOption, search: string): boolean {
+  const target = normalizeLabel(`${option.label} ${option.hint ?? ""}`);
+  const words = search.split(/\s+/).map(normalizeLabel).filter(Boolean);
+  return words.length > 0 && words.every((w) => target.includes(w));
+}
+
+async function firstServed(ctx: TenantContext, entity: EntityType, search: string | undefined, scope: EntityScope) {
+  for (const source of SOURCES[entity] ?? []) {
+    if (!allowed(ctx, source)) continue;
+    const list = await source.list(ctx, search, scope);
+    if (list) return { source, list };
+  }
+  return null;
+}
+
+/** At most 20 picker options, filtered by the search text, read under the caller's RLS. */
+export async function searchEntities(ctx: TenantContext, entity: EntityType, search?: string, scope: EntityScope = {}): Promise<EntityOption[]> {
+  const text = search?.trim() || undefined;
+  const served = await firstServed(ctx, entity, text, scope);
+  if (!served) return [];
+  return (text ? served.list.filter((o) => matches(o, text)) : served.list).slice(0, MAX_OPTIONS);
+}
+
+/** One record by id, only if the caller can read it through a picker source; null otherwise. */
+export async function findEntity(ctx: TenantContext, entity: EntityType, id: string, scope: EntityScope = {}): Promise<EntityOption | null> {
+  for (const source of SOURCES[entity] ?? []) {
+    if (!allowed(ctx, source)) continue;
+    if (source.byId) return source.byId(ctx, id);
+    const list = await source.list(ctx, undefined, scope);
+    if (list) return list.find((o) => o.id === id) ?? null;
+  }
+  return null;
+}

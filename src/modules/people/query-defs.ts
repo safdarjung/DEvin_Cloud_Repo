@@ -6,7 +6,7 @@
 import { defineQuery } from "@/lib/actions/define-query";
 import { uuid } from "@/lib/schemas/common";
 import { z } from "zod";
-import { getCurrentTermId, getMyStudent, getStudentProfile, listMyChildren, listStudents } from "./queries";
+import { getCurrentTermId, getMyStudent, getStudentProfile, listMyChildren, listStudents, searchStaff } from "./queries";
 
 // permission: student.read — the page gate at students/page.tsx (staff list)
 // and students/[studentId]/page.tsx (profile); every other caller
@@ -57,4 +57,25 @@ export const getMyStudentQuery = defineQuery({
   schema: z.object({}).strict(),
   permission: "student.read",
   handler: (_input, ctx) => getMyStudent(ctx),
+});
+
+// Orb task bridge pickers (design §1 C1). Same reads as above, under the caller's
+// RLS: student.read is held by every role and RLS scopes the rows (a teacher's
+// taught students, a guardian's own children). Staff rows follow staff_select
+// (0004): owner/principal/admin/accountant/exam_controller see all, everyone
+// else only their own row (a teacher picking themself), guardians/students none.
+export const searchStudentsQuery = defineQuery({
+  name: "people.searchStudents",
+  module: "people",
+  schema: z.object({ query: z.string().trim().max(100).optional() }).strict(),
+  permission: "student.read",
+  handler: async (input, ctx) => (await listStudents(ctx, input.query, 1)).students.slice(0, 20),
+});
+
+export const searchStaffQuery = defineQuery({
+  name: "people.searchStaff",
+  module: "people",
+  schema: z.object({ query: z.string().trim().max(100).optional() }).strict(),
+  permission: "student.read",
+  handler: (input, ctx) => searchStaff(ctx, { query: input.query }),
 });

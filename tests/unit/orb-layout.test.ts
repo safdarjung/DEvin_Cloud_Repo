@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { fibonacciSphere, micLevel, orbState, rotateYX, scatterEnvelope, waveFor } from "@/modules/ai/components/orb/orb-layout";
+import {
+  fibonacciSphere, flickDelta, micLevel, orbState, ringDelta, rotateYX, rubberBand, scatterEnvelope, stepIndex, typingPulse, waveFor,
+} from "@/modules/ai/components/orb/orb-layout";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
 
@@ -50,6 +52,15 @@ describe("orbState / waveFor", () => {
     expect(orbState({ status: "ready", typing: false, error: true, listening: true })).toBe("error");
   });
 
+  it("task states: a card leaving wins over answering, done over typing, and waiting only when nothing else is going on", () => {
+    expect(orbState({ status: "streaming", typing: false, error: false, proposing: true })).toBe("proposing");
+    expect(orbState({ status: "ready", typing: true, error: false, done: true })).toBe("done");
+    expect(orbState({ status: "ready", typing: true, error: false, waiting: true })).toBe("typing");
+    expect(orbState({ status: "ready", typing: false, error: false, waiting: true })).toBe("waiting");
+    expect(orbState({ status: "submitted", typing: false, error: false, waiting: true })).toBe("submitted");
+    expect(orbState({ status: "ready", typing: false, error: true, proposing: true })).toBe("error");
+  });
+
   it("each state moves the dots its own way: only streaming ripples, thinking contracts and swirls, typing jitters", () => {
     expect(waveFor("idle").amp).toBeGreaterThan(0);
     expect(waveFor("submitted").contract).toBeGreaterThan(0);
@@ -72,6 +83,53 @@ describe("orbState / waveFor", () => {
     expect(peak).toBeGreaterThan(0.6);
     expect(peak).toBeLessThanOrEqual(1);
     expect(scatterEnvelope(2)).toBeLessThan(0.02);
+  });
+});
+
+describe("flick-to-mode snapping", () => {
+  it("a small or slow nudge stays on the current mode", () => {
+    expect(flickDelta(0, 0)).toBe(0);
+    expect(flickDelta(10, 0)).toBe(0);
+    expect(flickDelta(-15, -100)).toBe(0);
+  });
+
+  it("a deliberate drag moves one mode: left is next, right is previous", () => {
+    expect(flickDelta(-40, 0)).toBe(1);
+    expect(flickDelta(40, 0)).toBe(-1);
+  });
+
+  it("a quick flick coasts with inertia (short drag, high speed) but never more than two modes", () => {
+    expect(flickDelta(-10, -500)).toBe(1);
+    expect(flickDelta(-150, -400)).toBe(1);
+    expect(flickDelta(-100, -2000)).toBe(2);
+    expect(flickDelta(20, 3000)).toBe(-2);
+    expect(flickDelta(-400, -4000)).toBe(2);
+  });
+
+  it("steps wrap both ways and the ring takes the short way round", () => {
+    expect(stepIndex(5, 1, 6)).toBe(0);
+    expect(stepIndex(0, -1, 6)).toBe(5);
+    expect(stepIndex(0, 1, 0)).toBe(0);
+    expect(ringDelta(5, 0, 6)).toBe(1);
+    expect(ringDelta(0, 5, 6)).toBe(-1);
+    expect(ringDelta(1, 3, 6)).toBe(2);
+    expect(ringDelta(2, 2, 6)).toBe(0);
+  });
+
+  it("drag resistance follows the finger near the start and never passes the cap", () => {
+    expect(rubberBand(0)).toBe(0);
+    expect(rubberBand(10)).toBeGreaterThan(0);
+    expect(rubberBand(-10)).toBeCloseTo(-rubberBand(10), 9);
+    expect(rubberBand(10_000)).toBeLessThanOrEqual(28);
+    expect(rubberBand(80)).toBeLessThan(rubberBand(160));
+  });
+
+  it("typing energy rises with each key and is capped", () => {
+    let p = 0;
+    for (let i = 0; i < 3; i++) p = typingPulse(p);
+    expect(p).toBeCloseTo(1.05, 9);
+    for (let i = 0; i < 20; i++) p = typingPulse(p);
+    expect(p).toBe(1.6);
   });
 });
 

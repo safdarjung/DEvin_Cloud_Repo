@@ -120,7 +120,7 @@ export function terms(text: string): string[] {
     .map(stem);
 }
 
-function queryTerms(text: string): string[] {
+export function queryTerms(text: string): string[] {
   const out = new Set<string>();
   for (const t of terms(text)) {
     out.add(t);
@@ -130,7 +130,7 @@ function queryTerms(text: string): string[] {
 }
 
 /** Per group: 2 per query term in its label/key/tool names, 1 in its description, each divided by how many groups share the term (rare words decide). */
-function groupScores(groups: readonly ToolGroup[], query: readonly string[]): number[] {
+export function groupScores(groups: readonly ToolGroup[], query: readonly string[]): number[] {
   const vocab = groups.map((g) => ({
     strong: new Set(terms(`${g.label} ${g.key} ${g.tools.join(" ")}`)),
     weak: new Set(terms(g.description)),

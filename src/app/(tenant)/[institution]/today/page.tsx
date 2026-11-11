@@ -29,7 +29,7 @@ import { listMyNotifications } from "@/modules/notifications/queries";
 import { ptmEvents, ptmTeacherSchedule } from "@/modules/ptm/queries";
 import { StudentLeaveReview } from "@/modules/student-leave/components/StudentLeaveReview";
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
-import { timetableTodayFor } from "@/modules/timetable/queries";
+import { timetableTodayWithReasons } from "@/modules/timetable/control.queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 
 export const metadata: Metadata = { title: "Today" };
@@ -96,7 +96,7 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
     isModuleEnabled(ctx, "website") ? listPublicNotices(ctx.institution.id, 3) : Promise.resolve([]),
     // Ordered oldest-first with no date filter, so over-fetch and keep the upcoming ones.
     isModuleEnabled(ctx, "website") ? listPublicEvents(ctx.institution.id, 20).then((events) => events.filter((e) => new Date(e.endsAt ?? e.startsAt) >= now).slice(0, 3)) : Promise.resolve([]),
-    isModuleEnabled(ctx, "timetable") ? timetableTodayFor(ctx) : Promise.resolve([]),
+    isModuleEnabled(ctx, "timetable") ? timetableTodayWithReasons(ctx) : Promise.resolve([]),
     // RLS scopes leave, PTM slots and coverage to what this teacher may see; the teacherId filter keeps coverage to their own subjects.
     canReviewLeave ? studentLeaveRequests(ctx, { status: "pending", limit: 8 }) : Promise.resolve([]),
     canSeePtm

@@ -36,6 +36,9 @@ import { CAPABILITIES, type CapabilityKey } from "@/modules/ai/capabilities/cata
 import { enabledCapabilities, previewEnabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { systemPromptFor } from "@/modules/ai/kernel/personas";
 import { FILE_ATTACH_GROUP, FILE_ATTACH_TOOL, fileAttachTool } from "@/modules/textbooks/ai-attach-tool";
+import { scopedChatExtras } from "@/modules/study/scope-chat";
+import { buildTaskTools, withTaskTools } from "@/modules/ai/tasks/task-tools";
+import { ORB_MODES, TASK_KEY_RE } from "@/modules/core/control-centre/ids";
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -44,11 +47,16 @@ const ChatRequestSchema = z
     institutionSlug: z.string().trim().min(1).max(100),
     messages: z.array(UIMessageRequestSchema).min(1).max(50),
     studentId: uuid.optional(),
+    // 0140: a student's saved "study with AI" scope (study_items id; re-read under RLS).
+    scopeId: uuid.optional(),
     // T7 — "Test as role" in settings/ai: an `institution.settings.manage`
     // holder previews another role's persona/capabilities while still
     // running as themselves (own RLS, own permissions). Checked below, not
     // here — a bad enum value is just validation_failed either way.
     previewRole: z.enum(AI_ROLES).optional(),
+    // Orb task bridge: the orb tab the person is in, and a task they clicked (checked against taskState).
+    mode: z.enum(ORB_MODES).optional(),
+    taskHint: z.string().regex(TASK_KEY_RE).optional(),
   })
   .passthrough();
 
@@ -93,6 +101,25 @@ function redactMessageText(messages: UIMessage[]): { messages: UIMessage[]; reda
     }),
   }));
   return { messages: redacted as UIMessage[], redactions };
+}
+
+type ScopedExtras = Awaited<ReturnType<typeof scopedChatExtras>>;
+
+// 07 §5: a study scope's system block and tool description carry the
+// student's own free text (the goal, file titles), so on the cloud path they
+// get the same redaction as message text.
+function redactScoped(scoped: ScopedExtras): { scoped: ScopedExtras; redactions: number } {
+  const system = redact(scoped.system);
+  let redactions = system.count;
+  const tools = Object.fromEntries(
+    Object.entries(scoped.tools).map(([name, t]) => {
+      if (typeof t.description !== "string") return [name, t];
+      const description = redact(t.description);
+      redactions += description.count;
+      return [name, { ...t, description: description.text }];
+    }),
+  ) as ToolSet;
+  return { scoped: { ...scoped, system: system.text, tools }, redactions };
 }
 
 // Guardian defense in depth: RLS already scopes these registry queries to
@@ -313,9 +340,29 @@ export async function handleAiChat(request: Request): Promise<Response> {
   const sources = createSourceLog();
   const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, mode, nonce, onSource: sources.add, childId, texts: recentUserTexts(strippedMessages) });
 
+  // 0140: a student's chosen study scope adds server-built context and one small tool group.
+  let scoped: ScopedExtras | null = null;
+  let scopedRedactions = 0;
+  if (input.scopeId && personaRole === "student" && !isPreview) {
+    try {
+      scoped = await scopedChatExtras(ctx, input.scopeId);
+    } catch (err) {
+      if (err instanceof AppError) return apiResponse(fail(err.code, err.message));
+      throw err;
+    }
+    if (mode === "cloud") ({ scoped, redactions: scopedRedactions } = redactScoped(scoped));
+  }
+  const chatTools: ToolSet = scoped ? { ...tools, ...scoped.tools } : tools;
+  const chatGroups = scoped?.group ? [...groups, scoped.group] : groups;
+  // Orb task bridge (design §3): approval cards for the caller's enabled tasks; none under role preview.
+  const tasks = isPreview
+    ? null
+    : buildTaskTools({ ctx, nonce, texts: recentUserTexts(strippedMessages), mode: input.mode, taskHint: input.taskHint, childId, readSources: () => sources.list().map((s) => s.query) });
+  const taskToolNames = Object.keys(tasks?.tools ?? {});
+
   const studentPrefs = personaRole === "student" ? await getStudentPreferences(ctx) : undefined;
 
-  const system = systemPromptFor({
+  const basePrompt = systemPromptFor({
     role: personaRole,
     nonce,
     mode,
@@ -324,6 +371,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
     studentPrefs: studentPrefs ? { skills: studentPrefs.skills, style: studentPrefs.style } : undefined,
     childId,
   });
+  const system = [basePrompt, scoped?.system, tasks?.system].filter(Boolean).join("\n\n");
 
   const outgoing = mode === "cloud" ? redactMessageText(strippedMessages) : { messages: strippedMessages, redactions: 0 };
   const modelMessages = await convertToModelMessages(outgoing.messages);
@@ -337,14 +385,14 @@ export async function handleAiChat(request: Request): Promise<Response> {
     provider,
     system,
     messages: modelMessages,
-    tools,
+    tools: tasks ? withTaskTools(chatTools, tasks) : chatTools,
     stopWhen: stepCountIs(personaRole === "student" ? 3 : 6),
     maxOutputTokens: 1024,
     concurrencyKey: personaRole === "student" ? `${ctx.institution.id}:student` : undefined,
     abortSignal: request.signal,
-    redactions: outgoing.redactions,
+    redactions: outgoing.redactions + scopedRedactions,
     notConfiguredMessage: "The AI chat assistant is not configured. Contact your administrator.",
-    budget: { groups, core: CORE_TOOLS, idProviders: ID_PROVIDERS, texts: recentUserTexts(strippedMessages) },
+    budget: { groups: chatGroups, core: [...CORE_TOOLS, ...(scoped?.core ?? []), ...taskToolNames], idProviders: ID_PROVIDERS, texts: recentUserTexts(strippedMessages) },
   });
 
   if (!result.ok) {

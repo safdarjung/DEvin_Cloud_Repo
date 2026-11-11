@@ -33,6 +33,8 @@ export interface AssignmentDetail extends AssignmentSummary {
   curriculumUnitId: string | null;
   content: QuizContent | null;
   createdBy: string;
+  /** 0140: linked study-studio material (students of the section can open it). */
+  studyMaterialId: string | null;
 }
 
 interface AssignmentSummaryRow {
@@ -103,7 +105,7 @@ export async function getAssignment(ctx: TenantContext, assignmentId: string): P
   let query = supabase
     .from("assignments")
     .select(
-      "id, title, status, class_section_id, subject_id, due_at, ai_generated, created_at, created_by, instructions, curriculum_unit_id, content",
+      "id, title, status, class_section_id, subject_id, due_at, ai_generated, created_at, created_by, instructions, curriculum_unit_id, content, study_material_id",
     )
     .eq("id", assignmentId)
     .eq("institution_id", ctx.institution.id);
@@ -144,6 +146,7 @@ export async function getAssignment(ctx: TenantContext, assignmentId: string): P
     // never left to the UI to hide.
     content: stored ? mergeQuizContent(stored, answers) : null,
     createdBy: data.created_by,
+    studyMaterialId: data.study_material_id,
   };
 }
 
@@ -218,7 +221,7 @@ export async function listTeachableSections(ctx: TenantContext): Promise<Section
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_sections")
-    .select("id, name, grade_id, class_teacher_id")
+    .select("id, name, grade_id, class_teacher_id, grades(code)")
     .eq("institution_id", ctx.institution.id)
     .order("name");
   if (error) throw error;
@@ -229,7 +232,11 @@ export async function listTeachableSections(ctx: TenantContext): Promise<Section
     rows = rows.filter((row) => managesWholeSection(ctx, row.class_teacher_id) || taughtIds.has(row.id));
   }
 
-  return rows.map((row) => ({ id: row.id, label: row.name, gradeId: row.grade_id }));
+  // Grade code first ("VIII-B"), as the exams module labels sections: a bare "B" is ambiguous across grades.
+  return rows.map((row) => {
+    const grade = (row.grades as { code: string } | null)?.code;
+    return { id: row.id, label: grade ? `${grade}-${row.name}` : row.name, gradeId: row.grade_id };
+  });
 }
 
 export interface SubjectOption {

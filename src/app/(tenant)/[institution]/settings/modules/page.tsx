@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,9 @@ export default async function ModulesPage({
         title="Modules"
         description="Enable or disable features and capabilities for your school."
       />
+      <p className="text-sm text-muted-foreground">
+        Want everything in one place, with search and presets? Open the <Link href={`/${institutionSlug}/settings/control-centre`} className="font-medium text-foreground underline underline-offset-2">Control centre</Link>.
+      </p>
 
       {categories.map((cat) => (
         <div key={cat.category} className="space-y-3 pt-2">

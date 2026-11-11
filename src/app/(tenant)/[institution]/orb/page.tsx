@@ -7,8 +7,11 @@ import { listMyChildren } from "@/modules/people/queries";
 import { enabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { OrbView, type OrbChat } from "@/modules/ai/components/orb/OrbView";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
-import { buildOrbGroups } from "@/modules/ai/components/orb/orb-groups";
+import { buildOrbFeatures, type OrbTaskInput } from "@/modules/ai/components/orb/orb-groups";
+import { parseOrbQuery } from "@/modules/ai/components/orb/orb-modes";
 import { starterPromptsFor } from "@/modules/ai/page-starters";
+import { listEnabledTasks } from "@/modules/ai/tasks/state";
+import type { TenantContext } from "@/lib/auth/types";
 
 export const metadata: Metadata = { title: "Orb" };
 
@@ -17,10 +20,10 @@ export default async function OrbPage({
   searchParams,
 }: {
   params: Promise<{ institution: string }>;
-  searchParams: Promise<{ from?: string | string[]; q?: string | string[] }>;
+  searchParams: Promise<{ from?: string | string[]; q?: string | string[]; mode?: string | string[]; task?: string | string[] }>;
 }) {
   const { institution: slug } = await params;
-  const { from, q } = await searchParams;
+  const { from, q, mode, task } = await searchParams;
   const ctx = await getTenantContext(slug);
   const role = ctx.membership.role;
 
@@ -45,8 +48,11 @@ export default async function OrbPage({
     }
   }
 
-  // Every enabled capability, sorted into sections: chat ones send a prompt, page tasks link to their page.
-  const groups = buildOrbGroups(orbChips(enabledCapabilities(ctx), { slug, appHrefs, chatOn: chat !== null }), role, chat !== null);
+  // Every enabled capability and task, sorted into mode → section → feature: chat ones send a prompt,
+  // page tools link to their page, tasks open an approval card.
+  const tasks = enabledTasks(ctx);
+  const chips = orbChips(enabledCapabilities(ctx), { slug, appHrefs, chatOn: chat !== null });
+  const features = buildOrbFeatures(chips, tasks, role, chat !== null);
 
   // `from` is untrusted: only an in-app absolute path (not "//host") is used, minus the school prefix.
   const prefix = `/${slug}`;
@@ -54,8 +60,32 @@ export default async function OrbPage({
   const page = fromPath?.startsWith(`${prefix}/`) ? fromPath.slice(prefix.length) : null;
   const starters = chat && page ? starterPromptsFor(page, role) : undefined;
 
-  // `q` comes from the Ask AI launcher: a plain question OrbView sends once; the chat endpoint still authorises everything.
-  const initialQuery = typeof q === "string" ? q.trim().slice(0, 500) : undefined;
+  // `q` (a plain question sent once), `mode` and `task` (a card opened on arrival, only if enabled for this person)
+  // come from the Ask AI launcher; the chat endpoint and ai.proposal.start still authorise everything.
+  const query = parseOrbQuery({ mode, task, q }, tasks);
+  const controlCentreHref = hasPermission(ctx, "institution.settings.manage") ? `/${slug}/settings/control-centre` : undefined;
 
-  return <OrbView institutionSlug={slug} role={role} chat={chat} groups={groups} starters={starters} initialQuery={initialQuery} />;
+  return (
+    <OrbView
+      institutionSlug={slug}
+      role={role}
+      chat={chat}
+      features={features}
+      starters={starters}
+      initialQuery={query.q}
+      initialMode={query.mode}
+      initialTask={query.task}
+      controlCentreHref={controlCentreHref}
+    />
+  );
+}
+
+/** The orb still renders (Ask and Create) if the task list cannot be built. */
+function enabledTasks(ctx: TenantContext): OrbTaskInput[] {
+  try {
+    return listEnabledTasks(ctx).map(({ action, label, mode, groupId }) => ({ action, label, mode, groupId }));
+  } catch (e) {
+    console.error("orb: enabled tasks failed:", e instanceof Error ? e.message : e);
+    return [];
+  }
 }

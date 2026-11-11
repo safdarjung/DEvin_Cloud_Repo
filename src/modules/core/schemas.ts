@@ -6,6 +6,7 @@ import { z } from "zod";
 import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
 import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
 import { DASHBOARD_WIDGET_IDS, MORE_CARD_IDS } from "./dashboard-widgets.ts";
+import { MAX_TASK_OVERRIDES, ORB_GROUP_IDS, ORB_MODES, TASK_KEY_RE } from "./control-centre/ids.ts";
 
 // Equal to the SQL check institutions_slug_not_reserved (0127), which is the
 // authority: a school slug must never shadow an app route or public page.
@@ -64,15 +65,30 @@ export const AI_ROLES = [
   "guardian",
 ] as const;
 
-export const AiRoleConfigSchema = z
-  .object({
-    enabled: z.boolean().optional(),
-    cloud: z.boolean().optional(),
-    instructions: z.string().trim().max(500).optional(),
-    daily_token_quota: z.number().int().min(0).max(10_000_000).optional(),
-    capabilities: z.record(z.string().regex(/^[a-z][a-z0-9_]{1,40}$/), z.boolean()).optional(),
-  })
-  .strict();
+// Sparse per-role overrides. `modes`/`groups`/`tasks` (orb control centre) only
+// ever narrow what permissions and modules allow; task keys are checked against
+// the task catalog in core.ai_role.set (the catalog can change, stored settings must still parse).
+function roleConfigShape<V extends z.ZodType>(flag: V) {
+  return z
+    .object({
+      enabled: z.boolean().optional(),
+      cloud: z.boolean().optional(),
+      instructions: z.string().trim().max(500).optional(),
+      daily_token_quota: z.number().int().min(0).max(10_000_000).optional(),
+      capabilities: z.record(z.string().regex(/^[a-z][a-z0-9_]{1,40}$/), flag).optional(),
+      modes: z.partialRecord(z.enum(ORB_MODES), flag).optional(),
+      groups: z.partialRecord(z.enum(ORB_GROUP_IDS), flag).optional(),
+      tasks: z
+        .record(z.string().regex(TASK_KEY_RE), flag)
+        .refine((o) => Object.keys(o).length <= MAX_TASK_OVERRIDES, "Too many task overrides.")
+        .optional(),
+    })
+    .strict();
+}
+
+export const AiRoleConfigSchema = roleConfigShape(z.boolean());
+/** Write side: a null flag removes that override (back to the default). Never stored. */
+export const AiRoleConfigPatchSchema = roleConfigShape(z.boolean().nullable());
 
 export type AiRoleConfig = z.infer<typeof AiRoleConfigSchema>;
 

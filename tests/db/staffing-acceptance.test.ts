@@ -254,7 +254,7 @@ describe("M08 staffing acceptance: staff attendance, leave, substitution and per
 
         const assignRes = await dispatchAction(
           "timetable.substitution.assign",
-          { institution: inst.slug, input: { slotId: slot1Id, date, substituteId } },
+          { institution: inst.slug, input: { slotId: slot1Id, date, substituteId, note: "Regular teacher is on leave" } },
           principalAuth,
         );
         expect(assignRes.status).toBe(200);
@@ -273,7 +273,7 @@ describe("M08 staffing acceptance: staff attendance, leave, substitution and per
         `;
         const doubleBookRes = await dispatchAction(
           "timetable.substitution.assign",
-          { institution: inst.slug, input: { slotId: slot2.id, date, substituteId } },
+          { institution: inst.slug, input: { slotId: slot2.id, date, substituteId, note: "Regular teacher is on leave" } },
           principalAuth,
         );
         expect(doubleBookRes.status).toBe(409);

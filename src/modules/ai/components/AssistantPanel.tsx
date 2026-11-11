@@ -113,6 +113,7 @@ export function AssistantPanel({
                       action={parsed.action}
                       input={parsed.input}
                       summary={parsed.summary}
+                      proposal={parsed.proposal}
                     />
                   );
                 })}

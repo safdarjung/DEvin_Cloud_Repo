@@ -11,7 +11,7 @@ import { masteryGapsForStudent } from "@/modules/mastery/queries";
 import { myPracticeAttempts } from "@/modules/practice/queries";
 import { computeStreak, istDay } from "@/modules/practice/scoring";
 import { accuracyBy, cardLapses, minutesByDay, questionAccuracy, weakTopics, weeklyAccuracy, type ScoredRow } from "@/modules/study/analytics";
-import type { QuizQuestion, StudyFormat } from "@/modules/study/formats";
+import type { MaterialFormat, QuizQuestion } from "@/modules/study/formats";
 import type { QuizAnswer } from "@/modules/study/quiz";
 import type { PlanItem } from "@/modules/study/planner";
 import { DeckStateSchema, drillQueue, dueCardIds, type CardState } from "@/modules/study/srs";
@@ -21,7 +21,7 @@ const PROGRESS_DAYS = 90;
 
 export interface StudyMaterialRow {
   id: string;
-  format: StudyFormat;
+  format: MaterialFormat;
   title: string;
   isMine: boolean;
   fromTeacher: boolean;
@@ -29,6 +29,9 @@ export interface StudyMaterialRow {
   subjectName: string | null;
   unitId: string | null;
   createdAt: string;
+  /** 0140 */
+  language: "en" | "hi";
+  variantOf: string | null;
 }
 
 const subjectName = (r: { subjects: unknown }): string | null => (r.subjects as { name: string } | null)?.name ?? null;
@@ -38,14 +41,14 @@ export async function studyLibrary(ctx: TenantContext): Promise<StudyMaterialRow
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("study_materials")
-    .select("id, user_id, owner_role, format, title, subject_id, curriculum_unit_id, created_at, subjects(name)")
+    .select("id, user_id, owner_role, format, title, subject_id, curriculum_unit_id, created_at, language, variant_of, subjects(name)")
     .eq("institution_id", ctx.institution.id)
     .order("created_at", { ascending: false })
     .limit(LIBRARY_LIMIT);
   if (error) throw error;
   return (data ?? []).map((r) => ({
     id: r.id,
-    format: r.format as StudyFormat,
+    format: r.format as MaterialFormat,
     title: r.title,
     isMine: r.user_id === ctx.user.id,
     fromTeacher: r.owner_role === "teacher",
@@ -53,18 +56,26 @@ export async function studyLibrary(ctx: TenantContext): Promise<StudyMaterialRow
     subjectName: subjectName(r),
     unitId: r.curriculum_unit_id,
     createdAt: r.created_at,
+    language: r.language as "en" | "hi",
+    variantOf: r.variant_of,
   }));
 }
 
 export interface StudyMaterial extends StudyMaterialRow {
   content: unknown;
+  ownerRole: "student" | "teacher";
+  sourceKind: string;
+  resourceId: string | null;
+  sourceMaterialId: string | null;
+  bundleId: string | null;
+  focusUnitIds: string[];
 }
 
 export async function getStudyMaterial(ctx: TenantContext, id: string): Promise<StudyMaterial | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("study_materials")
-    .select("id, user_id, owner_role, format, title, subject_id, curriculum_unit_id, created_at, content, subjects(name)")
+    .select("id, user_id, owner_role, format, title, subject_id, curriculum_unit_id, created_at, content, language, variant_of, source_kind, resource_id, source_material_id, bundle_id, focus_unit_ids, subjects(name)")
     .eq("institution_id", ctx.institution.id)
     .eq("id", id)
     .maybeSingle();
@@ -72,7 +83,7 @@ export async function getStudyMaterial(ctx: TenantContext, id: string): Promise<
   if (!data) return null;
   return {
     id: data.id,
-    format: data.format as StudyFormat,
+    format: data.format as MaterialFormat,
     title: data.title,
     isMine: data.user_id === ctx.user.id,
     fromTeacher: data.owner_role === "teacher",
@@ -81,6 +92,14 @@ export async function getStudyMaterial(ctx: TenantContext, id: string): Promise<
     unitId: data.curriculum_unit_id,
     createdAt: data.created_at,
     content: data.content,
+    language: data.language as "en" | "hi",
+    variantOf: data.variant_of,
+    ownerRole: data.owner_role as "student" | "teacher",
+    sourceKind: data.source_kind,
+    resourceId: data.resource_id,
+    sourceMaterialId: data.source_material_id,
+    bundleId: data.bundle_id,
+    focusUnitIds: data.focus_unit_ids ?? [],
   };
 }
 
@@ -283,7 +302,7 @@ export interface SectionEngagement {
 
 export interface SharedMaterialEngagement {
   id: string;
-  format: StudyFormat;
+  format: MaterialFormat;
   title: string;
   createdAt: string;
   subjectName: string | null;
@@ -361,7 +380,7 @@ export async function sharedMaterialEngagement(ctx: TenantContext, onlyMine: boo
           : [];
     return {
       id: m.id,
-      format: m.format as StudyFormat,
+      format: m.format as MaterialFormat,
       title: m.title,
       createdAt: m.created_at,
       subjectName: subjectName(m),

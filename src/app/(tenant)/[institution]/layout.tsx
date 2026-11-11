@@ -16,6 +16,7 @@ import { navItemsFor } from "@/lib/nav";
 import { getClaims } from "@/lib/supabase/server";
 import { brandingStyle } from "@/modules/core/setup/branding-utils";
 import { getLayoutBranding } from "@/modules/core/setup/branding.queries";
+import { listEnabledTasks } from "@/modules/ai/tasks/state";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -131,7 +132,18 @@ export default async function TenantLayout({
         institutionSlug={ctx.institution.slug}
         role={ctx.membership.role}
         jumpItems={navItems.map(({ href, label, group }) => ({ href, label, group }))}
+        tasks={launcherTasks(ctx)}
       />
     </div>
   );
+}
+
+/** The launcher's "On this page you can…" deep links; the orb page re-checks each task on arrival. */
+function launcherTasks(ctx: Awaited<ReturnType<typeof getTenantContext>>) {
+  try {
+    return listEnabledTasks(ctx).map(({ action, label, mode, groupId }) => ({ action, label, mode, groupId }));
+  } catch (e) {
+    console.error("launcher: enabled tasks failed:", e instanceof Error ? e.message : e);
+    return [];
+  }
 }

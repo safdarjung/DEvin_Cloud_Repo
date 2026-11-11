@@ -95,13 +95,26 @@ describe("suggestFill (fill_v1)", () => {
         rooms: [{ id: R(1), name: "R101" }],
       }),
     );
+    // 0141: the rationale now also names the rules the choice kept, and the
+    // passed-over candidates come back as `alternatives`.
     expect(out.suggestions[0]).toEqual({
       action: "Add Maths to 6-A, Wed period 1 (Period 1), with Teacher 1 in R101",
       owner: "Timetable manager",
-      rationale: "Teacher 1 is free in this period and R101 is free; Maths has 0 of 3 periods a week in 6-A.",
+      rationale:
+        "Teacher 1 is free in this period and R101 is free; Maths has 0 of 3 periods a week in 6-A. Rules kept: max 2 Maths a day; Teacher 1 at 1 of 36 a week.",
       expected_outcome: "6-A Maths: 1 of 3 periods a week.",
       status: "planned",
       slot: { classSectionId: S(1), weekday: 3, periodId: P(1), subjectId: SUB(1), teacherId: T(1), roomId: R(1) },
+      rules: ["fill_target", "max_same_subject_per_day", "max_teacher_per_week"],
+      alternatives: [
+        {
+          subject: "English",
+          teacher: "Teacher 2",
+          teacherId: T(2),
+          rule: "ranked_lower",
+          reason: "English needs 1 more a week; Maths needs 3 (or Teacher 1 has fewer periods)",
+        },
+      ],
     });
   });
 

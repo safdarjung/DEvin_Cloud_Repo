@@ -315,3 +315,27 @@ export async function getMyStudent(ctx: TenantContext): Promise<ChildSummary | n
   if (!data) return null;
   return toChildSummary(data as Parameters<typeof toChildSummary>[0]);
 }
+
+export interface StaffOption {
+  id: string;
+  fullName: string;
+  designation: string;
+}
+
+/** Orb task bridge picker (people.searchStaff): active staff by name, at most 20, under the caller's RLS; `id` narrows to one row. */
+export async function searchStaff(ctx: TenantContext, filter: { query?: string; id?: string }): Promise<StaffOption[]> {
+  const supabase = await createClient();
+  let builder = supabase
+    .from("staff")
+    .select("id, full_name, designation")
+    .eq("institution_id", ctx.institution.id)
+    .eq("status", "active")
+    .order("full_name")
+    .limit(20);
+  if (filter.id) builder = builder.eq("id", filter.id);
+  const trimmed = filter.query?.trim();
+  if (trimmed) builder = builder.ilike("full_name", `%${escapeIlike(trimmed)}%`);
+  const { data, error } = await builder;
+  if (error) throw error;
+  return (data ?? []).map((row) => ({ id: row.id, fullName: row.full_name, designation: row.designation }));
+}

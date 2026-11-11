@@ -26,6 +26,8 @@ vi.mock("@/lib/ai/gateway", () => ({ streamChat: streamChatMock }));
 vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock, toolNameFor: (name: string) => name.replace(/\./g, "_") }));
 vi.mock("@/modules/ai/agent/student-tools", () => ({ studentTools: studentToolsMock }));
 vi.mock("@/modules/ai/student-preferences", () => ({ getStudentPreferences: getStudentPreferencesMock }));
+const scopedChatExtrasMock = vi.fn();
+vi.mock("@/modules/study/scope-chat", () => ({ scopedChatExtras: scopedChatExtrasMock }));
 vi.mock("@/modules/ai/capabilities/resolve", () => ({
   roleAiConfig: roleAiConfigMock,
   enabledCapabilities: enabledCapabilitiesMock,
@@ -121,6 +123,46 @@ describe("POST /api/ai/agent/student", () => {
     streamChatMock.mockResolvedValueOnce(okStream());
     await POST(request(validBody()));
     expect(studentToolsMock).toHaveBeenCalledWith(expect.anything(), { visualsEnabled: false });
+  });
+
+  describe("a chosen study scope (0140)", () => {
+    const RAW = "call 98765 43210 or asha.v@example.com, aadhaar 1234 5678 9012";
+    const scopeBody = () => ({ ...validBody(), scopeId: "77777777-7777-4777-8777-777777777777" });
+    const scoped = () => ({
+      system: `What the student wants from this: ${RAW}`,
+      tools: { readScopeFile: { description: `Files: 1 = "notes ${RAW}"`, inputSchema: {}, execute: async () => "ok" } },
+      group: { key: "study_scope", label: "Chosen study scope", description: "x", tools: ["readScopeFile"] },
+      core: ["readScopeFile"],
+    });
+
+    it("cloud: the goal and file titles in the system block and tool description are redacted like message text", async () => {
+      process.env.GROQ_API_KEY = "test-key";
+      getTenantContextMock.mockResolvedValueOnce(studentCtx());
+      scopedChatExtrasMock.mockResolvedValueOnce(scoped());
+      streamChatMock.mockResolvedValueOnce(okStream());
+      await POST(request(scopeBody()));
+      const call = streamChatMock.mock.calls[0][0];
+      expect(call.mode).toBe("cloud");
+      const sent = `${call.system}\n${call.tools.readScopeFile.description}`;
+      for (const raw of ["98765 43210", "asha.v@example.com", "1234 5678 9012"]) expect(sent).not.toContain(raw);
+      for (const tag of ["[REDACTED_PHONE]", "[REDACTED_EMAIL]", "[REDACTED_ID]"]) {
+        expect(call.system).toContain(tag);
+        expect(call.tools.readScopeFile.description).toContain(tag);
+      }
+      expect(call.redactions).toBeGreaterThanOrEqual(6);
+      expect(typeof call.tools.readScopeFile.execute).toBe("function");
+    });
+
+    it("local only: the scope text is unchanged", async () => {
+      getTenantContextMock.mockResolvedValueOnce(studentCtx());
+      scopedChatExtrasMock.mockResolvedValueOnce(scoped());
+      streamChatMock.mockResolvedValueOnce(okStream());
+      await POST(request(scopeBody()));
+      const call = streamChatMock.mock.calls[0][0];
+      expect(call.mode).toBe("local");
+      expect(call.system).toContain(RAW);
+      expect(call.tools.readScopeFile.description).toContain(RAW);
+    });
   });
 
   it("returns ai_unavailable when the role's AI chat is disabled", async () => {

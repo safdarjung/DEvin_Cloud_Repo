@@ -606,6 +606,28 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
     write: [],
   },
+  // 0141 — timetable_changes: append-only log, no write grant or policy
+  // (definers + the substitutions trigger only). owner/principal/admin read
+  // every row; teacher/student/guardian read only published-version rows
+  // that explain their own slots/section — proved in
+  // tests/db/timetable-control.test.ts, not by the generated suite's probe.
+  timetable_changes: {
+    classes: ["S+G", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // timetable_rules: owner/principal/admin read; written only by set_timetable_rules.
+  timetable_rules: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+  },
+  // timetable_snapshots: owner/principal/admin read and insert; immutable.
+  timetable_snapshots: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
 
   // 0075 (M13-T2) — operations: facilities, transport, calendar. Explicit
   // row/stop/route scoping (guardian/student own assignment only, teacher
@@ -1325,6 +1347,19 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "student", "guardian"],
     write: ["student"],
   },
+  // 0140 — study help. Consents: own row only (student/teacher). Questions: the
+  // student and linked guardians read; the teachers of that (section, subject)
+  // read and answer; no leader read. Scoping proved in tests/db/study-help.test.ts.
+  study_ai_consents: {
+    classes: ["O"],
+    read: ["student", "teacher"],
+    write: ["student", "teacher"],
+  },
+  study_questions: {
+    classes: ["S+G", "T"],
+    read: ["teacher", "student", "guardian"],
+    write: ["teacher", "student"],
+  },
   // 0139 — textbooks + curriculum materials (ncert_textbooks is global, no
   // institution_id). Mapping: members read; leaders + the subject's teacher
   // write. Unit chapters: staff read, students/guardians of that grade+subject.
@@ -1345,5 +1380,13 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["S+G", "T", "O"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin", "teacher", "student"],
+  },
+  // 0143 — orb task bridge proposals: every member reads and writes only their
+  // own rows (outcome columns only, guard trigger state machine); owner/
+  // principal/admin (audit.read) also read every row. Proved in tests/db/ai-proposals.test.ts.
+  ai_proposals: {
+    classes: ["O", "A"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
   },
 };

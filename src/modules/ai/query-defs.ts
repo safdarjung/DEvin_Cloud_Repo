@@ -32,3 +32,20 @@ export const askNudgesQuery = defineQuery({
   permission: "notification.read",
   handler: (_input, ctx) => getAskAiNudges(ctx),
 });
+
+// Orb task bridge (design §1): picker options for one task field, read through the owning module's queries under the caller's RLS.
+export const taskEntityOptionsQuery = defineQuery({
+  name: "ai.taskEntityOptions",
+  module: "core",
+  schema: z
+    .object({
+      action: z.string().min(1).max(120),
+      path: z.string().min(1).max(200),
+      entity: z.string().min(1).max(60),
+      search: z.string().max(100).optional(),
+      scope: z.record(z.string().max(60), z.string().max(100)).optional(),
+    })
+    .strict(),
+  permission: "ai.chat",
+  handler: async (input, ctx) => (await import("./tasks/entity-options")).taskEntityOptions(ctx, input),
+});

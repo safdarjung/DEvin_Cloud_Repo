@@ -3,30 +3,45 @@
 // Study studio "Create": pick a source and a format, generate a draft through
 // the AI route, then keep it (save) or discard it. Students keep drafts as
 // they are; teachers can edit and choose sections to share with.
+// 0140: "Uploaded file" reads a PDF or photo the person may read (their own
+// shelf or a class file) through the multimodal gateway path; the first use
+// needs an explicit tick that the file is sent to the school's AI provider.
+// Teachers can also draft a three-level worksheet (saved unshared).
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LimitedBadge } from "@/components/honesty";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { describeActionError } from "@/lib/action-error";
 import type { ErrorCode } from "@/lib/actions/result";
 import { saveStudyMaterial, saveTeacherStudyMaterial } from "@/modules/study/actions";
-import { DIFFICULTIES, FORMAT_LABELS, QUIZ_LENGTHS, QUIZ_TYPES, STUDY_FORMATS, type Difficulty, type QuizType, type StudyFormat } from "@/modules/study/formats";
+import { giveFileReadingConsent, giveTeacherFileReadingConsent, saveWorksheet } from "@/modules/study/help.actions";
+import { DIFFICULTIES, FORMAT_LABELS, QUIZ_LENGTHS, QUIZ_TYPES, STUDY_FORMATS, type Difficulty, type GeneratedFormat, type QuizType } from "@/modules/study/formats";
 import { PASTE_MAX_CHARS, PASTE_MIN_CHARS } from "@/modules/study/schemas";
 import { ContentEditor } from "./ContentEditor";
 import { AiLabel, MaterialView } from "./MaterialView";
 
-type SourceKind = "unit" | "paste" | "resource" | "lesson_plan" | "textbook";
+type SourceKind = "unit" | "paste" | "resource" | "lesson_plan" | "textbook" | "file" | "units";
 
 interface Draft {
-  format: StudyFormat;
+  format: GeneratedFormat;
   title: string;
   sourceKind: SourceKind;
   subjectId: string | null;
   unitId: string | null;
   resourceId: string | null;
+  sourceMaterialId: string | null;
   content: unknown;
+  provider?: string;
+  model?: string;
+}
+
+export interface FileChoice {
+  id: string;
+  title: string;
+  fileName: string;
+  kind: "mine" | "class";
+  tooBig: boolean;
 }
 
 export interface StudyCreateProps {
@@ -38,10 +53,14 @@ export interface StudyCreateProps {
   lessonPlans?: { id: string; title: string; plannedOn: string }[];
   sections?: { id: string; label: string }[];
   initialUnitId?: string;
+  /** 0140: files the person may have the AI read, whether they have agreed already, and a file to start from. */
+  files?: FileChoice[];
+  fileConsent?: boolean;
+  initialFileId?: string;
 }
 
 const QUIZ_TYPE_LABELS: Record<QuizType, string> = { mcq: "Multiple choice", true_false: "True / false", short: "Short answer" };
-const SOURCE_LABELS: Record<SourceKind, string> = { unit: "Curriculum unit", paste: "Paste notes", resource: "Shared resource", lesson_plan: "Lesson plan", textbook: "Textbook chapter" };
+const SOURCE_LABELS: Record<SourceKind, string> = { unit: "Curriculum unit", paste: "Paste notes", resource: "Shared resource", lesson_plan: "Lesson plan", textbook: "Textbook chapter", file: "Uploaded file", units: "Chosen units" };
 const selectClass = "h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function Choice({ label, selected, onClick, disabled }: { label: string; selected: boolean; onClick: () => void; disabled?: boolean }) {
@@ -60,18 +79,23 @@ function Choice({ label, selected, onClick, disabled }: { label: string; selecte
   );
 }
 
-export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resources, lessonPlans = [], sections = [], initialUnitId }: StudyCreateProps) {
+export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resources, lessonPlans = [], sections = [], initialUnitId, files = [], fileConsent = false, initialFileId }: StudyCreateProps) {
   const router = useRouter();
   const [saving, startSave] = useTransition();
   const withUnits = subjects.filter((s) => s.units.length > 0);
   const initialSubject = withUnits.find((s) => s.units.some((u) => u.id === initialUnitId)) ?? withUnits[0];
-  const [kind, setKind] = useState<SourceKind>(withUnits.length ? "unit" : "paste");
+  const readable = files.filter((f) => !f.tooBig);
+  const [kind, setKind] = useState<SourceKind>(initialFileId && readable.some((f) => f.id === initialFileId) ? "file" : withUnits.length ? "unit" : "paste");
+  const [fileId, setFileId] = useState(initialFileId && readable.some((f) => f.id === initialFileId) ? initialFileId : readable[0]?.id ?? "");
+  const [consented, setConsented] = useState(fileConsent);
+  const [ticked, setTicked] = useState(false);
+  const [unitIds, setUnitIds] = useState<string[]>([]);
   const [subjectId, setSubjectId] = useState(initialSubject?.id ?? "");
   const [unitId, setUnitId] = useState(initialUnitId ?? initialSubject?.units[0]?.id ?? "");
   const [text, setText] = useState("");
   const [resourceId, setResourceId] = useState(resources[0]?.id ?? "");
   const [lessonPlanId, setLessonPlanId] = useState(lessonPlans[0]?.id ?? "");
-  const [format, setFormat] = useState<StudyFormat>("quick_summary");
+  const [format, setFormat] = useState<GeneratedFormat>("quick_summary");
   const [count, setCount] = useState<(typeof QUIZ_LENGTHS)[number]>(5);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [types, setTypes] = useState<QuizType[]>(["mcq", "true_false"]);
@@ -81,22 +105,33 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
   const [shareTo, setShareTo] = useState<string[]>([]);
 
   const subject = withUnits.find((s) => s.id === subjectId);
-  const sourceKinds: SourceKind[] = audience === "teacher" ? ["unit", "textbook", "lesson_plan", "resource", "paste"] : ["unit", "textbook", "resource", "paste"];
+  const sourceKinds: SourceKind[] = audience === "teacher" ? ["unit", "units", "file", "textbook", "lesson_plan", "resource", "paste"] : ["unit", "file", "textbook", "resource", "paste"];
+  const formats: GeneratedFormat[] = audience === "teacher" ? [...STUDY_FORMATS, "worksheet"] : [...STUDY_FORMATS];
 
   function sourceBody() {
     if (kind === "unit") return { kind, unitId };
     if (kind === "resource") return { kind, resourceId };
     if (kind === "lesson_plan") return { kind, lessonPlanId };
     if (kind === "textbook") return { kind, unitId, ...(text.trim() ? { text } : {}) };
+    if (kind === "file") return { kind, materialId: fileId };
+    if (kind === "units") return { kind, unitIds };
     return { kind, text, ...(subjectId && subjects.some((s) => s.id === subjectId) ? { subjectId } : {}) };
   }
 
   const sourceReady =
-    ((kind === "unit" || kind === "textbook") && unitId) || (kind === "resource" && resourceId) || (kind === "lesson_plan" && lessonPlanId) || (kind === "paste" && text.trim().length >= PASTE_MIN_CHARS);
+    ((kind === "unit" || kind === "textbook") && unitId) || (kind === "file" && fileId && (consented || ticked)) || (kind === "units" && unitIds.length > 0) || (kind === "resource" && resourceId) || (kind === "lesson_plan" && lessonPlanId) || (kind === "paste" && text.trim().length >= PASTE_MIN_CHARS);
 
   async function generate() {
     setGenerating(true);
     try {
+      if (kind === "file" && !consented) {
+        const agreed = audience === "teacher" ? await giveTeacherFileReadingConsent(institutionSlug, { agree: true }) : await giveFileReadingConsent(institutionSlug, { agree: true });
+        if (!agreed.ok) {
+          toast.error(describeActionError(agreed.error));
+          return;
+        }
+        setConsented(true);
+      }
       const res = await fetch(audience === "teacher" ? "/api/ai/study-teacher-generate" : "/api/ai/study-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,9 +163,29 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
       ...(draft.subjectId ? { subjectId: draft.subjectId } : {}),
       ...(draft.unitId ? { unitId: draft.unitId } : {}),
       ...(draft.resourceId ? { resourceId: draft.resourceId } : {}),
+      ...(draft.sourceMaterialId ? { sourceMaterialId: draft.sourceMaterialId } : {}),
     };
     startSave(async () => {
-      const res = audience === "teacher" ? await saveTeacherStudyMaterial(institutionSlug, { ...fields, sectionIds: shareTo }) : await saveStudyMaterial(institutionSlug, fields);
+      if (draft.format === "worksheet") {
+        const ws = await saveWorksheet(institutionSlug, {
+          title: fields.title,
+          sourceKind: draft.sourceKind,
+          content: fields.content,
+          ...(draft.subjectId ? { subjectId: draft.subjectId } : {}),
+          ...(draft.unitId ? { unitId: draft.unitId } : {}),
+          ...(draft.sourceMaterialId ? { sourceMaterialId: draft.sourceMaterialId } : {}),
+        });
+        if (!ws.ok) {
+          toast.error(describeActionError(ws.error));
+          return;
+        }
+        toast.success("Worksheet saved. Assign it as homework from Your worksheets below.");
+        setDraft(null);
+        router.refresh();
+        return;
+      }
+      const studyFields = { ...fields, format: draft.format as Exclude<GeneratedFormat, "worksheet"> };
+      const res = audience === "teacher" ? await saveTeacherStudyMaterial(institutionSlug, { ...studyFields, sectionIds: shareTo }) : await saveStudyMaterial(institutionSlug, studyFields);
       if (!res.ok) {
         toast.error(describeActionError(res.error));
         return;
@@ -162,7 +217,10 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
       <section aria-labelledby="draft-title" className="space-y-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <AiLabel />
-          <p className="text-xs text-muted-foreground">Draft only. Check it against your textbook; AI can make mistakes.</p>
+          <p className="text-xs text-muted-foreground">
+            Draft only. Check it against your textbook; AI can make mistakes.
+            {draft.sourceKind === "file" ? " Made by reading your file." : ""}
+          </p>
         </div>
         <label className="block">
           <span className="sr-only">Title</span>
@@ -181,7 +239,7 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
             <MaterialView format={draft.format} content={draft.content} showQuizAnswers={audience === "teacher"} />
           )}
         </div>
-        {audience === "teacher" && (
+        {audience === "teacher" && draft.format !== "worksheet" && (
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium">Share with your sections</legend>
             {sections.length === 0 ? (
@@ -201,8 +259,20 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
           </fieldset>
         )}
         <div className="flex flex-wrap gap-2">
-          <Button onClick={save} disabled={saving || !draft.title.trim() || (audience === "teacher" && shareTo.length === 0)}>
-            {saving ? "Saving…" : audience === "teacher" ? (shareTo.length ? `Save and share with ${shareTo.length}` : "Pick a section to share") : draft.format === "quiz" ? "Save and take quiz" : draft.format === "flashcards" ? "Save and drill" : "Save to library"}
+          <Button onClick={save} disabled={saving || !draft.title.trim() || (audience === "teacher" && draft.format !== "worksheet" && shareTo.length === 0)}>
+            {saving
+              ? "Saving…"
+              : draft.format === "worksheet"
+                ? "Save worksheet"
+                : audience === "teacher"
+                  ? shareTo.length
+                    ? `Save and share with ${shareTo.length}`
+                    : "Pick a section to share"
+                  : draft.format === "quiz"
+                    ? "Save and take quiz"
+                    : draft.format === "flashcards"
+                      ? "Save and drill"
+                      : "Save to library"}
           </Button>
           {audience === "teacher" && (
             <Button variant="outline" onClick={() => setEditing(!editing)}>
@@ -223,20 +293,71 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
         <legend className="text-sm font-semibold">1. Start from</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {sourceKinds.map((k) => (
-            <Choice key={k} label={SOURCE_LABELS[k]} selected={kind === k} onClick={() => setKind(k)} disabled={(k === "unit" || k === "textbook") && withUnits.length === 0} />
+            <Choice key={k} label={SOURCE_LABELS[k]} selected={kind === k} onClick={() => setKind(k)} disabled={(k === "unit" || k === "textbook" || k === "units") && withUnits.length === 0} />
           ))}
-          <div className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground" title="Not available yet">
-            Upload PDF or photo <LimitedBadge />
-          </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          The AI cannot read uploaded PDFs or photos yet. You can keep your files on the Subjects page; to use their content here, paste the text.
-        </p>
+
+        {kind === "file" &&
+          (files.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No files yet. {audience === "student" ? "Add a PDF or photo under My files on your Subjects page." : "Upload notes or a chapter PDF on a unit page."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              <label className="block text-sm">
+                File
+                <select className={selectClass} value={fileId} onChange={(e) => setFileId(e.target.value)}>
+                  {files.map((f) => (
+                    <option key={f.id} value={f.id} disabled={f.tooBig}>
+                      {f.title} · {f.kind === "mine" ? "my file" : "class file"}
+                      {f.tooBig ? " · too big to read" : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p role="note" className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                Your file is sent to the school&apos;s AI provider to be read. A PDF or photo cannot be screened for names first, so use study material only. Up to 10 MB and 30 pages, one file at a time. NCERT books are links, not stored files: the AI cannot read them here.
+              </p>
+              {!consented && (
+                <label className="flex min-h-11 items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-1 size-4" checked={ticked} onChange={(e) => setTicked(e.target.checked)} />
+                  <span>I agree that this file is sent to the school&apos;s AI provider to be read.</span>
+                </label>
+              )}
+            </div>
+          ))}
 
         {kind === "textbook" && (
           <p role="note" className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
             Uses the textbook chapter your teacher linked to the unit below. The AI has not read the book or its PDF: it works from the unit outline and anything you paste here. Open the chapter from your Subjects page.
           </p>
+        )}
+        {kind === "units" && (
+          <div className="space-y-2">
+            <label className="block text-sm">
+              Subject
+              <select
+                className={selectClass}
+                value={subjectId}
+                onChange={(e) => {
+                  setSubjectId(e.target.value);
+                  setUnitIds([]);
+                }}
+              >
+                {withUnits.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Units to prepare from">
+              {(subject?.units ?? []).map((u) => (
+                <Choice key={u.id} label={u.title} selected={unitIds.includes(u.id)} onClick={() => setUnitIds(unitIds.includes(u.id) ? unitIds.filter((x) => x !== u.id) : unitIds.length < 12 ? [...unitIds, u.id] : unitIds)} />
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Prepare from several units (and their linked chapters): explain for class (Key concepts), a lesson aid (One-page summary), a question set (Quiz) or a Worksheet. The AI works from unit outlines; it has not read the textbook.</p>
+          </div>
         )}
         {(kind === "unit" || kind === "textbook") && (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -331,7 +452,7 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">2. Make</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {STUDY_FORMATS.map((f) => (
+          {formats.map((f) => (
             <Choice key={f} label={FORMAT_LABELS[f]} selected={format === f} onClick={() => setFormat(f)} />
           ))}
         </div>
@@ -368,7 +489,9 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
       <div aria-live="polite">
         {generating ? (
           <div className="space-y-2" role="status">
-            <p className="text-sm text-muted-foreground">Writing your {FORMAT_LABELS[format].toLowerCase()}…</p>
+            <p className="text-sm text-muted-foreground">
+              {kind === "file" ? "Reading your file and writing" : "Writing"} your {FORMAT_LABELS[format].toLowerCase()}…
+            </p>
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-4 w-1/2" />

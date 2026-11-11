@@ -302,7 +302,18 @@ describe("M05 documents acceptance (HTTP actions + storage)", () => {
           .uploadToSignedUrl(reqOversizeBody.data.path, reqOversizeBody.data.token, oversizeBytes, {
             contentType: "application/pdf",
           });
-        expect(oversizeUpload.error).not.toBeNull();
+        // 0142: the bucket takes up to 50 MB (textbook PDFs), so an 11 MB object may be stored,
+        // but app.guard_document_object_size keeps a student document from going live with it.
+        if (oversizeUpload.error === null) {
+          const confirmOversize = await dispatchAction(
+            "document.confirmUpload",
+            { institution: inst.slug, input: { documentId: reqOversizeBody.data.documentId } },
+            adminAuth,
+          );
+          expect((await confirmOversize.json()).ok).toBe(false);
+          const [{ status: oversizeStatus }] = await sql`select status from public.documents where id = ${reqOversizeBody.data.documentId}`;
+          expect(oversizeStatus).toBe("pending");
+        }
 
         const reqBadMime = await dispatchAction(
           "document.requestUpload",
