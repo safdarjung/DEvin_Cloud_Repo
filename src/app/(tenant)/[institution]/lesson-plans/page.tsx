@@ -8,6 +8,7 @@ import { listLabelledTeachableSections, listSectionSubjects } from "@/modules/ac
 import { LessonPlansView } from "@/modules/academics/components/LessonPlansView";
 import { curriculumLessonPlans, curriculumSectionUnits } from "@/modules/academics/curriculum.queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
+import { unitChapters } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Lesson plans" };
 
@@ -44,6 +45,8 @@ export default async function LessonPlansPage({
     curriculumLessonPlans(ctx, { classSectionId: active.id }),
     Promise.all(subjects.map((s) => curriculumSectionUnits(ctx, { classSectionId: active.id, subjectId: s.id }))),
   ]);
+  const chapters = await unitChapters(ctx, unitsPerSubject.flat().map((u) => u.id));
+  const unitChapterLabels = Object.fromEntries(Object.entries(chapters).map(([id, c]) => [id, `Chapter ${c.chapterNo}${c.chapterTitle ? `: ${c.chapterTitle}` : ""} of ${c.bookTitle}`]));
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
 
   return (
@@ -58,6 +61,7 @@ export default async function LessonPlansPage({
         plans={plans}
         canManage={hasPermission(ctx, "assignment.manage")}
         canDraftWithAi={aiTaskOn(ctx, "lesson_plan_writer")}
+        unitChapterLabels={unitChapterLabels}
       />
     </div>
   );

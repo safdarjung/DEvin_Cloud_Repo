@@ -10,6 +10,8 @@ import { requireModule, requirePermission } from "@/lib/auth/require";
 import { listSectionOptions } from "@/modules/exams/queries";
 import { buildTimetableGrid, WEEKDAY_NAMES } from "@/modules/timetable/grid";
 import { timetableForSection, type SectionTimetableSlot } from "@/modules/timetable/queries";
+import { TimetableBookLink } from "@/modules/textbooks/components/BookLinks";
+import { textbooksForSection, type BookView } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Timetable" };
 
@@ -32,10 +34,11 @@ export default async function TimetablePage({
   const selected = sections.find((s) => s.id === section) ?? sections[0];
 
   let slots: SectionTimetableSlot[] = [];
+  let books: Record<string, BookView[]> = {};
   let loadError = false;
   if (selected) {
     try {
-      slots = await timetableForSection(ctx, selected.id);
+      [slots, { bySubject: books }] = await Promise.all([timetableForSection(ctx, selected.id), textbooksForSection(ctx, selected.id)]);
     } catch (e) {
       console.error("timetable load failed:", e instanceof Error ? e.message : e);
       loadError = true;
@@ -112,6 +115,7 @@ export default async function TimetablePage({
                                 <>
                                   <span className="block font-medium">{cell.subject?.name ?? "Period"}</span>
                                   <span className="block text-xs text-muted-foreground">{[cell.teacher.name, cell.room?.name].filter(Boolean).join(" · ")}</span>
+                                  {cell.subject && <TimetableBookLink books={books[cell.subject.id]} subjectName={cell.subject.name} />}
                                 </>
                               ) : (
                                 <span className="text-muted-foreground">—</span>

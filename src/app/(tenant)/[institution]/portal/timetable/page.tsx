@@ -10,6 +10,8 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { istNowHHMM, weekdayOf } from "@/modules/people/portal-dates";
 import { timetableForStudent, toHHMM, type SectionTimetableSlot } from "@/modules/timetable/queries";
+import { TimetableBookLink } from "@/modules/textbooks/components/BookLinks";
+import { textbooksForStudent } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Timetable" };
 
@@ -36,7 +38,7 @@ export default async function PortalTimetablePage({
   requirePermission(ctx, "timetable.read");
 
   const selection = await resolvePortalSelection(ctx, allParams.student, `/${institutionSlug}/portal/timetable`, allParams);
-  const slots = await timetableForStudent(ctx, selection.studentId);
+  const [slots, books] = await Promise.all([timetableForStudent(ctx, selection.studentId), textbooksForStudent(ctx, selection.studentId)]);
 
   const todayWeekday = weekdayOf(todayInInstitutionTimezone(ctx));
   const nowHHMM = istNowHHMM();
@@ -94,6 +96,7 @@ export default async function PortalTimetablePage({
                               <>
                                 <span className="block font-medium">{s.subject?.name ?? "—"}</span>
                                 <span className="block text-xs text-muted-foreground">{[s.teacher.name, s.room?.name].filter(Boolean).join(" · ")}</span>
+                                {s.subject && <TimetableBookLink books={books.bySubject[s.subject.id]} subjectName={s.subject.name} />}
                                 {current && <Badge variant="info" className="mt-1">Now</Badge>}
                               </>
                             ) : (

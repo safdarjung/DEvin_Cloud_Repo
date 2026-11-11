@@ -62,6 +62,8 @@ const APP_AUTHENTICATED = [
   "app.my_staff_ids",
   "app.my_student_ids",
   "app.my_student_section_ids",
+  "app.my_studied_grade_subjects",
+  "app.my_taught_grade_subjects",
   "app.my_taught_section_ids",
   "app.my_taught_section_subjects",
   "app.my_taught_student_ids",

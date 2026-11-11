@@ -17,7 +17,7 @@ import { PASTE_MAX_CHARS, PASTE_MIN_CHARS } from "@/modules/study/schemas";
 import { ContentEditor } from "./ContentEditor";
 import { AiLabel, MaterialView } from "./MaterialView";
 
-type SourceKind = "unit" | "paste" | "resource" | "lesson_plan";
+type SourceKind = "unit" | "paste" | "resource" | "lesson_plan" | "textbook";
 
 interface Draft {
   format: StudyFormat;
@@ -41,7 +41,7 @@ export interface StudyCreateProps {
 }
 
 const QUIZ_TYPE_LABELS: Record<QuizType, string> = { mcq: "Multiple choice", true_false: "True / false", short: "Short answer" };
-const SOURCE_LABELS: Record<SourceKind, string> = { unit: "Curriculum unit", paste: "Paste notes", resource: "Shared resource", lesson_plan: "Lesson plan" };
+const SOURCE_LABELS: Record<SourceKind, string> = { unit: "Curriculum unit", paste: "Paste notes", resource: "Shared resource", lesson_plan: "Lesson plan", textbook: "Textbook chapter" };
 const selectClass = "h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 function Choice({ label, selected, onClick, disabled }: { label: string; selected: boolean; onClick: () => void; disabled?: boolean }) {
@@ -81,17 +81,18 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
   const [shareTo, setShareTo] = useState<string[]>([]);
 
   const subject = withUnits.find((s) => s.id === subjectId);
-  const sourceKinds: SourceKind[] = audience === "teacher" ? ["unit", "lesson_plan", "resource", "paste"] : ["unit", "resource", "paste"];
+  const sourceKinds: SourceKind[] = audience === "teacher" ? ["unit", "textbook", "lesson_plan", "resource", "paste"] : ["unit", "textbook", "resource", "paste"];
 
   function sourceBody() {
     if (kind === "unit") return { kind, unitId };
     if (kind === "resource") return { kind, resourceId };
     if (kind === "lesson_plan") return { kind, lessonPlanId };
+    if (kind === "textbook") return { kind, unitId, ...(text.trim() ? { text } : {}) };
     return { kind, text, ...(subjectId && subjects.some((s) => s.id === subjectId) ? { subjectId } : {}) };
   }
 
   const sourceReady =
-    (kind === "unit" && unitId) || (kind === "resource" && resourceId) || (kind === "lesson_plan" && lessonPlanId) || (kind === "paste" && text.trim().length >= PASTE_MIN_CHARS);
+    ((kind === "unit" || kind === "textbook") && unitId) || (kind === "resource" && resourceId) || (kind === "lesson_plan" && lessonPlanId) || (kind === "paste" && text.trim().length >= PASTE_MIN_CHARS);
 
   async function generate() {
     setGenerating(true);
@@ -222,17 +223,22 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
         <legend className="text-sm font-semibold">1. Start from</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {sourceKinds.map((k) => (
-            <Choice key={k} label={SOURCE_LABELS[k]} selected={kind === k} onClick={() => setKind(k)} disabled={k === "unit" && withUnits.length === 0} />
+            <Choice key={k} label={SOURCE_LABELS[k]} selected={kind === k} onClick={() => setKind(k)} disabled={(k === "unit" || k === "textbook") && withUnits.length === 0} />
           ))}
           <div className="flex min-h-11 items-center justify-between gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground" title="Not available yet">
             Upload PDF or photo <LimitedBadge />
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Uploads are not available yet: reading PDFs and photos of notes needs a file step this school&apos;s AI setup cannot do safely. Paste the text instead.
+          The AI cannot read uploaded PDFs or photos yet. You can keep your files on the Subjects page; to use their content here, paste the text.
         </p>
 
-        {kind === "unit" && (
+        {kind === "textbook" && (
+          <p role="note" className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+            Uses the textbook chapter your teacher linked to the unit below. The AI has not read the book or its PDF: it works from the unit outline and anything you paste here. Open the chapter from your Subjects page.
+          </p>
+        )}
+        {(kind === "unit" || kind === "textbook") && (
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-sm">
               Subject
@@ -293,6 +299,18 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
               </select>
             </label>
           ))}
+        {kind === "textbook" && (
+          <label className="block text-sm">
+            Text from the chapter (optional)
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, PASTE_MAX_CHARS))}
+              rows={4}
+              placeholder="Paste a passage you want covered. Without it, the AI uses only the unit outline."
+              className="mt-1 w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+        )}
         {kind === "paste" && (
           <label className="block text-sm">
             Your notes or material

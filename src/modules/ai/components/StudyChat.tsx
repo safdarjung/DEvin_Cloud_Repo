@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
 import { BlockSchema, type Block } from "@/modules/ai/blocks/schemas";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
+import { ChatFileAttach } from "@/modules/textbooks/components/ChatFileAttach";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { lastHasText, plainChatText, readToolLabel } from "@/modules/ai/chat-text";
 import type { StudentSkill } from "@/modules/ai/prompts/student-skills";
@@ -331,6 +332,7 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
       )}
 
       <form onSubmit={handleSubmit} className="sticky bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] lg:bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
+        <ChatFileAttach institutionSlug={institutionSlug} disabled={busy} onReady={(text) => void sendMessage({ text })} />
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}

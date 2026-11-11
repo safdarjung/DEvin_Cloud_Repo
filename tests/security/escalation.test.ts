@@ -309,6 +309,32 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ format: "quick_summary", title: "Probe", sourceKind: "paste", content: { summary: "Probe.", keyPoints: ["a"] }, sectionIds: [U()] }),
   },
   "study.teacher.material.delete": { permission: "resource.manage", input: () => ({ materialId: U() }) },
+  // 0139 textbooks + curriculum materials. Upload/attach: staff or students only (guardian and
+  // office roles hold academics.read but own no class files); suggest: students only.
+  "textbook.suggestNcert": { permission: "resource.manage", input: () => ({}) },
+  "textbook.add": { permission: "resource.manage", input: () => ({ gradeId: U(), subjectId: U(), book: { source: "ncert", code: "fegp1" } }) },
+  "textbook.remove": { permission: "resource.manage", input: () => ({ textbookId: U() }) },
+  "textbook.chapterTitles.set": { permission: "resource.manage", input: () => ({ textbookId: U(), titles: { "1": "Patterns" } }) },
+  "textbook.unitChapter.set": { permission: "resource.manage", input: () => ({ unitId: U(), textbookId: U(), chapterNo: 2 }) },
+  "curriculum.material.requestUpload": {
+    permission: "academics.read",
+    input: () => ({ fileName: "notes.pdf", mime: "application/pdf", sizeBytes: 100, target: { gradeId: U(), subjectId: U() } }),
+    rolesForbidden: ["admissions", "accountant", "exam_controller", "guardian"],
+  },
+  "curriculum.material.confirmUpload": { permission: "academics.read", input: () => ({ materialId: U() }) },
+  "curriculum.material.attach": {
+    permission: "academics.read",
+    input: () => ({ materialId: U(), gradeId: U(), subjectId: U(), share: "private" }),
+    rolesForbidden: ["admissions", "accountant", "exam_controller", "guardian"],
+  },
+  "curriculum.material.suggest": {
+    permission: "academics.read",
+    input: () => ({ materialId: U(), suggest: true }),
+    rolesForbidden: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "guardian"],
+  },
+  "curriculum.material.review": { permission: "resource.manage", input: () => ({ materialId: U(), decision: "approve" }) },
+  "curriculum.material.delete": { permission: "academics.read", input: () => ({ materialId: U() }) },
+  "curriculum.material.readUrl": { permission: "academics.read", input: () => ({ materialId: U() }) },
   "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
   "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
   "people.guardian.link": {

@@ -121,6 +121,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/clubs", label: "Clubs & houses", icon: Trophy, permission: "club.read", group: "Academics", module: "clubs" },
   { href: "/achievements", label: "Achievements", icon: Medal, permission: "achievement.read", group: "Academics", module: "achievements" },
   { href: "/resources", label: "Resources", icon: LibraryBig, permission: "resource.read", group: "Academics", module: "resources" },
+  // 0139: the school's (grade, subject) -> textbook mapping (NCERT links or its own books); teachers edit only subjects they teach.
+  { href: "/textbooks", label: "Textbooks", icon: BookOpen, permission: "resource.manage", group: "Academics" },
   // Teachers build and share study material; leaders see school-wide engagement on the same page.
   { href: "/study-studio", label: "Study studio", icon: Layers, permission: "resource.manage", group: "Academics", module: "ai_teacher" },
   { href: "/admissions", label: "Admissions", icon: ClipboardList, permission: "admissions.enquiry.read", group: "Operations", module: "admissions" },

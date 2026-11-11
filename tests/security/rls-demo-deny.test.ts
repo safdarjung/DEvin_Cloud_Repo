@@ -32,6 +32,7 @@ const EMPTY_IN_DEMO = new Set<string>([
   "safety_alert_sections", // 0129: seeded alerts target all/staff, none targets specific sections
   "student_lifecycle_events", // M14: no lifecycle event recorded in the demo tenant
   "dashboard_preferences", // 0135: no custom layout saved in the demo tenant
+  "curriculum_materials", // 0139: uploads need a real stored file; none is uploaded in the demo tenant
 ]);
 
 // Roles that read only the rows they take part in. The demo seed gives the demo teacher, guardian and student

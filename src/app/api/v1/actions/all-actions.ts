@@ -76,3 +76,5 @@ import "@/modules/canteen/actions";
 import "@/modules/scholarships/actions";
 import "@/modules/school-labs/actions";
 import "@/modules/safety/actions";
+import "@/modules/textbooks/actions";
+import "@/modules/textbooks/materials.actions";

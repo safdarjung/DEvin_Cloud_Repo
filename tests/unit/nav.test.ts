@@ -19,6 +19,8 @@ const F18_LEADERS = [
   "/achievements", "/safety", "/compliance", "/resources", "/duties",
   // Study studio (resource.manage): leaders see engagement, teachers share material.
   "/study-studio",
+  // 0139 textbooks mapping (resource.manage).
+  "/textbooks",
 ];
 // Permission-gated links (insight.read / forecast.read / agent.run): staff roles
 // without them don't get dead pages. Demo tenant, no module settings.
@@ -101,7 +103,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/timetable", "/assistant",
     "/exams/seating", "/clubs", "/staff", "/safety", "/resources", "/duties"],
   teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages",
-    "/behaviour", "/clubs", "/labs", "/staff", "/visitors", "/helpdesk", "/forms", "/achievements", "/safety", "/resources", "/duties", "/study-studio"],
+    "/behaviour", "/clubs", "/labs", "/staff", "/visitors", "/helpdesk", "/forms", "/achievements", "/safety", "/resources", "/duties", "/study-studio", "/textbooks"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   // They get the portal's own sidebar (formerly PortalNav's tab strip).

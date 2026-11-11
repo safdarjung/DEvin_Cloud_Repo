@@ -1325,4 +1325,25 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "student", "guardian"],
     write: ["student"],
   },
+  // 0139 — textbooks + curriculum materials (ncert_textbooks is global, no
+  // institution_id). Mapping: members read; leaders + the subject's teacher
+  // write. Unit chapters: staff read, students/guardians of that grade+subject.
+  // Materials: class files to staff + that grade/subject's students/guardians;
+  // a student's private file to them + guardian only; uploads by staff/students.
+  // Scoping proved in tests/db/textbooks-materials.test.ts.
+  subject_textbooks: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  curriculum_unit_chapters: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  curriculum_materials: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher", "student"],
+  },
 };

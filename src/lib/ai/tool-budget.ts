@@ -100,6 +100,7 @@ const SYNONYMS: Readonly<Record<string, string>> = {
   merit: "behaviour point", concession: "concession scholarship", scholarship: "concession scholarship",
   workflow: "workflow automation", approval: "approval pending", page: "navigate link", where: "navigate link", open: "navigate link",
   link: "navigate link", task: "task follow", certificate: "certificate", seat: "seating exam",
+  attached: "attach file upload", uploaded: "upload file attach", pdf: "file upload",
 };
 
 function stem(word: string): string {

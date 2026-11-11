@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { lastHasText, navigateLink, plainChatText, readToolLabel } from "@/modules/ai/chat-text";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
+import { ChatFileAttach } from "@/modules/textbooks/components/ChatFileAttach";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
 import type { QuizContent } from "@/modules/academics/assignments.schemas";
@@ -257,6 +258,7 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
       </Card>
 
       <form onSubmit={handleSubmit} className="sticky bottom-0 -mx-1 flex gap-2 bg-background px-1 pb-2 pt-2">
+        <ChatFileAttach institutionSlug={institutionSlug} disabled={busy} onReady={(text) => void sendMessage({ text })} />
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}

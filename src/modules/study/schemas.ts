@@ -16,9 +16,11 @@ const unitSource = z.object({ kind: z.literal("unit"), unitId: uuid }).strict();
 const pasteSource = z.object({ kind: z.literal("paste"), text: z.string().trim().min(PASTE_MIN_CHARS).max(PASTE_MAX_CHARS), subjectId: uuid.optional() }).strict();
 const resourceSource = z.object({ kind: z.literal("resource"), resourceId: uuid }).strict();
 const lessonPlanSource = z.object({ kind: z.literal("lesson_plan"), lessonPlanId: uuid }).strict();
+// 0139: a unit's linked textbook chapter (book + chapter reference only; the AI never reads the PDF) plus optional pasted text.
+const textbookSource = z.object({ kind: z.literal("textbook"), unitId: uuid, text: z.string().trim().max(PASTE_MAX_CHARS).optional() }).strict();
 
-export const StudentSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource]);
-export const TeacherSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, lessonPlanSource]);
+export const StudentSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, textbookSource]);
+export const TeacherSourceSchema = z.discriminatedUnion("kind", [unitSource, pasteSource, resourceSource, lessonPlanSource, textbookSource]);
 export type StudySource = z.infer<typeof TeacherSourceSchema>;
 
 const QuizRequestSchema = z
@@ -76,7 +78,7 @@ const materialFields = {
   title,
   subjectId: uuid.optional(),
   unitId: uuid.optional(),
-  sourceKind: z.enum(["unit", "paste", "resource", "lesson_plan"]),
+  sourceKind: z.enum(["unit", "paste", "resource", "lesson_plan", "textbook"]),
   resourceId: uuid.optional(),
   content: z.unknown(),
 };

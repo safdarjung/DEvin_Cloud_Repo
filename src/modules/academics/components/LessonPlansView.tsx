@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/states";
@@ -33,6 +34,8 @@ interface Props {
   canManage: boolean;
   /** features-18 §C: lesson_plan_writer capability on for this role. */
   canDraftWithAi?: boolean;
+  /** 0139: unit id -> "Chapter 4 of Ganita Prakash". */
+  unitChapterLabels?: Record<string, string>;
 }
 
 const NO_UNIT = "none";
@@ -48,7 +51,7 @@ interface Draft {
   resources: string;
 }
 
-export function LessonPlansView({ institutionSlug, classSectionId, today, subjects, plans, canManage, canDraftWithAi = false }: Props) {
+export function LessonPlansView({ institutionSlug, classSectionId, today, subjects, plans, canManage, canDraftWithAi = false, unitChapterLabels = {} }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -209,7 +212,12 @@ export function LessonPlansView({ institutionSlug, classSectionId, today, subjec
                     <ul className="divide-y">
                       {s.units.map((u) => (
                         <li key={u.id} className="flex min-h-11 items-center justify-between gap-3 py-2 text-sm">
-                          <span className="min-w-0 truncate">{u.title}</span>
+                          <span className="min-w-0">
+                            <Link href={`/${institutionSlug}/assignments/units/${u.id}`} className="block truncate underline-offset-4 hover:underline">
+                              {u.title}
+                            </Link>
+                            <span className="block truncate text-xs text-muted-foreground">{unitChapterLabels[u.id] ?? "Book & files"}</span>
+                          </span>
                           {u.coveredOn ? (
                             <span className="flex shrink-0 items-center gap-2">
                               <Badge variant="success">Covered</Badge>

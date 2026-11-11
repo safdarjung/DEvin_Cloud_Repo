@@ -35,6 +35,7 @@ import { listMyChildren } from "@/modules/people/queries";
 import { CAPABILITIES, type CapabilityKey } from "@/modules/ai/capabilities/catalog";
 import { enabledCapabilities, previewEnabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { systemPromptFor } from "@/modules/ai/kernel/personas";
+import { FILE_ATTACH_GROUP, FILE_ATTACH_TOOL, fileAttachTool } from "@/modules/textbooks/ai-attach-tool";
 
 const MAX_BODY_BYTES = 64 * 1024;
 
@@ -159,6 +160,8 @@ export interface ChatToolsetInput {
   onSource?: (query: string, params: unknown) => void;
   /** Guardian only: every tool's studentId is pinned to this verified child. */
   childId?: string;
+  /** Recent user texts: the file-attach draft tool rides along only when they mention an upload. */
+  texts?: readonly string[];
 }
 
 /**
@@ -215,6 +218,12 @@ export async function buildChatToolset(ctx: TenantContext, input: ChatToolsetInp
     ];
     return { key, label: cap.label, description: cap.description, tools: [...new Set(names)].filter((name) => name in tools) };
   });
+  // 0139: propose where a chat-uploaded file goes (draft only; the person confirms).
+  const attach = fileAttachTool(ctx, personaRole, input.texts ?? []);
+  if (attach) {
+    tools[FILE_ATTACH_TOOL] = attach;
+    groups.push(FILE_ATTACH_GROUP);
+  }
   return { tools, groups };
 }
 
@@ -302,7 +311,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
 
   const nonce = crypto.randomUUID();
   const sources = createSourceLog();
-  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, mode, nonce, onSource: sources.add, childId });
+  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, mode, nonce, onSource: sources.add, childId, texts: recentUserTexts(strippedMessages) });
 
   const studentPrefs = personaRole === "student" ? await getStudentPreferences(ctx) : undefined;
 

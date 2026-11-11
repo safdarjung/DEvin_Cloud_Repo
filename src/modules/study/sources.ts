@@ -156,6 +156,32 @@ async function pasteSource(supabase: Client, ctx: TenantContext, text: string, s
   };
 }
 
+/** 0139: the unit (same access rule as a unit source) plus its linked textbook chapter reference and any pasted chapter text. The book itself is never read. */
+async function textbookSource(supabase: Client, ctx: TenantContext, unitId: string, text: string | undefined, asStudent: boolean): Promise<ResolvedSource> {
+  const unit = await unitSource(supabase, ctx, unitId, asStudent);
+  const { data: link, error } = await supabase
+    .from("curriculum_unit_chapters")
+    .select("chapter_no, subject_textbooks(custom_title, custom_publisher, chapter_titles, ncert_textbooks(title, class_level))")
+    .eq("curriculum_unit_id", unitId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throw error;
+  const book = link?.subject_textbooks as { custom_title: string | null; custom_publisher: string | null; chapter_titles: unknown; ncert_textbooks: { title: string; class_level: number | null } | null } | null;
+  if (!link || !book) throw new AppError("validation_failed", "This unit has no textbook chapter linked yet. Ask your teacher, or use the unit or pasted notes instead.");
+  const bookName = book.ncert_textbooks ? `${book.ncert_textbooks.title} (NCERT${book.ncert_textbooks.class_level ? `, Class ${book.ncert_textbooks.class_level}` : ""})` : `${book.custom_title}${book.custom_publisher ? ` (${book.custom_publisher})` : ""}`;
+  const chapterTitle = ((book.chapter_titles ?? {}) as Record<string, string>)[String(link.chapter_no)];
+  return {
+    ...unit,
+    sourceLabel: "a curriculum unit and a reference to its textbook chapter (the AI has NOT read the book)",
+    lines: [
+      `Textbook reference: chapter ${link.chapter_no}${chapterTitle ? ` ("${chapterTitle}")` : ""} of ${bookName}.`,
+      "You have not read this book or its PDF. Do not quote it or claim what it says; work only from the unit outline below and any text the student pasted.",
+      ...unit.lines,
+      text ? `Text pasted from the chapter: ${text}` : "",
+    ].filter(Boolean),
+  };
+}
+
 export async function resolveStudySource(ctx: TenantContext, source: StudySource, audience: "student" | "teacher"): Promise<ResolvedSource> {
   const supabase = await createClient();
   switch (source.kind) {
@@ -167,5 +193,7 @@ export async function resolveStudySource(ctx: TenantContext, source: StudySource
       return lessonPlanSource(supabase, ctx, source.lessonPlanId);
     case "paste":
       return pasteSource(supabase, ctx, source.text, source.subjectId);
+    case "textbook":
+      return textbookSource(supabase, ctx, source.unitId, source.text, audience === "student");
   }
 }

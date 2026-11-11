@@ -10,6 +10,10 @@ import { SubjectCurriculum } from "@/modules/academics/components/SubjectCurricu
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { getStudentProfile } from "@/modules/people/queries";
+import { BookList } from "@/modules/textbooks/components/BookLinks";
+import { MaterialsPanel } from "@/modules/textbooks/components/MaterialsPanel";
+import { classMaterials, panelItems, studentShelf, type MaterialItem } from "@/modules/textbooks/materials.queries";
+import { textbooksForSection, unitChapters as loadUnitChapters } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Subjects" };
 
@@ -31,6 +35,43 @@ export default async function PortalSubjectsPage({
   const profile = await getStudentProfile(ctx, selection.studentId);
   const sectionId = profile?.enrolment?.classSectionId;
   const subjects = sectionId ? await listPortalSubjects(ctx, sectionId) : null;
+  const isStudent = ctx.membership.role === "student";
+  const books = sectionId ? await textbooksForSection(ctx, sectionId) : { gradeId: null, bySubject: {} };
+  const [chapters, classFiles, shelf] = await Promise.all([
+    loadUnitChapters(ctx, (subjects ?? []).flatMap((s) => s.units.map((u) => u.id))),
+    books.gradeId ? classMaterials(ctx, { gradeId: books.gradeId }) : Promise.resolve([] as MaterialItem[]),
+    studentShelf(ctx, { studentId: selection.studentId }),
+  ]);
+  const viewer = { isStudent, canReview: false, canManageClass: false };
+  const unfiled = shelf.filter((m) => m.subjectId === null);
+  const extras = Object.fromEntries(
+    (subjects ?? []).map((sub) => [
+      sub.id,
+      <div key={sub.id} className="mt-4 space-y-4 border-t border-border pt-3">
+        <section aria-label={`${sub.name} textbooks`} className="space-y-2">
+          <h3 className="text-sm font-semibold">Textbooks</h3>
+          <BookList books={books.bySubject[sub.id] ?? []} empty="Your school has not set a textbook for this subject yet." />
+        </section>
+        <MaterialsPanel
+          institutionSlug={institutionSlug}
+          idPrefix={`class-${sub.id}`}
+          heading="Class materials"
+          description="Files your teachers shared for this subject."
+          items={panelItems(classFiles.filter((m) => m.subjectId === sub.id), viewer)}
+          emptyText="No class files yet."
+        />
+        <MaterialsPanel
+          institutionSlug={institutionSlug}
+          idPrefix={`mine-${sub.id}`}
+          heading={isStudent ? "My files" : `${selection.studentName}'s files`}
+          description={isStudent ? "Only you and your parent or guardian can see these. Suggest one to your teacher to share it with the class." : "Private to your child; read-only here."}
+          items={panelItems(shelf.filter((m) => m.subjectId === sub.id), viewer)}
+          emptyText="No files yet."
+          upload={isStudent && books.gradeId ? { target: { gradeId: books.gradeId, subjectId: sub.id }, label: "Add a file" } : undefined}
+        />
+      </div>,
+    ]),
+  );
 
   return (
     <>
@@ -62,7 +103,12 @@ export default async function PortalSubjectsPage({
               />
             </Widget>
           )}
-          <SubjectCurriculum subjects={subjects} />
+          {unfiled.length > 0 && (
+            <Widget title="Files waiting for a subject" description="Uploaded from the study chat. Ask the assistant where to put them, or delete them.">
+              <MaterialsPanel institutionSlug={institutionSlug} idPrefix="unfiled" heading="Unfiled files" items={panelItems(unfiled, viewer)} emptyText="None." />
+            </Widget>
+          )}
+          <SubjectCurriculum subjects={subjects} unitChapters={chapters} extras={extras} />
         </FadeIn>
       ) : (
         <EmptyState title="Not enrolled in a class section" description="Ask the school office to enrol you for this year." />

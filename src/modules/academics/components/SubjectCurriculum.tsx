@@ -1,13 +1,24 @@
+import type { ReactNode } from "react";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import type { PortalSubject } from "@/modules/academics/portal-subjects.queries";
 import { FadeIn } from "@/components/motion";
 import { ProgressBar } from "@/components/widgets/viz";
+import { UnitChapterBadge } from "@/modules/textbooks/components/BookLinks";
+import type { UnitChapterView } from "@/modules/textbooks/queries";
 
 const date = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 
-/** Read-only subjects with per-unit coverage status for the student's section. */
-export function SubjectCurriculum({ subjects }: { subjects: PortalSubject[] }) {
+/** Read-only subjects with per-unit coverage status for the student's section; optional textbook chapter per unit and extra content (books, files) per subject. */
+export function SubjectCurriculum({
+  subjects,
+  unitChapters = {},
+  extras = {},
+}: {
+  subjects: PortalSubject[];
+  unitChapters?: Record<string, UnitChapterView>;
+  extras?: Record<string, ReactNode>;
+}) {
   if (subjects.length === 0) {
     return <EmptyState title="No subjects assigned yet" description="Subjects appear once teachers are assigned to your section." />;
   }
@@ -16,7 +27,7 @@ export function SubjectCurriculum({ subjects }: { subjects: PortalSubject[] }) {
       {subjects.map((s, i) => {
         const covered = s.units.filter((u) => u.coveredOn).length;
         return (
-          <FadeIn as="section" delay={Math.min(i, 8) * 0.04} key={s.id} className="motion-safe:fill-mode-backwards rounded-md border border-border bg-card p-4">
+          <FadeIn as="section" delay={Math.min(i, 8) * 0.04} key={s.id} className="motion-safe:fill-mode-backwards min-w-0 rounded-md border border-border bg-card p-4">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-base font-semibold">{s.name}</h2>
               <span className="text-xs text-muted-foreground tabular-nums">
@@ -37,7 +48,10 @@ export function SubjectCurriculum({ subjects }: { subjects: PortalSubject[] }) {
               <ol className="mt-3 divide-y divide-border">
                 {s.units.map((u) => (
                   <li key={u.id} className="flex min-h-10 items-center justify-between gap-3 py-2 text-sm">
-                    <span className="min-w-0 truncate">{u.title}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate">{u.title}</span>
+                      {unitChapters[u.id] && <UnitChapterBadge chapter={unitChapters[u.id]!} />}
+                    </span>
                     {u.coveredOn ? (
                       <Badge variant="success">Covered {date.format(new Date(u.coveredOn))}</Badge>
                     ) : (
@@ -47,6 +61,7 @@ export function SubjectCurriculum({ subjects }: { subjects: PortalSubject[] }) {
                 ))}
               </ol>
             )}
+            {extras[s.id]}
           </FadeIn>
         );
       })}

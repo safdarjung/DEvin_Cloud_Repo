@@ -130,6 +130,7 @@ export const PAGE_PATHS = new Set([
   "ptm",
   "question-bank",
   "resources",
+  "textbooks",
   "safety",
   "settings/ai",
   "settings/modules",
