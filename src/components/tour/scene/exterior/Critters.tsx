@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { ROOM_ORDER, roomToWorld } from "../../path";
-import { C, mat } from "../kit";
+import { C, canvasTexture, mat } from "../kit";
 
 type V3 = [number, number, number];
 
@@ -123,6 +123,16 @@ export function Birds({ y = 15, z = -35, speed = 1.2, phase = 0 }: { y?: number;
 /* ---------- dust motes drifting up through the sunlight in every room ---------- */
 
 const MOTES_PER_ROOM = 26;
+/** Soft round sprite: a bare point is a hard square. */
+const moteTexture = () =>
+  canvasTexture("mote", 32, 32, (g) => {
+    const r = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    r.addColorStop(0, "rgba(255,255,255,1)");
+    r.addColorStop(0.35, "rgba(255,255,255,0.55)");
+    r.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = r;
+    g.fillRect(0, 0, 32, 32);
+  });
 
 export function DustMotes() {
   const points = useRef<THREE.Points>(null);
@@ -162,7 +172,7 @@ export function DustMotes() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#fff6d8" size={0.045} sizeAttenuation transparent opacity={0.75} depthWrite={false} toneMapped={false} />
+      <pointsMaterial color="#fff6d8" map={moteTexture()} size={0.085} sizeAttenuation transparent opacity={0.7} depthWrite={false} toneMapped={false} />
     </points>
   );
 }

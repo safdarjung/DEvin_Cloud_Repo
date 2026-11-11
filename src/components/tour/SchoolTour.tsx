@@ -3,8 +3,8 @@
 import type Lenis from "lenis";
 import { ArrowRight, X } from "lucide-react";
 import dynamic from "next/dynamic";
-import { useRef, useState, useSyncExternalStore } from "react";
-import { STOPS, dwellCentre } from "./path";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { STOPS, dwellCentre, stopIndexAt } from "./path";
 import { TOUR_ROLES, type TourRoleKey } from "./roles";
 import { DemoForm, FinaleCard, GateCard, ROLE, RoleCard, accentVar, roleAt } from "./TourCards";
 import { TourFilm } from "./TourFilm";
@@ -68,6 +68,22 @@ export function SchoolTour({ videos }: { videos: readonly TourRoleKey[] }) {
     if (lenis.current) lenis.current.scrollTo(y, { duration: 2.4 });
     else window.scrollTo({ top: y });
   };
+
+  // Left / right arrows step between stops (up / down keep scrolling). Not while the explainer dialog is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = filmRoot.current;
+      if (!el || dialog.current?.open || e.altKey || e.ctrlKey || e.metaKey || (e.key !== "ArrowRight" && e.key !== "ArrowLeft")) return;
+      if (e.target instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      const here = stopIndexAt(-el.getBoundingClientRect().top / Math.max(1, el.offsetHeight - window.innerHeight));
+      const next = here + (e.key === "ArrowRight" ? 1 : -1);
+      if (next < 0 || next >= STOPS.length) return;
+      e.preventDefault();
+      jump(next);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const openFeatures = (key: TourRoleKey) => {
     setOpenKey(key);

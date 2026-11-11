@@ -40,10 +40,12 @@ export function Backdrop({ accent }: { accent: string }) {
   );
   return (
     <AbsoluteFill style={{ background: PAPER, overflow: "hidden" }}>
+      <AbsoluteFill style={{ backgroundImage: `radial-gradient(${INK}16 2px, transparent 2.6px)`, backgroundSize: "34px 34px", backgroundPosition: "9px 9px" }} />
       {blob(520, -180, -220, 0.14, 0)}
       {blob(380, 1010, 470, 0.18, 2)}
       {blob(150, 1090, 30, 0.26, 4)}
       {blob(90, 120, 600, 0.2, 1)}
+      <AbsoluteFill style={{ background: `radial-gradient(ellipse at 50% 45%, transparent 58%, ${INK}14 100%)` }} />
     </AbsoluteFill>
   );
 }

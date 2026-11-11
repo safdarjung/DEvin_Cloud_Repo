@@ -1,13 +1,13 @@
 "use client";
 
 import { useFrame } from "@react-three/fiber";
-import { useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { CORRIDOR_END_Z, FINALE_Z, STOPS } from "../../path";
 import { TOUR_ROLES } from "../../roles";
 import { Blob, Bunting } from "../interior/decor";
 import { Tree } from "./Trees";
-import { Ball, C, Cyl, RBox, shade } from "../kit";
+import { Ball, C, Cyl, RBox, mat, shade, useLite } from "../kit";
 import { Person } from "../characters/Person";
 import { LOOKS } from "../characters/parts";
 
@@ -34,10 +34,54 @@ function Balloon({ position, colour, seed }: { position: [number, number, number
   );
 }
 
+const CONFETTI = 110;
+const FALL_FROM = 5.6;
+
+/** Paper confetti in the five role colours, fluttering down over the stage for the closing shot. High tier only. */
+function Confetti() {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: CONFETTI }, (_, i) => {
+        const h = (k: number) => {
+          const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
+          return x - Math.floor(x);
+        };
+        return { x: -5.2 + h(1) * 10.4, z: FINALE_Z - 2.2 + h(2) * 3.6, y: h(3) * FALL_FROM, fall: 0.35 + h(4) * 0.45, spin: 1.2 + h(5) * 3, phase: h(6) * Math.PI * 2 };
+      }),
+    [],
+  );
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+  useLayoutEffect(() => {
+    const colour = new THREE.Color();
+    pieces.forEach((_, i) => ref.current?.setColorAt(i, colour.set(i % 6 === 5 ? C.yellow : TOUR_ROLES[i % TOUR_ROLES.length].accent)));
+    if (ref.current?.instanceColor) ref.current.instanceColor.needsUpdate = true;
+  }, [pieces]);
+  useFrame((state) => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const t = state.clock.elapsedTime;
+    pieces.forEach((p, i) => {
+      dummy.position.set(p.x + Math.sin(t * 0.8 + p.phase) * 0.35, FALL_FROM - ((p.y + t * p.fall) % FALL_FROM), p.z);
+      dummy.rotation.set(t * p.spin + p.phase, t * p.spin * 0.6, p.phase);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+  });
+  return (
+    <instancedMesh ref={ref} args={[undefined, mat("#ffffff", { ink: false }), CONFETTI]} frustumCulled={false}>
+      <boxGeometry args={[0.12, 0.075, 0.006]} />
+    </instancedMesh>
+  );
+}
+
 /** Closing shot in the back garden: all five people on a little stage, waving, at golden hour. */
 export function Finale() {
+  const lite = useLite();
   return (
     <group>
+      {!lite && <Confetti />}
       <RBox size={[2.6, 0.06, Math.abs(FINALE_Z - CORRIDOR_END_Z) - 2]} radius={0.03} color={C.path} position={[0, 0.03, (FINALE_Z + CORRIDOR_END_Z) / 2 + 1.5]} />
       <group position={[0, 0, FINALE_Z - 0.2]}>
         <RBox size={[6.6, 0.32, 2.3]} radius={0.14} color={C.white} position={[0, 0.16, 0]} cast />

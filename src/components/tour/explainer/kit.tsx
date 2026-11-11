@@ -19,14 +19,40 @@ export interface SpringCfg {
 export const BOUNCY: SpringCfg = { damping: 9, stiffness: 150, mass: 0.7 };
 export const SNAPPY: SpringCfg = { damping: 14, stiffness: 160, mass: 0.7 };
 
-/** Frame-relative helpers for a scene: `pop(delay)` is an overshoot spring, `ramp(a,b)` a clamped 0..1. */
+/** Frame-relative helpers for a scene: `pop(delay)` is an overshoot spring, `ramp(a,b)` a clamped 0..1, `count(a,b)` the same but slowing into 1 (numbers that settle). */
 export function useMotion() {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const pop = (delay = 0, config: SpringCfg = BOUNCY) => spring({ frame: frame - delay, fps, config });
   const ramp = (from: number, to: number) =>
     interpolate(frame, [from, to], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-  return { frame, pop, ramp };
+  const count = (from: number, to: number) => 1 - (1 - ramp(from, to)) ** 3;
+  return { frame, pop, ramp, count };
+}
+
+/** A pointer glides to (x, y) in the scene, presses at frame `at` and leaves a ring in the accent: it shows what is being tapped. */
+export function Tap({ x, y, at, accent }: { x: number; y: number; at: number; accent: string }) {
+  const { frame, pop, ramp } = useMotion();
+  const come = pop(at - 22, SNAPPY);
+  const press = Math.sin(ramp(at - 3, at + 7) * Math.PI);
+  const ring = ramp(at, at + 16);
+  const gone = ramp(at + 26, at + 36);
+  if (frame < at - 22 || gone >= 1) return null;
+  return (
+    <>
+      <span
+        style={{ position: "absolute", left: x - 30, top: y - 30, width: 60, height: 60, borderRadius: "50%", border: `5px solid ${accent}`, opacity: ring > 0 ? 1 - ring : 0, transform: `scale(${0.3 + ring * 1.2})` }}
+      />
+      <svg
+        width={38}
+        height={44}
+        viewBox="0 0 19 22"
+        style={{ position: "absolute", left: x - 3 + (1 - come) * 150, top: y - 3 + (1 - come) * 110, opacity: Math.min(1, come * 3) * (1 - gone), transform: `scale(${1 - 0.18 * press})`, transformOrigin: "0 0" }}
+      >
+        <path d="M1.5 1.5v15.2l4.2-3.6 2.7 6.2 3-1.3-2.7-6.1h5.6z" fill="#fff" stroke={INK} strokeWidth={2.2} strokeLinejoin="round" />
+      </svg>
+    </>
+  );
 }
 
 export const chunky = (radius = 28, lift = 8): CSSProperties => ({

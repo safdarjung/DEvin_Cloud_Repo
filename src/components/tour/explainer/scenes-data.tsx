@@ -26,12 +26,12 @@ const MY_STATS: readonly Stat[] = [
 ];
 
 function StatGrid({ accent, stats }: SceneProps & { stats: readonly Stat[] }) {
-  const { pop, ramp } = useMotion();
+  const { pop, count: settle } = useMotion();
   return (
     <div style={{ position: "absolute", inset: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 16, paddingBottom: 12 }}>
       {stats.map((s, i) => {
         const on = pop(10 + i * 9);
-        const count = ramp(18 + i * 9, 62 + i * 9);
+        const count = settle(18 + i * 9, 62 + i * 9);
         return (
           <div
             key={s.label}
@@ -117,12 +117,12 @@ const STAGES = [
 ];
 
 export function Funnel({ accent }: SceneProps) {
-  const { pop, ramp } = useMotion();
+  const { pop, count: settle } = useMotion();
   return (
     <div style={{ position: "absolute", inset: 0, display: "grid", alignContent: "center", justifyItems: "center", gap: 16 }}>
       {STAGES.map((s, i) => {
         const on = pop(10 + i * 22);
-        const count = ramp(14 + i * 22, 50 + i * 22);
+        const count = settle(14 + i * 22, 50 + i * 22);
         return (
           <div
             key={s.label}
@@ -151,8 +151,8 @@ export function Funnel({ accent }: SceneProps) {
 const ABSENT = new Set([8, 19, 27]);
 
 export function Calendar({ accent }: SceneProps) {
-  const { pop, ramp } = useMotion();
-  const pct = Math.round(90 * ramp(20, 95));
+  const { pop, count } = useMotion();
+  const pct = Math.round(90 * count(20, 95));
   return (
     <Panel>
       <PanelHead title="This month" accent={accent} />

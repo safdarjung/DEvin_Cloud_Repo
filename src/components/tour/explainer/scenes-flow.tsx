@@ -1,5 +1,5 @@
 import { interpolate } from "remotion";
-import { Bar, Chip, GREEN, INK, MUTED, Mark, PAPER, Panel, PanelHead, RED, SNAPPY, YELLOW, chunky, inr, useMotion } from "./kit";
+import { Bar, Chip, GREEN, INK, MUTED, Mark, PAPER, Panel, PanelHead, RED, SNAPPY, Tap, YELLOW, chunky, inr, useMotion } from "./kit";
 import type { SceneProps } from "./scenes-data";
 
 const COLUMNS = ["Enquiry", "Applied", "Enrolled"];
@@ -58,10 +58,10 @@ const LINES = [
 
 /** A receipt prints out of a slot, the total counts up, then PAID stamps on. */
 export function Receipt({ accent }: SceneProps) {
-  const { frame, pop, ramp } = useMotion();
+  const { frame, pop, ramp, count } = useMotion();
   const print = ramp(8, 56);
   const jitter = print < 1 ? Math.sin(frame * 1.6) * 2 : 0;
-  const total = 14500 * ramp(54, 86);
+  const total = 14500 * count(54, 86);
   const stamp = pop(92, { damping: 8, stiffness: 190, mass: 0.6 });
   return (
     <div style={{ position: "absolute", inset: 0 }}>
@@ -156,6 +156,7 @@ export function Website({ accent }: SceneProps) {
           </span>
         </div>
       </div>
+      <Tap x={380} y={304} at={80} accent={accent} />
     </Panel>
   );
 }
@@ -236,7 +237,7 @@ export function Meetings({ accent }: SceneProps) {
           }),
         ])}
       </div>
-      
+      <Tap x={222} y={180} at={72} accent={accent} />
     </Panel>
   );
 }
@@ -270,6 +271,7 @@ export function Register({ accent }: SceneProps) {
           );
         })}
       </div>
+      <Tap x={354} y={37} at={30} accent={accent} />
     </Panel>
   );
 }

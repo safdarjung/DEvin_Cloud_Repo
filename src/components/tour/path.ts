@@ -71,10 +71,14 @@ function buildKeys(): Key[] {
     const { side, z } = ROOMS[key];
     keys.push({ position: at(-side * 0.7, 1.75, z + 1.6), target: roomToWorld(key, [0.5, 1.2, -0.3]) });
     keys.push({ position: roomToWorld(key, [-2.4, 1.62, 0.3]), target: roomToWorld(key, [1.7, 1.02, -0.7]), stop: key });
-    keys.push({ position: at(-side * 0.5, 1.75, z - 2.2), target: at(0, 1.55, z - 14) });
+    // Leaving: dolly back to the doorway with the eye still on the person, and only pan down the corridor once
+    // out of the room. Panning inside the room filled the frame with the wall beside the door.
+    keys.push({ position: at(side * (CORRIDOR_HALF + 0.75), 1.68, z - 0.7), target: roomToWorld(key, [1.2, 1.1, -0.3]) });
+    keys.push({ position: at(-side * 0.9, 1.75, z - 2.4), target: at(-side * 0.4, 1.55, z - 14) });
   });
   keys.push({ position: at(0, 1.95, CORRIDOR_END_Z - 1.2), target: at(0, 1.2, FINALE_Z - 2) });
-  keys.push({ position: at(0, 2.25, FINALE_Z + 7.6), target: at(0, 0.95, FINALE_Z), stop: "finale" });
+  // Looks at the stage floor, not the people's chests: they stand in the upper half, clear of the card docked below.
+  keys.push({ position: at(0, 2.25, FINALE_Z + 7.6), target: at(0, 0.3, FINALE_Z), stop: "finale" });
   return keys;
 }
 

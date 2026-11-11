@@ -3,7 +3,7 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
-import { Mouse } from "lucide-react";
+import { Footprints, Mouse } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { STOPS, TOUR_UNITS, dwellAmount, stopIndexAt } from "./path";
@@ -30,6 +30,8 @@ export function TourFilm({ lite, rootRef, lenisRef, onJump, onFeatures }: FilmPr
   const progress = useRef(0);
   const cards = useRef<(HTMLDivElement | null)[]>([]);
   const [active, setActive] = useState(0);
+  /** Between stops: the stop the camera is walking to (kept while the caption fades out). */
+  const [walk, setWalk] = useState({ on: false, to: 1 });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -56,8 +58,13 @@ export function TourFilm({ lite, rootRef, lenisRef, onJump, onFeatures }: FilmPr
       start: "top top",
       end: "bottom bottom",
       onUpdate: (self) => {
-        paint(self.progress);
-        setActive(stopIndexAt(self.progress));
+        const p = self.progress;
+        paint(p);
+        const i = stopIndexAt(p);
+        setActive(i);
+        const on = dwellAmount(p, STOPS[i]) <= 0.5;
+        const to = Math.min(STOPS.length - 1, p < STOPS[i].dwell[0] ? i : i + 1);
+        setWalk((w) => (w.on === on && (!on || w.to === to) ? w : { on, to: on ? to : w.to }));
       },
     });
     paint(st.progress);
@@ -95,6 +102,10 @@ export function TourFilm({ lite, rootRef, lenisRef, onJump, onFeatures }: FilmPr
         <p className="tour-scrollhint" aria-hidden="true">
           <Mouse className="size-5" />
           Scroll to walk in
+        </p>
+        <p className="tour-walk" aria-hidden="true" data-on={walk.on || undefined} style={accentVar(stopAccent(STOPS[walk.to].key))}>
+          <Footprints className="size-4" />
+          Next: {stopLabel(STOPS[walk.to].key)}
         </p>
         <nav className="tour-rail" aria-label="Tour stops">
           <ol>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { JOINTS, REST, poseAt, stampLift, type Action } from "@/components/tour/scene/characters/rig";
+import { JOINTS, REST, gesture, poseAt, stampLift, type Action } from "@/components/tour/scene/characters/rig";
 import { BACK_DOOR, CORRIDOR_END_Z, CORRIDOR_HALF, DOOR_HALF, FINALE_Z, GATE_Z, ROOM_HALF, ROOM_ORDER, ROOM_X, ROOMS, STOPS, cameraAt, dwellAmount, pathParamAt, stopAt } from "@/components/tour/path";
 
 const ORDER = ["gate", "principal", "admin", "teacher", "student", "parent", "finale"];
@@ -138,6 +138,40 @@ describe("person rig poses", () => {
     const waving = poseAt("stand", 1, 1, { ...REST });
     expect(waving.rSz).toBeLessThan(-1.6);
     expect(waving.lSz).toBe(idle.lSz);
+  });
+
+  test("a gesture is 0 outside its window, winds up below 0, overshoots, holds at 1 and repeats", () => {
+    const g = (t: number) => gesture(t, 10, 2, 4);
+    expect(g(1.9)).toBe(0);
+    expect(g(6.1)).toBe(0);
+    expect(g(2.05)).toBeLessThan(0);
+    expect(g(4)).toBe(1);
+    expect(g(14)).toBe(1);
+    expect(g(-6)).toBe(1);
+    let peak = 0;
+    for (let t = 2; t < 6; t += 0.01) {
+      const v = g(t);
+      expect(v).toBeGreaterThan(-0.2);
+      expect(v).toBeLessThan(1.2);
+      peak = Math.max(peak, v);
+    }
+    expect(peak).toBeGreaterThan(1.02);
+    expect(g(5.95)).toBeLessThan(0.2);
+  });
+
+  test("each room's person does more than one thing in a loop", () => {
+    const at = (action: Action, t: number) => poseAt(action, t, 0, { ...REST });
+    // Principal: arm up to the screen, then down with an open hand.
+    expect(at("point", 3).rSz).toBeLessThan(-1.3);
+    expect(at("point", 8).rSz).toBeGreaterThan(-0.6);
+    // Admin: the left hand slides the slip forward and the stamp rests.
+    expect(at("stamp", 8.5).lSx).toBeLessThan(at("stamp", 3).lSx - 0.3);
+    // Teacher: turned to the easel while writing, to the class while explaining.
+    expect(at("write", 2).turn).toBeLessThan(-0.5);
+    expect(at("write", 7).turn).toBeGreaterThan(-0.2);
+    // Student: the fist goes up. Parent: the phone arm swings out to the side.
+    expect(at("read", 8.2).rSx).toBeLessThan(at("read", 4).rSx - 1);
+    expect(at("phone", 7).lSz).toBeGreaterThan(at("phone", 2).lSz + 0.8);
   });
 
   test("the stamp is lifted slowly and comes down fast, staying between 0 and 1", () => {

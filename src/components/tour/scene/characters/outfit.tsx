@@ -107,7 +107,8 @@ function Hair({ look, tail }: { look: Look; tail: Tail }) {
       ))}
       {long &&
         SIDES.map((s) => (
-          <Part key={s} g={capsule(0.021, 0.1)} c={hair} position={[s * 0.133, -0.035, 0.048]} rotation-z={s * 0.08} scale={[0.7, 1, 1]} cast={false} />
+          // A thin lock in front of the ear: further forward or wider it hides the cheek and eye in a three-quarter view.
+          <Part key={s} g={capsule(0.021, 0.07)} c={hair} position={[s * 0.136, -0.02, 0.022]} rotation-z={s * 0.08} scale={[0.6, 1, 0.62]} cast={false} />
         ))}
       {hairStyle === "bun" && <Part g={sphere(0.062, 14)} c={hair} position={[0, 0.05, -0.17]} />}
       {hairStyle === "braid" && (

@@ -32,6 +32,9 @@ export function GateCard({ film = false, onStart }: { film?: boolean; onStart: (
   );
 }
 
+/** Feature names shown on a role card; the rest are in the explainer. */
+const CHIPS = 3;
+
 export function RoleCard({ role, index, onFeatures }: { role: TourRole; index: number; onFeatures: (key: TourRoleKey) => void }) {
   return (
     <>
@@ -45,6 +48,12 @@ export function RoleCard({ role, index, onFeatures }: { role: TourRole; index: n
         {role.label}
       </h2>
       <p className="tour-tagline">{role.tagline}</p>
+      <ul className="tour-chips" aria-label={`Some of what the ${role.label.toLowerCase()} gets`}>
+        {role.features.slice(0, CHIPS).map((f) => (
+          <li key={f.title}>{f.title}</li>
+        ))}
+        {role.features.length > CHIPS && <li className="tour-chips-more">+{role.features.length - CHIPS} more</li>}
+      </ul>
       <div className="tour-actions">
         <button type="button" className="tour-btn" onClick={() => onFeatures(role.key)}>
           <Play aria-hidden className="size-4" />

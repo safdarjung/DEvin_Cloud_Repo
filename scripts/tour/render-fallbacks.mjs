@@ -21,10 +21,41 @@ const bin = (name) => join(root, "node_modules/.bin", name);
 const entry = join(root, "src/components/tour/explainer/fallback-entry.tsx");
 const MAX_BYTES = 1.5 * 1024 * 1024;
 
+/**
+ * The brand font (the family next/font serves the app), inlined as data URLs so the MP4s are set in the same
+ * type as the live explainer. Latin + latin-ext (the rupee sign). Offline: warns and renders in the system font.
+ */
+async function brandFontCss() {
+  const get = (url) =>
+    fetch(url, { headers: { "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36" } }).then((r) => {
+      if (!r.ok) throw new Error(`${r.status} ${url}`);
+      return r;
+    });
+  try {
+    const css = await (await get("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400..800&display=block")).text();
+    const faces = css.split("/* ").filter((block) => /^latin(-ext)? \*\//.test(block));
+    if (faces.length === 0) throw new Error("no latin faces in the font stylesheet");
+    const inlined = await Promise.all(
+      faces.map(async (block) => {
+        const url = /url\((https:[^)]+\.woff2)\)/.exec(block)?.[1];
+        if (!url) throw new Error("no woff2 url in a font face");
+        const data = Buffer.from(await (await get(url)).arrayBuffer()).toString("base64");
+        return block.slice(block.indexOf("@font-face")).replace(url, `data:font/woff2;base64,${data}`);
+      }),
+    );
+    return `${inlined.join("\n")}\n:root{--font-jakarta:"Plus Jakarta Sans"}`;
+  } catch (e) {
+    console.warn(`brand font not loaded (${e.message}); the MP4s use the system font`);
+    return "";
+  }
+}
+const fontCss = await brandFontCss();
+
 const page = (role) => {
   const seconds = explainerTimeline(role.features.length).durationInFrames / EXPLAINER_FPS;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${role.label} explainer</title>
+<style>${fontCss}</style>
 <style>html,body{margin:0;background:#FFF8EC}#root{position:relative;width:${EXPLAINER_WIDTH}px;height:${EXPLAINER_HEIGHT}px;overflow:hidden}</style></head>
 <body><div id="root" data-composition-id="root" data-width="${EXPLAINER_WIDTH}" data-height="${EXPLAINER_HEIGHT}" data-fps="${EXPLAINER_FPS}" data-start="0" data-duration="${seconds}">
 <div id="explainer" class="clip" data-role="${role.key}" data-start="0" data-duration="${seconds}"></div>

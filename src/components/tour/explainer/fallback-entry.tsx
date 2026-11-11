@@ -35,6 +35,11 @@ const clock = { frame: 0 };
 const tl = gsap.timeline({ paused: true });
 tl.to(clock, { frame: frames, duration: frames / EXPLAINER_FPS, ease: "none", onUpdate: () => show(clock.frame) });
 show(0);
+// The render page inlines the brand font (scripts/tour/render-fallbacks.mjs): have it decoded before the first
+// text frame is captured, then repaint. Without the font the page just keeps the system fallback.
+void Promise.all([400, 700, 800].map((w) => document.fonts.load(`${w} 32px "Plus Jakarta Sans"`)))
+  .then(() => show(clock.frame))
+  .catch(() => undefined);
 
 const w = window as unknown as { __timelines?: Record<string, gsap.core.Timeline>; __showFrame?: (f: number) => void };
 w.__timelines = { ...w.__timelines, root: tl };

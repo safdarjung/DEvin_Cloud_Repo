@@ -84,6 +84,7 @@ export default function ExplainerPlayerInner({
         compositionHeight={EXPLAINER_HEIGHT}
         controls
         autoPlay
+        moveToBeginningWhenEnded={false}
         spaceKeyToPlayOrPause={false}
         showVolumeControls={false}
         acknowledgeRemotionLicense

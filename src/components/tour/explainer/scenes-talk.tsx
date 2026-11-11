@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Bar, Chip, GREEN, INK, Mark, PAPER, Panel, PanelHead, Row, SNAPPY, YELLOW, chunky, useMotion } from "./kit";
+import { Bar, Chip, GREEN, INK, Mark, PAPER, Panel, PanelHead, Row, SNAPPY, Tap, YELLOW, chunky, useMotion } from "./kit";
 import type { SceneProps } from "./scenes-data";
 
 /** Reveals text left to right, like it is being typed or written. */
@@ -259,6 +259,7 @@ export function Quiz({ accent }: SceneProps) {
           </div>
         </div>
       </div>
+      <Tap x={240} y={222} at={88} accent={accent} />
     </div>
   );
 }

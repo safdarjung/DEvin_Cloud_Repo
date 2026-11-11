@@ -5,7 +5,7 @@ import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { GATE_Z, ROOM_ORDER, STOPS } from "../../path";
-import { Ball, C, Cyl, Label, RBox, clamp01, glow, mat, metal, spring, stepSpring, surf, useProgress } from "../kit";
+import { Ball, C, Cyl, Label, RBox, Zone, clamp01, glow, mat, metal, spring, stepSpring, surf, useProgress } from "../kit";
 import { GrassTufts, Tree } from "./Trees";
 import { Yard } from "./Yard";
 
@@ -16,7 +16,11 @@ export function Exterior({ accents }: { accents: readonly string[] }) {
   return (
     <group>
       <Ground />
-      <Street />
+      {/* Only while the camera is outside. Indoors the street is behind it, and its 110 m strips cross the near
+          plane, where their sliver triangles leaked through the principal's-office wall as rows of dots. */}
+      <Zone min={0}>
+        <Street />
+      </Zone>
       <CompoundWall />
       <Gate />
       {TREES.map((t, i) => (
