@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { inr } from "@/lib/format";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -29,7 +30,13 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { timetableTodayFor } from "@/modules/timetable/queries";
+import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
+import { libraryMyLoans } from "@/modules/library/queries";
+import { MyDayCard } from "@/modules/people/components/MyDayCard";
+import { daysBetween, istDay, istNowHHMM } from "@/modules/people/portal-dates";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
+
+export const metadata: Metadata = { title: "Portal" };
 
 const TZ = "Asia/Kolkata";
 const DAY_MS = 86_400_000;
@@ -106,6 +113,7 @@ export default async function PortalOverviewPage({
     isModuleEnabled(ctx, "attendance") ? attendanceTrend(ctx, { days: 30, studentId: selection.studentId }) : Promise.resolve([]),
     isModuleEnabled(ctx, "exams") ? upcomingExamsForStudent(ctx, selection.studentId, 60) : Promise.resolve([]),
     canPractice ? practiceProgress(ctx, selection.studentId) : Promise.resolve(null),
+    isModuleEnabled(ctx, "library") && hasPermission(ctx, "library.read") ? libraryMyLoans(ctx, { studentId: selection.studentId }) : Promise.resolve(null),
   ]);
 
   const studentView = ctx.membership.role !== "guardian";
@@ -118,7 +126,7 @@ export default async function PortalOverviewPage({
     studentView && isModuleEnabled(ctx, "assignments") ? mySubmissions(ctx, selection.studentId) : Promise.resolve([]),
   ]);
   const submissionState = new Map(submissions.map((x) => [x.assignmentId, x.state]));
-  const [notices, events, notifications, timetableR, trendR, examsR, practiceR] = await extras;
+  const [notices, events, notifications, timetableR, trendR, examsR, practiceR, libraryR] = await extras;
 
   // invoices.total / paid_total are numeric(12,2) rupees (finance/queries.ts), not paise.
   const outstanding = invoices.reduce((sum, inv) => sum + (inv.total - inv.paidTotal), 0);
@@ -366,6 +374,26 @@ export default async function PortalOverviewPage({
     ? [feesDue, attendanceTrendWidget, latestResults, homework, timetable, announcements, schoolEvents, notificationFeed]
     : [timetable, homework, upcomingExams, announcements, attendanceTrendWidget, latestResults, schoolEvents, notificationFeed, studyHelper];
 
+  const todayIso = todayInInstitutionTimezone(ctx);
+  const myDay = (
+    <MyDayCard
+      basePath={basePath}
+      query={q}
+      today={todayIso}
+      nowHHMM={istNowHHMM()}
+      periods={isModuleEnabled(ctx, "timetable") ? (timetableR.status === "fulfilled" ? timetableR.value : null) : undefined}
+      assignments={
+        isModuleEnabled(ctx, "assignments")
+          ? upcoming
+              .filter((a): a is typeof a & { dueAt: string } => a.dueAt != null && daysBetween(todayIso, istDay(a.dueAt)) <= 3)
+              .map((a) => ({ id: a.id, title: a.title, dueAt: a.dueAt }))
+          : undefined
+      }
+      nextExam={isModuleEnabled(ctx, "exams") ? (examsR.status === "fulfilled" ? (examsR.value[0] ?? false) : null) : undefined}
+      books={libraryR.status === "fulfilled" ? (libraryR.value ?? undefined) : null}
+    />
+  );
+
   return (
     <>
       <PortalNav institutionSlug={institutionSlug} role={ctx.membership.role as "guardian" | "student"} selection={selection} activeHref="" canStudy={hasPermission(ctx, "ai.study")} />
@@ -373,6 +401,8 @@ export default async function PortalOverviewPage({
         <h2 className="text-xl font-semibold tracking-tight">{isGuardian ? `${firstName}'s day` : `${greeting(now)}, ${firstName}`}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">{[longDate.format(now), classLabel].filter(Boolean).join(" · ")}</p>
       </div>
+
+      {myDay}
 
       <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">{kpis}</KpiStrip>
 

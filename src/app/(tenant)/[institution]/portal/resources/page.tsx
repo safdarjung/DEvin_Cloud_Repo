@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -6,6 +7,8 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { ResourceBody } from "@/modules/resources/components/ResourceCard";
 import { portalResources, type ResourceRow } from "@/modules/resources/queries";
+
+export const metadata: Metadata = { title: "Resources" };
 
 // Read-only. RLS limits rows to published resources for the caller's own sections; the query narrows
 // to the selected child. Files download only through the documents module's signed read URL.

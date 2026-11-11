@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { AnimatedList, ProgressBar } from "@/components/widgets/viz";
@@ -11,6 +12,8 @@ import { diaryForStudent } from "@/modules/diary/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { notFound } from "next/navigation";
+
+export const metadata: Metadata = { title: "Updates" };
 
 const HISTORY_DAYS = 180;
 const date = new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });

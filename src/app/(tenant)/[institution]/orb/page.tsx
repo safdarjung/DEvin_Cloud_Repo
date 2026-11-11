@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
@@ -9,15 +10,17 @@ import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { orbIconKey } from "@/modules/ai/components/orb/orb-icons";
 import { starterPromptsFor } from "@/modules/ai/page-starters";
 
+export const metadata: Metadata = { title: "Orb" };
+
 export default async function OrbPage({
   params,
   searchParams,
 }: {
   params: Promise<{ institution: string }>;
-  searchParams: Promise<{ from?: string | string[] }>;
+  searchParams: Promise<{ from?: string | string[]; q?: string | string[] }>;
 }) {
   const { institution: slug } = await params;
-  const { from } = await searchParams;
+  const { from, q } = await searchParams;
   const ctx = await getTenantContext(slug);
   const role = ctx.membership.role;
 
@@ -52,5 +55,8 @@ export default async function OrbPage({
   const page = fromPath?.startsWith(`${prefix}/`) ? fromPath.slice(prefix.length) : null;
   const starters = chat && page ? starterPromptsFor(page, role) : undefined;
 
-  return <OrbView institutionSlug={slug} role={role} apps={apps} chat={chat} chips={chips} starters={starters} />;
+  // `q` comes from the Ask AI launcher: a plain question OrbView sends once; the chat endpoint still authorises everything.
+  const initialQuery = typeof q === "string" ? q.trim().slice(0, 500) : undefined;
+
+  return <OrbView institutionSlug={slug} role={role} apps={apps} chat={chat} chips={chips} starters={starters} initialQuery={initialQuery} />;
 }

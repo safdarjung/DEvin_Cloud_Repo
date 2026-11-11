@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -6,6 +7,8 @@ import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { AssistantPanel } from "@/modules/ai/components/AssistantPanel";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Ask AI" };
 
 const PROMPTS = [
   "How many days was my child absent this month?",

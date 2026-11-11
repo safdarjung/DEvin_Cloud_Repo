@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +10,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { EventForm } from "@/modules/website/components/EventForm";
 import { listEvents } from "@/modules/website/queries";
+
+export const metadata: Metadata = { title: "Events" };
 
 // Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
 const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
@@ -54,7 +57,7 @@ export default async function EventsPage({ params }: { params: Promise<{ institu
                   {events.map((event, i) => (
                     <TableRow key={event.id} className={ROW_ENTER} style={rowDelay(i)}>
                       <TableCell>{event.title}</TableCell>
-                      <TableCell className="tabular-nums">{new Date(event.startsAt).toLocaleString()}</TableCell>
+                      <TableCell className="tabular-nums">{new Date(event.startsAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant={event.isPublic ? "success" : "outline"}>
                           {event.isPublic ? "Public" : "Internal"}

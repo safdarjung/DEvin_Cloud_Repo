@@ -87,23 +87,23 @@ interface FieldProps<T extends Block> {
 function HeroFields({ block, onChange }: FieldProps<Extract<Block, { type: "hero" }>>) {
   return (
     <div className="space-y-2">
-      <Input
+      <Input aria-label="Heading"
         placeholder="Heading"
         value={block.heading}
         onChange={(e) => onChange({ ...block, heading: e.target.value })}
       />
-      <Input
+      <Input aria-label="Subheading (optional)"
         placeholder="Subheading (optional)"
         value={block.subheading ?? ""}
         onChange={(e) => onChange({ ...block, subheading: e.target.value || undefined })}
       />
-      <Input
+      <Input aria-label="Image URL (optional)"
         placeholder="Image URL (optional)"
         value={block.imageUrl ?? ""}
         onChange={(e) => onChange({ ...block, imageUrl: e.target.value || undefined })}
       />
       <div className="grid gap-2 sm:grid-cols-2">
-        <Input
+        <Input aria-label="Button label (optional)"
           placeholder="Button label (optional)"
           value={block.cta?.label ?? ""}
           onChange={(e) => {
@@ -111,7 +111,7 @@ function HeroFields({ block, onChange }: FieldProps<Extract<Block, { type: "hero
             onChange({ ...block, cta: label ? { label, href: block.cta?.href ?? "" } : undefined });
           }}
         />
-        <Input
+        <Input aria-label="Button link"
           placeholder="Button link"
           value={block.cta?.href ?? ""}
           onChange={(e) => {
@@ -127,7 +127,7 @@ function HeroFields({ block, onChange }: FieldProps<Extract<Block, { type: "hero
 function RichTextFields({ block, onChange }: FieldProps<Extract<Block, { type: "rich_text" }>>) {
   const [draft, setDraft] = useState(() => richTextToDraft(block));
   return (
-    <Textarea
+    <Textarea aria-label="Paragraph text. Leave a blank line between paragraphs."
       value={draft}
       onChange={(e) => {
         setDraft(e.target.value);
@@ -142,9 +142,9 @@ function RichTextFields({ block, onChange }: FieldProps<Extract<Block, { type: "
 function ImageFields({ block, onChange }: FieldProps<Extract<Block, { type: "image" }>>) {
   return (
     <div className="space-y-2">
-      <Input placeholder="Image URL" value={block.url} onChange={(e) => onChange({ ...block, url: e.target.value })} />
-      <Input placeholder="Alt text" value={block.alt} onChange={(e) => onChange({ ...block, alt: e.target.value })} />
-      <Input
+      <Input aria-label="Image URL" placeholder="Image URL" value={block.url} onChange={(e) => onChange({ ...block, url: e.target.value })} />
+      <Input aria-label="Alt text" placeholder="Alt text" value={block.alt} onChange={(e) => onChange({ ...block, alt: e.target.value })} />
+      <Input aria-label="Caption (optional)"
         placeholder="Caption (optional)"
         value={block.caption ?? ""}
         onChange={(e) => onChange({ ...block, caption: e.target.value || undefined })}
@@ -156,14 +156,14 @@ function ImageFields({ block, onChange }: FieldProps<Extract<Block, { type: "ima
 function StatsFields({ block, onChange }: FieldProps<Extract<Block, { type: "stats" }>>) {
   return (
     <div className="space-y-2">
-      <Input
+      <Input aria-label="Heading (optional)"
         placeholder="Heading (optional)"
         value={block.heading ?? ""}
         onChange={(e) => onChange({ ...block, heading: e.target.value || undefined })}
       />
       {block.items.map((item, i) => (
         <div key={i} className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-          <Input
+          <Input aria-label="Label"
             placeholder="Label"
             value={item.label}
             onChange={(e) => {
@@ -171,7 +171,7 @@ function StatsFields({ block, onChange }: FieldProps<Extract<Block, { type: "sta
               onChange({ ...block, items });
             }}
           />
-          <Input
+          <Input aria-label="Value"
             placeholder="Value"
             value={item.value}
             onChange={(e) => {
@@ -211,13 +211,13 @@ function ListBlockFields({
 }: FieldProps<Extract<Block, { type: "notice_list" | "event_list" | "enquiry_form" }>>) {
   return (
     <div className="space-y-2">
-      <Input
+      <Input aria-label="Heading (optional)"
         placeholder="Heading (optional)"
         value={block.heading ?? ""}
         onChange={(e) => onChange({ ...block, heading: e.target.value || undefined } as typeof block)}
       />
       {block.type !== "enquiry_form" && (
-        <Input
+        <Input aria-label="How many to show (optional)"
           type="number"
           min={1}
           max={20}
@@ -229,7 +229,7 @@ function ListBlockFields({
         />
       )}
       {block.type === "enquiry_form" && (
-        <Input
+        <Input aria-label="Button label (optional)"
           placeholder="Button label (optional)"
           value={block.ctaLabel ?? ""}
           onChange={(e) => onChange({ ...block, ctaLabel: e.target.value || undefined } as typeof block)}
@@ -242,29 +242,29 @@ function ListBlockFields({
 function ContactFields({ block, onChange }: FieldProps<Extract<Block, { type: "contact" }>>) {
   return (
     <div className="space-y-2">
-      <Input
+      <Input aria-label="Heading (optional)"
         placeholder="Heading (optional)"
         value={block.heading ?? ""}
         onChange={(e) => onChange({ ...block, heading: e.target.value || undefined })}
       />
-      <Input
+      <Input aria-label="Address (optional)"
         placeholder="Address (optional)"
         value={block.address ?? ""}
         onChange={(e) => onChange({ ...block, address: e.target.value || undefined })}
       />
       <div className="grid gap-2 sm:grid-cols-2">
-        <Input
+        <Input aria-label="Phone (optional)"
           placeholder="Phone (optional)"
           value={block.phone ?? ""}
           onChange={(e) => onChange({ ...block, phone: e.target.value || undefined })}
         />
-        <Input
+        <Input aria-label="Email (optional)"
           placeholder="Email (optional)"
           value={block.email ?? ""}
           onChange={(e) => onChange({ ...block, email: e.target.value || undefined })}
         />
       </div>
-      <Input
+      <Input aria-label="Map link (optional)"
         placeholder="Map link (optional)"
         value={block.mapUrl ?? ""}
         onChange={(e) => onChange({ ...block, mapUrl: e.target.value || undefined })}

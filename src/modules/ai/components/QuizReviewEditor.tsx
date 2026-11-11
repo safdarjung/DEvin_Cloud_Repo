@@ -195,7 +195,7 @@ export function QuizReviewEditor({
                 <Input value={option} onChange={(e) => updateOption(index, optionIndex, e.target.value)} />
               </div>
             ))}
-            <Input
+            <Input aria-label="Explanation (optional)"
               placeholder="Explanation (optional)"
               value={question.explanation}
               onChange={(e) => updateQuestion(index, { explanation: e.target.value })}

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { uuid } from "@/lib/schemas/common";
@@ -10,6 +11,8 @@ import { labSectionAnomalies } from "@/modules/fabric/lab.queries";
 import { rankAttention } from "@/modules/fabric/lab";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
+
+export const metadata: Metadata = { title: "Digital twin" };
 
 export default async function DigitalTwinPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
@@ -37,6 +38,8 @@ import {
 } from "@/modules/school-labs/queries";
 import { HAZARD_CLASSES } from "@/modules/school-labs/schemas";
 import { LOW_QUANTITY_THRESHOLD, daysUntil, expiryText, labSafetyWarnings } from "@/modules/school-labs/safety";
+
+export const metadata: Metadata = { title: "Labs" };
 
 const SECTIONS = [
   { id: "schedule", label: "Schedule" },
@@ -496,7 +499,7 @@ async function IncidentsTab({ ctx, slug, labs }: { ctx: TenantContext; slug: str
               <TableBody>
                 {incidents.map((i) => (
                   <TableRow key={i.id}>
-                    <TableCell className="whitespace-nowrap">{i.createdAt.slice(0, 10)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{new Date(i.createdAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
                     <TableCell>{i.lab}</TableCell>
                     <TableCell>{humanize(i.kind)}</TableCell>
                     <TableCell>

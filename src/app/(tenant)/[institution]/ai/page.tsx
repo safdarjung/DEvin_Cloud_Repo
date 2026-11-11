@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,8 @@ import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { listTeachableSections } from "@/modules/academics/assignments.queries";
 import { TeacherAgentChat } from "@/modules/ai/components/TeacherAgentChat";
+
+export const metadata: Metadata = { title: "AI Assistant" };
 
 // T-0NN — first real page at `/ai` (the nav's `/ai/usage` link already
 // existed). D28 scopes the tool-calling agent to the teacher role only;

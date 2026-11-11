@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { requireModule, requirePermission } from "@/lib/auth/require";
 import { ProfileForm, VaccinationForm, VisitForm } from "@/modules/health/components/HealthForms";
 import { ProfileSummary, Section, VaccinationsTable, VisitsTable } from "@/modules/health/components/HealthRecords";
 import { healthProfile, healthStudentOptions, healthVaccinations, healthVisits } from "@/modules/health/queries";
+
+export const metadata: Metadata = { title: "Health" };
 
 async function loadHealth(ctx: TenantContext, student?: string) {
   const students = await healthStudentOptions(ctx);

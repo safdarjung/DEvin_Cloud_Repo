@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
@@ -5,6 +6,8 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import { FadeIn } from "@/components/motion";
+
+export const metadata: Metadata = { title: "New assignment" };
 
 export default async function NewAssignmentPage({
   params,

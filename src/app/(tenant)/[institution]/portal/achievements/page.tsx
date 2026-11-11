@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -6,6 +7,8 @@ import { PortfolioView } from "@/modules/achievements/components/PortfolioView";
 import { studentPortfolio } from "@/modules/achievements/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Achievements" };
 
 // Read-only. RLS already hides voided rows from guardian/student; the query filters again.
 // The portfolio is both the timeline and the printable view.

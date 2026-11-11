@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
@@ -19,6 +20,8 @@ import { DecideRunForm, WorkflowRowControls } from "@/modules/workflows/componen
 import { WorkflowEditor, type FormOptions } from "@/modules/workflows/components/workflow-form";
 import { formFromGraph, type WorkflowForm } from "@/modules/workflows/form-graph";
 import { workflowList, workflowRuns } from "@/modules/workflows/queries";
+
+export const metadata: Metadata = { title: "Workflows" };
 
 const SECTIONS = [
   { id: "workflows", label: "Workflows" },

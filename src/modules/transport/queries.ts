@@ -34,6 +34,58 @@ interface StopRow {
   map_y: number;
 }
 
+export interface TransportRouteDetail extends Omit<TransportRoute, "stops"> {
+  vehicleId: string | null;
+  stops: (TransportRoute["stops"][number] & { id: string; seq: number })[];
+}
+
+export interface TransportVehicle {
+  id: string;
+  registrationNo: string;
+  driverName: string;
+  capacity: number;
+  status: "active" | "off_road";
+}
+
+const MAX_VEHICLES = 200;
+const PAGE_SIZE = 1000; // PostgREST max_rows (supabase/config.toml)
+
+/** transport.manage fleet list for the vehicle form and route vehicle picker. */
+export async function transportVehicles(ctx: TenantContext): Promise<TransportVehicle[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("transport_vehicles")
+    .select("id, registration_no, driver_name, capacity, status")
+    .eq("institution_id", ctx.institution.id)
+    .order("registration_no", { ascending: true })
+    .limit(MAX_VEHICLES);
+  if (error) throw error;
+  return (data ?? []).map((v) => ({
+    id: v.id,
+    registrationNo: v.registration_no,
+    driverName: v.driver_name,
+    capacity: v.capacity,
+    status: v.status as TransportVehicle["status"],
+  }));
+}
+
+// Pages past PostgREST's max_rows cap so the per-stop/route counts stay exact.
+async function allAssignments(institutionId: string): Promise<{ route_id: string; stop_id: string }[]> {
+  const supabase = await createClient();
+  const rows: { route_id: string; stop_id: string }[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("transport_assignments")
+      .select("route_id, stop_id")
+      .eq("institution_id", institutionId)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < PAGE_SIZE) return rows;
+  }
+}
+
 /**
  * Every route in the institution with its vehicle, stops (seq order, with
  * per-stop assignment counts) and overall assigned count — the demo
@@ -41,9 +93,9 @@ interface StopRow {
  * (owner/principal/admin); RLS additionally lets all 7 staff roles read
  * the underlying tables.
  */
-export async function transportRoutes(ctx: TenantContext): Promise<TransportRoute[]> {
+export async function transportRoutes(ctx: TenantContext): Promise<TransportRouteDetail[]> {
   const supabase = await createClient();
-  const [routesRes, vehiclesRes, stopsRes, assignmentsRes] = await Promise.all([
+  const [routesRes, vehiclesRes, stopsRes, assignmentRows] = await Promise.all([
     supabase.from("transport_routes").select("id, name, status, vehicle_id").eq("institution_id", ctx.institution.id),
     supabase.from("transport_vehicles").select("id, registration_no, driver_name, capacity").eq("institution_id", ctx.institution.id),
     supabase
@@ -51,12 +103,11 @@ export async function transportRoutes(ctx: TenantContext): Promise<TransportRout
       .select("id, route_id, seq, name, pickup_time, map_x, map_y")
       .eq("institution_id", ctx.institution.id)
       .order("seq", { ascending: true }),
-    supabase.from("transport_assignments").select("route_id, stop_id").eq("institution_id", ctx.institution.id),
+    allAssignments(ctx.institution.id),
   ]);
   if (routesRes.error) throw routesRes.error;
   if (vehiclesRes.error) throw vehiclesRes.error;
   if (stopsRes.error) throw stopsRes.error;
-  if (assignmentsRes.error) throw assignmentsRes.error;
 
   const vehicleById = new Map((vehiclesRes.data ?? []).map((v) => [v.id, v]));
   const stopsByRoute = new Map<string, StopRow[]>();
@@ -67,7 +118,7 @@ export async function transportRoutes(ctx: TenantContext): Promise<TransportRout
   }
   const studentsByStop = new Map<string, number>();
   const assignedByRoute = new Map<string, number>();
-  for (const a of assignmentsRes.data ?? []) {
+  for (const a of assignmentRows) {
     studentsByStop.set(a.stop_id, (studentsByStop.get(a.stop_id) ?? 0) + 1);
     assignedByRoute.set(a.route_id, (assignedByRoute.get(a.route_id) ?? 0) + 1);
   }
@@ -79,7 +130,10 @@ export async function transportRoutes(ctx: TenantContext): Promise<TransportRout
       name: route.name,
       vehicle: vehicle?.registration_no ?? "",
       driver: vehicle?.driver_name ?? "",
+      vehicleId: route.vehicle_id,
       stops: (stopsByRoute.get(route.id) ?? []).map((s) => ({
+        id: s.id,
+        seq: s.seq,
         name: s.name,
         eta: toHHMM(s.pickup_time),
         students: studentsByStop.get(s.id) ?? 0,

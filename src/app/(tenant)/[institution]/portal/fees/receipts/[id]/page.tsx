@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
@@ -6,6 +7,8 @@ import { ReceiptView } from "@/modules/finance/components/ReceiptView";
 import { getReceipt } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Receipt" };
 
 // T-034 packet security rule 5: the receipt must belong to the selected
 // child — RLS (`receipts_select`) already keeps a guardian/student from

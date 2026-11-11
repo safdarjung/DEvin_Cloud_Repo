@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ListPager } from "@/components/list-pager";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +17,8 @@ import { getThread, listAssignees, listTickets, ticketCounts, HELPDESK_PAGE_SIZE
 import { HELPDESK_PRIORITIES, HELPDESK_STATUSES, TicketListSchema } from "@/modules/helpdesk/schemas";
 import { aiTaskOn } from "@/modules/ai/task-route";
 import { z } from "zod";
+
+export const metadata: Metadata = { title: "Helpdesk" };
 
 const SELECT_CLASS = "h-10 rounded-md border border-input bg-transparent px-3 text-sm";
 

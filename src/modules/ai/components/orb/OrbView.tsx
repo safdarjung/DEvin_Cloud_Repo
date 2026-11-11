@@ -4,7 +4,7 @@
 // spoken) and capability chips. Chat runs over the existing per-role endpoint.
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
@@ -40,6 +40,8 @@ interface Props {
   chips: OrbChip[];
   /** Page-aware questions from the page the person came from (`?from=`). */
   starters?: string[];
+  /** `?q=` from the Ask AI launcher: sent once on arrival when chat is on. */
+  initialQuery?: string;
 }
 
 const noSubscribe = () => () => {};
@@ -98,7 +100,7 @@ function AppGrid({ apps }: { apps: OrbApp[] }) {
   );
 }
 
-export function OrbView({ institutionSlug, role, apps, chat, chips, starters }: Props) {
+export function OrbView({ institutionSlug, role, apps, chat, chips, starters, initialQuery }: Props) {
   const [input, setInput] = useState("");
   const [open, setOpen] = useState(true);
   const use3d = useSyncExternalStore(noSubscribe, canRender3d, () => false);
@@ -123,6 +125,14 @@ export function OrbView({ institutionSlug, role, apps, chat, chips, starters }: 
     setInput("");
     setOpen(true);
   }
+
+  const autoSent = useRef(false);
+  useEffect(() => {
+    if (autoSent.current || !initialQuery || !chat) return;
+    autoSent.current = true;
+    send(initialQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
+  }, []);
 
   const voice = useVoice({ onText: setInput, onDone: send, level: signals });
   const state = orbState({ status, typing: input.trim().length > 0, error: Boolean(error), listening: voice.listening });

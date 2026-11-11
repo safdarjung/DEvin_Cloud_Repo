@@ -36,8 +36,18 @@ async function currentYear(inst: TestInstitution): Promise<string> {
   return row.id as string;
 }
 
-async function request(role: FixtureRole, ruleId = percentRule, studentId = studentA): Promise<string> {
-  const res = await callAs(a, role, requestConcessionAward, { studentId, ruleId, reason: "Sibling studies in grade IV" });
+async function freshStudentA(): Promise<string> {
+  const [row] = await sql`
+    insert into public.students (institution_id, admission_no, first_name, dob, gender)
+    values (${a.institutionId}, ${`ADM-${crypto.randomUUID().slice(0, 8)}`}, 'Award', '2015-01-01', 'other')
+    returning id
+  `;
+  return row.id as string;
+}
+
+// 0133 allows one live award per (student, year, rule), so each request gets its own student unless one is named.
+async function request(role: FixtureRole, ruleId = percentRule, studentId?: string): Promise<string> {
+  const res = await callAs(a, role, requestConcessionAward, { studentId: studentId ?? (await freshStudentA()), ruleId, reason: "Sibling studies in grade IV" });
   if (!res.ok) throw new Error(`request as ${role} failed: ${res.error.code}`);
   return res.data.id;
 }

@@ -75,7 +75,7 @@ export function AssignmentList({ institutionSlug, assignments, canManage }: Assi
                   </Badge>
                 </TableCell>
                 <TableCell className="hidden sm:table-cell">
-                  {assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString() : "—"}
+                  {assignment.dueAt ? new Date(assignment.dueAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" }) : "—"}
                 </TableCell>
                 {canManage && (
                   <TableCell>

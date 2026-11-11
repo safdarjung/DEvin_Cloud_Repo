@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { ReceiptView } from "@/modules/finance/components/ReceiptView";
 import { getReceipt } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Receipt" };
 
 // T-032 — 06 §W9 (AC1: "print view has no nav"). This route is still
 // nested under the tenant layout (src/app/(tenant)/[institution]/layout.tsx

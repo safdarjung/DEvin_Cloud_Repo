@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { requireModule, requirePermission } from "@/lib/auth/require";
 import { listSectionOptions } from "@/modules/exams/queries";
 import { buildTimetableGrid, WEEKDAY_NAMES } from "@/modules/timetable/grid";
 import { timetableForSection, type SectionTimetableSlot } from "@/modules/timetable/queries";
+
+export const metadata: Metadata = { title: "Timetable" };
 
 // Read-only weekly timetable. Authorization: `timetable.read` (RLS further
 // narrows guardian/student to their own section's published slots).

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { uuid } from "@/lib/schemas/common";
 import { getStudentPreferences } from "@/modules/ai/student-preferences";
 import { getStudyItem } from "@/modules/ai/student-study.queries";
 import { StudyChat } from "@/modules/ai/components/StudyChat";
+
+export const metadata: Metadata = { title: "Study" };
 
 // GU-08/GU-09 — student-only (ai.study, 07 §2.2); not part of the shared
 // guardian/student PortalNav tabs — a guardian never holds this

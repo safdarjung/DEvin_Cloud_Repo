@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { ErrorState } from "@/components/states";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { CanteenHistory, paise } from "@/modules/canteen/components/CanteenHisto
 import { canteenStatement } from "@/modules/canteen/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Canteen" };
 
 // Guardian (own children) / student (self): canteen balance + history.
 // RLS scopes the ledger; the balance is canteen_balance() only.

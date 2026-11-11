@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getAssignment } from "@/modules/academics/assignments.queries";
 import { SubmissionsPanel } from "@/modules/academics/components/SubmissionsPanel";
 import { submissionsForAssignment } from "@/modules/academics/submissions.queries";
+
+export const metadata: Metadata = { title: "Assignment" };
 
 export default async function AssignmentDetailPage({
   params,
@@ -33,7 +36,7 @@ export default async function AssignmentDetailPage({
     <div className="max-w-3xl space-y-4">
       <PageHeader
         title={assignment.title}
-        description={assignment.dueAt ? `Due ${new Date(assignment.dueAt).toLocaleDateString()}` : undefined}
+        description={assignment.dueAt ? `Due ${new Date(assignment.dueAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : undefined}
         back={{ href: `/${institutionSlug}/assignments`, label: "Assignments" }}
         actions={
           <Badge variant={assignmentStatusVariant(assignment.status)} className="capitalize">

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -11,6 +12,8 @@ import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { AllocateForm, RollCallForm, RoomForm, VacateButton } from "@/modules/hostel/components/HostelForms";
 import { hostelAllocatableStudents, hostelAllocations, hostelRollCall, hostelRooms } from "@/modules/hostel/queries";
 import { ROLL_CALL_SESSIONS } from "@/modules/hostel/schemas";
+
+export const metadata: Metadata = { title: "Hostel" };
 
 const TABS = [
   { key: "rooms", label: "Rooms" },

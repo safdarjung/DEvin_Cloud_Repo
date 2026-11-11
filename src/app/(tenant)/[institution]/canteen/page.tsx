@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { SimulatedBadge } from "@/components/honesty";
@@ -16,6 +17,8 @@ import { ItemControls, NewItemForm, SellForm, TopupForm } from "@/modules/cantee
 import { canteenDaySales, canteenItems, canteenStatement, canteenToday } from "@/modules/canteen/queries";
 import { CanteenDaySalesSchema } from "@/modules/canteen/schemas";
 import { getStudentProfile, listStudents } from "@/modules/people/queries";
+
+export const metadata: Metadata = { title: "Canteen" };
 
 const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric" });
 

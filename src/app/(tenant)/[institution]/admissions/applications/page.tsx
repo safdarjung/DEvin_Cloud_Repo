@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -15,6 +16,8 @@ import { listApplicationsPage, type ApplicationRow } from "@/modules/admissions/
 import type { ApplicationStatus } from "@/modules/admissions/state";
 import { humanize } from "@/lib/format";
 import { parsePage } from "@/lib/list-search";
+
+export const metadata: Metadata = { title: "Applications" };
 
 const STATUSES: ApplicationStatus[] = ["submitted", "under_review", "interaction_scheduled", "offered", "accepted", "rejected", "withdrawn", "enrolled"];
 

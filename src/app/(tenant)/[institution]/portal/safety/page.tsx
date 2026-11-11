@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { CircleCheck } from "lucide-react";
 import { ListPager } from "@/components/list-pager";
 import { EmptyState } from "@/components/states";
@@ -9,6 +10,8 @@ import { resolvePortalSelection } from "@/modules/people/portal";
 import { SafetyAlertCard } from "@/modules/safety/components/SafetyAlertCard";
 import { AcknowledgeButton } from "@/modules/safety/components/SafetyForms";
 import { listSafetyAlerts } from "@/modules/safety/queries";
+
+export const metadata: Metadata = { title: "Safety" };
 
 // Student/guardian view. RLS decides which alerts the caller sees (whole-school
 // alerts plus alerts for their own / their children's sections). Every active

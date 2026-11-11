@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { RecheckDecisionForm } from "@/modules/exams/components/RecheckDecisionF
 import { ResultVersionHistory } from "@/modules/exams/components/ResultVersionHistory";
 import { getRecheck, getResultHistory } from "@/modules/exams/queries";
 import { FadeIn } from "@/components/motion";
+
+export const metadata: Metadata = { title: "Recheck request" };
 
 // T-020 — review + decide one recheck request (06 §W8), exam.recheck.review
 // only (decide_recheck itself re-checks exam.recheck.decide — RecheckDecisionForm

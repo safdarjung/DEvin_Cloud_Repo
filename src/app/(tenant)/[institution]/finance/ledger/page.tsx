@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -12,6 +13,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { LedgerTable } from "@/modules/finance/components/LedgerTable";
 import { listLedgerEntries } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Ledger" };
 
 const LEDGER_ACCOUNTS = ["cash", "bank", "fees_receivable", "fee_income", "concession_expense"] as const;
 

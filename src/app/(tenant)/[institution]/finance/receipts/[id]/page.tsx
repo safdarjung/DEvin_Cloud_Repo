@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion";
@@ -7,6 +8,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { ReceiptView } from "@/modules/finance/components/ReceiptView";
 import { getReceipt } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Receipt" };
 
 // T-032 — 06 §W9 (AC1). `finance.read` is granted to staff finance roles
 // and, per the matrix's guardian/student "s" (own-scope) cells, to

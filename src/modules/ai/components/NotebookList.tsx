@@ -6,10 +6,12 @@
 // genuinely usable (find it again via pin, remove it via delete).
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { deleteStudyItem, updateStudyItem } from "@/modules/ai/student-study.actions";
 import type { StudyItemSummary } from "@/modules/ai/student-study.queries";
 import { AnimatedList } from "@/components/widgets/viz";
@@ -26,15 +28,17 @@ function NotebookRow({ institutionSlug, item }: { institutionSlug: string; item:
 
   async function togglePin() {
     setBusy(true);
-    await updateStudyItem(institutionSlug, { itemId: item.id, pinned: !item.pinned });
+    const result = await updateStudyItem(institutionSlug, { itemId: item.id, pinned: !item.pinned });
     setBusy(false);
+    if (!result.ok) return toast.error(actionErrorMessage(result.error));
     router.refresh();
   }
 
   async function handleDelete() {
     setBusy(true);
-    await deleteStudyItem(institutionSlug, { itemId: item.id });
+    const result = await deleteStudyItem(institutionSlug, { itemId: item.id });
     setBusy(false);
+    if (!result.ok) return toast.error(actionErrorMessage(result.error));
     router.refresh();
   }
 

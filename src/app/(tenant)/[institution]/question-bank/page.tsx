@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requireModule, requirePermission } from "@/lib/auth/require";
@@ -7,6 +8,8 @@ import { QuestionListSchema } from "@/modules/question-bank/schemas";
 import { listCurriculumUnits } from "@/modules/academics/assignments.queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
 import { QuestionPaperBuilder } from "@/modules/ai/components/QuestionPaperBuilder";
+
+export const metadata: Metadata = { title: "Question bank" };
 
 export default async function QuestionBankPage({ params }: { params: Promise<{ institution: string }> }) {
   const { institution: slug } = await params;

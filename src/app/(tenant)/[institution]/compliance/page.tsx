@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -14,6 +15,8 @@ import { COMPLIANCE_STATUSES } from "@/modules/compliance/schemas";
 import type { ComplianceStatus } from "@/modules/compliance/status";
 import { COMPLIANCE_CATEGORIES } from "@/modules/compliance/templates";
 import { listDocuments } from "@/modules/documents/queries";
+
+export const metadata: Metadata = { title: "Compliance" };
 
 const STATUS_LABEL: Record<ComplianceStatus, string> = { overdue: "Overdue", due_soon: "Due within 30 days", ok: "On track" };
 const STATUS_TONE = { overdue: "destructive", due_soon: "warning", ok: "success" } as const;

@@ -456,6 +456,13 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["student"],
     write: ["student"],
   },
+  // 0135 — per-user home dashboard layout. Own row only, every role holds
+  // dashboard.view; the generic suite checks cross-institution isolation.
+  dashboard_preferences: {
+    classes: ["O"],
+    read: ["owner", "principal", "admin", "teacher", "accountant", "admissions", "exam_controller", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher", "accountant", "admissions", "exam_controller", "student", "guardian"],
+  },
 
   // M03-T1 (20261028000064) — invitations. Narrower than campuses/academic_years
   // (class S's usual staff_roles() read): only owner/principal/admin, matching
@@ -662,7 +669,9 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
   // 0095 (M22-T2) — agent_definitions/agent_runs: owner/principal/admin
   // read every row of the institution (same shape as audit_events/jobs).
   // agent_definitions write is UPDATE of `is_enabled` only, owner/principal
-  // (admin excluded — tests/db/agents-rls.test.ts); agent_runs has no
+  // (admin excluded — tests/db/agents-rls.test.ts); 0134 adds INSERT of
+  // custom-agent rows and UPDATE of their custom columns, same
+  // owner/principal (tests/db/custom-agents.test.ts); agent_runs has no
   // authenticated write at all, every write is server-only after the
   // calling action's own permission check (rulings "Writes are
   // server-only").
@@ -1041,8 +1050,9 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin"],
   },
+  // 0133: staff read all; student/guardian only house-wide rows and their own children's.
   house_points: {
-    classes: ["S"],
+    classes: ["S", "O"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: [],
   },

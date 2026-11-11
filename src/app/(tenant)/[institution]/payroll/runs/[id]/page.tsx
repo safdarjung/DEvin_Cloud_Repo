@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LimitedBadge } from "@/components/honesty";
@@ -14,6 +15,8 @@ import { FinalizeRunButton, RebuildRunButton } from "@/modules/payroll/component
 import { inrPaise, monthLabel } from "@/modules/payroll/components/PayslipView";
 import { payrollRunDetail } from "@/modules/payroll/queries";
 import { PayrollRunIdSchema } from "@/modules/payroll/schemas";
+
+export const metadata: Metadata = { title: "Payroll run" };
 
 // Review one month: every payslip, then rebuild (draft only) or finalize with a confirm step.
 export default async function PayrollRunPage({ params }: { params: Promise<{ institution: string; id: string }> }) {

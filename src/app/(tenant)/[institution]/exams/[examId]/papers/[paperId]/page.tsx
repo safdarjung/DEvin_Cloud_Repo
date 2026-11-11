@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
@@ -5,6 +6,8 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { MarksEntryGrid } from "@/modules/exams/components/MarksEntryGrid";
 import { getPaperMarks } from "@/modules/exams/queries";
 import { FadeIn } from "@/components/motion";
+
+export const metadata: Metadata = { title: "Question paper" };
 
 export default async function PaperMarksPage({
   params,

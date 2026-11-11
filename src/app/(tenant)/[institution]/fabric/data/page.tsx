@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { SimulatedBadge } from "@/components/honesty";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ import { listAttentionJobs } from "@/modules/jobs/queries";
 import { resendConfigured } from "@/modules/notifications/channels/resend";
 import { whatsappConfigured } from "@/modules/notifications/channels/whatsapp";
 import { reportList } from "@/modules/reports/queries";
+
+export const metadata: Metadata = { title: "Data & integrations" };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

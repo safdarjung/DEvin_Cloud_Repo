@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { ListPager } from "@/components/list-pager";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -12,6 +13,8 @@ import { AppError } from "@/lib/actions/result";
 import { EditAlumniForm, SyncAlumniButton } from "@/modules/alumni/components/AlumniForms";
 import { alumniFacets, listAlumni } from "@/modules/alumni/queries";
 import { AlumniListSchema } from "@/modules/alumni/schemas";
+
+export const metadata: Metadata = { title: "Alumni" };
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 

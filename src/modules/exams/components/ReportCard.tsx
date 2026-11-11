@@ -60,7 +60,7 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
       <CardContent className="space-y-4">
         {result.isCorrected && (
           <p className="text-muted-foreground text-sm" role="note">
-            Corrected on {new Date(result.publishedAt).toLocaleDateString()}
+            Corrected on {new Date(result.publishedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
           </p>
         )}
 

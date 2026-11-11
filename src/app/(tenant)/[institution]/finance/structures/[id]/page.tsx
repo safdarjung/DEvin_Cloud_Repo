@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +8,8 @@ import { requirePermission } from "@/lib/auth/require";
 import { FeeAssignmentDialog } from "@/modules/finance/components/FeeAssignmentDialog";
 import { FeeStructureForm } from "@/modules/finance/components/FeeStructureForm";
 import { getFeeStructure, listAcademicYears, listFeeStructures, listGradeOptions } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Fee structure" };
 
 export default async function FeeStructureDetailPage({
   params,

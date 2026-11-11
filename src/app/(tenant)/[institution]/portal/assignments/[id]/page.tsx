@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { FadeIn } from "@/components/motion";
@@ -12,6 +13,8 @@ import { QuizContentView } from "@/modules/academics/components/QuizContentView"
 import { mySubmissions } from "@/modules/academics/submissions.queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Assignment" };
 
 const fmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 

@@ -109,7 +109,7 @@ describe("transport queries (M13-T9)", () => {
         expect(route.driver).toBe("Ravi");
         expect(route.capacity).toBe(2);
         expect(route.assigned).toBe(2);
-        expect(route.stops).toEqual([
+        expect(route.stops).toMatchObject([
           { name: "Stop A", eta: "07:00", students: 1, x: 20, y: 30 },
           { name: "Stop B", eta: "07:00", students: 1, x: 40, y: 60 },
         ]);

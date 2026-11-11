@@ -45,6 +45,17 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "agent.approve": { permission: "agent.run", input: () => ({ runId: U() }) },
   "agent.reject": { permission: "agent.run", input: () => ({ runId: U() }) },
   "agent.start": { permission: "agent.run", input: () => ({ runId: U() }) },
+  "agent.custom.create": {
+    permission: "agent.approve",
+    input: () => ({ name: "Probe agent", summary: "Probe.", instructions: "Probe.", examples: [], baseSlug: "library", tools: ["library.overdue"], actions: [] }),
+  },
+  "agent.custom.update": {
+    permission: "agent.approve",
+    input: () => ({ id: U(), name: "Probe agent", summary: "Probe.", instructions: "Probe.", examples: [], baseSlug: "library", tools: ["library.overdue"], actions: [] }),
+  },
+  "agent.custom.archive": { permission: "agent.approve", input: () => ({ id: U() }) },
+  "core.dashboard.layout.save": { permission: "dashboard.view", input: () => ({ hidden: [], order: [] }) },
+  "core.dashboard.layout.reset": { permission: "dashboard.view", input: () => ({}) },
   "ai.study.chat.save": {
     permission: "ai.study",
     input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }),

@@ -280,7 +280,7 @@ export function QuestionBankView({
                         onChange={() => setDraft({ ...draft, answer: opt })}
                         disabled={opt.trim() === ""}
                       />
-                      <Input
+                      <Input aria-label={`Option ${i + 1}`}
                         value={opt}
                         maxLength={500}
                         placeholder={`Option ${i + 1}`}

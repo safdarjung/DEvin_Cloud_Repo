@@ -8,7 +8,8 @@ import { isMarketingPath } from "@/lib/marketing/routes";
 // Session refresh only — never authorization. Server Actions can bypass
 // proxy matchers, so every action re-verifies (04 §3, 07 §1 T13).
 // "start": public invite-code sign-up (F18 §H), reached with no session.
-const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout", "start"]);
+// "auth": password reset (forgot-password, callback, reset-password), reached with no session.
+const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout", "start", "auth"]);
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -46,9 +47,10 @@ export async function proxy(request: NextRequest) {
   // is signed in as a demo account, so the demo never stops at a login screen.
   // /login?switch=1 and /logout are left alone so the role picker still works.
   const isLogin = firstSegment === "login";
-  const wantsPicker = request.nextUrl.searchParams.has("switch");
+  // ?reset: just changed password, show the sign-in form instead of a demo session.
+  const wantsPicker = request.nextUrl.searchParams.has("switch") || request.nextUrl.searchParams.has("reset");
   const isMarketing = isMarketingPath(pathname) && firstSegment !== "select";
-  if (!data?.claims && demoAutoLoginEnabled() && !isMarketing && firstSegment !== "logout" && firstSegment !== "start" && !(isLogin && wantsPicker)) {
+  if (!data?.claims && demoAutoLoginEnabled() && !isMarketing && firstSegment !== "logout" && firstSegment !== "start" && firstSegment !== "auth" && !(isLogin && wantsPicker)) {
     if (await signInAsDemo(supabase, defaultDemoEmail())) {
       data = (await supabase.auth.getClaims()).data;
       if (isLogin) {

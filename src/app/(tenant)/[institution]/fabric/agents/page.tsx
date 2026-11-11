@@ -1,5 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Workflow } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState, ErrorState } from "@/components/states";
 import { BarList } from "@/components/widgets/viz";
@@ -9,10 +10,13 @@ import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
-import { ACTION_RISK, AGENT_CATALOG, type AgentSlug } from "@/modules/agents/catalog";
+import { ACTION_RISK, AGENT_CATALOG, scopedSpec, type AgentSlug } from "@/modules/agents/catalog";
 import { agentDefinitions, agentRunDetail, agentRuns } from "@/modules/agents/queries";
 import { AgentCard } from "@/modules/agents/components/agent-controls";
+import { CreateAgentButton } from "@/modules/agents/components/custom-agent-form";
 import { RunDetailPanel, RunsTable } from "@/modules/agents/components/agent-view";
+
+export const metadata: Metadata = { title: "AI workforce" };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -29,12 +33,16 @@ export default async function AgentsPage({
   requirePermission(ctx, "agent.run");
 
   const base = `/${slug}/fabric/agents`;
+  // Creating/editing agents is the same gate as enabling them (agent.approve, owner/principal).
+  const canManage = hasPermission(ctx, "agent.approve");
   const header = (
     <PageHeader
       title="Agents"
       description="AI helpers that propose work for you. They never act without a person's approval for anything risky."
+      actions={canManage && isModuleEnabled(ctx, "agents") ? <CreateAgentButton institutionSlug={slug} /> : undefined}
     />
   );
+  const showWorkflows = isModuleEnabled(ctx, "workflows") && hasPermission(ctx, "workflow.read");
 
   if (!isModuleEnabled(ctx, "agents")) {
     return (
@@ -76,6 +84,28 @@ export default async function AgentsPage({
         Agents only propose actions. Risky ones wait here until an authorised person approves them.
       </p>
 
+      {showWorkflows && (
+        <section aria-labelledby="workflows-h" className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Workflow className="mt-0.5 size-5 shrink-0" aria-hidden />
+            <div>
+              <h2 id="workflows-h" className="text-base font-semibold">Workflows</h2>
+              <p className="text-sm text-muted-foreground">Chain agents with checks, notifications and approval steps that run on a schedule or event.</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline">
+              <Link href={`/${slug}/fabric/workflows`}>Open workflows</Link>
+            </Button>
+            {hasPermission(ctx, "workflow.manage") && (
+              <Button asChild>
+                <Link href={`/${slug}/fabric/workflows?edit=new`}>New workflow</Link>
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
+
       {awaiting > 0 && (
         <p role="status" className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm font-medium">
           {awaiting} run{awaiting === 1 ? " is" : "s are"} awaiting approval.
@@ -103,30 +133,41 @@ export default async function AgentsPage({
             ) : (
               <Stagger className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 *:min-w-0">
                 {defs.map((d) => {
-                  const spec = AGENT_CATALOG[d.slug as AgentSlug];
+                  // A custom agent shows only its base narrowed to its own subset.
+                  const spec = d.custom ? scopedSpec(d.custom.base_slug, d.custom) : AGENT_CATALOG[d.slug as AgentSlug];
                   return (
                     <StaggerItem key={d.slug} className="[&>*]:h-full">
                     <AgentCard
                       institutionSlug={slug}
                       runsBase={base}
                       canRun={canRun}
-                      canToggle={hasPermission(ctx, "agent.approve")}
+                      canToggle={canManage}
                       agent={{
                         slug: d.slug,
                         name: d.name,
                         role: d.role_description,
-                        summary: spec.summary,
+                        summary: d.custom?.summary ?? spec.summary,
                         toolDescriptions: Object.values(spec.tools),
                         cardActions: Object.entries(spec.actions).map(([action, description]) => ({
                           description,
                           risk: ACTION_RISK[action],
                         })),
-                        examples: [...spec.examples],
+                        examples: [...(d.custom?.examples ?? spec.examples)],
                         maxRisk: d.max_risk_class,
                         enabled: d.is_enabled,
                         runs30d: d.runs_30d,
                         errorRatePct: d.error_rate_pct,
                         costPaise30d: d.cost_paise_30d,
+                        custom: d.custom && {
+                          id: d.id,
+                          name: d.name,
+                          summary: d.custom.summary,
+                          instructions: d.custom.instructions,
+                          examples: d.custom.examples,
+                          baseSlug: d.custom.base_slug,
+                          tools: d.custom.tools,
+                          actions: d.custom.actions,
+                        },
                       }}
                     />
                     </StaggerItem>

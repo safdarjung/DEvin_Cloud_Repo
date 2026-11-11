@@ -5,7 +5,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Bot, Check, Play, X } from "lucide-react";
+import { Bot, Check, Pencil, Play, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { AgentSlug } from "@/modules/agents/catalog";
-import { approveAgentRun, rejectAgentRun, runAgent, setAgentEnabled } from "@/modules/agents/actions";
+import { approveAgentRun, archiveCustomAgent, rejectAgentRun, runAgent, setAgentEnabled } from "@/modules/agents/actions";
+import { CustomAgentDialog, type CustomAgentValues } from "./custom-agent-form";
 import { APPROVAL_TAG, RISK_LABEL, formatPaise, runHref } from "./helpers";
 
 export interface AgentCardAction {
@@ -41,6 +41,8 @@ export interface AgentCardData {
   runs30d: number;
   errorRatePct: number;
   costPaise30d: number;
+  /** Set for a school's own agent (0134): edit/delete use it; runs go through the same run dialog. */
+  custom?: CustomAgentValues & { id: string };
 }
 
 export function AgentCard({
@@ -62,7 +64,8 @@ export function AgentCard({
   const [task, setTask] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | undefined>();
   const [error, setError] = useState<string | null>(null);
-  const slug = agent.slug as AgentSlug;
+  const [editing, setEditing] = useState(false);
+  const slug = agent.slug;
 
   function submitTask(e: React.FormEvent) {
     e.preventDefault();
@@ -94,6 +97,18 @@ export function AgentCard({
     });
   }
 
+  function archive() {
+    const custom = agent.custom;
+    if (!custom || !window.confirm(`Delete "${agent.name}"? Its past runs stay in the run history.`)) return;
+    start(async () => {
+      const res = await archiveCustomAgent(institutionSlug, { id: custom.id });
+      if (res.ok) {
+        toast.success(`${agent.name} deleted`);
+        router.refresh();
+      } else toast.error(res.error.message);
+    });
+  }
+
   function runExample(example: string) {
     setTask(example);
     setOpen(true);
@@ -106,7 +121,10 @@ export function AgentCard({
           <CardTitle className="flex items-center gap-2 text-base">
             <Bot className="size-4" aria-hidden /> {agent.name}
           </CardTitle>
-          <Badge variant={agent.enabled ? "success" : "secondary"}>{agent.enabled ? "Enabled" : "Disabled"}</Badge>
+          <div className="flex shrink-0 gap-1">
+            {agent.custom && <Badge variant="info">Custom</Badge>}
+            <Badge variant={agent.enabled ? "success" : "secondary"}>{agent.enabled ? "Enabled" : "Disabled"}</Badge>
+          </div>
         </div>
         <p className="text-sm font-medium">{agent.summary}</p>
       </CardHeader>
@@ -170,8 +188,21 @@ export function AgentCard({
               {agent.enabled ? "Disable" : "Enable"}
             </Button>
           )}
+          {canToggle && agent.custom && (
+            <>
+              <Button type="button" variant="outline" disabled={pending} onClick={() => setEditing(true)} aria-label={`Edit ${agent.name}`}>
+                <Pencil aria-hidden /> Edit
+              </Button>
+              <Button type="button" variant="outline" disabled={pending} onClick={archive} aria-label={`Delete ${agent.name}`}>
+                <Trash2 aria-hidden /> Delete
+              </Button>
+            </>
+          )}
         </div>
       </CardContent>
+      {agent.custom && (
+        <CustomAgentDialog institutionSlug={institutionSlug} initial={agent.custom} open={editing} onOpenChange={setEditing} />
+      )}
 
       <Dialog open={open} onOpenChange={(o) => !pending && setOpen(o)}>
         <DialogContent>

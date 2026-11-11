@@ -332,9 +332,40 @@ export function maxRisk(classes: readonly RiskClass[]): RiskClass {
   return highest;
 }
 
+// Custom agents (0134): a school's own agent is a row naming a catalog base
+// plus a subset of that base's tools/actions. The server makes the slug.
+export const CUSTOM_AGENT_SLUG_RE = /^custom_[0-9a-f]{32}$/;
+export const MAX_CUSTOM_INSTRUCTIONS = 2_000;
+
+export interface CustomAgentScope {
+  readonly tools: readonly string[];
+  readonly actions: readonly string[];
+}
+
+export interface CustomAgentRun extends CustomAgentScope {
+  readonly instructions: string;
+}
+
+export function isAgentSlug(slug: string): slug is AgentSlug {
+  return (AGENT_SLUGS as readonly string[]).includes(slug);
+}
+
+function pick(all: Readonly<Record<string, string>>, names: readonly string[]): Record<string, string> {
+  return Object.fromEntries(Object.entries(all).filter(([name]) => names.includes(name)));
+}
+
+// The effective spec of a custom agent: its base, narrowed to the stored
+// subset. Names outside the base are dropped here, at every run/approve/
+// display, so a widened row (e.g. a direct PostgREST write) never widens a run.
+export function scopedSpec(slug: AgentSlug, scope?: CustomAgentScope): AgentSpec {
+  const base = AGENT_CATALOG[slug];
+  if (!scope) return base;
+  return { ...base, tools: pick(base.tools, scope.tools), actions: pick(base.actions, scope.actions) };
+}
+
 // Return the max risk for an agent's actions.
-export function agentMaxRisk(slug: AgentSlug): RiskClass {
-  const spec = AGENT_CATALOG[slug];
+export function agentMaxRisk(slug: AgentSlug, scope?: CustomAgentScope): RiskClass {
+  const spec = scopedSpec(slug, scope);
   const risks = Object.keys(spec.actions).map((action) => ACTION_RISK[action]);
   return maxRisk(risks);
 }

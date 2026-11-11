@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { ProgressBar } from "@/components/widgets/viz";
@@ -9,6 +10,8 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { ptmForStudent, type PtmBookableRow } from "@/modules/ptm/queries";
 import { PtmSlotButton } from "@/modules/ptm/components/PtmSlotButton";
+
+export const metadata: Metadata = { title: "Meetings" };
 
 export default async function PortalMeetingsPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,8 @@ import { GatePassActions, GatePassForm } from "@/modules/visitors/components/Gat
 import { PickupAddForm, RemovePickupButton } from "@/modules/visitors/components/PickupPersons";
 import { StudentPicker } from "@/modules/visitors/components/StudentPicker";
 import { visitorsGatePasses, visitorsList, visitorsPickupList } from "@/modules/visitors/queries";
+
+export const metadata: Metadata = { title: "Visitors" };
 
 const timeFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 const GATE_BADGE: Record<string, BadgeVariant> = { pending: "warning", approved: "success", rejected: "destructive", cancelled: "outline", exited: "secondary" };

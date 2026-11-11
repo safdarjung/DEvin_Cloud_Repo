@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -6,6 +7,8 @@ import { curriculumCoverageBySection } from "@/modules/academics/curriculum.quer
 import { examSchedule, examScheduleConflicts } from "@/modules/exams/schedule.queries";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { PlannedWidget, SimpleTable, StatusChip, loadSection, renderSection } from "@/modules/fabric/components/fabric-sections";
+
+export const metadata: Metadata = { title: "Learning" };
 
 const MAX_CONFLICT_EXAMS = 5;
 

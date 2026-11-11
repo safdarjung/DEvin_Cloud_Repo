@@ -52,6 +52,7 @@ const EMPTY_IN_DEMO = new Set<string>([
   "student_lifecycle_events", // M14: no lifecycle event recorded in the demo tenant
   "study_items", // not used by the demo tenant
   "study_preferences", // not used by the demo tenant
+  "dashboard_preferences", // 0135: no custom layout saved in the demo tenant
   "workflow_runs", // M23 ruling: first runner tick after next_run_at creates these, never seeded
 ]);
 

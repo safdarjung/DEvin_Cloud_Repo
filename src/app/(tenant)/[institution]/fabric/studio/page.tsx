@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +8,8 @@ import { catalogMatches, listStudioRequests, type StudioRequestRecord, type Stud
 import { RequestDetail } from "@/modules/fabric/components/studio/request-detail";
 import { RequestList } from "@/modules/fabric/components/studio/request-list";
 import { RequestWizard } from "@/modules/fabric/components/studio/request-wizard";
+
+export const metadata: Metadata = { title: "Custom Studio" };
 
 const STATUS_FILTERS: StudioRequestStatus[] = ["submitted", "proposed", "approved", "in_progress", "delivered", "rejected"];
 

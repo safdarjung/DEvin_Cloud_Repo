@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +10,8 @@ import { hasPermission, requirePermission, requireModule } from "@/lib/auth/requ
 import { PageList } from "@/modules/website/components/PageList";
 import { getWebsite, listPages } from "@/modules/website/queries";
 import { WebsiteLiveToggle } from "./WebsiteLiveToggle";
+
+export const metadata: Metadata = { title: "Website" };
 
 export default async function WebsitePage({ params }: { params: Promise<{ institution: string }> }) {
   const { institution: institutionSlug } = await params;

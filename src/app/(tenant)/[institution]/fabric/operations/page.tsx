@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { BarList, ProgressBar } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
@@ -9,6 +10,8 @@ import { facilitiesAssets, facilitiesMaintenanceRequests } from "@/modules/facil
 import { defaultPublishedVersionId, timetableConflicts, timetableRoomUtilisation, timetableTeacherWorkload } from "@/modules/timetable/queries";
 import { timetableCoverNeeded } from "@/modules/timetable/substitution.queries";
 import { transportRoutes } from "@/modules/transport/queries";
+
+export const metadata: Metadata = { title: "Operations" };
 
 const PRIORITY_TONE = { high: "bad", medium: "warn", low: "neutral" } as const;
 const ROUTE_TONE = { on_time: "good", delayed: "warn", off_road: "bad" } as const;

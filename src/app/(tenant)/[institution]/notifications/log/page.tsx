@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { FadeIn } from "@/components/motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { MessageLog } from "@/modules/notifications/components/MessageLog";
 import { listDeliveryLog } from "@/modules/notifications/queries";
+
+export const metadata: Metadata = { title: "Notification log" };
 
 const STATUS_TONE: Record<string, VizTone> = { sent: "success", queued: "warning", failed: "destructive" };
 

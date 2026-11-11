@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +17,8 @@ import { surveyList } from "@/modules/ptm/survey.queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
 import { FadeIn } from "@/components/motion";
 import { ProgressBar } from "@/components/widgets/viz";
+
+export const metadata: Metadata = { title: "Parent meetings" };
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric" });
 const dateTimeFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });

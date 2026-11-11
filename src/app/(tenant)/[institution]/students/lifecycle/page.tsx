@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ListPager } from "@/components/list-pager";
 import { PageHeader } from "@/components/page-header";
@@ -20,6 +21,8 @@ import { PromoteForm } from "@/modules/lifecycle/components/promote-form";
 import { suggestTargets } from "@/modules/lifecycle/mapping";
 import { lifecycleHistory, promotionPlan } from "@/modules/lifecycle/queries";
 import { getStudentProfile, listStudents } from "@/modules/people/queries";
+
+export const metadata: Metadata = { title: "Promote & exit" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid = (v?: string) => (v && UUID.test(v) ? v : undefined);

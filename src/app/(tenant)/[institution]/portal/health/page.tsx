@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { ErrorState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requireModule, requirePermission } from "@/lib/auth/require";
@@ -5,6 +6,8 @@ import { ProfileSummary, Section, VaccinationsTable, VisitsTable } from "@/modul
 import { healthProfile, healthVaccinations, healthVisits } from "@/modules/health/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Health" };
 
 // Guardian read-only view of the selected child's health record (RLS narrows to own children).
 export default async function PortalHealthPage({

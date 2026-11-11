@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LimitedBadge } from "@/components/honesty";
 import { ListPager } from "@/components/list-pager";
@@ -18,6 +19,8 @@ import { BudgetChart } from "@/modules/expenses/components/BudgetChart";
 import { BudgetForm, CategoryForm, RecordExpenseForm, VoidExpenseButton } from "@/modules/expenses/components/ExpenseForms";
 import { expenseCategories, expensesBudgetVsActual, expensesList, expensesTotal } from "@/modules/expenses/queries";
 import { EXPENSE_LIMITED_NOTE, ExpenseBudgetVsActualSchema, ExpenseListSchema } from "@/modules/expenses/schemas";
+
+export const metadata: Metadata = { title: "Expenses" };
 
 const TABS = [
   { key: "expenses", label: "Expenses" },

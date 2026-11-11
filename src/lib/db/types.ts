@@ -121,17 +121,23 @@ isOneToOne: false
                   ]
                 },"agent_definitions": {
                   Row: {
-                    "created_at": string,"id": string,"institution_id": string,"is_enabled": boolean,"slug": string,"updated_at": string
+                    "actions": (string)[] | null,"archived_at": string | null,"base_slug": string | null,"created_at": string,"created_by": string | null,"examples": (string)[] | null,"id": string,"institution_id": string,"instructions": string | null,"is_enabled": boolean,"name": string | null,"slug": string,"summary": string | null,"tools": (string)[] | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"institution_id": string,"is_enabled"?: boolean,"slug": string,"updated_at"?: string
+                    "actions"?: (string)[] | null,"archived_at"?: string | null,"base_slug"?: string | null,"created_at"?: string,"created_by"?: string | null,"examples"?: (string)[] | null,"id"?: string,"institution_id": string,"instructions"?: string | null,"is_enabled"?: boolean,"name"?: string | null,"slug"?: string,"summary"?: string | null,"tools"?: (string)[] | null,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"institution_id"?: string,"is_enabled"?: boolean,"slug"?: string,"updated_at"?: string
+                    "actions"?: (string)[] | null,"archived_at"?: string | null,"base_slug"?: string | null,"created_at"?: string,"created_by"?: string | null,"examples"?: (string)[] | null,"id"?: string,"institution_id"?: string,"instructions"?: string | null,"is_enabled"?: boolean,"name"?: string | null,"slug"?: string,"summary"?: string | null,"tools"?: (string)[] | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "agent_definitions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "agent_definitions_institution_id_fkey"
       columns: ["institution_id"]
 isOneToOne: false
@@ -1277,6 +1283,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"dashboard_preferences": {
+                  Row: {
+                    "created_at": string,"institution_id": string,"layout": NonNullable<Json>,"updated_at": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"institution_id": string,"layout"?: NonNullable<Json>,"updated_at"?: string,"user_id": string
+                  }
+                  Update: {
+                    "created_at"?: string,"institution_id"?: string,"layout"?: NonNullable<Json>,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "dashboard_preferences_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "dashboard_preferences_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"delivery_attempts": {
                   Row: {
                     "attempted_at": string,"channel": string,"error": string | null,"id": string,"institution_id": string,"notification_id": string,"provider": string | null,"provider_ref": string | null,"rendered_body": string,"status": string,"to_address": string | null
@@ -2307,14 +2339,14 @@ isOneToOne: false
                   ]
                 },"health_profiles": {
                   Row: {
-                    "allergies": string | null,"blood_group": string | null,"conditions": string | null,"created_at": string,"emergency_note": string | null,"id": string,"institution_id": string,"student_id": string,"updated_at": string
+                    "allergies": string | null,"blood_group": string | null,"conditions": string | null,"created_at": string,"emergency_note": string | null,"id": string,"institution_id": string,"student_id": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "allergies"?: string | null,"blood_group"?: string | null,"conditions"?: string | null,"created_at"?: string,"emergency_note"?: string | null,"id"?: string,"institution_id": string,"student_id": string,"updated_at"?: string
+                    "allergies"?: string | null,"blood_group"?: string | null,"conditions"?: string | null,"created_at"?: string,"emergency_note"?: string | null,"id"?: string,"institution_id": string,"student_id": string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "allergies"?: string | null,"blood_group"?: string | null,"conditions"?: string | null,"created_at"?: string,"emergency_note"?: string | null,"id"?: string,"institution_id"?: string,"student_id"?: string,"updated_at"?: string
+                    "allergies"?: string | null,"blood_group"?: string | null,"conditions"?: string | null,"created_at"?: string,"emergency_note"?: string | null,"id"?: string,"institution_id"?: string,"student_id"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -2329,18 +2361,24 @@ isOneToOne: false
 isOneToOne: true
       referencedRelation: "students"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "health_profiles_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
     }
                   ]
                 },"health_visits": {
                   Row: {
-                    "complaint": string,"created_at": string,"id": string,"institution_id": string,"outcome": string,"recorded_by": string,"student_id": string,"treatment": string | null,"updated_at": string,"visited_at": string
+                    "complaint": string,"created_at": string,"id": string,"institution_id": string,"outcome": string,"recorded_by": string,"student_id": string,"treatment": string | null,"updated_at": string,"updated_by": string | null,"visited_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "complaint": string,"created_at"?: string,"id"?: string,"institution_id": string,"outcome"?: string,"recorded_by": string,"student_id": string,"treatment"?: string | null,"updated_at"?: string,"visited_at"?: string
+                    "complaint": string,"created_at"?: string,"id"?: string,"institution_id": string,"outcome"?: string,"recorded_by": string,"student_id": string,"treatment"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"visited_at"?: string
                   }
                   Update: {
-                    "complaint"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"outcome"?: string,"recorded_by"?: string,"student_id"?: string,"treatment"?: string | null,"updated_at"?: string,"visited_at"?: string
+                    "complaint"?: string,"created_at"?: string,"id"?: string,"institution_id"?: string,"outcome"?: string,"recorded_by"?: string,"student_id"?: string,"treatment"?: string | null,"updated_at"?: string,"updated_by"?: string | null,"visited_at"?: string
                   }
                   Relationships: [
                     {
@@ -2360,6 +2398,12 @@ isOneToOne: false
       columns: ["student_id"]
 isOneToOne: false
       referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "health_visits_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -5705,14 +5749,14 @@ isOneToOne: false
                   ]
                 },"vaccinations": {
                   Row: {
-                    "administered_on": string,"created_at": string,"dose": string | null,"id": string,"institution_id": string,"notes": string | null,"recorded_by": string,"student_id": string,"updated_at": string,"vaccine": string
+                    "administered_on": string,"created_at": string,"dose": string | null,"id": string,"institution_id": string,"notes": string | null,"recorded_by": string,"student_id": string,"updated_at": string,"updated_by": string | null,"vaccine": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "administered_on": string,"created_at"?: string,"dose"?: string | null,"id"?: string,"institution_id": string,"notes"?: string | null,"recorded_by": string,"student_id": string,"updated_at"?: string,"vaccine": string
+                    "administered_on": string,"created_at"?: string,"dose"?: string | null,"id"?: string,"institution_id": string,"notes"?: string | null,"recorded_by": string,"student_id": string,"updated_at"?: string,"updated_by"?: string | null,"vaccine": string
                   }
                   Update: {
-                    "administered_on"?: string,"created_at"?: string,"dose"?: string | null,"id"?: string,"institution_id"?: string,"notes"?: string | null,"recorded_by"?: string,"student_id"?: string,"updated_at"?: string,"vaccine"?: string
+                    "administered_on"?: string,"created_at"?: string,"dose"?: string | null,"id"?: string,"institution_id"?: string,"notes"?: string | null,"recorded_by"?: string,"student_id"?: string,"updated_at"?: string,"updated_by"?: string | null,"vaccine"?: string
                   }
                   Relationships: [
                     {
@@ -5732,6 +5776,12 @@ isOneToOne: false
       columns: ["student_id"]
 isOneToOne: false
       referencedRelation: "students"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "vaccinations_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -6380,6 +6430,11 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"house_standings":
+{ Args: { "p_institution_id": string }; Returns: {
+              "house_id": string,"points": number
+            }[]
+                           },
 "insight_src_admissions":
 { Args: { "p_as_of": string,"p_institution_id": string }; Returns: {
               "open_count": number,"over_14": number,"over_2": number,"over_7": number,"stage": string
@@ -6818,6 +6873,9 @@ isOneToOne: false
                            },
 "revoke_invitation":
 { Args: { "p_invitation_id": string }; Returns: undefined
+                           },
+"save_hostel_roll_call":
+{ Args: { "p_entries": Json,"p_institution_id": string,"p_session": string,"p_taken_on": string }; Returns: string
                            },
 "school_lab_utilisation":
 { Args: { "p_from": string,"p_institution_id": string,"p_to": string }; Returns: {

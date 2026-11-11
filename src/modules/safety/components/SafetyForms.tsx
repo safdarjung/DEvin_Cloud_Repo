@@ -375,7 +375,7 @@ export function AutoRefresh({ seconds }: { seconds: number }) {
     const id = window.setInterval(() => {
       if (document.visibilityState !== "visible") return;
       router.refresh();
-      setUpdatedAt(new Date().toLocaleTimeString("en-IN"));
+      setUpdatedAt(new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }));
     }, seconds * 1000);
     return () => window.clearInterval(id);
   }, [router, seconds]);
@@ -390,7 +390,7 @@ export function AutoRefresh({ seconds }: { seconds: number }) {
         onClick={() =>
           start(() => {
             router.refresh();
-            setUpdatedAt(new Date().toLocaleTimeString("en-IN"));
+            setUpdatedAt(new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }));
           })
         }
       >

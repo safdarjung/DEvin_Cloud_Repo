@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -11,6 +12,8 @@ import { examStatusVariant } from "@/modules/exams/status";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { getMyPapers, listExams } from "@/modules/exams/queries";
+
+export const metadata: Metadata = { title: "Exams" };
 
 export default async function ExamsPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
@@ -8,6 +9,8 @@ import { CAPABILITIES, CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog
 import { capabilityState, roleAiConfig, type CapabilityLock } from "@/modules/ai/capabilities/resolve";
 import { usageByRole } from "@/modules/ai/queries";
 import { AiRoleSettings, type RoleTabData } from "@/modules/ai/components/AiRoleSettings";
+
+export const metadata: Metadata = { title: "AI roles" };
 
 // T6 (ai-roles) — per-role AI settings. Server component resolves every
 // role's config and capability state (capabilityState/roleAiConfig already

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -14,6 +15,8 @@ import { BulkActions } from "@/modules/finance/components/BulkActions";
 import { DefaultersTable } from "@/modules/finance/components/DefaultersTable";
 import { listDefaulters, listTermOptions } from "@/modules/finance/queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
+
+export const metadata: Metadata = { title: "Defaulters" };
 
 // T-032 — 06 §W9 defaulters list (AC4). Same staff-only gate as the ledger
 // page — `finance.structure.manage` matches `app.finance_roles()`, the role

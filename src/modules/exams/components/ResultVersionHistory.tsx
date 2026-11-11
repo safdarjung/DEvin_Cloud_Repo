@@ -27,7 +27,7 @@ export function ResultVersionHistory({ history }: ResultVersionHistoryProps) {
               <span>
                 {version.grade}, {version.percentage}%
               </span>
-              <span className="text-muted-foreground">published {new Date(version.publishedAt).toLocaleDateString()}</span>
+              <span className="text-muted-foreground">published {new Date(version.publishedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</span>
             </FadeIn>
           ))}
         </ol>

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
@@ -6,6 +7,8 @@ import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import { ExamForm } from "@/modules/exams/components/ExamForm";
 import { listTermOptions } from "@/modules/exams/queries";
 import { FadeIn } from "@/components/motion";
+
+export const metadata: Metadata = { title: "New exam" };
 
 export default async function NewExamPage({
   params,

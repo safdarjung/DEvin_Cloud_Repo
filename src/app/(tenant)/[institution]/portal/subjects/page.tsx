@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { BarList } from "@/components/widgets/viz";
@@ -9,6 +10,8 @@ import { SubjectCurriculum } from "@/modules/academics/components/SubjectCurricu
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { getStudentProfile } from "@/modules/people/queries";
+
+export const metadata: Metadata = { title: "Subjects" };
 
 export default async function PortalSubjectsPage({
   params,

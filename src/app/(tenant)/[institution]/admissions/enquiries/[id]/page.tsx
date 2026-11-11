@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
 import { EnquiryDetail } from "@/modules/admissions/components/EnquiryDetail";
 import { getEnquiry } from "@/modules/admissions/queries";
+
+export const metadata: Metadata = { title: "Enquiry" };
 
 export default async function EnquiryDetailPage({
   params,

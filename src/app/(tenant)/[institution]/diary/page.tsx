@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
 import { EmptyState } from "@/components/states";
@@ -7,6 +8,8 @@ import { listLabelledTeachableSections, listSectionSubjects } from "@/modules/ac
 import { DiaryView } from "@/modules/diary/components/DiaryView";
 import { diaryForSection } from "@/modules/diary/queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
+
+export const metadata: Metadata = { title: "Class diary" };
 
 const TZ = "Asia/Kolkata";
 

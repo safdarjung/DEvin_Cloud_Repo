@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,6 +7,8 @@ import { requirePermission } from "@/lib/auth/require";
 import { formatPriceInr, MODULES } from "@/lib/modules/catalog";
 import { listModules } from "@/modules/core/queries";
 import { FeatureToggle } from "@/modules/core/components/FeatureToggle";
+
+export const metadata: Metadata = { title: "Modules" };
 
 export default async function ModulesPage({
   params,

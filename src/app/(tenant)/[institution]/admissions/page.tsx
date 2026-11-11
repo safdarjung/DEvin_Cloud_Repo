@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { FadeIn } from "@/components/motion";
@@ -9,6 +10,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { PipelineBoard } from "@/modules/admissions/components/PipelineBoard";
 import { enquiryStagesFor, listEnquiriesByStage } from "@/modules/admissions/queries";
+
+export const metadata: Metadata = { title: "Admissions" };
 
 export default async function AdmissionsPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { BarList, ProgressBar } from "@/components/widgets/viz";
@@ -10,6 +11,8 @@ import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { PlannedWidget, SimpleTable, StatusChip, loadSection, renderSection } from "@/modules/fabric/components/fabric-sections";
 import { listDefaulters, listTermOptions } from "@/modules/finance/queries";
 import { financeSeries, listForecasts } from "@/modules/forecasts/queries";
+
+export const metadata: Metadata = { title: "Finance intel" };
 
 const MONTH_FMT = new Intl.DateTimeFormat("en-IN", { month: "short", year: "2-digit", timeZone: "UTC" });
 function monthLabel(ym: string): string {

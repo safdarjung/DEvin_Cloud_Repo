@@ -13,7 +13,7 @@ import type { Permission } from "@/lib/auth/permissions";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { isModuleEnabled } from "@/lib/modules/catalog";
-import { ACTION_RISK, AGENT_CATALOG, type AgentProposal, type AgentSlug, type RiskClass } from "./catalog";
+import { ACTION_RISK, scopedSpec, type AgentProposal, type AgentSlug, type CustomAgentScope, type RiskClass } from "./catalog";
 
 export const MAX_PROPOSALS = 5;
 export const MAX_PROPOSAL_INPUT_CHARS = 4_000;
@@ -141,9 +141,10 @@ export async function buildAgentTools(
   slug: AgentSlug,
   sink: ProposalSink,
   nonce: string,
+  scope?: CustomAgentScope,
 ): Promise<{ tools: ToolSet; registryNameOf: ReadonlyMap<string, string> }> {
   await loadManifests();
-  const spec = AGENT_CATALOG[slug];
+  const spec = scopedSpec(slug, scope);
   const { tools: readTools, registryNameOf: readRegistryNameOf } = await buildReadTools(ctx, spec.tools, nonce);
   const tools: ToolSet = { ...readTools };
   const registryNameOf = new Map<string, string>(readRegistryNameOf);
@@ -161,9 +162,9 @@ export async function buildAgentTools(
   return { tools, registryNameOf };
 }
 
-export async function agentPermissions(slug: AgentSlug): Promise<Permission[]> {
+export async function agentPermissions(slug: AgentSlug, scope?: CustomAgentScope): Promise<Permission[]> {
   await loadManifests();
-  const spec = AGENT_CATALOG[slug];
+  const spec = scopedSpec(slug, scope);
   const perms = [
     ...Object.keys(spec.tools).map((name) => getQueryMeta().get(name)?.permission),
     ...Object.keys(spec.actions).map((name) => getActionMeta().get(name)?.permission),

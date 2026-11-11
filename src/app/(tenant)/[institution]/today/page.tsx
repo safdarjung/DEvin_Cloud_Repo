@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BookOpenCheck, CalendarDays, ClipboardCheck, ClipboardList, FilePlus2, FileCheck2, Megaphone, PenLine } from "lucide-react";
@@ -30,6 +31,8 @@ import { StudentLeaveReview } from "@/modules/student-leave/components/StudentLe
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
 import { timetableTodayFor } from "@/modules/timetable/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
+
+export const metadata: Metadata = { title: "Today" };
 
 const TZ = "Asia/Kolkata";
 const dayLabel = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });

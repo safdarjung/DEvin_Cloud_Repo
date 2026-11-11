@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
@@ -12,6 +13,8 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { CancelLeaveButton, LeaveRequestForm } from "@/modules/student-leave/components/LeaveControls";
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
+
+export const metadata: Metadata = { title: "Leave" };
 
 const date = new Intl.DateTimeFormat("en-IN", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 const fmt = (iso: string) => date.format(new Date(`${iso}T00:00:00Z`));

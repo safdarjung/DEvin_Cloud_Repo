@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
@@ -6,6 +7,8 @@ import { listScenarios, pipelineEnrolmentHint, realBaselineFacts, simulatorSigna
 import { feeForecastSpread } from "@/modules/fabric/lab.queries";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
+
+export const metadata: Metadata = { title: "Simulator" };
 
 export default async function SimulatorPage({
   params,

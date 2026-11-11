@@ -1,8 +1,8 @@
 "use server";
 
 // Hostel actions (migration 0116). Allocate/vacate go through the definer RPCs
-// (capacity + one-active-allocation + audit live in SQL). Rooms and roll calls
-// are plain RLS writes (owner/principal/admin) audited here.
+// (capacity + one-active-allocation + audit live in SQL), as do roll calls
+// (save_hostel_roll_call, 0133). Rooms are plain RLS writes (owner/principal/admin) audited here.
 import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
@@ -93,6 +93,7 @@ export const vacateAllocation = defineAction({
 });
 
 // One roll call per (date, session): the first save creates it, later saves edit its entries.
+// save_hostel_roll_call (0133) checks allocations, upserts and audits in one transaction.
 export const saveRollCall = defineAction({
   name: "hostel.rollCall.save",
   module: "hostel",
@@ -100,69 +101,13 @@ export const saveRollCall = defineAction({
   permission: "hostel.manage",
   handler: async ({ takenOn, session, entries }, ctx) => {
     const supabase = await createClient();
-
-    // Only currently allocated students may be marked.
-    const { data: active, error: activeErr } = await supabase
-      .from("hostel_allocations")
-      .select("student_id")
-      .eq("institution_id", ctx.institution.id)
-      .is("vacated_on", null);
-    if (activeErr) throwMapped(activeErr);
-    const allocated = new Set((active ?? []).map((a) => a.student_id));
-    if (entries.some((e) => !allocated.has(e.studentId))) {
-      throw new AppError("validation_failed", "Every student must have an active hostel allocation.");
-    }
-
-    const { data: existing, error: findErr } = await supabase
-      .from("hostel_roll_calls")
-      .select("id")
-      .eq("institution_id", ctx.institution.id)
-      .eq("taken_on", takenOn)
-      .eq("session", session)
-      .maybeSingle();
-    if (findErr) throwMapped(findErr);
-
-    let rollCallId = existing?.id;
-    if (!rollCallId) {
-      const { data: created, error } = await supabase
-        .from("hostel_roll_calls")
-        .insert({ institution_id: ctx.institution.id, taken_on: takenOn, session, taken_by: ctx.user.id })
-        .select("id")
-        .single();
-      if (error) throwMapped(error);
-      rollCallId = created.id as string;
-    }
-
-    const { data: prior, error: priorErr } = await supabase
-      .from("hostel_roll_call_entries")
-      .select("student_id")
-      .eq("roll_call_id", rollCallId);
-    if (priorErr) throwMapped(priorErr);
-    const had = new Set((prior ?? []).map((p) => p.student_id));
-
-    const fresh = entries.filter((e) => !had.has(e.studentId));
-    if (fresh.length > 0) {
-      const { error } = await supabase.from("hostel_roll_call_entries").insert(
-        fresh.map((e) => ({
-          institution_id: ctx.institution.id,
-          roll_call_id: rollCallId,
-          student_id: e.studentId,
-          status: e.status,
-          note: e.note ?? null,
-        })),
-      );
-      if (error) throwMapped(error);
-    }
-    for (const e of entries.filter((x) => had.has(x.studentId))) {
-      const { error } = await supabase
-        .from("hostel_roll_call_entries")
-        .update({ status: e.status, note: e.note ?? null })
-        .eq("roll_call_id", rollCallId)
-        .eq("student_id", e.studentId);
-      if (error) throwMapped(error);
-    }
-
-    await audit(ctx, { action: "hostel.rollcall.save", entityType: "hostel_roll_calls", entityId: rollCallId });
-    return { rollCallId, absent: entries.filter((e) => e.status === "absent").length };
+    const { data, error } = await supabase.rpc("save_hostel_roll_call", {
+      p_institution_id: ctx.institution.id,
+      p_taken_on: takenOn,
+      p_session: session,
+      p_entries: entries.map((e) => ({ student_id: e.studentId, status: e.status, note: e.note ?? null })),
+    });
+    if (error) throwMapped(error);
+    return { rollCallId: data as string, absent: entries.filter((e) => e.status === "absent").length };
   },
 });

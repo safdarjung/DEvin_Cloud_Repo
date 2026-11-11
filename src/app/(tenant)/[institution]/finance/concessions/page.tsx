@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LimitedBadge } from "@/components/honesty";
 import { ListPager } from "@/components/list-pager";
@@ -17,6 +18,8 @@ import { DecideAwardButton, EditRuleButton, NewRuleForm, RequestAwardForm, RuleA
 import { concessionValue } from "@/modules/scholarships/components/value";
 import { concessionAwards, concessionRules, concessionSummary, type ConcessionValueRow } from "@/modules/scholarships/queries";
 import { AWARD_STATUSES, SCHOLARSHIPS_LIMITED_NOTE } from "@/modules/scholarships/schemas";
+
+export const metadata: Metadata = { title: "Concessions" };
 
 const TABS = [
   { key: "awards", label: "Awards" },

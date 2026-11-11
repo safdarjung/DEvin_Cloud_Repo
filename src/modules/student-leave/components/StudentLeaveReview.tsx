@@ -91,7 +91,7 @@ export function StudentLeaveReview({ institutionSlug, requests }: { institutionS
               {rejecting?.studentName} ({rejecting?.classSection}) will be marked as not approved. Add a note so the family knows why.
             </DialogDescription>
           </DialogHeader>
-          <Textarea rows={3} maxLength={500} placeholder="Reason (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <Textarea aria-label="Reason (optional)" rows={3} maxLength={500} placeholder="Reason (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejecting(null)}>
               Cancel

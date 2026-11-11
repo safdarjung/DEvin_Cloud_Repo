@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +9,8 @@ import { BlockEditor } from "@/modules/website/components/BlockEditor";
 import { DraftPreview } from "@/modules/website/components/DraftPreview";
 import { VersionList } from "@/modules/website/components/VersionList";
 import { getPageWithVersions, getVersion } from "@/modules/website/queries";
+
+export const metadata: Metadata = { title: "Page editor" };
 
 export default async function PageEditorPage({
   params,

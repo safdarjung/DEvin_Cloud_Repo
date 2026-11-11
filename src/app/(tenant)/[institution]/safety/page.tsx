@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
@@ -22,6 +23,8 @@ import {
   type BoardRow,
   type SafetyAlertRow,
 } from "@/modules/safety/queries";
+
+export const metadata: Metadata = { title: "Safety alerts" };
 
 const REFRESH_SECONDS = 20;
 const GROUP_TEXT = { staff: "Staff", guardian: "Guardian", student: "Student" } as const;

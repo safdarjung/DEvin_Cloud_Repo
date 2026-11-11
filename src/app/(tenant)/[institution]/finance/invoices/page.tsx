@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Search } from "lucide-react";
 import { ListPager } from "@/components/list-pager";
 import { PageHeader } from "@/components/page-header";
@@ -13,6 +14,8 @@ import { parsePage } from "@/lib/list-search";
 import { GenerateInvoicesPanel } from "@/modules/finance/components/GenerateInvoicesPanel";
 import { InvoiceTable } from "@/modules/finance/components/InvoiceTable";
 import { listGradeOptions, listInvoicesPage, listTermOptions } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Invoices" };
 
 const STATUSES = ["issued", "part_paid", "paid", "cancelled"] as const;
 const SELECT_CLASS = "h-10 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-3 text-sm sm:h-9 sm:flex-none";

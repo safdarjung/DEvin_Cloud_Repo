@@ -29,7 +29,7 @@ export function RecentActivity({ entries }: RecentActivityProps) {
               <li key={entry.id} className="flex items-start justify-between gap-3 border-border border-b pb-2 last:border-0">
                 <span className="truncate">{entry.renderedBody}</span>
                 <span className="text-muted-foreground shrink-0 text-xs whitespace-nowrap">
-                  {entry.channel} · {new Date(entry.attemptedAt).toLocaleTimeString()}
+                  {entry.channel} · {new Date(entry.attemptedAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" })}
                 </span>
               </li>
             ))}

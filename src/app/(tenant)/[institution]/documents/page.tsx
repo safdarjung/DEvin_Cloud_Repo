@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ListPager } from "@/components/list-pager";
@@ -16,6 +17,8 @@ import { DocumentRowActions, UploadForm } from "@/modules/documents/components/d
 import { documentOwnerOptions, listDocuments, DOCUMENTS_PAGE_SIZE } from "@/modules/documents/queries";
 import { ENTITY_TYPES } from "@/modules/documents/schemas";
 import { formatBytes } from "@/modules/documents/upload-check";
+
+export const metadata: Metadata = { title: "Documents" };
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" });
 

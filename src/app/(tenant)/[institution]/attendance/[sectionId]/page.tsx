@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -6,6 +7,8 @@ import { AttendanceRegister } from "@/modules/attendance/components/AttendanceRe
 import { getAttendanceSettings, getSession } from "@/modules/attendance/queries";
 import { listAcademicYears } from "@/modules/finance/queries";
 import { getCurrentTermId } from "@/modules/people/queries";
+
+export const metadata: Metadata = { title: "Attendance" };
 
 export default async function AttendanceRegisterPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -8,6 +9,8 @@ import { createClient } from "@/lib/supabase/server";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { FadeIn } from "@/components/motion";
+
+export const metadata: Metadata = { title: "Unit" };
 
 export default async function CurriculumUnitQuizPage({
   params,

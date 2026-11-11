@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { inr } from "@/lib/format";
 import Link from "next/link";
 import { FadeIn } from "@/components/motion";
@@ -9,6 +10,8 @@ import { StudentInvoices } from "@/modules/finance/components/StudentInvoices";
 import { listReceiptsForStudent } from "@/modules/finance/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Fees" };
 
 
 export default async function PortalFeesPage({

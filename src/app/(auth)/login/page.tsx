@@ -14,7 +14,7 @@ const HIGHLIGHTS = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reset?: string }>;
 }) {
   const params = await searchParams;
   const next = sanitizeNextPath(params.next);
@@ -80,6 +80,12 @@ export default async function LoginPage({
             <h1 className="text-2xl font-semibold tracking-[-0.02em]">Welcome back</h1>
             <p className="text-sm text-muted-foreground">Sign in to your school workspace.</p>
           </div>
+
+          {params.reset === "1" && (
+            <p role="status" className="rounded-lg bg-muted px-3 py-2.5 text-sm">
+              Password updated. Sign in.
+            </p>
+          )}
 
           <LoginForm next={nextProp} />
 

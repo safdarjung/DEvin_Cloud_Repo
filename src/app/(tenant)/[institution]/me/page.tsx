@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { EmptyState } from "@/components/states";
 import { AppError } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
@@ -6,6 +7,8 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { FadeIn } from "@/components/motion";
 import { MyPayslips } from "@/modules/payroll/components/MyPayslips";
+
+export const metadata: Metadata = { title: "My profile" };
 
 export default async function PersonalAIPage({
   params,

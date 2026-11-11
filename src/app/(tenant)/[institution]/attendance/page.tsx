@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -7,6 +8,8 @@ import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { getTodaySectionsForTeacher } from "@/modules/attendance/queries";
+
+export const metadata: Metadata = { title: "Attendance" };
 
 export default async function AttendancePage({
   params,

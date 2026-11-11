@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { z } from "zod";
 import { ListPager } from "@/components/list-pager";
@@ -13,6 +14,8 @@ import { ThreadView } from "@/modules/helpdesk/components/ThreadView";
 import { getThread, listTickets, HELPDESK_PAGE_SIZE } from "@/modules/helpdesk/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Helpdesk" };
 
 // Guardian/student helpdesk: raise, list own, thread, reply while open. RLS scopes everything to the caller.
 export default async function PortalHelpdeskPage({

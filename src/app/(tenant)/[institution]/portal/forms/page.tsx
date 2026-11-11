@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -9,6 +10,8 @@ import { FormFill } from "@/modules/forms/components/FormFill";
 import { formMine } from "@/modules/forms/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Forms" };
 
 export default async function PortalFormsPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { uuid } from "@/lib/schemas/common";
 import { MessageList } from "@/modules/messaging/components/MessageList";
 import { ReplyComposer } from "@/modules/messaging/components/ReplyComposer";
 import { myThreads, threadMessages } from "@/modules/messaging/queries";
+
+export const metadata: Metadata = { title: "Conversation" };
 
 export default async function MessageThreadPage({ params }: { params: Promise<{ institution: string; threadId: string }> }) {
   const { institution: institutionSlug, threadId } = await params;

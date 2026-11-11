@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -20,6 +21,8 @@ import {
   recentHousePoints,
   staffOptions,
 } from "@/modules/clubs/queries";
+
+export const metadata: Metadata = { title: "Clubs & houses" };
 
 const when = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 const SECTIONS = [

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { requirePermission, requireModule } from "@/lib/auth/require";
 import { NoticeForm } from "@/modules/website/components/NoticeForm";
 import { listNotices } from "@/modules/website/queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
+
+export const metadata: Metadata = { title: "Notices" };
 
 // Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
 const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
@@ -55,7 +58,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ instit
                   {notices.map((notice, i) => (
                     <TableRow key={notice.id} className={ROW_ENTER} style={rowDelay(i)}>
                       <TableCell>{notice.title}</TableCell>
-                      <TableCell className="tabular-nums">{new Date(notice.publishAt).toLocaleString()}</TableCell>
+                      <TableCell className="tabular-nums">{new Date(notice.publishAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
                       <TableCell className="text-right">
                         <Badge variant={notice.isPublic ? "success" : "outline"}>
                           {notice.isPublic ? "Public" : "Internal"}

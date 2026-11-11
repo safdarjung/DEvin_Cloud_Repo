@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
@@ -7,6 +8,8 @@ import { hasPermission, requirePermission, requireModule } from "@/lib/auth/requ
 import { DraftPreview } from "@/modules/website/components/DraftPreview";
 import { getPageWithVersions, getVersion } from "@/modules/website/queries";
 import { PublishThisVersion } from "./PublishThisVersion";
+
+export const metadata: Metadata = { title: "Page version" };
 
 export default async function VersionDetailPage({
   params,

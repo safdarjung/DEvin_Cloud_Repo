@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
 import { notFound, redirect } from "next/navigation";
@@ -7,6 +8,8 @@ import { requirePermission } from "@/lib/auth/require";
 import { uuid } from "@/lib/schemas/common";
 import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
 import { getStudyItem } from "@/modules/ai/student-study.queries";
+
+export const metadata: Metadata = { title: "Study item" };
 
 // GU-09 — a saved "chat" item has no view of its own: it resumes in the
 // main study chat (StudyChat's `initialMessages`). Only "note" items get
@@ -46,7 +49,7 @@ export default async function NotebookItemPage({
       </div>
       <h1 className="hidden text-2xl font-semibold print:block">{item.title}</h1>
       {/* Saved-note honesty label (plan §8) — the note outlives the chat it may have come from. */}
-      <p className="-mt-4 text-xs italic text-muted-foreground">AI-assisted note · saved {new Date(item.updatedAt).toLocaleDateString()}</p>
+      <p className="-mt-4 text-xs italic text-muted-foreground">AI-assisted note · saved {new Date(item.updatedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</p>
       <FadeIn className="space-y-3">
         {item.blocks.map((block, index) => (
           <BlockRenderer key={index} block={block} />

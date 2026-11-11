@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -9,6 +10,8 @@ import { hasPermission, requireModule, requirePermission } from "@/lib/auth/requ
 import { humanize } from "@/lib/format";
 import { ItemForm, MovementForm } from "@/modules/inventory/components/InventoryForms";
 import { inventoryMovements, inventoryStock } from "@/modules/inventory/queries";
+
+export const metadata: Metadata = { title: "Inventory" };
 
 const TABS = [
   { key: "stock", label: "Stock" },

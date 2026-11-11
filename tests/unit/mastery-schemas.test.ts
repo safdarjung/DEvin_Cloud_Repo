@@ -1,15 +1,4 @@
 import { describe, it, expect } from "vitest";
-// Re-export types for consumers (suppress unused warnings in test file)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type {
-  HeatmapQueryInput,
-  StudentGapsQueryInput,
-  SuccessRowsQueryInput,
-  InterventionsQueryInput,
-  SetPaperUnitsInput,
-  InterventionStepInput,
-  UpdateInterventionInput,
-} from "../../src/modules/mastery/schemas";
 import {
   INTERVENTION_STATUSES,
   HeatmapQuerySchema,

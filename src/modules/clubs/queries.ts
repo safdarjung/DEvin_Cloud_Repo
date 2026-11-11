@@ -1,8 +1,8 @@
 import "server-only";
 // Features-18 #6 — clubs & houses reads. RLS decides what each role sees:
 // staff read every row; guardian/student read only their own children's
-// membership/sign-up/house rows (member counts and house totals are NOT
-// readable by them — 0115 has no aggregate definer; see report gap).
+// membership/sign-up/house rows (member counts are NOT readable by them;
+// house totals come from the 0133 house_standings definer).
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 
@@ -127,7 +127,7 @@ export interface HouseRow {
   members: PersonRef[];
 }
 
-/** Houses with member lists and point totals, highest points first. Totals/members are staff-visible only (RLS). */
+/** Houses with member lists and point totals, highest points first. Members are staff-visible only (RLS); totals come from the house_standings definer (every member). */
 export async function housesLeaderboard(ctx: TenantContext): Promise<HouseRow[]> {
   const supabase = await createClient();
   const [houses, members, points] = await Promise.all([
@@ -137,12 +137,11 @@ export async function housesLeaderboard(ctx: TenantContext): Promise<HouseRow[]>
       .select("house_id, student_id, students(first_name, last_name, admission_no)")
       .eq("institution_id", ctx.institution.id)
       .limit(MAX_ROWS),
-    supabase.from("house_points").select("house_id, points").eq("institution_id", ctx.institution.id).limit(MAX_ROWS * 5),
+    supabase.rpc("house_standings", { p_institution_id: ctx.institution.id }),
   ]);
   for (const r of [houses, members, points]) if (r.error) throw r.error;
 
-  const totals = new Map<string, number>();
-  for (const p of points.data ?? []) totals.set(p.house_id, (totals.get(p.house_id) ?? 0) + p.points);
+  const totals = new Map((points.data ?? []).map((p) => [p.house_id, Number(p.points)]));
   return (houses.data ?? [])
     .map((h) => ({
       id: h.id,

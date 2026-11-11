@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { ApplicationDetail } from "@/modules/admissions/components/ApplicationDetail";
 import { getApplication, listApplicationDecisions, listSectionsForGrade } from "@/modules/admissions/queries";
 import { listFeeStructures } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Application" };
 
 export default async function ApplicationDetailPage({
   params,

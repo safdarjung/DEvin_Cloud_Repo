@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
@@ -8,6 +9,8 @@ import { ReplyComposer } from "@/modules/messaging/components/ReplyComposer";
 import { myThreads, threadMessages } from "@/modules/messaging/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Conversation" };
 
 export default async function PortalThreadPage({
   params,

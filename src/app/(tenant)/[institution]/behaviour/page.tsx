@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ListPager } from "@/components/list-pager";
@@ -17,6 +18,8 @@ import { listStudents } from "@/modules/people/queries";
 import { LogIncidentForm, VoidIncidentButton } from "@/modules/behaviour/components/BehaviourForms";
 import { BEHAVIOUR_PAGE_SIZE, listIncidents, studentPointTotals } from "@/modules/behaviour/queries";
 import { IncidentListSchema } from "@/modules/behaviour/schemas";
+
+export const metadata: Metadata = { title: "Behaviour" };
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 const SEVERITY_VARIANT = { low: "outline", medium: "warning", high: "destructive" } as const;

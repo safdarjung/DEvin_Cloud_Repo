@@ -17,20 +17,27 @@ import type { Json } from "@/lib/db/types";
 import {
   AGENT_CATALOG_VERSION,
   canDecideRun,
+  isAgentSlug,
   type AgentLogEntry,
   type AgentProposal,
   type AgentSlug,
+  type CustomAgentRun,
   type RiskClass,
 } from "@/modules/agents/catalog";
 import { executeAgentRun, executeProposals, logEntry, type AgentRunOutcome } from "@/modules/agents/executor";
 import { agentsAdmin, ensureAgentDefinitions } from "@/modules/agents/service-role";
 import {
+  ArchiveCustomAgentSchema,
+  CreateCustomAgentSchema,
   DecideAgentRunSchema,
   RunAgentSchema,
   SetAgentEnabledSchema,
+  UpdateCustomAgentSchema,
+  type CreateCustomAgentInput,
   type DecideAgentRunInput,
   type RunAgentInput,
   type SetAgentEnabledInput,
+  type UpdateCustomAgentInput,
 } from "@/modules/agents/schemas";
 
 const RUN_NOT_FINISHED = "The agent run stopped before it finished.";
@@ -41,6 +48,50 @@ function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
   if (mapped.ok) throw new AppError("internal", "Unexpected error.");
   throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+}
+
+type UserClient = Awaited<ReturnType<typeof createClient>>;
+
+// Catalog rows carry only slug/is_enabled; custom rows (0134) also carry
+// their base, stored subset and instructions.
+const DEFINITION_COLUMNS = "id, slug, is_enabled, base_slug, tools, actions, instructions, archived_at";
+
+interface DefinitionRow {
+  slug: string;
+  is_enabled: boolean;
+  base_slug: string | null;
+  tools: string[] | null;
+  actions: string[] | null;
+  instructions: string | null;
+  archived_at: string | null;
+}
+
+interface RunTarget {
+  slug: AgentSlug;
+  custom?: CustomAgentRun;
+}
+
+// What a run executes as: a catalog agent, or a custom agent's base narrowed
+// to its stored subset (scopedSpec in the executor/tools drops anything
+// outside the base). A custom agent is off whenever its base is off.
+async function runTarget(supabase: UserClient, ctx: TenantContext, def: DefinitionRow): Promise<RunTarget> {
+  if (def.archived_at) throw new AppError("not_found", "Agent not found.");
+  if (!def.is_enabled) throw new AppError("invalid_state", "This agent is turned off.");
+  if (def.base_slug === null) return { slug: def.slug as AgentSlug };
+  if (!isAgentSlug(def.base_slug)) throw new AppError("invalid_state", "This agent's base agent no longer exists.");
+
+  const { data: base, error } = await supabase
+    .from("agent_definitions")
+    .select("is_enabled")
+    .eq("institution_id", ctx.institution.id)
+    .eq("slug", def.base_slug)
+    .maybeSingle();
+  if (error) throwMapped(error);
+  if (!base?.is_enabled) throw new AppError("invalid_state", "The base agent of this custom agent is turned off.");
+  return {
+    slug: def.base_slug,
+    custom: { tools: def.tools ?? [], actions: def.actions ?? [], instructions: def.instructions ?? "" },
+  };
 }
 
 export interface RunAgentResult {
@@ -54,7 +105,8 @@ export interface RunAgentResult {
 // persist the outcome under the guard's finished_at rule, and hand the
 // outcome back so each caller writes its own audit entry (agent.run logs
 // `proposals`; agent.start never logs the task, rulings "agent.start").
-async function finishRun(ctx: TenantContext, runId: string, slug: AgentSlug, task: string): Promise<AgentRunOutcome> {
+async function finishRun(ctx: TenantContext, runId: string, target: RunTarget, task: string): Promise<AgentRunOutcome> {
+  const { slug, custom } = target;
   // Default outcome if executeAgentRun (documented never to throw) throws
   // anyway — the `finally` below always moves the row out of "running".
   let outcome: AgentRunOutcome = {
@@ -65,7 +117,7 @@ async function finishRun(ctx: TenantContext, runId: string, slug: AgentSlug, tas
     proposals: [],
   };
   try {
-    outcome = await executeAgentRun(ctx, { runId, slug, task });
+    outcome = await executeAgentRun(ctx, { runId, slug, task, custom });
   } catch (err) {
     console.error(`[agents] run ${runId} (${slug}) threw unexpectedly`, err);
   } finally {
@@ -104,13 +156,13 @@ export const runAgent = defineAction({
 
     const { data: definition, error: definitionError } = await supabase
       .from("agent_definitions")
-      .select("id, is_enabled")
+      .select(DEFINITION_COLUMNS)
       .eq("institution_id", ctx.institution.id)
       .eq("slug", input.slug)
       .maybeSingle();
     if (definitionError) throwMapped(definitionError);
     if (!definition) throw new AppError("not_found", "Agent not found.");
-    if (!definition.is_enabled) throw new AppError("invalid_state", "This agent is turned off.");
+    const target = await runTarget(supabase, ctx, definition);
 
     const admin = agentsAdmin();
     const startedAt = new Date().toISOString();
@@ -130,7 +182,7 @@ export const runAgent = defineAction({
     if (insertError || !run) throwMapped(insertError);
     const runId = run.id as string;
 
-    const outcome = await finishRun(ctx, runId, input.slug, input.task);
+    const outcome = await finishRun(ctx, runId, target, input.task);
 
     await audit(ctx, {
       action: "agent.run",
@@ -178,13 +230,13 @@ export const startAgentRun = defineAction({
 
     const { data: definition, error: definitionError } = await supabase
       .from("agent_definitions")
-      .select("slug, is_enabled")
+      .select(DEFINITION_COLUMNS)
       .eq("institution_id", ctx.institution.id)
       .eq("id", run.agent_id)
       .maybeSingle();
     if (definitionError) throwMapped(definitionError);
     if (!definition) throw new AppError("not_found", "Agent run not found.");
-    if (!definition.is_enabled) throw new AppError("invalid_state", "This agent is turned off.");
+    const target = await runTarget(supabase, ctx, definition);
 
     // Claim queued -> running (lesson 2095-style conflict guard): only one
     // concurrent `agent.start` wins the row.
@@ -199,8 +251,8 @@ export const startAgentRun = defineAction({
     if (claimError) throwMapped(claimError);
     if (!claimed) throw new AppError("conflict", "This run was already started.");
 
-    const slug = definition.slug as AgentSlug;
-    const outcome = await finishRun(ctx, run.id as string, slug, (run.task as string | null) ?? "");
+    const slug = definition.slug;
+    const outcome = await finishRun(ctx, run.id as string, target, (run.task as string | null) ?? "");
 
     await audit(ctx, {
       action: "agent.start",
@@ -256,8 +308,7 @@ interface DecisionRun {
   status: string;
   riskClass: RiskClass;
   requestedBy: string;
-  slug: AgentSlug;
-  isEnabled: boolean;
+  definition: DefinitionRow;
   proposals: AgentProposal[];
   log: AgentLogEntry[];
 }
@@ -266,7 +317,7 @@ interface DecisionRun {
 // decides"). `agent_runs.agent_id` is a composite FK, not embeddable in one
 // PostgREST select, so the definition (slug, is_enabled) is a second read.
 async function readDecisionRun(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: UserClient,
   ctx: TenantContext,
   runId: string,
 ): Promise<DecisionRun> {
@@ -281,7 +332,7 @@ async function readDecisionRun(
 
   const { data: definition, error: definitionError } = await supabase
     .from("agent_definitions")
-    .select("slug, is_enabled")
+    .select(DEFINITION_COLUMNS)
     .eq("institution_id", ctx.institution.id)
     .eq("id", run.agent_id)
     .maybeSingle();
@@ -293,8 +344,7 @@ async function readDecisionRun(
     status: run.status as string,
     riskClass: run.risk_class as RiskClass,
     requestedBy: run.requested_by as string,
-    slug: definition.slug as AgentSlug,
-    isEnabled: definition.is_enabled as boolean,
+    definition,
     proposals: (run.proposals ?? []) as unknown as AgentProposal[],
     log: (run.log ?? []) as unknown as AgentLogEntry[],
   };
@@ -327,9 +377,6 @@ async function decideAgentRun(
   if (!canDecideRun({ userId: ctx.user.id, canApprove }, { risk_class: run.riskClass, requested_by: run.requestedBy })) {
     throw new AppError("forbidden", "You cannot decide this run.");
   }
-  if (decision === "approve" && !run.isEnabled) {
-    throw new AppError("invalid_state", "This agent is turned off.");
-  }
 
   const admin = agentsAdmin();
   const decidedAt = new Date().toISOString();
@@ -360,6 +407,10 @@ async function decideAgentRun(
     return { runId: run.id, status: "rejected" };
   }
 
+  // Approve re-resolves the target (enabled, base on, stored subset) before
+  // claiming; reject (above) needs none of it.
+  const target = await runTarget(supabase, ctx, run.definition);
+
   // Approve: claim the run (awaiting_approval -> running, guard-allowed),
   // then execute its proposals as the approver (rulings "AI boundary",
   // "Execution"). Mirrors runAgent's try/finally: the row always leaves
@@ -377,11 +428,11 @@ async function decideAgentRun(
   let proposals = run.proposals;
   let execLog: AgentLogEntry[] = [logEntry("error", "Run stopped (error)")];
   try {
-    const executed = await executeProposals(ctx, run.slug, run.proposals);
+    const executed = await executeProposals(ctx, target.slug, run.proposals, target.custom);
     proposals = executed.proposals;
     execLog = executed.log;
   } catch (err) {
-    console.error(`[agents] approve ${run.id} (${run.slug}) threw unexpectedly`, err);
+    console.error(`[agents] approve ${run.id} (${run.definition.slug}) threw unexpectedly`, err);
     proposals = run.proposals.map((p): AgentProposal => (p.status === "proposed" ? { ...p, status: "failed", error_code: "internal" } : p));
   } finally {
     const log = [...run.log, logEntry("info", `Approved by ${ctx.membership.role}`), ...execLog, logEntry("info", "Finished: done")].slice(
@@ -419,4 +470,113 @@ export const rejectAgentRun = defineAction({
   schema: DecideAgentRunSchema,
   permission: "agent.run",
   handler: (input: DecideAgentRunInput, ctx) => decideAgentRun(ctx, input, "reject"),
+});
+
+// Custom agents (0134). Writes go through the caller's own client: RLS
+// (owner/principal, own institution) + the column grants + the guard
+// trigger (row cap, archived rows frozen) all apply; `slug` and
+// `created_by` are stamped by the DB, never by input. The Zod schema has
+// already checked the tool/action subset against the base agent.
+const NAME_TAKEN = "Another agent in this school already has this name.";
+
+function throwCustomAgentError(error: unknown): never {
+  if ((error as { code?: string } | null)?.code === "23505") throw new AppError("conflict", NAME_TAKEN, { name: [NAME_TAKEN] });
+  throwMapped(error);
+}
+
+function customAgentRow(input: CreateCustomAgentInput | UpdateCustomAgentInput) {
+  return {
+    name: input.name,
+    summary: input.summary,
+    instructions: input.instructions,
+    examples: input.examples,
+    tools: [...new Set(input.tools)],
+    actions: [...new Set(input.actions)],
+  };
+}
+
+export interface CustomAgentResult {
+  id: string;
+  slug: string;
+}
+
+export const createCustomAgent = defineAction({
+  name: "agent.custom.create",
+  module: "agents",
+  schema: CreateCustomAgentSchema,
+  permission: "agent.approve",
+  handler: async (input: CreateCustomAgentInput, ctx): Promise<CustomAgentResult> => {
+    const supabase = await createClient();
+    const row = customAgentRow(input);
+    const { data, error } = await supabase
+      .from("agent_definitions")
+      .insert({ institution_id: ctx.institution.id, base_slug: input.baseSlug, ...row })
+      .select("id, slug")
+      .single();
+    if (error || !data) throwCustomAgentError(error);
+
+    await audit(ctx, {
+      action: "agent.custom.create",
+      entityType: "agent_definition",
+      entityId: data.id,
+      after: { slug: data.slug, name: row.name, baseSlug: input.baseSlug, tools: row.tools, actions: row.actions },
+    });
+    return { id: data.id, slug: data.slug };
+  },
+});
+
+export const updateCustomAgent = defineAction({
+  name: "agent.custom.update",
+  module: "agents",
+  schema: UpdateCustomAgentSchema,
+  permission: "agent.approve",
+  handler: async (input: UpdateCustomAgentInput, ctx): Promise<CustomAgentResult> => {
+    const supabase = await createClient();
+    const row = customAgentRow(input);
+    // Matching on base_slug too: the subset was validated against this base.
+    const { data, error } = await supabase
+      .from("agent_definitions")
+      .update(row)
+      .eq("institution_id", ctx.institution.id)
+      .eq("id", input.id)
+      .eq("base_slug", input.baseSlug)
+      .is("archived_at", null)
+      .select("id, slug")
+      .maybeSingle();
+    if (error) throwCustomAgentError(error);
+    if (!data) throw new AppError("not_found", "Custom agent not found.");
+
+    await audit(ctx, {
+      action: "agent.custom.update",
+      entityType: "agent_definition",
+      entityId: data.id,
+      after: { slug: data.slug, name: row.name, baseSlug: input.baseSlug, tools: row.tools, actions: row.actions },
+    });
+    return { id: data.id, slug: data.slug };
+  },
+});
+
+// "Delete" archives: past runs keep pointing at the row (agent_runs FK).
+export const archiveCustomAgent = defineAction({
+  name: "agent.custom.archive",
+  module: "agents",
+  schema: ArchiveCustomAgentSchema,
+  permission: "agent.approve",
+  handler: async (input, ctx): Promise<CustomAgentResult> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("agent_definitions")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("institution_id", ctx.institution.id)
+      .eq("id", input.id)
+      .not("base_slug", "is", null)
+      .is("archived_at", null)
+      .select("id, slug")
+      .maybeSingle();
+    if (error) throwMapped(error);
+    if (!data) throw new AppError("not_found", "Custom agent not found.");
+
+    await audit(ctx, { action: "agent.custom.archive", entityType: "agent_definition", entityId: data.id, after: { slug: data.slug } });
+    return { id: data.id, slug: data.slug };
+  },
 });

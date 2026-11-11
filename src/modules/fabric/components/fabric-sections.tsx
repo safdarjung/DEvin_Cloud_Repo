@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { LimitedBadge } from "@/components/honesty";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Widget } from "@/components/widgets/widget";

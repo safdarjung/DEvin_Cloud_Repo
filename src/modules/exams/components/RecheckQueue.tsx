@@ -67,7 +67,7 @@ export function RecheckQueue({ institutionSlug, rows }: RecheckQueueProps) {
                 <TableCell>
                   <Badge variant={recheckStatusVariant(row.status)}>{humanize(row.status)}</Badge>
                 </TableCell>
-                <TableCell className="hidden sm:table-cell">{new Date(row.requestedAt).toLocaleDateString()}</TableCell>
+                <TableCell className="hidden sm:table-cell">{new Date(row.requestedAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
               </TableRow>
             ))}
           </TableBody>

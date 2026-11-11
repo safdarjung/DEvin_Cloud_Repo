@@ -623,14 +623,32 @@ const INSTALMENT_STATUS_PAGE_SIZE = 1000;
 /** Outstanding (issued/part_paid) invoices for a term — fully paid and cancelled invoices are excluded (AC4). invoices RLS also allows the owning guardian/student, but defaulters is a staff-only page (gated by finance.read + role in practice); no guardian call path renders it. */
 export async function listDefaulters(ctx: TenantContext, filters: { termId: string }): Promise<DefaulterRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("invoices")
-    .select("id, invoice_no, student_id, total, paid_total, due_on, students(first_name, last_name)")
-    .eq("institution_id", ctx.institution.id)
-    .eq("term_id", filters.termId)
-    .in("status", ["issued", "part_paid"])
-    .order("due_on", { ascending: true, nullsFirst: false });
-  if (error) throw error;
+  // Paged: PostgREST caps one response at max_rows (1000), which silently truncated the overdue count.
+  // Stable order (due_on, id) so pages never overlap or skip.
+  type InvoiceRow = {
+    id: string;
+    invoice_no: string;
+    student_id: string;
+    total: number | string;
+    paid_total: number | string;
+    due_on: string | null;
+    students: unknown;
+  };
+  const data: InvoiceRow[] = [];
+  for (let from = 0; ; from += INSTALMENT_STATUS_PAGE_SIZE) {
+    const { data: page, error } = await supabase
+      .from("invoices")
+      .select("id, invoice_no, student_id, total, paid_total, due_on, students(first_name, last_name)")
+      .eq("institution_id", ctx.institution.id)
+      .eq("term_id", filters.termId)
+      .in("status", ["issued", "part_paid"])
+      .order("due_on", { ascending: true, nullsFirst: false })
+      .order("id", { ascending: true })
+      .range(from, from + INSTALMENT_STATUS_PAGE_SIZE - 1);
+    if (error) throw error;
+    data.push(...((page ?? []) as InvoiceRow[]));
+    if (!page || page.length < INSTALMENT_STATUS_PAGE_SIZE) break;
+  }
 
   // X04-T9 — ruling "Defaulters respect instalments": a plan invoice is
   // only a defaulter when one of its parts is `overdue`; its `dueOn`
@@ -653,7 +671,7 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
     if (!page || page.length < INSTALMENT_STATUS_PAGE_SIZE) break;
   }
 
-  return (data ?? [])
+  return data
     .flatMap((row) => {
       const plan = planParts.get(row.id);
       const onPlan = plan !== undefined;

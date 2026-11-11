@@ -38,40 +38,42 @@ export function PromoteForm({ institutionSlug, fromYearId, toYearId, plan, sugge
 
   return (
     <div className="space-y-4" aria-busy={pending}>
-      <table className="w-full text-sm">
-        <caption className="sr-only">Promotion mapping</caption>
-        <thead>
-          <tr className="text-left text-muted-foreground">
-            <th className="py-1 pr-3 font-medium">From section</th>
-            <th className="py-1 pr-3 text-right font-medium">Students</th>
-            <th className="py-1 font-medium">Moves to</th>
-          </tr>
-        </thead>
-        <tbody>
-          {plan.from.map((s) => (
-            <tr key={s.id} className="border-t border-border">
-              <td className="py-2 pr-3 font-medium">{s.label}</td>
-              <td className="py-2 pr-3 text-right tabular-nums">{s.students}</td>
-              <td className="py-2">
-                <select
-                  aria-label={`Target for ${s.label}`}
-                  value={target[s.id] ?? ""}
-                  disabled={review}
-                  onChange={(e) => setTarget({ ...target, [s.id]: e.target.value || null })}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">Graduate (leave school roll)</option>
-                  {plan.to.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <caption className="sr-only">Promotion mapping</caption>
+          <thead>
+            <tr className="text-left text-muted-foreground">
+              <th className="py-1 pr-3 font-medium">From section</th>
+              <th className="py-1 pr-3 text-right font-medium">Students</th>
+              <th className="py-1 font-medium">Moves to</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {plan.from.map((s) => (
+              <tr key={s.id} className="border-t border-border">
+                <td className="py-2 pr-3 font-medium">{s.label}</td>
+                <td className="py-2 pr-3 text-right tabular-nums">{s.students}</td>
+                <td className="py-2">
+                  <select
+                    aria-label={`Target for ${s.label}`}
+                    value={target[s.id] ?? ""}
+                    disabled={review}
+                    onChange={(e) => setTarget({ ...target, [s.id]: e.target.value || null })}
+                    className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">Graduate (leave school roll)</option>
+                    {plan.to.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {error && (
         <p role="alert" className="text-sm text-destructive">
           {error}

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -18,6 +19,8 @@ import { listGradeOptions, listTermOptions } from "@/modules/finance/queries";
 import { studentStatusVariant } from "@/modules/people/components/StudentProfileHeader";
 import { listStudents } from "@/modules/people/queries";
 import { StudentListFiltersSchema } from "@/modules/people/schemas";
+
+export const metadata: Metadata = { title: "Students" };
 
 const STATUSES = ["active", "alumni", "withdrawn"] as const;
 const SELECT_CLASS = "h-10 min-w-0 flex-1 rounded-lg border border-input bg-transparent px-3 text-sm sm:h-9 sm:flex-none";

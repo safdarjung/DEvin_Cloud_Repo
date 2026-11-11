@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listInsightActions, listInsights } from "@/modules/insights/queries";
 import { InsightDetail, InsightFilters, InsightList } from "@/modules/insights/components/insight-view";
 import { parseDomain, parseStatusTab, parseUuid, sortInsights, insightHref } from "@/modules/insights/components/helpers";
+
+export const metadata: Metadata = { title: "Insights" };
 
 const SEVERITY_ROWS: { key: string; label: string; tone: VizTone }[] = [
   { key: "critical", label: "Critical", tone: "destructive" },

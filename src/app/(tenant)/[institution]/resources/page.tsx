@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -12,6 +13,8 @@ import { ResourceBody } from "@/modules/resources/components/ResourceCard";
 import { CreateResourceForm, ResourceRowActions } from "@/modules/resources/components/ResourceForms";
 import { browseResources, listAudienceSections, listMyResources, listUnitOptions, type ResourceRow } from "@/modules/resources/queries";
 import { ResourceBrowseSchema } from "@/modules/resources/schemas";
+
+export const metadata: Metadata = { title: "Resources" };
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 

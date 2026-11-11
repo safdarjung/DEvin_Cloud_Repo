@@ -184,7 +184,7 @@ function RoleTab({ institutionSlug, data }: { institutionSlug: string; data: Rol
           </div>
 
           <div className="rounded-lg border border-border p-3 text-sm text-muted-foreground">
-            Usage this month: {data.usage.tokens.toLocaleString()} tokens, ₹{(data.usage.costPaise / 100).toFixed(2)} estimated.
+            Usage this month: {data.usage.tokens.toLocaleString("en-IN")} tokens, ₹{(data.usage.costPaise / 100).toFixed(2)} estimated.
           </div>
 
           {error && (

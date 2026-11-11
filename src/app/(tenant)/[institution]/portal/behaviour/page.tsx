@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,8 @@ import { humanize } from "@/lib/format";
 import { portalTimeline } from "@/modules/behaviour/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Behaviour" };
 
 // Read-only. RLS already hides voided rows from guardian/student; the query filters again.
 export default async function PortalBehaviourPage({

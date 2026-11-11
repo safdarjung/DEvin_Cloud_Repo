@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { getStudentPreferences } from "@/modules/ai/student-preferences";
 import { StudyLanguageForm } from "@/modules/ai/components/StudyLanguageForm";
+
+export const metadata: Metadata = { title: "Study preferences" };
 
 // DBT-160 — student-only (ai.study); requirePermission is the real floor.
 export default async function StudyPreferencesPage({ params }: { params: Promise<{ institution: string }> }) {

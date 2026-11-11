@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { Metadata } from "next";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import { Banknote, CalendarCheck, ChevronRight, GraduationCap, Sparkles, UserPlus } from "lucide-react";
 import { GsapStage } from "@/components/gsap-stage";
@@ -26,11 +27,14 @@ import { buildApprovalQueue } from "@/modules/core/approval-queue";
 import { ApprovalsQueue } from "@/modules/core/components/dashboard/ApprovalsQueue";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
 import { Panel, PanelEmpty, type FeedItem, type StatTileProps } from "@/modules/core/components/dashboard/command-center";
+import { CustomiseDashboard } from "@/modules/core/components/dashboard/CustomiseDashboard";
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FeesByClassChart } from "@/modules/core/components/dashboard/FeesByClassChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
 import { SetupChecklist } from "@/modules/core/setup/components/SetupChecklist";
 import { getSetupStatus } from "@/modules/core/setup/queries";
+import { getDashboardLayout } from "@/modules/core/dashboard-layout.queries";
+import { applyLayout, DASHBOARD_WIDGETS, type DashboardWidgetId } from "@/modules/core/dashboard-widgets";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { listExams, listRecheckQueue, listSectionOptions } from "@/modules/exams/queries";
 import { upcomingExamPapers } from "@/modules/exams/upcoming.queries";
@@ -48,6 +52,8 @@ import { peopleCounts } from "@/modules/people/counts.queries";
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
 import { listPublicEvents, listPublicNotices } from "@/modules/website/queries";
 import { cn } from "cn";
+
+export const metadata: Metadata = { title: "Dashboard" };
 
 const TZ = "Asia/Kolkata";
 const hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" });
@@ -85,7 +91,7 @@ function Cell({ span, children }: { span: string; children: ReactNode }) {
   );
 }
 
-function Hero({ title, subtitle, eyebrow, actions }: { title: string; subtitle: string; eyebrow: string; actions: QuickAction[] }) {
+function Hero({ title, subtitle, eyebrow, actions, customise }: { title: string; subtitle: string; eyebrow: string; actions: QuickAction[]; customise?: ReactNode }) {
   return (
     <header data-gsap="hero" className={cn(FULL, "relative overflow-hidden rounded-xl border bg-card px-5 py-5 sm:px-6 sm:py-6")}>
       <div
@@ -98,7 +104,7 @@ function Hero({ title, subtitle, eyebrow, actions }: { title: string; subtitle: 
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-balance sm:text-3xl">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
         </div>
-        {actions.length > 0 && (
+        {(actions.length > 0 || customise) && (
           <nav aria-label="Quick actions" className="flex flex-wrap gap-2">
             {actions.map((a) => (
               <Button key={a.href + a.label} asChild variant="outline" size="sm" className="min-h-10 bg-background/70 backdrop-blur-sm">
@@ -108,6 +114,7 @@ function Hero({ title, subtitle, eyebrow, actions }: { title: string; subtitle: 
                 </Link>
               </Button>
             ))}
+            {customise}
           </nav>
         )}
       </div>
@@ -172,8 +179,8 @@ function Insights({ items, className }: { items: Awaited<ReturnType<typeof insig
       </h2>
       <div className="@container">
         <div className="grid gap-3 @xl:grid-cols-2">
-          {items.map((i) => (
-            <AIInsightCard key={i.title} {...i} />
+          {items.map((i, idx) => (
+            <AIInsightCard key={`${i.title}:${idx}`} {...i} />
           ))}
         </div>
       </div>
@@ -315,7 +322,7 @@ export default async function DashboardPage({
     />
   );
   const heroTitle = firstName ? `${greeting}, ${firstName}` : greeting;
-  const hero = <Hero title={heroTitle} subtitle={`${longDate.format(now)} · ${ctx.institution.name}`} eyebrow={ROLE_LABEL[role] ?? humanize(role)} actions={quickActions} />;
+  const hero = (customise?: ReactNode) => <Hero title={heroTitle} subtitle={`${longDate.format(now)} · ${ctx.institution.name}`} eyebrow={ROLE_LABEL[role] ?? humanize(role)} actions={quickActions} customise={customise} />;
 
   // Fees by class (grade) this term — finance.collectionReport, rupees.
   const feesByClass = value(feesByClassR);
@@ -491,9 +498,9 @@ export default async function DashboardPage({
       )
     );
   const canEditWebsite = hasPermission(ctx, "website.edit");
-  const website = showWebsite && (
-    <>
-      {failed(eventsR) ? (
+  const websiteEvents =
+    showWebsite &&
+    (failed(eventsR) ? (
         <FailedWidget title="Upcoming events" className={HALF} />
       ) : (
         <Cell span={HALF}>
@@ -504,8 +511,10 @@ export default async function DashboardPage({
           rows={(events ?? []).map((e) => ({ id: e.id, title: e.title, meta: [eventDate.format(new Date(e.startsAt)), e.location].filter(Boolean).join(" · ") }))}
         />
         </Cell>
-      )}
-      {failed(noticesR) ? (
+      ));
+  const websiteNotices =
+    showWebsite &&
+    (failed(noticesR) ? (
         <FailedWidget title="Latest notices" className={HALF} />
       ) : (
         <Cell span={HALF}>
@@ -516,9 +525,7 @@ export default async function DashboardPage({
           rows={(notices ?? []).map((n) => ({ id: n.id, title: n.title, meta: shortDate.format(new Date(n.publishAt)) }))}
         />
         </Cell>
-      )}
-    </>
-  );
+      ));
   const defaultersFailed = failed(defaultersR);
 
   // ---- per-role layouts ----------------------------------------------------
@@ -535,7 +542,9 @@ export default async function DashboardPage({
     );
   };
 
-  let body: ReactNode;
+  // Default-ordered [id, content] pairs; falsy content = not available to this user.
+  let widgets: [DashboardWidgetId, ReactNode][] = [];
+  let fixedBody: ReactNode = null;
   if (role === "admissions") {
     const allEnquiries = Object.values(value(enquiriesR) ?? {}).flat();
     const enquiryRows: ListRow[] = [...allEnquiries]
@@ -566,33 +575,31 @@ export default async function DashboardPage({
     const conversion = totalApps > 0 ? Math.round((enrolledCount / totalApps) * 100) : null;
     const admissionsOn = canEnquiries && isModuleEnabled(ctx, "admissions");
 
-    body = (
-      <>
-        {hero}
-        {kpiStrip([
+    widgets = [
+        ["kpi-strip", kpiStrip([
           enquiryKpi,
           admissionsOn && <KpiTile key="new" label="New this week" value={String(newThisWeek)} animateTo={newThisWeek} sub="enquiries received" href={`${basePath}/admissions`} />,
           admissionsOn && <KpiTile key="enrolled" label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
           admissionsOn && (
             <KpiTile key="conv" label="Application conversion" value={conversion === null ? "—" : `${conversion}%`} animateTo={conversion ?? undefined} format="percent" sub={`${totalApps} applications`} />
           ),
-        ])}
-        {admissionsOn && (
+        ])],
+        ["enquiries-trend", admissionsOn && (
           <Cell span={MAIN}>
             <Widget title="Enquiries per week" description="Last 8 weeks" action={{ href: `${basePath}/admissions`, label: "Pipeline" }}>
               <InteractiveTrend title="Enquiries per week" unit="count" series={{ "8w": weekly }} keys={[{ key: "value", label: "Enquiries" }]} rangeLabels={{ "8w": "8 weeks" }} heightClass="h-56" />
             </Widget>
           </Cell>
-        )}
-        <Cell span={SIDE}>{funnel("")}</Cell>
-        {admissionsOn && bySource.length > 0 && (
+        )],
+        ["admissions-funnel", funnel("") && <Cell span={SIDE}>{funnel("")}</Cell>],
+        ["enquiry-sources", admissionsOn && bySource.length > 0 && (
           <Cell span={THIRD}>
             <Widget title="Where enquiries come from">
               <BarList ariaLabel="Enquiries by source" items={bySource} />
             </Widget>
           </Cell>
-        )}
-        {failed(enquiriesR) ? (
+        )],
+        ["newest-enquiries", failed(enquiriesR) ? (
           <FailedWidget title="Newest enquiries" className={THIRD} />
         ) : (
           admissionsOn && (
@@ -600,30 +607,28 @@ export default async function DashboardPage({
               <ListWidget title="Newest enquiries" action={{ href: `${basePath}/admissions`, label: "All enquiries" }} emptyTitle="No enquiries yet" rows={enquiryRows} />
             </Cell>
           )
-        )}
-        {askPanel(THIRD)}
-        {insights && <Cell span={briefing ? WIDE : FULL}><Insights items={insights} /></Cell>}
-        {briefing && <Cell span={insights ? NARROW : FULL}>{briefing}</Cell>}
-        {website}
-      </>
-    );
+        )],
+        ["ask-data", askPanel(THIRD)],
+        ["insights", insights && <Cell span={briefing ? WIDE : FULL}><Insights items={insights} /></Cell>],
+        ["ai-briefing", briefing && <Cell span={insights ? NARROW : FULL}>{briefing}</Cell>],
+        ["website-events", websiteEvents],
+        ["website-notices", websiteNotices],
+    ];
   } else if (role === "accountant") {
     const topDefaulters = [...(defaulters ?? [])].sort((a, b) => b.outstanding - a.outstanding).slice(0, 6);
-    body = collections ? (
-      <>
-        {hero}
-        {kpiStrip([
+    if (collections) widgets = [
+        ["kpi-strip", kpiStrip([
           collectedKpi,
           <KpiTile key="outstanding" label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} tone="warning" />,
           <KpiTile key="collection-rate" label="Collection rate" value={collectionPct === null ? "—" : `${collectionPct}%`} animateTo={collectionPct ?? undefined} format="percent" sub={`${collections.invoiceCount} invoices this term`} />,
           defaulters && (
             <KpiTile key="overdue" label="Overdue invoices" value={String(overdue.length)} animateTo={overdue.length} sub={`${defaulters.length} unpaid in total`} href={`${basePath}/finance/defaulters`} tone={overdue.length > 0 ? "destructive" : "default"} />
           ),
-        ])}
-        {feesByClassPanel(MAIN)}
-        <Cell span={SIDE}>{collectionsChart("", true)}</Cell>
-        {ageingPanel(NARROW)}
-        {defaultersFailed ? (
+        ])],
+        ["fees-by-class", feesByClassPanel(MAIN)],
+        ["fee-collection", collectionsChart("", true) && <Cell span={SIDE}>{collectionsChart("", true)}</Cell>],
+        ["outstanding-ageing", ageingPanel(NARROW)],
+        ["top-defaulters", defaultersFailed ? (
           <FailedWidget title="Top defaulters" className={WIDE} />
         ) : (
           <Cell span={WIDE}>
@@ -641,34 +646,29 @@ export default async function DashboardPage({
               }))}
             />
           </Cell>
-        )}
-        {askPanel(insights ? NARROW : FULL)}
-        {insights && <Cell span={WIDE}><Insights items={insights} /></Cell>}
-      </>
-    ) : (
-      <>
-        {hero}
+        )],
+        ["ask-data", askPanel(insights ? NARROW : FULL)],
+        ["insights", insights && <Cell span={WIDE}><Insights items={insights} /></Cell>],
+    ];
+    else fixedBody = (
         <Cell span={FULL}>
           <Widget title="Fee collection this term">
             <EmptyState title="No current term" description="Collections appear once the current academic year has a term with invoices." />
           </Widget>
         </Cell>
-      </>
     );
   } else if (role === "exam_controller") {
     const byStatus = (s: string) => exams?.filter((e) => e.status === s).length ?? 0;
     const examTotal = exams?.length ?? 0;
-    body = (
-      <>
-        {hero}
-        {kpiStrip([
+    widgets = [
+        ["kpi-strip", kpiStrip([
           exams && <KpiTile key="me" label="In marks entry" value={String(byStatus("marks_entry"))} animateTo={byStatus("marks_entry")} sub={`${byStatus("draft")} in draft`} href={`${basePath}/exams`} />,
           exams && <KpiTile key="ver" label="In verification" value={String(byStatus("verification"))} animateTo={byStatus("verification")} href={`${basePath}/exams`} />,
           exams && <KpiTile key="pub" label="Published" value={String(byStatus("published"))} animateTo={byStatus("published")} sub={`of ${examTotal} exams`} href={`${basePath}/exams`} tone="success" />,
           rechecks && <KpiTile key="rc" label="Pending rechecks" value={String(rechecks.length)} animateTo={rechecks.length} href={`${basePath}/exams/rechecks`} tone={rechecks.length > 0 ? "warning" : "default"} />,
-        ])}
-        <Cell span={MAIN}>{grades("")}</Cell>
-        {exams && examTotal > 0 && (
+        ])],
+        ["exam-grades", grades("") && <Cell span={MAIN}>{grades("")}</Cell>],
+        ["exam-pipeline", exams && examTotal > 0 && (
           <Cell span={SIDE}>
             <Widget title="Exam pipeline" action={{ href: `${basePath}/exams`, label: "All exams" }}>
               <div className="space-y-4">
@@ -677,9 +677,9 @@ export default async function DashboardPage({
               </div>
             </Widget>
           </Cell>
-        )}
-        <Cell span={WIDE}>{recheckQueue("")}</Cell>
-        {failed(examsR) ? (
+        )],
+        ["rechecks", recheckQueue("") && <Cell span={WIDE}>{recheckQueue("")}</Cell>],
+        ["exams-list", failed(examsR) ? (
           <FailedWidget title="Exams" className={NARROW} />
         ) : (
           exams && (
@@ -698,11 +698,10 @@ export default async function DashboardPage({
               />
             </Cell>
           )
-        )}
-        {askPanel(insights ? NARROW : FULL)}
-        {insights && <Cell span={WIDE}><Insights items={insights} /></Cell>}
-      </>
-    );
+        )],
+        ["ask-data", askPanel(insights ? NARROW : FULL)],
+        ["insights", insights && <Cell span={WIDE}><Insights items={insights} /></Cell>],
+    ];
   } else {
     // Leader command center (owner / principal / admin). Operational first:
     // KPI strip, attendance trend + gauges, fees by class, approvals, then
@@ -921,10 +920,8 @@ export default async function DashboardPage({
       </div>
     );
 
-    body = (
-      <>
-        {hero}
-        {tiles.length > 0 && (
+    widgets = [
+        ["kpi-strip", tiles.length > 0 && (
           <div data-gsap="rise" className={FULL}>
             <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
               {tiles.slice(0, 8).map((t) => (
@@ -932,31 +929,55 @@ export default async function DashboardPage({
               ))}
             </KpiStrip>
           </div>
-        )}
-        {canAttendance && <Cell span={MAIN}>{trendPanel}</Cell>}
-        <Cell span={canAttendance ? SIDE : FULL}>{glancePanel}</Cell>
-        {feesByClassPanel(sideStack ? MAIN : FULL)}
-        {sideStack && <Cell span={feesByClass || failed(feesByClassR) ? SIDE : FULL}>{sideStack}</Cell>}
-        <Cell span={THIRD}>{sectionPanel}</Cell>
-        <Cell span={THIRD}>{upcomingPanel}</Cell>
-        <Cell span={THIRD}>{activityPanel}</Cell>
-        {!isAdminRole && <Cell span={THIRD}>{absenteesPanel}</Cell>}
-        {ageingPanel(THIRD)}
-        {askPanel(THIRD)}
-        <Cell span={HALF}>{funnel("")}</Cell>
-        <Cell span={HALF}>{isAdminRole ? collectionsChart("") : grades("")}</Cell>
-        {!isAdminRole && briefing && <Cell span={FULL}>{briefing}</Cell>}
-        {cards.length > 0 && (
+        )],
+        ["attendance-trend", canAttendance && <Cell span={MAIN}>{trendPanel}</Cell>],
+        ["today-glance", glancePanel && <Cell span={canAttendance ? SIDE : FULL}>{glancePanel}</Cell>],
+        ["fees-by-class", feesByClassPanel(sideStack ? MAIN : FULL)],
+        ["approvals-staff", sideStack && <Cell span={feesByClass || failed(feesByClassR) ? SIDE : FULL}>{sideStack}</Cell>],
+        ["section-attendance", sectionPanel && <Cell span={THIRD}>{sectionPanel}</Cell>],
+        ["upcoming", upcomingPanel && <Cell span={THIRD}>{upcomingPanel}</Cell>],
+        ["recent-activity", activityPanel && <Cell span={THIRD}>{activityPanel}</Cell>],
+        ["repeated-absentees", !isAdminRole && absenteesPanel && <Cell span={THIRD}>{absenteesPanel}</Cell>],
+        ["outstanding-ageing", ageingPanel(THIRD)],
+        ["ask-data", askPanel(THIRD)],
+        ["admissions-funnel", funnel("") && <Cell span={HALF}>{funnel("")}</Cell>],
+        [isAdminRole ? "fee-collection" : "exam-grades", (isAdminRole ? collectionsChart("") : grades("")) && <Cell span={HALF}>{isAdminRole ? collectionsChart("") : grades("")}</Cell>],
+        ["ai-briefing", !isAdminRole && briefing && <Cell span={FULL}>{briefing}</Cell>],
+        ["more-cards", cards.length > 0 && (
           <section data-gsap="rise" aria-labelledby="more-h" className={cn(FULL, "space-y-3 pt-2")}>
             <h2 id="more-h" className="text-base font-semibold">
               More from your school
             </h2>
             <CommandGrid layoutKey="command-more" defaultOrder={cards.map((c) => c.id)} cards={cards} />
           </section>
-        )}
-      </>
-    );
+        )],
+    ];
   }
+
+  // Per-user layout: hide/reorder only what this user is already offered above.
+  const content = new Map(widgets.filter(([, node]) => node));
+  const available: string[] = [...content.keys()];
+  const layout = await getDashboardLayout(ctx).catch(() => null);
+  const shown = applyLayout(available, layout);
+  const hiddenIds = new Set(available.filter((id) => !shown.includes(id)));
+  const orderedAll = applyLayout(available, { hidden: [], order: layout?.order ?? [] });
+  const body = (
+    <>
+      {hero(
+        available.length > 0 && (
+          <CustomiseDashboard
+            institutionSlug={institutionSlug}
+            widgets={orderedAll.map((id) => ({ id: id as DashboardWidgetId, label: DASHBOARD_WIDGETS[id as DashboardWidgetId], visible: !hiddenIds.has(id) }))}
+            customised={layout !== null}
+          />
+        ),
+      )}
+      {fixedBody}
+      {shown.map((id) => (
+        <Fragment key={id}>{content.get(id as DashboardWidgetId)}</Fragment>
+      ))}
+    </>
+  );
 
   // F18 §H: setup progress for school managers, until every step is done or skipped.
   const setupStatus = hasPermission(ctx, "institution.settings.manage") ? await getSetupStatus(ctx).catch(() => null) : null;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
@@ -6,6 +7,8 @@ import { StudentAttendanceSummary } from "@/modules/attendance/components/Studen
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Attendance" };
 
 export default async function PortalAttendancePage({
   params,

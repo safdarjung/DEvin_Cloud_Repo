@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { FadeIn } from "@/components/motion";
 import { notFound, redirect } from "next/navigation";
@@ -6,11 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
+import { humanize } from "@/lib/format";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import { PaperGrid } from "@/modules/exams/components/PaperGrid";
 import { VerificationPanel } from "@/modules/exams/components/VerificationPanel";
 import { getExamWithPapers, listSectionOptions, listSubjectOptions } from "@/modules/exams/queries";
 import { verifyExam } from "@/modules/exams/actions";
+
+export const metadata: Metadata = { title: "Exam" };
 
 // T-019 fix round 1 — same roles results/page.tsx (T-019) allows to see a
 // whole class's results; guardian/student hold exam.result.read too but
@@ -41,7 +45,7 @@ export default async function ExamDetailPage({
     <div className="space-y-6">
       <PageHeader
         title={exam.name}
-        description={`${exam.type} · ${exam.papers.length} paper${exam.papers.length === 1 ? "" : "s"}`}
+        description={`${humanize(exam.type)} · ${exam.papers.length} paper${exam.papers.length === 1 ? "" : "s"}`}
         back={{ href: `/${institutionSlug}/exams`, label: "Exams" }}
         actions={
           ctx.permissions.has("exam.result.read") && RESULTS_LINK_ROLES.has(ctx.membership.role) ? (

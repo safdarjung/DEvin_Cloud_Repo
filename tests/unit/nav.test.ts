@@ -105,12 +105,12 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   // They get the portal's own sidebar (formerly PortalNav's tab strip).
   student: [
     "/portal", "/portal/subjects", "/portal/study", "/portal/practice", "/portal/assignments",
-    "/portal/results", "/portal/attendance", "/portal/fees", "/portal/notifications",
+    "/portal/results", "/portal/timetable", "/portal/library", "/portal/exams", "/portal/attendance", "/portal/fees", "/portal/notifications",
     "/portal/behaviour", "/portal/clubs", "/portal/canteen", "/portal/forms", "/portal/helpdesk",
     "/portal/achievements", "/portal/safety", "/portal/resources",
   ],
   guardian: [
-    "/portal", "/portal/attendance", "/portal/results", "/portal/assignments", "/portal/updates",
+    "/portal", "/portal/attendance", "/portal/results", "/portal/timetable", "/portal/library", "/portal/exams", "/portal/assignments", "/portal/updates",
     "/portal/fees", "/portal/messages", "/portal/meetings", "/portal/assistant", "/portal/leave",
     "/portal/surveys", "/portal/notifications",
     "/portal/behaviour", "/portal/health", "/portal/canteen", "/portal/clubs", "/portal/forms", "/portal/helpdesk",
@@ -118,12 +118,17 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   ],
 };
 
+// Calendar (academics.read) is on every role's sidebar; Transport is transport.manage on staff, student.read in the portal.
+const LEADERS = ["owner", "principal", "admin"];
+const calendarTransportHrefs = (role: Role): string[] =>
+  role === "student" || role === "guardian" ? ["/portal/calendar", "/portal/transport"] : LEADERS.includes(role) ? ["/calendar", "/transport"] : ["/calendar"];
+
 describe("navItemsFor", () => {
   for (const role of Object.keys(EXPECTED_HREFS) as Role[]) {
     it(`matches the expected link set for ${role}`, () => {
       const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true, role).map((item) => item.href);
       // Every role holds notification.read, so every role gets the App Orb link.
-      expect(new Set(hrefs)).toEqual(new Set([...EXPECTED_HREFS[role], "/orb"]));
+      expect(new Set(hrefs)).toEqual(new Set([...EXPECTED_HREFS[role], "/orb", ...calendarTransportHrefs(role)]));
     });
   }
 

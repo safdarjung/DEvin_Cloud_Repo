@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { Inbox } from "@/modules/notifications/components/Inbox";
 import { listMyNotifications } from "@/modules/notifications/queries";
+
+export const metadata: Metadata = { title: "Notifications" };
 
 export default async function NotificationsPage({
   params,

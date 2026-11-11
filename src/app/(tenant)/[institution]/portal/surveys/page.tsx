@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { EmptyState } from "@/components/states";
@@ -10,6 +11,8 @@ import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { SurveyForm, type SurveyQuestion } from "@/modules/ptm/components/SurveyForm";
 import { surveyMine } from "@/modules/ptm/survey.queries";
+
+export const metadata: Metadata = { title: "Surveys" };
 
 const closes = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 

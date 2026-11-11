@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { LimitedBadge } from "@/components/honesty";
 import { ListPager } from "@/components/list-pager";
@@ -14,6 +15,8 @@ import { GenerateRunForm, SalaryStructureEditor } from "@/modules/payroll/compon
 import { inrPaise, monthLabel } from "@/modules/payroll/components/PayslipView";
 import { payrollRuns, payrollStaffSalaries } from "@/modules/payroll/queries";
 import { PAYROLL_LIMITED_NOTE } from "@/modules/payroll/schemas";
+
+export const metadata: Metadata = { title: "Payroll" };
 
 const STAFF_PAGE_SIZE = 25;
 

@@ -221,7 +221,7 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
                 Remove
               </Button>
             </div>
-            <Input
+            <Input aria-label="Question text"
               placeholder="Question text"
               value={question.stem}
               onChange={(e) => updateQuestion(index, { stem: e.target.value })}
@@ -236,14 +236,14 @@ export function AssignmentForm({ institutionSlug, sections, assignment }: Assign
                   checked={option !== "" && option === question.answer}
                   onChange={() => updateQuestion(index, { answer: option })}
                 />
-                <Input
+                <Input aria-label={`Option ${optionIndex + 1}`}
                   placeholder={`Option ${optionIndex + 1}`}
                   value={option}
                   onChange={(e) => updateOption(index, optionIndex, e.target.value)}
                 />
               </div>
             ))}
-            <Input
+            <Input aria-label="Explanation (optional)"
               placeholder="Explanation (optional)"
               value={question.explanation}
               onChange={(e) => updateQuestion(index, { explanation: e.target.value })}

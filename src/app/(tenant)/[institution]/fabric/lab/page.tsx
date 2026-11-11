@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 // features-18 §D — Analysis lab. Four school-wide analyses computed in SQL
 // (0125: aggregates only, groups < 5 students dropped), shown as charts +
 // tables with deterministic captions; AI only narrates on request.
@@ -11,6 +12,8 @@ import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { LabPanels } from "@/modules/fabric/components/lab/lab-panels";
 import { labCorrelation, labFeeRiskCohorts, labSectionAnomalies, labTrendBreaks, requireLabAccess } from "@/modules/fabric/lab.queries";
+
+export const metadata: Metadata = { title: "Analysis lab" };
 
 const settledOrNull = <T,>(r: PromiseSettledResult<T>): T | null => (r.status === "fulfilled" ? r.value : null);
 

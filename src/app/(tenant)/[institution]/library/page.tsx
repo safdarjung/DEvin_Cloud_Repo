@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
@@ -16,6 +17,8 @@ import { inr } from "@/lib/format";
 import { AddBookForm, AddCopyForm, IssueLoanForm, LoanRowActions, ReturnByNumberForm } from "@/modules/library/components/library-forms";
 import { libraryCatalog, libraryOverdue } from "@/modules/library/queries";
 import { listStudents } from "@/modules/people/queries";
+
+export const metadata: Metadata = { title: "Library" };
 
 const SECTIONS = [
   { id: "catalogue", label: "Catalogue" },

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import {
   listStudentAssignments,
   listTeacherAssignments,
 } from "@/modules/academics/assignments.queries";
+
+export const metadata: Metadata = { title: "Assignments" };
 
 export default async function AssignmentsPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import type { ComponentProps } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Stagger, StaggerItem } from "@/components/motion";
@@ -11,6 +12,8 @@ import { requirePermission } from "@/lib/auth/require";
 import { humanize } from "@/lib/format";
 import { listAttentionJobs } from "@/modules/jobs/queries";
 import { RequeueButton } from "./requeue-button";
+
+export const metadata: Metadata = { title: "Jobs" };
 
 type Variant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
 
@@ -87,7 +90,7 @@ export default async function JobsPage({
                 {jobs.map((job, i) => (
                   <TableRow key={job.id} className={ROW_ENTER} style={rowDelay(i)}>
                     <TableCell>
-                      {job.type}
+                      {humanize(job.type)}
                       {job.lastError && <p className="mt-0.5 line-clamp-2 text-xs whitespace-normal text-muted-foreground sm:hidden">{job.lastError}</p>}
                     </TableCell>
                     <TableCell>
@@ -102,7 +105,7 @@ export default async function JobsPage({
                     >
                       {job.lastError}
                     </TableCell>
-                    <TableCell className="hidden tabular-nums sm:table-cell">{new Date(job.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell className="hidden tabular-nums sm:table-cell">{new Date(job.updatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
                     <TableCell>
                       {job.status === "dead" ? <RequeueButton institutionSlug={institutionSlug} jobId={job.id} /> : null}
                     </TableCell>

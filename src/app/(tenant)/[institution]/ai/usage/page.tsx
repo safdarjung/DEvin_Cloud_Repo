@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
@@ -7,6 +8,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { usageSummary } from "@/modules/ai/queries";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+export const metadata: Metadata = { title: "AI usage" };
 
 const PROVIDER_ROWS = ["local", "cloud"] as const;
 
@@ -30,12 +33,12 @@ export default async function AiUsagePage({
     <div className="space-y-4">
       <PageHeader
         title="AI usage"
-        description={`Last 30 days · ${summary.totalRequests} requests · ${summary.totalTokens.toLocaleString()} tokens · ${formatUsd(summary.totalCostEstimateUsd)} (cost estimate, not a bill)`}
+        description={`Last 30 days · ${summary.totalRequests} requests · ${summary.totalTokens.toLocaleString("en-IN")} tokens · ${formatUsd(summary.totalCostEstimateUsd)} (cost estimate, not a bill)`}
       />
 
       <KpiStrip className="xl:[&>div]:grid-cols-3">
-        <KpiTile label="Requests" value={summary.totalRequests.toLocaleString()} animateTo={summary.totalRequests} sub="Last 30 days" />
-        <KpiTile label="Tokens" value={summary.totalTokens.toLocaleString()} animateTo={summary.totalTokens} sub="Input and output" />
+        <KpiTile label="Requests" value={summary.totalRequests.toLocaleString("en-IN")} animateTo={summary.totalRequests} sub="Last 30 days" />
+        <KpiTile label="Tokens" value={summary.totalTokens.toLocaleString("en-IN")} animateTo={summary.totalTokens} sub="Input and output" />
         <KpiTile label="Cost estimate" value={formatUsd(summary.totalCostEstimateUsd)} sub="Not a bill" />
       </KpiStrip>
 
@@ -96,8 +99,8 @@ export default async function AiUsagePage({
                     <TableCell className="capitalize">{provider}</TableCell>
                     <TableCell className="text-right tabular-nums">{row.requests}</TableCell>
                     <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.okRequests}</TableCell>
-                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.inputTokens.toLocaleString()}</TableCell>
-                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.outputTokens.toLocaleString()}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.inputTokens.toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="hidden text-right tabular-nums sm:table-cell">{row.outputTokens.toLocaleString("en-IN")}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatUsd(row.costEstimateUsd)}</TableCell>
                   </TableRow>
                 );

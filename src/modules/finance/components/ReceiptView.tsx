@@ -40,7 +40,7 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
           {snapshot.termName ? ` (${snapshot.termName})` : ""}
         </dd>
         <dt className="text-muted-foreground">Received on</dt>
-        <dd className="text-right">{new Date(snapshot.receivedAt).toLocaleString()}</dd>
+        <dd className="text-right">{new Date(snapshot.receivedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</dd>
         <dt className="text-muted-foreground">Reference</dt>
         <dd className="text-right">{snapshot.reference ?? "—"}</dd>
         <dt className="font-medium">Amount received</dt>

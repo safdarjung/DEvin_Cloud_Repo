@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ import { PrintButton } from "@/modules/payroll/components/PayrollForms";
 import { PayslipView } from "@/modules/payroll/components/PayslipView";
 import { payslipGet } from "@/modules/payroll/queries";
 import { PayslipGetSchema } from "@/modules/payroll/schemas";
+
+export const metadata: Metadata = { title: "Payslip" };
 
 // Payslip screen + print layout (pattern: finance/receipts/[id]/print). The
 // tenant layout always renders <header>/<nav aria-label="Primary">; the

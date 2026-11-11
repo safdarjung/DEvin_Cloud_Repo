@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,8 @@ import { ID_CARD_MAX } from "@/modules/certificates/id-cards.queries";
 import { listCertificates } from "@/modules/certificates/queries";
 import { activeStudentOptions } from "@/modules/clubs/queries";
 import { listSectionOptions } from "@/modules/exams/queries";
+
+export const metadata: Metadata = { title: "Certificates" };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LIST_LIMIT = 100;

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
@@ -5,6 +6,8 @@ import { requirePermission } from "@/lib/auth/require";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { StudentProfile } from "@/modules/people/components/StudentProfile";
 import { getCurrentTermId, getStudentProfile } from "@/modules/people/queries";
+
+export const metadata: Metadata = { title: "Student" };
 
 export default async function StudentProfilePage({
   params,

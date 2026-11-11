@@ -10,7 +10,7 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import type { AgentDefinition, AgentRun, AgentRunStatus, RiskClass } from "@/modules/fabric/types";
-import { AGENT_CATALOG, AGENT_SLUGS, agentMaxRisk, canDecideRun, type AgentProposal } from "./catalog";
+import { AGENT_CATALOG, AGENT_SLUGS, agentMaxRisk, canDecideRun, isAgentSlug, scopedSpec, type AgentProposal, type AgentSlug } from "./catalog";
 import type { AgentRunDetailInput, AgentRunsQueryInput } from "./schemas";
 import { ensureAgentDefinitions } from "./service-role";
 import { agentPermissions } from "./tools";
@@ -38,14 +38,28 @@ export interface AgentRunDetail {
   canDecide: boolean;
 }
 
-export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinition[]> {
+/** A school's own agent (0134): its base and stored subset, for the card and edit form. */
+export interface CustomAgentFields {
+  base_slug: AgentSlug;
+  summary: string;
+  instructions: string;
+  examples: string[];
+  tools: string[];
+  actions: string[];
+}
+
+export type AgentDefinitionWithCustom = AgentDefinition & { custom?: CustomAgentFields };
+
+// Catalog agents first (fixed order), then live custom agents (oldest first).
+export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinitionWithCustom[]> {
   await ensureAgentDefinitions(ctx.institution.id);
   const supabase = await createClient();
 
   const { data: defRows, error: defError } = await supabase
     .from("agent_definitions")
-    .select("id, slug, is_enabled, created_at, updated_at")
-    .eq("institution_id", ctx.institution.id);
+    .select("id, slug, is_enabled, created_at, updated_at, base_slug, name, summary, instructions, examples, tools, actions, archived_at")
+    .eq("institution_id", ctx.institution.id)
+    .order("created_at");
   if (defError) throwMapped(defError);
   const bySlug = new Map((defRows ?? []).map((row) => [row.slug, row]));
 
@@ -86,11 +100,19 @@ export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinit
     await Promise.all(AGENT_SLUGS.map(async (slug) => [slug, await agentPermissions(slug)] as const)),
   );
 
-  return AGENT_SLUGS.map((slug) => {
+  const stats = (id: string) => {
+    const stat = statsByAgentId.get(id) ?? { total: 0, failed: 0, costUsd: 0 };
+    return {
+      cost_paise_30d: Math.round(stat.costUsd * USD_TO_PAISE),
+      runs_30d: stat.total,
+      error_rate_pct: stat.total > 0 ? Math.round((100 * stat.failed) / stat.total) : 0,
+    };
+  };
+
+  const catalog = AGENT_SLUGS.map((slug): AgentDefinitionWithCustom => {
     const spec = AGENT_CATALOG[slug];
     const defRow = bySlug.get(slug);
     if (!defRow) throw new AppError("internal", `Missing agent definition row for ${slug}.`);
-    const stat = statsByAgentId.get(defRow.id) ?? { total: 0, failed: 0, costUsd: 0 };
     return {
       id: defRow.id,
       institution_id: ctx.institution.id,
@@ -105,11 +127,43 @@ export async function agentDefinitions(ctx: TenantContext): Promise<AgentDefinit
       max_risk_class: agentMaxRisk(slug),
       is_enabled: defRow.is_enabled,
       quality_score: null,
-      cost_paise_30d: Math.round(stat.costUsd * USD_TO_PAISE),
-      runs_30d: stat.total,
-      error_rate_pct: stat.total > 0 ? Math.round((100 * stat.failed) / stat.total) : 0,
+      ...stats(defRow.id),
     };
   });
+
+  const custom: AgentDefinitionWithCustom[] = [];
+  for (const row of defRows ?? []) {
+    if (row.base_slug === null || row.archived_at !== null || !isAgentSlug(row.base_slug)) continue;
+    const scope = { tools: row.tools ?? [], actions: row.actions ?? [] };
+    const spec = scopedSpec(row.base_slug, scope);
+    custom.push({
+      id: row.id,
+      institution_id: ctx.institution.id,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      slug: row.slug,
+      name: row.name ?? spec.name,
+      role_description: spec.roleDescription,
+      tools: Object.keys(spec.tools),
+      permissions: await agentPermissions(row.base_slug, scope),
+      model_tier: "local",
+      max_risk_class: agentMaxRisk(row.base_slug, scope),
+      is_enabled: row.is_enabled,
+      quality_score: null,
+      ...stats(row.id),
+      custom: {
+        base_slug: row.base_slug,
+        summary: row.summary ?? "",
+        instructions: row.instructions ?? "",
+        examples: row.examples ?? [],
+        // Effective subset only: a stored name outside the base never shows.
+        tools: Object.keys(spec.tools),
+        actions: Object.keys(spec.actions),
+      },
+    });
+  }
+
+  return [...catalog, ...custom];
 }
 
 interface RunRow {

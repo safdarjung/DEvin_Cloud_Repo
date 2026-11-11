@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { PublishButton } from "@/modules/exams/components/PublishButton";
 import { ResultsTable } from "@/modules/exams/components/ResultsTable";
 import { getExamWithPapers, listResultsForExam } from "@/modules/exams/queries";
 import { examStatusVariant } from "@/modules/exams/status";
+
+export const metadata: Metadata = { title: "Exam results" };
 
 // T-019 — 06 §W7's one-click publish lives here: before publish this is the
 // verification + PublishButton screen; after publish it's the class list
@@ -37,7 +40,7 @@ export default async function ExamResultsPage({
     if (!summary) notFound();
     return (
       <div className="space-y-6">
-        <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
+        <PageHeader title={`${exam.name} — Results`} description={humanize(exam.type)} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
         <ResultsTable institutionSlug={institutionSlug} examId={examId} summary={summary} />
       </div>
     );
@@ -48,7 +51,7 @@ export default async function ExamResultsPage({
       <div className="space-y-4">
         <PageHeader
           title={`${exam.name} — Results`}
-          description={exam.type}
+          description={humanize(exam.type)}
           back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }}
           actions={<Badge variant={examStatusVariant(exam.status)}>{humanize(exam.status)}</Badge>}
         />
@@ -66,7 +69,7 @@ export default async function ExamResultsPage({
 
   return (
     <div className="space-y-4">
-      <PageHeader title={`${exam.name} — Results`} description={exam.type} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
+      <PageHeader title={`${exam.name} — Results`} description={humanize(exam.type)} back={{ href: `/${institutionSlug}/exams/${examId}`, label: "Exam" }} />
       {verification.ok && !clean && (
         <p role="alert" className="text-sm text-destructive">
           {verification.data.summary.missingCount} missing, {verification.data.summary.outOfRangeCount} out of range.

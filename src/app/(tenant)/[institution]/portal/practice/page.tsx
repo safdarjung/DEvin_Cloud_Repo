@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
@@ -10,6 +11,8 @@ import { getStudentProfile } from "@/modules/people/queries";
 import { PracticeHistory } from "@/modules/practice/components/PracticeHistory";
 import { PracticeStudio } from "@/modules/practice/components/PracticeStudio";
 import { myPracticeAttempts, practiceProgress, STREAK_WINDOW_DAYS } from "@/modules/practice/queries";
+
+export const metadata: Metadata = { title: "Practice" };
 
 // Student-only: practice.attempt + ai.study. Guardians are sent back to the overview.
 export default async function PortalPracticePage({

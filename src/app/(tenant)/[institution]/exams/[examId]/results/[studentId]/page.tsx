@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
@@ -7,6 +8,8 @@ import { ReportCard } from "@/modules/exams/components/ReportCard";
 import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
 import { ResultVersionHistory } from "@/modules/exams/components/ResultVersionHistory";
 import { getCurrentResult, getResultHistory, getResultRemark } from "@/modules/exams/queries";
+
+export const metadata: Metadata = { title: "Student result" };
 
 // T-019 — one student's report card. `getCurrentResult` is pure RLS scope
 // (0009 results_select): a guardian/student requesting another student's

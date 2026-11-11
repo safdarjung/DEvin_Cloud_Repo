@@ -13,6 +13,7 @@ import "@/modules/attendance/actions";
 import "@/modules/calendar/actions";
 import "@/modules/certificates/actions";
 import "@/modules/core/actions";
+import "@/modules/core/dashboard-layout.actions";
 import "@/modules/core/setup/actions";
 import "@/modules/diary/actions";
 import "@/modules/documents/actions";

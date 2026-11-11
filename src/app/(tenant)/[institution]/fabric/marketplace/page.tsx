@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { Catalogue } from "@/modules/fabric/components/marketplace/catalogue";
 import { marketplaceCatalog } from "@/modules/fabric/marketplace.queries";
+
+export const metadata: Metadata = { title: "Marketplace" };
 
 export default async function MarketplacePage({
   params,

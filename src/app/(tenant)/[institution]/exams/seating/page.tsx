@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -12,6 +13,8 @@ import { listExams } from "@/modules/exams/queries";
 import { GenerateSeatingForm } from "@/modules/exam-seating/components/generate-form";
 import { SeatGrid } from "@/modules/exam-seating/components/seat-grid";
 import { getSeatingChart, listRoomOptions, listSeatingSlots } from "@/modules/exam-seating/queries";
+
+export const metadata: Metadata = { title: "Exam seating" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const pick = (v?: string) => (v && UUID.test(v) ? v : undefined);

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -15,6 +16,8 @@ import { AssignSubstituteForm, CancelSubstitutionButton, CheckInButton, LeaveReq
 import { timetableCoverNeeded, timetableSubstitutionCandidates } from "@/modules/timetable/substitution.queries";
 import { HandoverNoteButton } from "@/modules/ai/components/HandoverNoteButton";
 import { aiTaskOn } from "@/modules/ai/task-route";
+
+export const metadata: Metadata = { title: "Staff HR" };
 
 type Section = "attendance" | "leave" | "substitutions";
 

@@ -1,8 +1,11 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { RecheckQueue } from "@/modules/exams/components/RecheckQueue";
 import { listRecheckQueue } from "@/modules/exams/queries";
+
+export const metadata: Metadata = { title: "Rechecks" };
 
 // T-020 — the recheck queue (06 §W8), exam.recheck.review only.
 export default async function RecheckQueuePage({

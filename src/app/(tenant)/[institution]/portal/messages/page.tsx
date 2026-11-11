@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
@@ -7,6 +8,8 @@ import { ThreadList } from "@/modules/messaging/components/ThreadList";
 import { messageableTeachers, myThreads } from "@/modules/messaging/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Messages" };
 
 export default async function PortalMessagesPage({
   params,

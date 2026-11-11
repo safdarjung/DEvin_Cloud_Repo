@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,8 @@ import { RecordPaymentDialog } from "@/modules/finance/components/RecordPaymentD
 import { humanize } from "@/lib/format";
 import { invoiceStatusVariant } from "@/modules/finance/format";
 import { getInvoice, paymentModesFor } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Invoice" };
 
 export default async function InvoiceDetailPage({
   params,

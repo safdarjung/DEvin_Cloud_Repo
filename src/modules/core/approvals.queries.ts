@@ -69,7 +69,7 @@ async function pendingAgentRunApprovals(ctx: TenantContext): Promise<ApprovalRow
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("agent_runs")
-    .select("id, requested_by, risk_class, proposals, status, workflow_run_id, created_at, agent_definitions!inner(slug)")
+    .select("id, requested_by, risk_class, proposals, status, workflow_run_id, created_at, agent_definitions!inner(slug, name)")
     .eq("institution_id", ctx.institution.id)
     .in("status", ["awaiting_approval", "queued"])
     .order("created_at", { ascending: true });
@@ -101,11 +101,13 @@ async function pendingAgentRunApprovals(ctx: TenantContext): Promise<ApprovalRow
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name ?? ""]));
 
   return rows.map((row) => {
-    const slug = (row.agent_definitions as unknown as { slug: AgentSlug }).slug;
+    const def = row.agent_definitions as unknown as { slug: AgentSlug; name: string | null };
+    // Custom agents (0134) carry their own name; catalog rows take the catalog's.
+    const agentName = def.name ?? AGENT_CATALOG[def.slug]?.name ?? "Agent";
     const title =
       row.status === "queued"
-        ? `${AGENT_CATALOG[slug].name}: workflow task waiting to start`
-        : `${AGENT_CATALOG[slug].name}: ${((row.proposals as unknown[] | null) ?? []).length} action(s) to approve`;
+        ? `${agentName}: workflow task waiting to start`
+        : `${agentName}: ${((row.proposals as unknown[] | null) ?? []).length} action(s) to approve`;
     return {
       id: row.id,
       kind: "agent_run",

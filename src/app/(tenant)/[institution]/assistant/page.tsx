@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -6,6 +7,8 @@ import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { AssistantPanel } from "@/modules/ai/components/AssistantPanel";
 
 import { assistantPromptsFor } from "@/modules/ai/prompts/dashboard-prompts";
+
+export const metadata: Metadata = { title: "Ask the data" };
 
 export default async function AssistantPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,8 @@ import { FormFill } from "@/modules/forms/components/FormFill";
 import { FormResultsView } from "@/modules/forms/components/FormResultsView";
 import { formList, formMine, formResponses, formResults } from "@/modules/forms/queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
+
+export const metadata: Metadata = { title: "Forms" };
 
 // Forms. Two jobs gated separately: `form.manage` builds/publishes/closes and reads responses;
 // `form.respond` (a teacher) answers forms addressed to the sections they teach.

@@ -46,7 +46,7 @@ export function StudentAssignments({ institutionSlug, assignments, portal }: Stu
               </Badge>
             )}
             <Badge variant={STATUS_VARIANT[assignment.status] ?? "outline"}>{STATUS_LABEL[assignment.status] ?? assignment.status}</Badge>
-            {assignment.dueAt ? <span>Due {new Date(assignment.dueAt).toLocaleDateString()}</span> : null}
+            {assignment.dueAt ? <span>Due {new Date(assignment.dueAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</span> : null}
           </div>
         </FadeIn>
       ))}

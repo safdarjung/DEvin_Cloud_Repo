@@ -5,6 +5,7 @@ import { z } from "zod";
 // Relative + .ts: the seed scripts (plain node, no path alias) import this file.
 import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
 import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
+import { DASHBOARD_WIDGET_IDS } from "./dashboard-widgets.ts";
 
 // Equal to the SQL check institutions_slug_not_reserved (0127), which is the
 // authority: a school slug must never shadow an app route or public page.
@@ -459,3 +460,14 @@ export const UpdateInstitutionSettingsSchema = z
   })
   .strict();
 export type UpdateInstitutionSettingsInput = z.infer<typeof UpdateInstitutionSettingsSchema>;
+
+// Per-user home dashboard layout (dashboard_preferences.layout). Ids are the
+// registry's; each list holds at most one entry per widget.
+const widgetId = z.enum(DASHBOARD_WIDGET_IDS);
+export const DashboardLayoutSchema = z
+  .object({
+    hidden: z.array(widgetId).max(DASHBOARD_WIDGET_IDS.length),
+    order: z.array(widgetId).max(DASHBOARD_WIDGET_IDS.length),
+  })
+  .strict();
+export type DashboardLayoutInput = z.infer<typeof DashboardLayoutSchema>;

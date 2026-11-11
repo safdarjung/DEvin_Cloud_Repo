@@ -176,33 +176,33 @@ export function EnquiryDetail({
                 <DialogDescription>Creates an application and marks this enquiry converted.</DialogDescription>
               </DialogHeader>
               <div className="space-y-2">
-                <Input
+                <Input aria-label="First name"
                   placeholder="First name"
                   value={convertForm.firstName}
                   onChange={(e) => setConvertForm((f) => ({ ...f, firstName: e.target.value }))}
                 />
-                <Input
+                <Input aria-label="Last name (optional)"
                   placeholder="Last name (optional)"
                   value={convertForm.lastName}
                   onChange={(e) => setConvertForm((f) => ({ ...f, lastName: e.target.value }))}
                 />
-                <Input
+                <Input aria-label="Date of birth"
                   type="date"
                   placeholder="Date of birth"
                   value={convertForm.dob}
                   onChange={(e) => setConvertForm((f) => ({ ...f, dob: e.target.value }))}
                 />
-                <Input
+                <Input aria-label="Gender"
                   placeholder="Gender"
                   value={convertForm.gender}
                   onChange={(e) => setConvertForm((f) => ({ ...f, gender: e.target.value }))}
                 />
-                <Input
+                <Input aria-label="Guardian full name"
                   placeholder="Guardian full name"
                   value={convertForm.guardianFullName}
                   onChange={(e) => setConvertForm((f) => ({ ...f, guardianFullName: e.target.value }))}
                 />
-                <Input
+                <Input aria-label="Guardian phone"
                   placeholder="Guardian phone"
                   value={convertForm.guardianPhone}
                   onChange={(e) => setConvertForm((f) => ({ ...f, guardianPhone: e.target.value }))}
@@ -279,7 +279,7 @@ export function EnquiryDetail({
             </AnimatedList>
           )}
           <div className="flex gap-2">
-            <Input value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
+            <Input aria-label="Add a note..." value={noteText} onChange={(e) => setNoteText(e.target.value)} placeholder="Add a note..." />
             <Button variant="outline" disabled={pending || !noteText.trim()} onClick={handleAddNote}>
               Add
             </Button>

@@ -132,7 +132,11 @@ export default async function TenantLayout({
         </div>
       </div>
       <BottomNav items={navItems} user={sidebarUser} />
-      <AskAiLauncher institutionSlug={ctx.institution.slug} />
+      <AskAiLauncher
+        institutionSlug={ctx.institution.slug}
+        role={ctx.membership.role}
+        jumpItems={navItems.map(({ href, label, group }) => ({ href, label, group }))}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { EmptyState } from "@/components/states";
 import { BarList } from "@/components/widgets/viz";
@@ -9,6 +10,8 @@ import { ReportCard } from "@/modules/exams/components/ReportCard";
 import { listResultsForStudent } from "@/modules/exams/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Results" };
 
 export default async function PortalResultsPage({
   params,

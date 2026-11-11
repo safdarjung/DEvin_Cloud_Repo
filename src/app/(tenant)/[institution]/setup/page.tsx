@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { CheckCircle2, Circle, MinusCircle } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +15,8 @@ import { aiTaskOn } from "@/modules/ai/task-route";
 import { StepStructure } from "@/modules/core/setup/components/StepStructure";
 import { getSetupStatus, type SetupStepState } from "@/modules/core/setup/queries";
 import { defaultYearStart } from "@/modules/core/setup/templates";
+
+export const metadata: Metadata = { title: "School setup" };
 
 // F18 §H — setup wizard shell; each step is its own component.
 const STEPS: Record<SetupStep, { title: string; description: string }> = {

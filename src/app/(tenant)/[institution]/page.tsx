@@ -1,6 +1,9 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
 import { homePathFor } from "@/lib/nav";
+
+export const metadata: Metadata = { title: "Overview" };
 
 export default async function TenantHome({
   params,

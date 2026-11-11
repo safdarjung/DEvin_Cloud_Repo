@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
@@ -13,6 +14,8 @@ import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { addDays, weekDays, weekStart } from "@/modules/duties/dates";
 import { AssignmentAdmin, CancelSwapButton, DutyTypeForm, GenerateForm, SwapRequestForm, SwapRespondButtons } from "@/modules/duties/components/DutyForms";
 import { dutyLoad, dutyRoster, dutyStaffOptions, dutySwaps, dutyTypes } from "@/modules/duties/queries";
+
+export const metadata: Metadata = { title: "Duty roster" };
 
 type Section = "roster" | "generate" | "types" | "swaps" | "load";
 

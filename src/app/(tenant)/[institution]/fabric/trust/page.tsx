@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,8 @@ import { usageSummary } from "@/modules/ai/queries";
 import { listAuditEvents } from "@/modules/core/audit.queries";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { PlannedWidget, SimpleTable, loadSection, renderSection } from "@/modules/fabric/components/fabric-sections";
+
+export const metadata: Metadata = { title: "Trust & governance" };
 
 const POLICY_COPY: Record<string, string> = {
   local_only: "AI requests run only on models hosted by this school's own setup. Nothing is sent to a cloud provider.",

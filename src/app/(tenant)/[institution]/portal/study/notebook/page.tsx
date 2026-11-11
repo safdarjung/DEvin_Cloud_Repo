@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -9,6 +10,8 @@ import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { requirePermission } from "@/lib/auth/require";
 import { NotebookList } from "@/modules/ai/components/NotebookList";
 import { listStudyFolders, listStudyItems } from "@/modules/ai/student-study.queries";
+
+export const metadata: Metadata = { title: "Notebook" };
 
 // GU-09 — student-only (ai.study); same reasoning as /portal/study itself
 // for why this isn't on the shared guardian/student PortalNav.

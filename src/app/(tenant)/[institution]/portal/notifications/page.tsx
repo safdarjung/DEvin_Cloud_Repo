@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
@@ -5,6 +6,8 @@ import { Inbox } from "@/modules/notifications/components/Inbox";
 import { listMyNotifications } from "@/modules/notifications/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Notifications" };
 
 // Notifications are addressed to the signed-in guardian/student, not to a
 // particular child (lead ruling 1: portal_access doesn't gate these) — so

@@ -360,6 +360,7 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "timetable.substitutions": {},
         "timetable.suggest": { versionId: UUID },
         "transport.routes": {},
+        "transport.vehicles": {},
         "transport.forStudent": { studentId: UUID },
         "visitors.list": {},
         "visitors.gatePasses": {},

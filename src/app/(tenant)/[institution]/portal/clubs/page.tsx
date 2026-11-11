@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion";
 import { EmptyState, ErrorState } from "@/components/states";
@@ -10,6 +11,8 @@ import { MembershipButton, SignupButton } from "@/modules/clubs/components/Porta
 import { clubEventsList, clubsList, currentTimeMs, myClubState } from "@/modules/clubs/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Clubs" };
 
 const when = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 

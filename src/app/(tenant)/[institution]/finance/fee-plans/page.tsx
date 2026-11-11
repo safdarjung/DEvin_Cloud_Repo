@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ListPager } from "@/components/list-pager";
 import { PageHeader } from "@/components/page-header";
@@ -19,6 +20,8 @@ import { LateFeeForm } from "@/modules/fee-plans/components/late-fee-form";
 import { LedgerExport } from "@/modules/fee-plans/components/ledger-export";
 import { getInstalments, listLateFeeRules } from "@/modules/fee-plans/queries";
 import { listInvoicesPage, moneyToPaise } from "@/modules/finance/queries";
+
+export const metadata: Metadata = { title: "Fee plans" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SECTIONS = [

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { ListPager } from "@/components/list-pager";
@@ -17,6 +18,8 @@ import { RecordAchievementForm, VerifyAchievementButton, VoidAchievementButton }
 import { PortfolioView } from "@/modules/achievements/components/PortfolioView";
 import { ACHIEVEMENTS_PAGE_SIZE, achievementSummary, listAchievements, studentPortfolio } from "@/modules/achievements/queries";
 import { ACHIEVEMENT_CATEGORIES, ACHIEVEMENT_LEVELS, AchievementListSchema } from "@/modules/achievements/schemas";
+
+export const metadata: Metadata = { title: "Achievements" };
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -211,7 +214,7 @@ export default async function AchievementsPage({
                   <TableBody>
                     {listR.value.rows.map((r) => (
                       <TableRow key={r.id} className={r.voidedAt ? "opacity-60" : undefined}>
-                        <TableCell className="tabular-nums">{r.eventDate}</TableCell>
+                        <TableCell className="tabular-nums">{new Date(`${r.eventDate}T00:00:00Z`).toLocaleDateString("en-IN", { timeZone: "UTC" })}</TableCell>
                         <TableCell className="font-medium">
                           <Link className="underline-offset-2 hover:underline" href={{ pathname: base, query: { ...Object.fromEntries(Object.entries(keep).filter(([, v]) => v)), student: r.studentId } }}>
                             {r.studentName}

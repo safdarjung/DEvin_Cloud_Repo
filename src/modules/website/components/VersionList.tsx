@@ -85,7 +85,7 @@ export function VersionList({ institutionSlug, pageId, versions, publishedVersio
                   v{version.versionNo}
                 </Link>
               </TableCell>
-              <TableCell className="hidden tabular-nums sm:table-cell lg:hidden 2xl:table-cell">{new Date(version.createdAt).toLocaleString()}</TableCell>
+              <TableCell className="hidden tabular-nums sm:table-cell lg:hidden 2xl:table-cell">{new Date(version.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</TableCell>
               <TableCell>{isPublished && <Badge variant="success">Published</Badge>}</TableCell>
               <TableCell>
                 {!isPublished && canPublish && (

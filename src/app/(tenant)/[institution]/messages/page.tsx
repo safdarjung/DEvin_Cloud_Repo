@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
@@ -11,6 +12,8 @@ import { ThreadList } from "@/modules/messaging/components/ThreadList";
 import { myThreads } from "@/modules/messaging/queries";
 import { getStudentProfile, listStudents } from "@/modules/people/queries";
 import { uuid } from "@/lib/schemas/common";
+
+export const metadata: Metadata = { title: "Messages" };
 
 export default async function MessagesPage({
   params,

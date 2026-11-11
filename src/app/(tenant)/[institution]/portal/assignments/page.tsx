@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { FadeIn } from "@/components/motion";
 import { ProgressBar } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
@@ -8,6 +9,8 @@ import { listStudentAssignments } from "@/modules/academics/assignments.queries"
 import { StudentAssignments } from "@/modules/academics/components/StudentAssignments";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
+
+export const metadata: Metadata = { title: "Assignments" };
 
 export default async function PortalAssignmentsPage({
   params,

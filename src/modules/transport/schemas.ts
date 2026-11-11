@@ -65,6 +65,8 @@ export type TransportUnassignInput = z.infer<typeof TransportUnassignSchema>;
 export const TransportRoutesSchema = z.object({}).strict();
 export type TransportRoutesInput = z.infer<typeof TransportRoutesSchema>;
 
+export const TransportVehiclesSchema = z.object({}).strict();
+
 export const TransportForStudentSchema = z
   .object({
     studentId: uuid,

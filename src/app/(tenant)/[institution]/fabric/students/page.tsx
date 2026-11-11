@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { BarList, RadialGauge } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
@@ -5,6 +6,8 @@ import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { StudentRoster } from "@/modules/fabric/components/success/roster";
 import { studentInterventionPlans, studentSuccessRoster, studentSuccessSections } from "@/modules/fabric/students.queries";
+
+export const metadata: Metadata = { title: "Student success" };
 
 const RISK_FILTERS = new Set(["watch", "support"]);
 
