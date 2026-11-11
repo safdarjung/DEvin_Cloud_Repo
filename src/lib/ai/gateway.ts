@@ -27,7 +27,8 @@ import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 
 // 06 §W10 — local 60s, cloud 30s.
-const TIMEOUT_MS: Record<ProviderStep, number> = { local: 60_000, cloud: 30_000 };
+// Cloud: room for up to three providers in line (10 s cap each while another waits, provider-fallback.ts).
+const TIMEOUT_MS: Record<ProviderStep, number> = { local: 60_000, cloud: 50_000 };
 
 export interface RunStructuredInput<T> {
   ctx: TenantContext;

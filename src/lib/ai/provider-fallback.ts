@@ -185,19 +185,22 @@ export interface CloudModel {
 }
 
 /**
- * The primary provider's model, wrapped so that a call failing with a
- * size/rate/overload error before any token is retried once on `fallback`
- * with the same (already redacted) prompt and tools. Throws when the
- * primary's key is missing, like `getGroqModel`/`getGeminiModel`.
- */
-/**
  * How long one provider may take when another is still in line. Z.ai's free
- * model was seen to hang past the gateway's whole 30 s budget (2026-11-11),
- * which left no time for the retry. The last provider in line is not capped.
+ * model was seen to hang past the gateway's whole budget (2026-11-11), which
+ * left no time for the retry. The last provider in line is not capped.
  */
-export const ATTEMPT_TIMEOUT_MS = 12_000;
+export const ATTEMPT_TIMEOUT_MS = 10_000;
+/** A provider that just failed is skipped for this long (per server instance), so later requests do not wait on it again. */
+export const COOLDOWN_MS = 60_000;
 
 class AttemptTimeout extends Error {}
+
+const coolUntil = new Map<AgentProvider, number>();
+
+/** Tests only: forget which providers failed recently. */
+export function resetProviderCooldowns(): void {
+  coolUntil.clear();
+}
 
 function capped<T>(work: PromiseLike<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -208,6 +211,16 @@ function capped<T>(work: PromiseLike<T>): Promise<T> {
   return Promise.race([Promise.resolve(work), limit]).finally(() => clearTimeout(timer));
 }
 
+/**
+ * The primary provider's model, wrapped so that a call that fails or hangs
+ * before any token moves to the next provider in line (`fallback`, then
+ * `last`) with the same (already redacted) prompt and tools. Any error moves
+ * on, not only size/rate ones: a person waiting for an answer is better served
+ * by the next provider than by one provider's bad key or schema complaint; the
+ * failure is logged. A provider that failed is skipped for COOLDOWN_MS, also
+ * by later requests on this server instance. Throws when the primary's key is
+ * missing, like `getGroqModel`/`getGeminiModel`.
+ */
 export async function cloudModelWithFallback(primary: AgentProvider, fallback: AgentProvider | null, last: AgentProvider | null = null): Promise<CloudModel> {
   const used: string[] = [];
   const note = (id: string) => {
@@ -216,8 +229,7 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
   const base = await FACTORY[primary].get();
   // A bare model id string resolves through the SDK's global provider: nothing to wrap.
   if (typeof base === "string") return { model: base, modelsUsed: () => [FACTORY[primary].id()] };
-  // The retries in order: the plan's fallback, then its last resort (D53: Gemini, then Groq, then Z.ai).
-  const chain = [fallback, last].filter((p): p is AgentProvider => p !== null);
+  const order: AgentProvider[] = [primary, ...[fallback, last].filter((p): p is AgentProvider => p !== null && p !== primary)];
   const models = new Map<AgentProvider, WrappedModel | null>();
   const modelFor = async (provider: AgentProvider): Promise<WrappedModel | null> => {
     if (!models.has(provider)) {
@@ -226,47 +238,39 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
     }
     return models.get(provider) ?? null;
   };
-  // Sticky per request: once a provider is out of tokens/busy, later steps start at the one that answered. -1 is the primary.
-  let at = -1;
-  const run = async <T>(first: () => PromiseLike<T>, call: (m: WrappedModel) => PromiseLike<T>): Promise<T> => {
-    let err: unknown;
-    let failed = false;
-    let from = primary;
-    if (at < 0) {
-      try {
-        const result = await (chain.length > 0 ? capped(first()) : first());
-        note(FACTORY[primary].id());
-        return result;
-      } catch (e) {
-        err = e;
-        failed = true;
-      }
-    }
-    for (let i = Math.max(at, 0); i < chain.length; i++) {
-      const provider = chain[i];
-      if (failed && !(err instanceof AttemptTimeout) && !shouldFallback(err)) throw err;
-      const model = await modelFor(provider);
-      if (!model) continue;
-      if (failed) {
+  const run = async <T>(aborted: () => boolean, first: () => PromiseLike<T>, call: (m: WrappedModel) => PromiseLike<T>): Promise<T> => {
+    const now = Date.now();
+    const ready = order.filter((p) => (coolUntil.get(p) ?? 0) <= now);
+    // Everything failed recently: try them all again rather than refuse.
+    const line = ready.length > 0 ? ready : order;
+    let err: unknown = new Error("no cloud provider available");
+    let from: AgentProvider | null = null;
+    for (let i = 0; i < line.length; i++) {
+      const provider = line[i];
+      const model = provider === primary ? null : await modelFor(provider);
+      if (provider !== primary && !model) continue;
+      if (from) {
         const info = err instanceof AttemptTimeout ? { status: undefined, kind: "timeout" } : classifyAiError(err);
         console.warn("[ai-fallback] retrying on the other provider", { from, to: provider, status: info.status, kind: info.kind });
       }
-      at = i;
       try {
-        const result = await (i < chain.length - 1 ? capped(call(model)) : call(model));
+        const work = model ? call(model) : first();
+        const result = await (i < line.length - 1 ? capped(work) : work);
         note(FACTORY[provider].id());
         return result;
       } catch (e) {
+        if (aborted()) throw e;
         err = e;
-        failed = true;
         from = provider;
+        // A request too large for this provider says nothing about its health.
+        if (e instanceof AttemptTimeout || classifyAiError(e).kind !== "too_large") coolUntil.set(provider, Date.now() + COOLDOWN_MS);
       }
     }
     throw err;
   };
   const middleware: LanguageModelMiddleware = {
-    wrapGenerate: ({ doGenerate, params }) => run(doGenerate, (m) => m.doGenerate(params)),
-    wrapStream: ({ doStream, params }) => run(doStream, (m) => m.doStream(params)),
+    wrapGenerate: ({ doGenerate, params }) => run(() => params.abortSignal?.aborted === true, doGenerate, (m) => m.doGenerate(params)),
+    wrapStream: ({ doStream, params }) => run(() => params.abortSignal?.aborted === true, doStream, (m) => m.doStream(params)),
   };
   // Fallback outermost: a retry gets the caller's params, not the primary's provider-shaped ones.
   return { model: wrapLanguageModel({ model: base, middleware: [middleware, schemaRules(primary)] }), modelsUsed: () => (used.length ? [...used] : [FACTORY[primary].id()]) };

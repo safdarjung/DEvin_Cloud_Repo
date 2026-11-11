@@ -25,9 +25,10 @@ vi.mock("@/lib/ai/providers", () => ({
   getZaiModel: vi.fn(async () => zaiModel.current),
 }));
 
-const { cloudModelWithFallback, sanitizeSchemaFor, structuredCloudPlan } = await import("@/lib/ai/provider-fallback");
+const { resetProviderCooldowns, cloudModelWithFallback, sanitizeSchemaFor, structuredCloudPlan } = await import("@/lib/ai/provider-fallback");
 
 afterEach(() => {
+  resetProviderCooldowns();
   groqModel.current = null;
   geminiModel.current = null;
   zaiModel.current = null;

@@ -20,12 +20,13 @@ vi.mock("@/lib/ai/providers", () => ({
   getZaiModel: vi.fn(async () => zaiModel.current),
 }));
 
-const { classifyAiError, cloudModelWithFallback, cloudProviderPlan, shouldFallback, streamErrorText, userFacingAiError } = await import(
+const { resetProviderCooldowns, classifyAiError, cloudModelWithFallback, cloudProviderPlan, shouldFallback, streamErrorText, userFacingAiError } = await import(
   "@/lib/ai/provider-fallback"
 );
 const providers = await import("@/lib/ai/providers");
 
 afterEach(() => {
+  resetProviderCooldowns();
   vi.restoreAllMocks();
   groqModel.current = null;
   geminiModel.current = null;
@@ -177,10 +178,53 @@ describe("cloudModelWithFallback", () => {
     expect((await answer("groq", null)).text).toBe("<error>");
   });
 
-  it("a rejected key (401) is not retried on the other provider", async () => {
+  it("a rejected key (401) on one provider still gets an answer from the next", async () => {
     groqModel.current = failing(apiError(401));
-    geminiModel.current = answering("should not happen");
-    expect((await answer("groq", "gemini")).text).toBe("<error>");
+    geminiModel.current = answering("from gemini");
+    expect(await answer("groq", "gemini")).toEqual({ text: "from gemini", used: ["gemini-flash-lite-latest"] });
+  });
+
+  it("a provider that just failed is skipped by the next request, and tried again after the cooldown", async () => {
+    vi.useFakeTimers();
+    try {
+      let groqCalls = 0;
+      groqModel.current = new MockLanguageModelV4({
+        doStream: async () => {
+          groqCalls += 1;
+          throw apiError(429);
+        },
+      });
+      geminiModel.current = answering("from gemini");
+      await answer("groq", "gemini");
+      await answer("groq", "gemini");
+      expect(groqCalls).toBe(1);
+      await vi.advanceTimersByTimeAsync(60_001);
+      await answer("groq", "gemini");
+      expect(groqCalls).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a caller that aborted is not moved to another provider", async () => {
+    const gone = new AbortController();
+    groqModel.current = new MockLanguageModelV4({
+      doStream: async () => {
+        gone.abort();
+        throw new Error("aborted");
+      },
+    });
+    let geminiCalls = 0;
+    geminiModel.current = new MockLanguageModelV4({
+      doStream: async () => {
+        geminiCalls += 1;
+        throw new Error("should not be called");
+      },
+    });
+    const cloud = await cloudModelWithFallback("groq", "gemini");
+    const m = cloud.model as unknown as { doStream: (p: unknown) => PromiseLike<unknown> };
+    await expect(m.doStream({ prompt: [], abortSignal: gone.signal })).rejects.toThrow("aborted");
+    expect(geminiCalls).toBe(0);
   });
 });
 
@@ -231,7 +275,7 @@ describe("cloudModelWithFallback with a last resort", () => {
       const cloud = await cloudModelWithFallback("zai", "groq", "gemini");
       const m = cloud.model as unknown as { doStream: (p: unknown) => PromiseLike<unknown> };
       const pending = m.doStream({ prompt: [] });
-      await vi.advanceTimersByTimeAsync(12_000);
+      await vi.advanceTimersByTimeAsync(10_000);
       await pending;
       expect(cloud.modelsUsed()).toEqual(["openai/gpt-oss-120b"]);
       expect((warn.mock.calls[0][1] as { kind: string }).kind).toBe("timeout");
@@ -240,10 +284,10 @@ describe("cloudModelWithFallback with a last resort", () => {
     }
   });
 
-  it("an error that is not size or rate on the fallback stops the chain", async () => {
+  it("every provider failing surfaces the error instead of hanging", async () => {
     zaiModel.current = failing(apiError(429));
     groqModel.current = failing(apiError(401));
-    geminiModel.current = answering("from gemini");
+    geminiModel.current = failing(apiError(503));
     const { text } = await answerChain();
     expect(text).toBe("<error>");
   });
