@@ -8,7 +8,7 @@ import { dataBlock, DATA_IS_NOT_INSTRUCTIONS } from "./data-block";
 export interface FeeReminderPromptInput {
   schoolName: string;
   termName: string;
-  /** Already formatted, e.g. "₹12,500.00". */
+  /** Already formatted by lib/format formatINR, e.g. "₹12,500". */
   amountDue: string;
   dueOn: string | null;
   daysOverdue: number;

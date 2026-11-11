@@ -9,7 +9,7 @@ import "server-only";
 // nothing but usage. Permission: finance.structure.manage, as the page.
 import { fail, ok } from "@/lib/actions/result";
 import { runStructured } from "@/lib/ai/gateway";
-import { inr } from "@/lib/format";
+import { formatINR } from "@/lib/format";
 import {
   FeeReminderGenerationSchema,
   FeeReminderRequestSchema,
@@ -57,7 +57,7 @@ export const POST = aiTaskRoute<FeeReminderRequest, FeeReminderResponse>({
       prompt: buildFeeReminderPrompt({
         schoolName: ctx.institution.name,
         termName,
-        amountDue: inr(invoice.outstanding),
+        amountDue: formatINR(Math.round(invoice.outstanding * 100)),
         dueOn: invoice.dueOn,
         daysOverdue,
       }),
