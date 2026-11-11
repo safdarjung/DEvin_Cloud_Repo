@@ -109,6 +109,7 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   import_mapping: ["ask", "Which columns does the student import need?"],
   website_page_draft: ["create", "Draft an admissions page for our school website."],
   website_theme_draft: ["create", "Suggest a warm, traditional look for our school website."],
+  workflow_draft: ["create", "Every school day at 10:00, tell me how many students are absent in X-A."],
 };
 
 /** Institution-relative page that runs each page-level task (where its component is rendered); the first one in the person's apps wins. */
@@ -134,6 +135,7 @@ const TASK_PAGES: Partial<Record<CapabilityKey, string | readonly string[]>> = {
   import_mapping: "/dashboard",
   website_page_draft: "/website",
   website_theme_draft: "/website/theme",
+  workflow_draft: "/fabric/workflows",
 };
 
 const MODULE_ICONS: Partial<Record<ModuleKey, OrbIconKey>> = {

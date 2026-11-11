@@ -26,35 +26,22 @@ const DEMO_ROLE_LOGINS: Record<string, string> = {
 // (there was nothing to leak), and the deny probe below would be vacuous.
 const EMPTY_IN_DEMO = new Set<string>([
   "alumni_profiles", // §8.1 fixes students at 3,024 (all statuses); no graduated student in demo, /alumni shows its empty state
-  "ai_usage_events", // M22 ruling: seeded agent runs cost 0, no model called
-  "announcement_audiences", // no announcement published in the demo tenant
-  "announcements", // no announcement published in the demo tenant
-  "answer_sheets", // no exam answer-sheet scan uploaded in the demo tenant
   "briefings", // M25 ruling: generated lazily per calling user, never seeded
   "documents", // no document uploaded in the demo tenant
-  "enrolment_status_history", // no enrolment status change recorded in the demo tenant
-  "fee_reminders", // M12: none sent in the demo tenant
-  "import_batches", // no bulk import run in the demo tenant
-  "import_rows", // no bulk import run in the demo tenant
-  "invitations", // no pending staff/guardian invite in the demo tenant
-  "message_threads", // 0102: no parent-teacher thread started in the demo tenant
-  "messages", // 0102: no parent-teacher thread started in the demo tenant
   "late_fee_charges", // X04: no overdue instalment charged in the demo tenant
-  "online_payment_intents", // M12: no online payment started in the demo tenant
-  "payment_reversals", // M12: no payment reversed in the demo tenant
-  "practice_attempts", // 0103: no practice quiz taken in the demo tenant
-  "simulation_scenarios", // 0106: no what-if scenario saved in the demo tenant
-  "question_bank", // not used by the demo exam flow
   "safety_alert_sections", // 0129: seeded alerts target all/staff, none targets specific sections
-  "studio_requests", // 0107: no Custom Studio request submitted in the demo tenant
-  "result_remarks", // no result remark added in the demo tenant
-  "scheduled_reports", // M15: none scheduled in the demo tenant
   "student_lifecycle_events", // M14: no lifecycle event recorded in the demo tenant
-  "study_items", // not used by the demo tenant
-  "study_preferences", // not used by the demo tenant
   "dashboard_preferences", // 0135: no custom layout saved in the demo tenant
-  "workflow_runs", // M23 ruling: first runner tick after next_run_at creates these, never seeded
 ]);
+
+// Roles that read only the rows they take part in. The demo seed gives the demo teacher, guardian and student
+// rows of their own in these tables, so "0 rows" is no longer the right claim for them here; that they see nobody
+// else's rows is proved in tests/db/messaging-rls.test.ts and tests/db/practice-rls.test.ts.
+const PARTICIPANT_SCOPED: Record<string, readonly string[]> = {
+  message_threads: ["teacher", "guardian"],
+  messages: ["teacher", "guardian"],
+  practice_attempts: ["teacher", "guardian", "student"],
+};
 
 // Same exclusion as rls-generated.test.ts's cross-institution suite:
 // `profiles` has no institution_id column (global); `institutions` is the
@@ -108,7 +95,7 @@ describe("within-tenant deny probe on the seeded demo tenant (M27-T5)", () => {
   describe.each(PROBED_TABLES)("%s", (table) => {
     const expectation = RLS_EXPECTATIONS[table];
     const deniedRoles = Object.keys(DEMO_ROLE_LOGINS).filter(
-      (role) => !expectation.read.includes(role as (typeof expectation.read)[number]),
+      (role) => !expectation.read.includes(role as (typeof expectation.read)[number]) && !PARTICIPANT_SCOPED[table]?.includes(role),
     );
     // Class P only (T-023): anon has a SELECT policy for published/live rows.
     if (!expectation.anonRead) deniedRoles.push("anon");

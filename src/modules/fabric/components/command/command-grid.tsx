@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Eye, EyeOff, GripVertical, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
-import { dispatch, useDemoStore } from "@/modules/fabric/store";
+import { describeActionError } from "@/lib/action-error";
+import { saveDashboardLayout } from "@/modules/core/dashboard-layout.actions";
+import { applyLayout, MORE_CARD_IDS } from "@/modules/core/dashboard-widgets";
+import type { DashboardLayoutInput } from "@/modules/core/schemas";
 import { cn } from "cn";
 
 export interface GridCard {
@@ -19,15 +23,22 @@ export interface GridCard {
  * Role-adaptive widget grid. The layout is the list of *visible* card ids in
  * order; an id missing from it is hidden. Persisted via the demo store.
  */
-export function CommandGrid({ layoutKey, defaultOrder, cards, lead }: { layoutKey: string; defaultOrder: string[]; cards: GridCard[]; lead?: ReactNode }) {
-  const stored = useDemoStore((s) => s.layouts[layoutKey]);
+export function CommandGrid({ institutionSlug, layout, cards, lead }: { institutionSlug: string; layout: DashboardLayoutInput | null; cards: GridCard[]; lead?: ReactNode }) {
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  const defaultOrder = cards.map((c) => c.id);
+  const key = (id: string) => `more:${id}` as (typeof MORE_CARD_IDS)[number];
+  const [order, setOrder] = useState(() => applyLayout(defaultOrder.map(key), layout).map((id) => id.slice(5)));
   const [customising, setCustomising] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
 
-  const byId = new Map(cards.map((c) => [c.id, c]));
-  const order = (stored ?? defaultOrder).filter((id) => byId.has(id));
   const hidden = cards.filter((c) => !order.includes(c.id));
-  const save = (next: string[]) => dispatch({ type: "setLayout", key: layoutKey, order: next });
+  const save = (next: string[]) => {
+    setOrder(next);
+    const rest = defaultOrder.filter((id) => !next.includes(id));
+    void saveDashboardLayout(institutionSlug, { order: [...next, ...rest].map(key), hidden: rest.map(key) }).then((r) => {
+      if (!r.ok) toast.error(describeActionError(r.error));
+    });
+  };
 
   const move = (id: string, delta: number) => {
     const from = order.indexOf(id);

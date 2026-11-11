@@ -23,8 +23,7 @@ const enabledCapabilitiesMock = vi.fn(() => ["study_curriculum"] as string[]);
 
 vi.mock("@/lib/auth/context", () => ({ getTenantContext: getTenantContextMock }));
 vi.mock("@/lib/ai/gateway", () => ({ streamChat: streamChatMock }));
-vi.mock("@/lib/ai/cloud-stream", () => ({ cloudStreamErrorText: () => "x" }));
-vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock }));
+vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock, toolNameFor: (name: string) => name.replace(/\./g, "_") }));
 vi.mock("@/modules/ai/agent/student-tools", () => ({ studentTools: studentToolsMock }));
 vi.mock("@/modules/ai/student-preferences", () => ({ getStudentPreferences: getStudentPreferencesMock }));
 vi.mock("@/modules/ai/capabilities/resolve", () => ({

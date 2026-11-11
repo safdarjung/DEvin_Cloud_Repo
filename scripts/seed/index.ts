@@ -3,6 +3,7 @@ import { createScriptAdminClient } from "../lib/admin-client.ts";
 import { getSeedScale } from "./config.ts";
 import { createSeedContext, type SeedContext } from "./lib/context.ts";
 import { GRADES, sectionNames } from "./lib/grades.ts";
+import { hydrateContext } from "./lib/hydrate.ts";
 import { mulberry32, SEED_PRNG_SEED } from "./lib/prng.ts";
 import { run as runAcademics } from "./sections/academics.ts";
 import { run as runAdmissions } from "./sections/admissions.ts";
@@ -46,6 +47,16 @@ import { run as runResources } from "./sections/resources.ts";
 import { run as runForms } from "./sections/forms.ts";
 import { run as runWebsite } from "./sections/website.ts";
 import { run as runWorkflows } from "./sections/workflows.ts";
+import { run as runFabricStudio } from "./sections/fabric-studio.ts";
+import { run as runWorkflowRuns } from "./sections/workflow-runs.ts";
+import { run as runAiUsage } from "./sections/ai-usage.ts";
+import { run as runMessaging } from "./sections/messaging.ts";
+import { run as runExamExtras } from "./sections/exam-extras.ts";
+import { run as runQuestionBank } from "./sections/question-bank.ts";
+import { run as runStudentStudy } from "./sections/student-study.ts";
+import { run as runFinanceExtras } from "./sections/finance-extras.ts";
+import { run as runDataOps } from "./sections/data-ops.ts";
+import { run as runPeopleHistory } from "./sections/people-history.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "core", run: runCore },
@@ -116,7 +127,33 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "notifications", run: runNotifications },
   // M27-T2/T3: registered last — real detectors/engines over every earlier section's rows.
   { name: "fabric", run: runFabric },
+  // Sample data for tables the sections above never fill. Each is insert-if-missing
+  // (safe to rerun), own PRNG, and runnable alone: `pnpm seed --only messaging,ai-usage`.
+  { name: "fabric-studio", run: runFabricStudio },
+  { name: "workflow-runs", run: runWorkflowRuns },
+  { name: "ai-usage", run: runAiUsage },
+  { name: "messaging", run: runMessaging },
+  { name: "exam-extras", run: runExamExtras },
+  { name: "question-bank", run: runQuestionBank },
+  { name: "student-study", run: runStudentStudy },
+  { name: "finance-extras", run: runFinanceExtras },
+  { name: "data-ops", run: runDataOps },
+  { name: "people-history", run: runPeopleHistory },
 ];
+
+/** `--only a,b` runs just those sections against the already-seeded demo tenant (no reset, no count assertions). */
+function parseOnly(): Set<string> | null {
+  const i = process.argv.indexOf("--only");
+  const value = i >= 0 ? process.argv[i + 1] : undefined;
+  if (!value) return null;
+  const names = new Set(value.split(",").map((n) => n.trim()).filter(Boolean));
+  const unknown = [...names].filter((n) => !SECTIONS.some((s) => s.name === n));
+  if (unknown.length) {
+    console.error(`Unknown section(s): ${unknown.join(", ")}. Known: ${SECTIONS.map((s) => s.name).join(", ")}`);
+    process.exit(1);
+  }
+  return names;
+}
 
 async function resetIfNeeded(admin: ReturnType<typeof createScriptAdminClient>, sql: ReturnType<typeof postgres>) {
   const { data: institution } = await admin
@@ -216,23 +253,31 @@ async function main() {
     process.exit(1);
   }
 
+  const only = parseOnly();
+  if (only && !/@(127\.0\.0\.1|localhost)[:/]/.test(dbUrl) && process.env.ALLOW_REMOTE_SEED !== "true") {
+    console.error("--only refuses a non-local SUPABASE_DB_URL. Set ALLOW_REMOTE_SEED=true to seed a hosted project on purpose.");
+    process.exit(1);
+  }
   const startedAt = Date.now();
   const admin = createScriptAdminClient();
   const sql = postgres(dbUrl, { max: 1 });
 
   try {
-    await resetIfNeeded(admin, sql);
+    if (!only) await resetIfNeeded(admin, sql);
 
     const ctx = createSeedContext(mulberry32(SEED_PRNG_SEED), admin, sql);
     console.log(`Seeding (scale: ${getSeedScale()})...`);
 
+    if (only) await hydrateContext(ctx);
+
     for (const section of SECTIONS) {
+      if (only && !only.has(section.name)) continue;
       const sectionStartedAt = Date.now();
       await section.run(ctx);
       console.log(`  ${section.name}: ${Date.now() - sectionStartedAt}ms`);
     }
 
-    await assertCounts(ctx);
+    if (!only) await assertCounts(ctx);
     console.log(`Seed complete in ${Date.now() - startedAt}ms.`);
   } finally {
     await sql.end();

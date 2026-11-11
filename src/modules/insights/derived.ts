@@ -12,7 +12,6 @@ import { addDays, SEVERITY_RANK, SIGNALS, type SignalKey } from "./signals";
 import { listInsights } from "./queries";
 import type { InsightCardsInput } from "./schemas";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const REVIEWER_ROLE_LABELS: Record<string, string> = {
   owner: "Owner",
@@ -67,53 +66,32 @@ export function toPriorityActions(rows: Insight[], slug: string, now: Date): Pri
     }));
 }
 
-export interface RiskRecentRow {
+/** One row of `dash_open_insight_domains`: a domain with open insights, its top insight, and 7-day creation counts. */
+export interface OpenDomainRow {
   domain: string;
-  created_at: string;
+  n: number;
+  top_id: string;
+  top_severity: InsightSeverity;
+  last7: number;
+  prev7: number;
 }
 
-/**
- * One row per domain with >= 1 open insight (rulings, RiskIndicator). `open`
- * is already the open list (new|reviewing|actioned); `recent` is any-status
- * rows from the last 14 days, used only for the trend split at `now`.
- */
-export function toRiskIndicators(open: Insight[], recent: RiskRecentRow[], now: Date): RiskIndicator[] {
-  const byDomain = new Map<string, Insight[]>();
-  for (const row of open) {
-    const group = byDomain.get(row.domain);
-    if (group) group.push(row);
-    else byDomain.set(row.domain, [row]);
-  }
-
-  const nowMs = now.getTime();
-  const last7 = new Map<string, number>();
-  const prev7 = new Map<string, number>();
-  for (const row of recent) {
-    const ageDays = Math.floor((nowMs - new Date(row.created_at).getTime()) / DAY_MS);
-    if (ageDays < 0 || ageDays >= 14) continue;
-    const bucket = ageDays < 7 ? last7 : prev7;
-    bucket.set(row.domain, (bucket.get(row.domain) ?? 0) + 1);
-  }
-
-  const ranked: { indicator: RiskIndicator; n: number }[] = [];
-  for (const [domain, rows] of byDomain) {
-    const sorted = [...rows].sort(defaultOrder);
-    const recentCount = last7.get(domain) ?? 0;
-    const previousCount = prev7.get(domain) ?? 0;
-    const trend: RiskIndicator["trend"] = recentCount > previousCount ? "up" : recentCount < previousCount ? "down" : "flat";
-    ranked.push({
-      indicator: {
-        id: `risk:${domain}`,
-        label: `${capitalize(domain)}: ${rows.length} open`,
-        level: sorted[0].severity,
-        trend,
-        insight_id: sorted[0].id,
-      },
-      n: rows.length,
-    });
-  }
-
-  return ranked
+/** One row per domain with >= 1 open insight (rulings, RiskIndicator); counts come from SQL so they are exact at any size. */
+export function toRiskIndicators(rows: OpenDomainRow[]): RiskIndicator[] {
+  return rows
+    .map((r) => {
+      const trend: RiskIndicator["trend"] = r.last7 > r.prev7 ? "up" : r.last7 < r.prev7 ? "down" : "flat";
+      return {
+        n: r.n,
+        indicator: {
+          id: `risk:${r.domain}`,
+          label: `${capitalize(r.domain)}: ${r.n} open`,
+          level: r.top_severity,
+          trend,
+          insight_id: r.top_id,
+        } satisfies RiskIndicator,
+      };
+    })
     .sort((a, b) => {
       if (SEVERITY_RANK[b.indicator.level] !== SEVERITY_RANK[a.indicator.level]) {
         return SEVERITY_RANK[b.indicator.level] - SEVERITY_RANK[a.indicator.level];
@@ -155,19 +133,12 @@ export async function priorityActions(ctx: TenantContext): Promise<PriorityActio
 }
 
 export async function riskIndicators(ctx: TenantContext): Promise<RiskIndicator[]> {
-  const now = new Date();
-  const open = await listInsights(ctx, { status: ["new", "reviewing", "actioned"], limit: 200 });
-
   const supabase = await createClient();
-  const cutoff = new Date(now.getTime() - 14 * DAY_MS).toISOString();
-  const { data, error } = await supabase
-    .from("insights")
-    .select("domain, created_at")
-    .eq("institution_id", ctx.institution.id)
-    .gte("created_at", cutoff);
+  const { data, error } = await supabase.rpc("dash_open_insight_domains", { p_institution_id: ctx.institution.id, p_now: new Date().toISOString() });
   if (error) throw error;
-
-  return toRiskIndicators(open, data ?? [], now);
+  return toRiskIndicators(
+    (data ?? []).map((r) => ({ domain: r.domain, n: Number(r.n), top_id: r.top_id, top_severity: r.top_severity as InsightSeverity, last7: Number(r.last7), prev7: Number(r.prev7) })),
+  );
 }
 
 export async function insightCards(ctx: TenantContext, input: InsightCardsInput): Promise<AIInsightCardProps[]> {

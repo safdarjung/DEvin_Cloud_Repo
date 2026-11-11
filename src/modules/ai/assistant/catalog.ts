@@ -30,7 +30,8 @@ export type AssistantMessageMetadata = {
 export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   // Aggregate — safe for cloud (no person identifiers)
   "attendance.attendanceTodaySummary": {
-    description: "Today's attendance summary by section",
+    // The counts say "not taken yet" only implicitly; the model read 0 marked as "nobody absent".
+    description: "Today's school attendance: marked count, present, percent (0 marked = not taken yet today)",
     aggregate: true,
   },
   "attendance.sectionsBelowThreshold": {

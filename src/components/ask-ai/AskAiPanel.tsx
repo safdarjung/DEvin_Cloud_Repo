@@ -1,6 +1,8 @@
 "use client";
 
 import { ArrowUp, ArrowUpRight, CornerDownRight, Search } from "lucide-react";
+import type { Nudge } from "@/modules/ai/nudges";
+import { KIND_META } from "./nudge-kind";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,10 +37,13 @@ interface Props {
   reduced: boolean;
   /** Which field takes focus on open: the ask box, or the jump filter (shortcut). */
   focus: "ask" | "jump";
+  /** Real, permission-filtered nudges for this user (may be empty). */
+  nudges: Nudge[];
+  onAskNudge: (question: string) => void;
   onClose: () => void;
 }
 
-export function AskAiPanel({ slug, pathname, title, items, corner, reduced, focus, onClose }: Props) {
+export function AskAiPanel({ slug, pathname, title, items, corner, reduced, focus, nudges, onAskNudge, onClose }: Props) {
   const router = useRouter();
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -146,6 +151,28 @@ export function AskAiPanel({ slug, pathname, title, items, corner, reduced, focu
           <ArrowUp className="size-4" aria-hidden />
         </button>
       </form>
+
+      {nudges.length > 0 && (
+        <section aria-label="For you">
+          <h2 className="mb-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">For you</h2>
+          <ul className="space-y-1">
+            {nudges.map((n) => {
+              const { Icon, label, text } = KIND_META[n.kind];
+              return (
+                <li key={n.id} className="flex items-start gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+                  <Icon className={`mt-0.5 size-4 shrink-0 ${text}`} aria-label={label} role="img" />
+                  <Link href={n.href} onClick={onClose} className="min-w-0 flex-1 text-sm leading-snug hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                    {n.text}
+                  </Link>
+                  <button type="button" onClick={() => onAskNudge(n.ask)} className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium text-primary hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none">
+                    Ask about this
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       <section aria-label="On this page">
         <h2 className="mb-1.5 flex items-center gap-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">

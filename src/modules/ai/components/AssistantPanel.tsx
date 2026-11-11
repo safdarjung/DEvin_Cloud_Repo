@@ -4,6 +4,7 @@
 // Leaders ask aggregate questions; guardians pass `studentId` for child-scoped
 // answers. Answers stream in; the finish metadata lists the queries behind them.
 import { useState } from "react";
+import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
 import { ErrorState } from "@/components/states";
@@ -12,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
+import { lastHasText, navigateLink, plainChatText, sourceLabel } from "@/modules/ai/chat-text";
 import type { Role } from "@/lib/auth/permissions";
 import { BorderBeam } from "@/components/widgets/viz";
 
@@ -43,6 +45,7 @@ export function AssistantPanel({
     }),
   });
   const busy = status === "submitted" || status === "streaming";
+  const waiting = busy && !lastHasText(messages);
 
   function ask(text: string) {
     const t = text.trim();
@@ -75,12 +78,13 @@ export function AssistantPanel({
             </div>
           )}
           {messages.map((message) => {
-            const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+            const text = plainChatText(message.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
             const sources = message.role === "assistant" ? (message.metadata?.sources ?? []) : [];
             const draftParts = message.parts.filter(
               (p) => isToolUIPart(p) && p.state === "output-available" && isDraftToolPartType(p.type),
             );
-            if (!text && sources.length === 0 && draftParts.length === 0) return null;
+            const links = message.parts.map(navigateLink).filter((l) => l !== null);
+            if (!text && sources.length === 0 && draftParts.length === 0 && links.length === 0) return null;
             return (
               <div
                 key={message.id}
@@ -112,17 +116,20 @@ export function AssistantPanel({
                     />
                   );
                 })}
+                {links.map((l) => (
+                  <Link key={l.href} href={l.href} className="block text-sm font-medium underline underline-offset-2">
+                    Open {l.label}
+                  </Link>
+                ))}
                 {sources.length > 0 && (
-                  <ul className="space-y-0.5 border-t pt-2 text-xs text-muted-foreground">
-                    {sources.map((s) => (
-                      <li key={s.query}>Source: {s.query}</li>
-                    ))}
-                  </ul>
+                  <p className="border-t pt-2 text-xs text-muted-foreground">
+                    Records used: {[...new Set(sources.map((s) => sourceLabel(s.query)))].join(" · ")}
+                  </p>
                 )}
               </div>
             );
           })}
-          {busy && messages.at(-1)?.role !== "assistant" && (
+          {waiting && (
             <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Looking up records…</span>
             </div>

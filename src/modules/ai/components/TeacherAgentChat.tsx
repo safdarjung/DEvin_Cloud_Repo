@@ -6,6 +6,7 @@
 // local-first framing elsewhere in the app, so it must never look like a
 // generic/accidental badge.
 import { useState } from "react";
+import Link from "next/link";
 import { Info } from "lucide-react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from "ai";
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
+import { lastHasText, navigateLink, plainChatText, readToolLabel } from "@/modules/ai/chat-text";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { RemarkDraftEditor } from "@/modules/exams/components/RemarkDraftEditor";
@@ -65,11 +67,14 @@ const TOOL_LABELS: Record<string, string> = {
   getAssignmentStatus: "Looking up assignments…",
   generateQuiz: "Drafting a quiz…",
   draftResultRemark: "Drafting a report-card remark…",
+  navigate: "Finding the page…",
+  more_tools: "Looking for the right tools…",
 };
 
 function toolLabel(type: string): string {
   const name = type.startsWith("tool-") ? type.slice(5) : type;
-  return TOOL_LABELS[name] ?? `Using ${name}…`;
+  const read = readToolLabel(name);
+  return TOOL_LABELS[name] ?? (read ? `Checking: ${read}…` : `Using ${name}…`);
 }
 
 interface MessagePartsProps {
@@ -86,7 +91,7 @@ function MessageParts({ message, institutionSlug, aiPolicy, teachableSections }:
         if (part.type === "text") {
           return (
             <p key={index} className="whitespace-pre-wrap">
-              {part.text}
+              {plainChatText(part.text)}
             </p>
           );
         }
@@ -137,6 +142,15 @@ function MessageParts({ message, institutionSlug, aiPolicy, teachableSections }:
                   aiPolicy={aiPolicy}
                 />
               </div>
+            );
+          }
+
+          const link = navigateLink(part);
+          if (link) {
+            return (
+              <Link key={index} href={link.href} className="block text-sm font-medium underline underline-offset-2">
+                Open {link.label}
+              </Link>
             );
           }
 
@@ -233,7 +247,7 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
               />
             </div>
           ))}
-          {busy && messages.at(-1)?.role !== "assistant" && (
+          {busy && !lastHasText(messages) && (
             <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Thinking…</span>
             </div>

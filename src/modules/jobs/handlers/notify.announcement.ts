@@ -4,6 +4,7 @@
 // re-read from current rows — never from the payload.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
+import { inChunks } from "../../../lib/db/in-chunks.ts";
 import { createNotification } from "../../notifications/service.ts";
 import type { JobHandler } from "../types.ts";
 
@@ -27,9 +28,8 @@ async function contactsById(
   ids: readonly string[],
 ): Promise<Map<string, Contacts>> {
   if (ids.length === 0) return new Map();
-  const { data, error } = await admin.from(table).select("id, phone, email").in("id", ids);
-  if (error) throw error;
-  return new Map((data ?? []).map((row) => [row.id, { sms: row.phone, email: row.email }]));
+  const data = await inChunks(ids, (chunk) => admin.from(table).select("id, phone, email").in("id", chunk));
+  return new Map(data.map((row) => [row.id, { sms: row.phone, email: row.email }]));
 }
 
 /** `school` (no role filter) and `role` audiences: every active membership, contacts from its guardian/staff row. */
@@ -115,41 +115,36 @@ export async function guardiansAndStudents(
 ): Promise<Recipient[]> {
   if (studentIds.length === 0) return [];
 
-  const { data: gsRows, error: gsError } = await admin
-    .from("guardian_students")
-    .select("guardian_id")
-    .eq("institution_id", institutionId)
-    .eq("portal_access", true)
-    .in("student_id", studentIds);
-  if (gsError) throw gsError;
-  const guardianIds = [...new Set((gsRows ?? []).map((r) => r.guardian_id))];
+  const gsRows = await inChunks(studentIds, (chunk) =>
+    admin
+      .from("guardian_students")
+      .select("guardian_id")
+      .eq("institution_id", institutionId)
+      .eq("portal_access", true)
+      .in("student_id", chunk),
+  );
+  const guardianIds = [...new Set(gsRows.map((r) => r.guardian_id))];
 
   const [guardianContacts, guardianMemberships, studentMemberships] = await Promise.all([
     contactsById(admin, "guardians", guardianIds),
-    guardianIds.length
-      ? admin
-          .from("memberships")
-          .select("user_id, guardian_id")
-          .eq("institution_id", institutionId)
-          .eq("role", "guardian")
-          .eq("status", "active")
-          .in("guardian_id", guardianIds)
-          .then(({ data, error }) => {
-            if (error) throw error;
-            return data ?? [];
-          })
-      : Promise.resolve([]),
-    admin
-      .from("memberships")
-      .select("user_id")
-      .eq("institution_id", institutionId)
-      .eq("role", "student")
-      .eq("status", "active")
-      .in("student_id", studentIds)
-      .then(({ data, error }) => {
-        if (error) throw error;
-        return data ?? [];
-      }),
+    inChunks(guardianIds, (chunk) =>
+      admin
+        .from("memberships")
+        .select("user_id, guardian_id")
+        .eq("institution_id", institutionId)
+        .eq("role", "guardian")
+        .eq("status", "active")
+        .in("guardian_id", chunk),
+    ),
+    inChunks(studentIds, (chunk) =>
+      admin
+        .from("memberships")
+        .select("user_id")
+        .eq("institution_id", institutionId)
+        .eq("role", "student")
+        .eq("status", "active")
+        .in("student_id", chunk),
+    ),
   ]);
 
   const recipients: Recipient[] = guardianMemberships.map((m) => ({

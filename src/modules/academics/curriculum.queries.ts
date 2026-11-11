@@ -95,34 +95,15 @@ export async function curriculumCoverageBySection(
   }
   if (pairs.length === 0) return [];
 
-  const gradeIds = [...new Set(sections.map((s) => s.grade_id))];
-  const subjectIds = [...new Set(pairs.map((p) => p.subjectId))];
-
-  const { data: unitRows, error: unitsError } = await supabase
-    .from("curriculum_units")
-    .select("grade_id, subject_id")
-    .eq("institution_id", ctx.institution.id)
-    .in("grade_id", gradeIds)
-    .in("subject_id", subjectIds);
+  // Grouped in SQL: row selects stop at PostgREST's 1000-row cap.
+  const [{ data: unitCounts, error: unitsError }, { data: coverageCounts, error: coverageError }] = await Promise.all([
+    supabase.rpc("dash_curriculum_unit_counts", { p_institution_id: ctx.institution.id }),
+    supabase.rpc("dash_curriculum_coverage_counts", { p_institution_id: ctx.institution.id }),
+  ]);
   if (unitsError) throw unitsError;
-  const plannedByGradeSubject = new Map<string, number>();
-  for (const row of unitRows ?? []) {
-    const key = `${row.grade_id}:${row.subject_id}`;
-    plannedByGradeSubject.set(key, (plannedByGradeSubject.get(key) ?? 0) + 1);
-  }
-
-  const { data: coverageRows, error: coverageError } = await supabase
-    .from("curriculum_unit_coverage")
-    .select("class_section_id, subject_id")
-    .eq("institution_id", ctx.institution.id)
-    .in("class_section_id", sectionIds)
-    .in("subject_id", subjectIds);
   if (coverageError) throw coverageError;
-  const completedBySectionSubject = new Map<string, number>();
-  for (const row of coverageRows ?? []) {
-    const key = `${row.class_section_id}:${row.subject_id}`;
-    completedBySectionSubject.set(key, (completedBySectionSubject.get(key) ?? 0) + 1);
-  }
+  const plannedByGradeSubject = new Map((unitCounts ?? []).map((r) => [`${r.grade_id}:${r.subject_id}`, Number(r.n)]));
+  const completedBySectionSubject = new Map((coverageCounts ?? []).map((r) => [`${r.class_section_id}:${r.subject_id}`, Number(r.n)]));
 
   const today = todayInInstitutionTimezone(ctx);
   const totalDays = (new Date(year.ends_on).getTime() - new Date(year.starts_on).getTime()) / MS_PER_DAY;

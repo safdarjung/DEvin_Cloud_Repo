@@ -106,7 +106,7 @@ describe('runWorkflow', () => {
     expect(result.cursorNodeId).toBeNull()
     expect(result.lastValue).toBe(3)
     expect(ids(result.steps)).toEqual(['t', 'c', 'n', 'e'])
-    expect(result.steps[1]).toEqual({ node_id: 'c', status: 'done', at: NOW, note: 'finance.overdue_invoices = 3 (gte 1): true' })
+    expect(result.steps[1]).toEqual({ node_id: 'c', status: 'done', at: NOW, note: 'Overdue invoices: 3 (is at least 1: yes)' })
     expect(result.steps[2]).toEqual({ node_id: 'n', status: 'done', at: NOW, note: 'Sent: 1' })
   })
 
@@ -124,7 +124,7 @@ describe('runWorkflow', () => {
 
     expect(result.status).toBe('done')
     expect(ids(result.steps)).toEqual(['t', 'c'])
-    expect(result.steps[1].note).toBe('finance.overdue_invoices = 0 (gte 1): false')
+    expect(result.steps[1].note).toBe('Overdue invoices: 0 (is at least 1: no)')
     expect(calls).toEqual(['metric:finance.overdue_invoices'])
   })
 

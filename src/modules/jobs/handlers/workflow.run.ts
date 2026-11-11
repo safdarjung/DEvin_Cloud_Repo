@@ -4,7 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/db/types";
 import { isModuleEnabled } from "../../../lib/modules/catalog.ts";
-import { parseGraph } from "../../workflows/graph.ts";
+import { parseGraph, stepCount } from "../../workflows/graph.ts";
 import { runWorkflow, type EngineStart } from "../../workflows/engine.ts";
 import { createEnginePorts } from "../../workflows/ports.ts";
 import { WORKFLOW_ENGINE_VERSION, WorkflowRunJobPayloadSchema } from "../../workflows/schemas.ts";
@@ -72,6 +72,11 @@ export const workflowRun: JobHandler = async (job, { admin }) => {
   const parsed = parseGraph(run.graph as { nodes: unknown; edges: unknown });
   if (!parsed.ok) {
     await failRun(admin, run as RunRow, "Invalid workflow graph", now);
+    return;
+  }
+  // An empty workflow (trigger -> end) is never run, however it was activated.
+  if (stepCount([...parsed.graph.nodes.values()]) === 0) {
+    await failRun(admin, run as RunRow, "This workflow has no steps", now);
     return;
   }
 

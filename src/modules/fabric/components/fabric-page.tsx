@@ -1,13 +1,6 @@
 import type { ReactNode } from "react";
 import { FadeIn } from "@/components/motion";
 import { PageHeader } from "@/components/page-header";
-import { DemoStoreControls } from "./demo-store-controls";
-
-/** UTC midnight today — fixtures must get the same `now` on server and client. */
-export function startOfToday(): Date {
-  const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-}
 
 export function FabricPage({
   title,
@@ -28,12 +21,7 @@ export function FabricPage({
       <PageHeader
         title={title}
         description={description}
-        actions={
-          <>
-            {actions}
-            <DemoStoreControls />
-          </>
-        }
+        actions={actions}
       />
       <FadeIn>{children}</FadeIn>
     </div>

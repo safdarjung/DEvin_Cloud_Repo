@@ -30,8 +30,19 @@ afterEach(async () => {
   await Promise.all(createdInstitutions.splice(0).map((inst) => inst.cleanup()));
 });
 
-const NODES = [{ id: "t" }, { id: "e" }];
-const EDGES = [{ source: "t", target: "e" }];
+// trigger -> approval n2 -> end (approved) / e2 (rejected): a real graph, so
+// the in-request run walks it (start -> awaiting_approval; decide -> done).
+const NODES = [
+  { id: "t", type: "trigger", label: "Start", config: { kind: "manual" } },
+  { id: "n2", type: "approval", label: "OK?", config: { prompt: "Go ahead?" } },
+  { id: "e", type: "end", label: "End", config: {} },
+  { id: "e2", type: "end", label: "End", config: {} },
+];
+const EDGES = [
+  { source: "t", target: "n2" },
+  { source: "n2", target: "e", label: "approved" },
+  { source: "n2", target: "e2", label: "rejected" },
+];
 
 function workflowRow(institutionId: string, createdBy: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -90,9 +101,14 @@ describe("workflow run actions (M23-T16)", () => {
     expect(first.ok).toBe(true);
     if (!first.ok) return;
     expect(first.data.runId).toBeTruthy();
+    // Ran in the request: walked to the approval step, no cron needed.
+    expect(first.data.status).toBe("awaiting_approval");
+    expect(first.data.queued).toBe(false);
+    expect(first.data.steps.map((s) => s.node_id)).toEqual(["t", "n2"]);
 
     const jobs = await jobForRun(first.data.runId);
     expect(jobs).toHaveLength(1);
+    expect(jobs[0].status).toBe("succeeded");
 
     // Same calendar minute -> same run id (idempotent click).
     const second = await callAs(inst, "principal", runWorkflowNow, { id: workflow.id });
@@ -141,13 +157,19 @@ describe("workflow run actions (M23-T16)", () => {
     const approved = await callAs(inst, "principal", decideWorkflowRun, { runId: run.id, decision: "approve" });
     expect(approved.ok).toBe(true);
     if (!approved.ok) return;
-    expect(approved.data).toEqual({ runId: run.id, status: "running" });
+    // The decision resumes the run in the request: approved -> end -> done.
+    expect(approved.data).toMatchObject({ runId: run.id, status: "done", queued: false });
+    expect(approved.data.steps.map((s) => [s.node_id, s.note])).toEqual([
+      ["n2", "Approved"],
+      ["e", "End"],
+    ]);
 
     const jobs = await jobForRun(run.id);
     expect(jobs).toHaveLength(1);
     expect(jobs[0].idempotency_key).toBe(`workflow.run:${run.id}:n2`);
+    expect(jobs[0].status).toBe("succeeded");
 
-    // Already running -> a second decision is invalid_state.
+    // Already decided -> a second decision is invalid_state.
     const again = await callAs(inst, "principal", decideWorkflowRun, { runId: run.id, decision: "approve" });
     expect(again.ok).toBe(false);
     if (again.ok) return;
@@ -171,10 +193,16 @@ describe("workflow run actions (M23-T16)", () => {
     const rejected = await callAs(inst, "principal", decideWorkflowRun, { runId: run.id, decision: "reject", note });
     expect(rejected.ok).toBe(true);
     if (!rejected.ok) return;
-    expect(rejected.data).toEqual({ runId: run.id, status: "running" });
+    // Resumed in the request down the rejected edge; the handler clears pending_decision once applied.
+    expect(rejected.data).toMatchObject({ runId: run.id, status: "done" });
+    expect(rejected.data.steps.map((s) => [s.node_id, s.note])).toEqual([
+      ["n2", "Rejected"],
+      ["e2", "End"],
+    ]);
 
-    const [row] = await sql`select pending_decision, decision_note from public.workflow_runs where id = ${run.id}::uuid`;
-    expect(row.pending_decision).toBe("rejected");
+    const [row] = await sql`select pending_decision, decision_note, decided_at from public.workflow_runs where id = ${run.id}::uuid`;
+    expect(row.pending_decision).toBeNull();
+    expect(row.decided_at).not.toBeNull();
     expect(row.decision_note).toBe(note);
 
     // 0096's decide_workflow_run writes the decision payload to the audit

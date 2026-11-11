@@ -27,7 +27,8 @@ async function loadManifests(): Promise<void> {
 
 function draftTool(action: string, summary: string, schema: z.ZodType) {
   return tool({
-    description: `Draft (never saved): ${summary}. The person reviews and saves it themselves.`,
+    // Short on purpose: one per draftable action, and the capability summary already rides in the output.
+    description: `Draft ${action} for the person to review and save; never saved by you.`,
     inputSchema: describeInput(schema),
     execute: async (input: unknown): Promise<string | { kind: "action_draft"; action: string; input: unknown; summary: string }> => {
       const parsed = schema.safeParse(input);

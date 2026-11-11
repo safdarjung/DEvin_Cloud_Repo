@@ -141,7 +141,12 @@ async function makeSectionFixture(inst: TestInstitution) {
     values (${inst.institutionId}, ${guardianB.id}, ${studentB.id}, 'mother', true, true)
   `;
 
-  return { sectionAId: sectionA.id as string, guardianBUserId: secondAuthUser.user.id as string };
+  return {
+    sectionAId: sectionA.id as string,
+    yearId: year.id as string,
+    gradeId: grade.id as string,
+    guardianBUserId: secondAuthUser.user.id as string,
+  };
 }
 
 describe("notify.announcement handler (M06-T3)", () => {
@@ -162,6 +167,62 @@ describe("notify.announcement handler (M06-T3)", () => {
     expect(recipientIds).toContain(inst.users.guardian.id);
     expect(recipientIds).not.toContain(guardianBUserId);
   });
+
+  it("grade audience with 260 students fans out to every guardian/student exactly once (no URI-too-long)", async () => {
+    const inst = await createTestInstitution("notif-announce-bigrade");
+    createdInstitutions.push(inst);
+    const { sectionAId, yearId, gradeId, guardianBUserId } = await makeSectionFixture(inst);
+
+    // 260 students (260 uuids in one .in() overflows PostgREST's URL limit), each with a
+    // portal guardian; the first 40 guardians get a login so they are reachable.
+    await sql`
+      with s as (
+        insert into public.students (institution_id, admission_no, first_name, dob, gender)
+        select ${inst.institutionId}::uuid, 'BIG-' || g, 'Big ' || g, '2015-01-01', 'other' from generate_series(1, 260) g
+        returning id, admission_no
+      ), e as (
+        insert into public.enrolments (institution_id, student_id, class_section_id, academic_year_id, started_on, status)
+        select ${inst.institutionId}::uuid, id, ${sectionAId}::uuid, ${yearId}::uuid, '2026-04-01', 'active' from s
+      ), gd as (
+        insert into public.guardians (institution_id, full_name, phone)
+        select ${inst.institutionId}::uuid, 'Guardian ' || admission_no, '98' || lpad(substr(admission_no, 5), 8, '0') from s
+        returning id, full_name
+      )
+      insert into public.guardian_students (institution_id, guardian_id, student_id, relationship, is_primary, portal_access)
+      select ${inst.institutionId}::uuid, gd.id, s.id, 'father', true, true from gd join s on gd.full_name = 'Guardian ' || s.admission_no
+    `;
+    const guardians = await sql`
+      select id from public.guardians where institution_id = ${inst.institutionId}::uuid and full_name like 'Guardian BIG-%' order by full_name limit 40
+    `;
+    const loginIds: string[] = [];
+    for (let i = 0; i < guardians.length; i += 10) {
+      const batch = await Promise.all(
+        guardians.slice(i, i + 10).map(async (g) => {
+          const { data, error } = await admin.auth.admin.createUser({
+            email: `big-guardian-${crypto.randomUUID()}@test.coolskool.test`,
+            password: "correct-horse-battery-staple",
+            email_confirm: true,
+          });
+          if (error || !data.user) throw error ?? new Error("createUser failed");
+          await sql`insert into public.memberships (institution_id, user_id, role, guardian_id) values (${inst.institutionId}, ${data.user.id}, 'guardian', ${g.id})`;
+          return data.user.id;
+        }),
+      );
+      loginIds.push(...batch);
+    }
+
+    const announcementId = await publishAnnouncement(inst, { audience_type: "grade", grade_id: gradeId });
+    await notifyAnnouncement(makeJob(inst.institutionId, announcementId), { admin });
+
+    const notified = await sql`
+      select recipient_user_id from public.notifications
+      where institution_id = ${inst.institutionId}::uuid and type = 'announcement'
+    `;
+    const got = notified.map((n) => n.recipient_user_id as string);
+    const expected = [inst.users.student.id, inst.users.guardian.id, guardianBUserId, ...loginIds];
+    expect(new Set(got).size).toBe(got.length);
+    expect([...got].sort()).toEqual([...expected].sort());
+  }, 120_000);
 
   it("role=teacher audience notifies only teachers", async () => {
     const inst = await createTestInstitution("notif-announce-role");

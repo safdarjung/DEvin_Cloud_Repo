@@ -1,13 +1,17 @@
 "use client";
 
 import { AnimatePresence, animate, motion, useMotionValue, useReducedMotion } from "motion/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Role } from "@/lib/auth/permissions";
 import { ROLE_ACCENTS } from "@/modules/ai/components/orb/orb-theme";
 import { AskAiOrb } from "./ask-ai/AskAiOrb";
+import { AskAiBubble } from "./ask-ai/AskAiBubble";
 import { AskAiPanel, type Corner, type JumpItem } from "./ask-ai/AskAiPanel";
-import { pageTitleFor } from "./ask-ai/suggestions";
+import { KIND_META } from "./ask-ai/nudge-kind";
+import { orbUrl, pageTitleFor } from "./ask-ai/suggestions";
+import { useNudgeBubble } from "./ask-ai/use-nudge-bubble";
+import { useNudges } from "./ask-ai/use-nudges";
 
 const STORE_KEY = "askai:corner";
 const CORNERS: readonly Corner[] = ["br", "bl", "tr", "tl"];
@@ -27,6 +31,7 @@ function readCorner(): Corner {
 // The base position is bottom-right (above the mobile bottom nav); x/y are offsets to the other corners.
 export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutionSlug: string; role: Role; jumpItems: JumpItem[] }) {
   const pathname = usePathname();
+  const router = useRouter();
   const reduced = useReducedMotion() ?? false;
   const box = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
@@ -37,6 +42,24 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutio
   const [open, setOpen] = useState(false);
   const [focus, setFocus] = useState<"ask" | "jump">("ask");
   const [hot, setHot] = useState(false);
+  const [excite, setExcite] = useState(0);
+  const [jiggle, setJiggle] = useState(0);
+  const [bump, setBump] = useState(0);
+  const { nudges, fresh } = useNudges(institutionSlug);
+  const bubble = useNudgeBubble(nudges, fresh, open);
+  const shownKind = bubble.visible ? bubble.current?.kind : undefined;
+  const glow = shownKind ? KIND_META[shownKind].glow : undefined;
+  const prevUnseen = useRef(0);
+
+  // Attention wiggle when an unprompted bubble appears; badge bounce when the count rises.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- counter that triggers a one-shot animation
+    if (bubble.autoShown) setExcite((n) => n + 1);
+  }, [bubble.autoShown]);
+  useEffect(() => {
+    if (bubble.unseenAlerts > prevUnseen.current) setBump((n) => n + 1);
+    prevUnseen.current = bubble.unseenAlerts;
+  }, [bubble.unseenAlerts]);
 
   const offsetsFor = useCallback((c: Corner) => {
     const el = box.current;
@@ -136,23 +159,44 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutio
           setTimeout(() => (dragged.current = false), 0);
         }}
         style={{ x, y }}
+        onPointerEnter={(e) => e.pointerType !== "touch" && bubble.enter()}
+        onPointerLeave={bubble.leave}
+        onFocus={bubble.enter}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) bubble.leave();
+        }}
+        onKeyDown={(e) => {
+          if (!bubble.visible) return;
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            bubble.hide();
+          } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+            e.preventDefault();
+            bubble.step(1);
+          } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+            e.preventDefault();
+            bubble.step(-1);
+          }
+        }}
         className="group fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-(--z-header) touch-none lg:right-6 lg:bottom-6 print:hidden"
       >
         <span
           aria-hidden
-          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full border border-border bg-card px-3 py-1 text-sm font-medium whitespace-nowrap text-foreground opacity-0 shadow-md transition-all duration-200 motion-reduce:transition-none ${side} ${open ? "" : "translate-x-2 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100"}`}
+          className={`pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full border border-border bg-card px-3 py-1 text-sm font-medium whitespace-nowrap text-foreground opacity-0 shadow-md transition-all duration-200 motion-reduce:transition-none ${side} ${open || bubble.visible ? "hidden" : "translate-x-2 group-focus-within:translate-x-0 group-focus-within:opacity-100 group-hover:translate-x-0 group-hover:opacity-100"}`}
         >
           Ask AI
         </span>
         <motion.button
           ref={btn}
           type="button"
-          aria-label="Ask AI"
+          aria-label={bubble.unseenAlerts > 0 ? `Ask AI, ${bubble.unseenAlerts} new ${bubble.unseenAlerts === 1 ? "alert" : "alerts"}` : "Ask AI"}
           aria-haspopup="dialog"
           aria-expanded={open}
           onPointerEnter={() => setHot(true)}
           onPointerLeave={() => setHot(false)}
-          whileTap={reduced ? undefined : { scale: 0.86 }}
+          onPointerDown={() => bubble.visible && setJiggle((n) => n + 1)}
+          animate={reduced ? undefined : { x: bubble.visible ? (corner.endsWith("l") ? 5 : -5) : 0 }}
+          whileTap={reduced ? undefined : bubble.visible ? { scaleX: 1.12, scaleY: 0.78 } : { scale: 0.86 }}
           whileHover={reduced ? undefined : { scale: 1.06 }}
           transition={{ type: "spring", stiffness: 500, damping: 12 }}
           onClick={() => {
@@ -162,8 +206,48 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutio
           }}
           className="relative block size-14 rounded-full text-white shadow-lg ring-1 ring-black/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none lg:size-16"
         >
-          <AskAiOrb idle={!open && !hot} accent={accent} />
+          <AskAiOrb idle={!open && !hot} accent={accent} glow={glow} excite={excite} />
         </motion.button>
+        {glow && !reduced && (
+          <motion.span
+            aria-hidden
+            className="pointer-events-none absolute -inset-1 rounded-full border-2"
+            style={{ borderColor: glow }}
+            animate={{ scale: [1, 1.3], opacity: [0.8, 0] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: "easeOut" }}
+          />
+        )}
+        {bubble.unseenAlerts > 0 && (
+          <motion.span
+            key={bump}
+            aria-hidden
+            initial={reduced ? false : { scale: 0.3 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 500, damping: 9 }}
+            className="pointer-events-none absolute -top-1 -right-1 grid min-w-5 place-items-center rounded-full bg-destructive px-1 text-[11px] leading-5 font-bold text-white ring-2 ring-background"
+          >
+            {bubble.unseenAlerts > 9 ? "9+" : bubble.unseenAlerts}
+          </motion.span>
+        )}
+        <AnimatePresence>
+          {bubble.visible && bubble.current && (
+            <AskAiBubble
+              key="bubble"
+              nudge={bubble.current}
+              count={bubble.list.length}
+              index={bubble.index}
+              onGo={bubble.go}
+              onDismiss={() => bubble.dismiss(bubble.current!.id)}
+              onAsk={() => router.push(orbUrl(institutionSlug, pathname, bubble.current!.ask))}
+              onNavigate={bubble.hide}
+              auto={bubble.autoShown}
+              reduced={reduced}
+              side={corner.endsWith("l") ? "right" : "left"}
+              vertical={corner.startsWith("t") ? "top" : "bottom"}
+              jiggle={jiggle}
+            />
+          )}
+        </AnimatePresence>
       </motion.div>
       <AnimatePresence>
         {open && (
@@ -175,6 +259,8 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems }: { institutio
             corner={corner}
             reduced={reduced}
             focus={focus}
+            nudges={bubble.list}
+            onAskNudge={(q) => router.push(orbUrl(institutionSlug, pathname, q))}
             onClose={close}
           />
         )}

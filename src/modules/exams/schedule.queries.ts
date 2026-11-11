@@ -44,33 +44,41 @@ function scheduleStatus(examStatus: string | undefined, scheduledAt: string | nu
   return scheduledAt ? "scheduled" : "planned";
 }
 
+const SCHEDULE_PAGE = 1000;
+
 /**
  * One row per exam_papers row with `held_on` set (rulings), ordered
- * held_on then scheduled_at, capped at 500. `held_on` stays canonical even
+ * held_on then scheduled_at (all rows, paged). `held_on` stays canonical even
  * when a direct PostgREST writer desyncs it from `scheduled_at` (rulings
  * "Schedule is not a constraint") — this query reports both columns as-is.
  */
 export async function examSchedule(ctx: TenantContext, filters: ExamScheduleFilters): Promise<ExamScheduleRow[]> {
   const supabase = await createClient();
-  let query = supabase
-    .from("exam_papers")
-    .select(
-      "id, exam_id, class_section_id, held_on, scheduled_at, duration_minutes, exams!inner(name, type, status), subjects(name), class_sections(name, grades(code)), rooms(id, name)",
-    )
-    .eq("institution_id", ctx.institution.id)
-    .not("held_on", "is", null)
-    .order("held_on", { ascending: true })
-    .order("scheduled_at", { ascending: true, nullsFirst: true })
-    .limit(500);
-  if (filters.examId) query = query.eq("exam_id", filters.examId);
-  if (filters.classSectionId) query = query.eq("class_section_id", filters.classSectionId);
-  if (filters.from) query = query.gte("held_on", filters.from);
-  if (filters.to) query = query.lte("held_on", filters.to);
+  // Paged with a stable order (held_on, scheduled_at, id): one PostgREST response stops at max_rows (1000).
+  const data = [];
+  for (let from = 0; ; from += SCHEDULE_PAGE) {
+    let query = supabase
+      .from("exam_papers")
+      .select(
+        "id, exam_id, class_section_id, held_on, scheduled_at, duration_minutes, exams!inner(name, type, status), subjects(name), class_sections(name, grades(code)), rooms(id, name)",
+      )
+      .eq("institution_id", ctx.institution.id)
+      .not("held_on", "is", null)
+      .order("held_on", { ascending: true })
+      .order("scheduled_at", { ascending: true, nullsFirst: true })
+      .order("id", { ascending: true })
+      .range(from, from + SCHEDULE_PAGE - 1);
+    if (filters.examId) query = query.eq("exam_id", filters.examId);
+    if (filters.classSectionId) query = query.eq("class_section_id", filters.classSectionId);
+    if (filters.from) query = query.gte("held_on", filters.from);
+    if (filters.to) query = query.lte("held_on", filters.to);
+    const { data: page, error } = await query;
+    if (error) throw error;
+    data.push(...(page ?? []));
+    if (!page || page.length < SCHEDULE_PAGE) break;
+  }
 
-  const { data, error } = await query;
-  if (error) throw error;
-
-  return (data ?? []).map((row) => {
+  return data.map((row) => {
     const exam = row.exams as { name: string; type: string; status: string } | null;
     const subject = row.subjects as { name: string } | null;
     const section = row.class_sections as { name: string; grades: { code: string } | null } | null;

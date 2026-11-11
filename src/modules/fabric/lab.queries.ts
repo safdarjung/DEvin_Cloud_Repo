@@ -158,7 +158,9 @@ export async function labExplainData(ctx: TenantContext, req: LabExplainRequest)
     }
     case "scenario": {
       requirePermission(ctx, "scenario.manage");
-      const { facts } = await realBaselineFacts(ctx);
+      const baseline = await realBaselineFacts(ctx);
+      if (!baseline) return null;
+      const { facts } = baseline;
       const baselineAssumptions = { ...req.ref, enrolment_delta_pct: 0, staff_delta: 0, fee_change_pct: 0, cost_change_pct: 0 };
       const s = runScenario(req.ref, facts);
       const b = runScenario(baselineAssumptions, facts);

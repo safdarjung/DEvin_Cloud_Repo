@@ -8,6 +8,7 @@ import type { Database } from "@/lib/db/types";
 import { isModuleEnabled, type ModuleKey } from "../../lib/modules/catalog.ts";
 import { createNotification } from "../notifications/service.ts";
 import { queueWorkflowAgentRun } from "../agents/queue.ts";
+import { absentStatusCodes } from "../attendance/absentees.ts";
 import type { EnginePorts, NodeOutcome } from "./engine.ts";
 import type { WorkflowMetricKey } from "./catalog.ts";
 import type { AgentConfig, NotifyConfig, ReportConfig } from "./graph.ts";
@@ -142,6 +143,32 @@ async function queueReport(
   return { status: "done", note: "Report queued" };
 }
 
+/** `attendance.section_absent_today`: today's absences in one section, from the same 0078 aggregate the dashboard reads. */
+async function sectionAbsentToday(
+  admin: SupabaseClient<Database>,
+  run: EnginePortsRun,
+  settings: Record<string, unknown>,
+  sectionId: string,
+  now: () => Date,
+): Promise<number> {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: timezoneOf(settings) }).format(now());
+  const raw = (settings.attendance as { statuses?: unknown } | undefined)?.statuses;
+  const statuses = (Array.isArray(raw) ? raw : []).map((s: { code?: unknown; counts_present?: unknown; in_denominator?: unknown }) => ({
+    code: String(s.code ?? ""),
+    countsPresent: Number(s.counts_present ?? 1),
+    inDenominator: s.in_denominator !== false,
+  }));
+  const absent = new Set(absentStatusCodes(statuses));
+  const { data, error } = await admin.rpc("attendance_daily_counts", {
+    p_institution_id: run.institution_id,
+    p_from: today,
+    p_to: today,
+    p_class_section_id: sectionId,
+  });
+  if (error) throw error;
+  return (data ?? []).reduce((sum, row) => sum + (absent.has(row.status) ? Number(row.n) : 0), 0);
+}
+
 /** Builds the `EnginePorts` `runWorkflow` walks for one run (M23-T12's handler calls this once per attempt). */
 export function createEnginePorts(
   admin: SupabaseClient<Database>,
@@ -153,7 +180,13 @@ export function createEnginePorts(
   return {
     moduleOn: (key: ModuleKey) => isModuleEnabled({ institution: { settings } }, key),
 
-    async metric(key: WorkflowMetricKey): Promise<number> {
+    async metric(key: WorkflowMetricKey, section?: string): Promise<number> {
+      if (key === "attendance.section_absent_today") {
+        if (!section) throw new Error("metric_failed");
+        return sectionAbsentToday(admin, run, settings, section, now).catch(() => {
+          throw new Error("metric_failed");
+        });
+      }
       const { data, error } = await admin.rpc("workflow_metric", {
         p_institution_id: run.institution_id,
         p_metric: key,
@@ -191,7 +224,9 @@ export function createEnginePorts(
           requestedBy: workflow.created_by,
           workflowRunId: run.id,
         });
-        return result.status === "disabled" ? { status: "skipped", note: "Agent turned off" } : { status: "done", note: "Agent run queued" };
+        if (result.status === "disabled") return { status: "skipped", note: "Agent turned off" };
+        if (result.status === "missing") return { status: "skipped", note: "Agent was deleted" };
+        return { status: "done", note: "Agent run queued" };
       } catch {
         throw new Error("agent_failed");
       }

@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
 import { createScenario, decideScenario, deleteScenario, updateScenario } from "@/modules/fabric/simulator.actions";
-import { listScenarios, realBaselineFacts, runScenario } from "@/modules/fabric/simulator.queries";
+import { listScenarios, realBaselineFacts } from "@/modules/fabric/simulator.queries";
 import { buildContext, callAs, closeActionsHelper } from "../helpers/actions";
 import { setActingClient } from "../helpers/server-client-mock";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
@@ -149,22 +149,14 @@ describe("fabric.simulator actions (M106)", () => {
     }
   });
 
-  it("realBaselineFacts returns real counts (no crash on a fresh fixture with no billing/timetable data) and runScenario stays pure over them", async () => {
+  it("realBaselineFacts returns null (not invented numbers) when the school has no students, staff or rooms yet", async () => {
     const inst: TestInstitution = await createTestInstitution("sim-baseline");
     try {
       const ctx = await buildContext(inst, "owner");
       setActingClient(inst.clientAs("owner"));
-      const { facts, costIsAssumption } = await realBaselineFacts(ctx);
+      const real = await realBaselineFacts(ctx);
       setActingClient(null);
-      expect(costIsAssumption).toBe(true);
-      expect(facts.students).toBeGreaterThanOrEqual(0);
-      expect(facts.teachers).toBeGreaterThanOrEqual(0);
-      expect(facts.periods_per_day).toBeGreaterThan(0);
-      expect(facts.rooms).toBeGreaterThan(0);
-
-      const a = runScenario(BASE_ASSUMPTIONS, facts);
-      const b = runScenario(BASE_ASSUMPTIONS, facts);
-      expect(a).toEqual(b);
+      expect(real).toBeNull();
     } finally {
       await inst.cleanup();
     }

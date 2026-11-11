@@ -34,6 +34,11 @@ export const DASHBOARD_WIDGETS = {
 export type DashboardWidgetId = keyof typeof DASHBOARD_WIDGETS;
 export const DASHBOARD_WIDGET_IDS = Object.keys(DASHBOARD_WIDGETS) as [DashboardWidgetId, ...DashboardWidgetId[]];
 
+// Cards inside the "more-cards" widget (CommandGrid). Namespaced so they cannot
+// collide with widget ids (e.g. "insights"); stored in the same layout row.
+export const MORE_CARD_IDS = ["more:priorities", "more:risks", "more:insights", "more:forecasts", "more:grades", "more:assistant"] as const;
+export const isMoreCardId = (id: string): boolean => id.startsWith("more:");
+
 export type DashboardLayout = { hidden: string[]; order: string[] };
 
 /**

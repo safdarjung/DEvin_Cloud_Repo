@@ -9,6 +9,7 @@ import { ChevronDown, RotateCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
+import { navigateLink, plainChatText, readToolLabel, sourceLabel } from "@/modules/ai/chat-text";
 
 export type OrbMessage = UIMessage<{ provider?: "local" | "cloud"; sources?: Array<{ query: string }> }>;
 
@@ -25,8 +26,16 @@ function ToolPart({ part, institutionSlug }: { part: OrbMessage["parts"][number]
     return (
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="size-1.5 animate-pulse rounded-full bg-current" aria-hidden />
-        Checking {toolName(part.type)}…
+        Checking {readToolLabel(part.type.replace(/^tool-/, "")) ?? toolName(part.type)}…
       </p>
+    );
+  }
+  const link = navigateLink(part);
+  if (link) {
+    return (
+      <Link href={link.href} className="block text-sm font-medium underline underline-offset-2">
+        Open {link.label}
+      </Link>
     );
   }
   if (EDITOR_DRAFT_TOOLS.has(part.type)) {
@@ -44,13 +53,14 @@ function ToolPart({ part, institutionSlug }: { part: OrbMessage["parts"][number]
 }
 
 function Message({ message, institutionSlug, streaming }: { message: OrbMessage; institutionSlug: string; streaming: boolean }) {
-  const text = message.parts.map((p) => (p.type === "text" ? p.text : "")).join("");
+  const text = plainChatText(message.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
   const tools = message.parts.filter((p) => isToolUIPart(p));
   if (!text && tools.length === 0) return null;
   if (message.role === "user") {
     return <p className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground">{text}</p>;
   }
   const provider = message.metadata?.provider;
+  const sources = [...new Set((message.metadata?.sources ?? []).map((s) => sourceLabel(s.query)))];
   return (
     <div className="min-w-0 max-w-full space-y-2">
       {tools.map((part, i) => <ToolPart key={i} part={part} institutionSlug={institutionSlug} />)}
@@ -60,6 +70,7 @@ function Message({ message, institutionSlug, streaming }: { message: OrbMessage;
           {streaming && <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-foreground" aria-hidden />}
         </p>
       )}
+      {sources.length > 0 && <p className="text-xs text-muted-foreground">Records used: {sources.join(" · ")}</p>}
       {provider && <ProviderBadge provider={provider} />}
     </div>
   );

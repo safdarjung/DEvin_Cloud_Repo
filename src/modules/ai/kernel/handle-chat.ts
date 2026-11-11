@@ -22,9 +22,9 @@ import { AI_ROLES } from "@/modules/core/schemas";
 import { UIMessageRequestSchema, latestUserText, stripToText } from "@/lib/ai/ui-message-schema";
 import { redact } from "@/lib/ai/redact";
 import { streamChat } from "@/lib/ai/gateway";
-import { cloudStreamErrorText } from "@/lib/ai/cloud-stream";
 import { pickAgentProvider } from "@/modules/ai/agent/provider-routing";
-import { buildReadTools } from "@/modules/agents/tools";
+import { buildReadTools, toolNameFor } from "@/modules/agents/tools";
+import type { ToolGroup } from "@/lib/ai/tool-budget";
 import { buildDraftTools } from "@/modules/ai/kernel/draft-tools";
 import { ASSISTANT_CATALOG_VERSION, ASSISTANT_QUERIES, createSourceLog } from "@/modules/ai/assistant/catalog";
 import { createTaskTool, navigateTool } from "@/modules/ai/assistant/tools";
@@ -32,7 +32,7 @@ import { teacherTools } from "@/modules/ai/agent/teacher-tools";
 import { studentTools } from "@/modules/ai/agent/student-tools";
 import { getStudentPreferences } from "@/modules/ai/student-preferences";
 import { listMyChildren } from "@/modules/people/queries";
-import { CAPABILITIES } from "@/modules/ai/capabilities/catalog";
+import { CAPABILITIES, type CapabilityKey } from "@/modules/ai/capabilities/catalog";
 import { enabledCapabilities, previewEnabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { systemPromptFor } from "@/modules/ai/kernel/personas";
 
@@ -128,6 +128,96 @@ function queryAllowedOnCloud(name: string, cap: { data: string }): boolean {
   return cap.data === "own" || ASSISTANT_QUERIES[name]?.aggregate === true;
 }
 
+// Tool budget: in-app links ride on every request; a picked tool that
+// requires one of these ids brings the tool that looks it up (a fees
+// question needs the term list, a student question the student search).
+export const CORE_TOOLS = ["navigate"];
+export const ID_PROVIDERS: Readonly<Record<string, readonly string[]>> = {
+  termId: ["exams_listTermOptions"],
+  studentId: ["findStudent", "people_listStudents"],
+  examId: ["exams_listExams"],
+  classSectionId: ["exams_listSectionOptions"],
+  sectionId: ["exams_listSectionOptions"],
+  subjectId: ["exams_listSubjectOptions"],
+  curriculumUnitId: ["findCurriculumUnit", "findMyCurriculumUnit", "academics_listCurriculumUnits"],
+};
+
+/** Latest user text first, then the one before (a follow-up like "and 8B?" keeps its topic). */
+function recentUserTexts(messages: UIMessage[]): string[] {
+  return messages
+    .filter((m) => m.role === "user")
+    .slice(-2)
+    .reverse()
+    .map((m) => m.parts.map((p) => (p.type === "text" ? p.text : "")).join(" "));
+}
+
+export interface ChatToolsetInput {
+  personaRole: Role;
+  capabilities: readonly CapabilityKey[];
+  mode: "local" | "cloud";
+  nonce: string;
+  onSource?: (query: string, params: unknown) => void;
+  /** Guardian only: every tool's studentId is pinned to this verified child. */
+  childId?: string;
+}
+
+/**
+ * Every chat tool the persona's enabled capabilities allow, plus one group
+ * per capability (its label/description and the tool names it contributed)
+ * for the gateway's tool budget (`selectTools`). Exported for the
+ * full-registry budget test; permission/module gates are the builders' own.
+ */
+export async function buildChatToolset(ctx: TenantContext, input: ChatToolsetInput): Promise<{ tools: ToolSet; groups: ToolGroup[] }> {
+  const { personaRole, capabilities, mode, nonce, onSource, childId } = input;
+  const queryCatalog: Record<string, string> = {};
+  for (const key of capabilities) {
+    const cap = CAPABILITIES[key];
+    if (!cap.queries) continue;
+    for (const name of cap.queries) {
+      if (mode === "cloud" && !queryAllowedOnCloud(name, cap)) continue;
+      queryCatalog[name] = ASSISTANT_QUERIES[name]?.description ?? cap.description;
+    }
+  }
+  const { tools: readTools } = await buildReadTools(ctx, queryCatalog, nonce, onSource);
+  const draftTools = await buildDraftTools(ctx, capabilities.map((key) => CAPABILITIES[key]));
+  let tools: ToolSet = { ...readTools, ...draftTools };
+  if (childId) tools = bindStudentId(tools, childId);
+
+  const toolNames = new Set(capabilities.flatMap((key) => CAPABILITIES[key].tools ?? []));
+  if (toolNames.has("navigate")) {
+    const navigate = navigateTool(ctx);
+    if (navigate) tools.navigate = navigate;
+  }
+  if (toolNames.has("createTask")) {
+    const createTask = await createTaskTool(ctx);
+    if (createTask) tools.createTask = createTask;
+  }
+  if (personaRole === "teacher") {
+    const allTeacherTools = await teacherTools(ctx);
+    for (const [name, toolImpl] of Object.entries(allTeacherTools)) {
+      if (toolNames.has(name)) tools[name] = toolImpl;
+    }
+  }
+  if (personaRole === "student") {
+    const visualsEnabled = toolNames.has("showStudyBlocks");
+    const allStudentTools = (await studentTools(ctx, { visualsEnabled })) as ToolSet;
+    for (const [name, toolImpl] of Object.entries(allStudentTools)) {
+      if (toolNames.has(name)) tools[name] = toolImpl;
+    }
+  }
+
+  const groups: ToolGroup[] = capabilities.map((key) => {
+    const cap = CAPABILITIES[key];
+    const names = [
+      ...(cap.queries ?? []).map(toolNameFor),
+      ...(cap.tools ?? []),
+      ...(cap.drafts ?? []).map((action) => `draft_${toolNameFor(action)}`),
+    ];
+    return { key, label: cap.label, description: cap.description, tools: [...new Set(names)].filter((name) => name in tools) };
+  });
+  return { tools, groups };
+}
+
 export async function handleAiChat(request: Request): Promise<Response> {
   if (isCrossSiteRequest(request)) {
     return apiResponse(fail("forbidden", "Cross-site request refused."));
@@ -212,45 +302,9 @@ export async function handleAiChat(request: Request): Promise<Response> {
 
   const nonce = crypto.randomUUID();
   const sources = createSourceLog();
-  const queryCatalog: Record<string, string> = {};
-  for (const key of capabilities) {
-    const cap = CAPABILITIES[key];
-    if (!cap.queries) continue;
-    for (const name of cap.queries) {
-      if (mode === "cloud" && !queryAllowedOnCloud(name, cap)) continue;
-      queryCatalog[name] = ASSISTANT_QUERIES[name]?.description ?? cap.description;
-    }
-  }
-  const { tools: readTools } = await buildReadTools(ctx, queryCatalog, nonce, sources.add);
-  const draftTools = await buildDraftTools(ctx, capabilities.map((key) => CAPABILITIES[key]));
-  let tools: ToolSet = { ...readTools, ...draftTools };
-  if (role === "guardian" && childId) tools = bindStudentId(tools, childId);
+  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, mode, nonce, onSource: sources.add, childId });
 
-  const toolNames = new Set(capabilities.flatMap((key) => CAPABILITIES[key].tools ?? []));
-  if (toolNames.has("navigate")) {
-    const navigate = navigateTool(ctx);
-    if (navigate) tools.navigate = navigate;
-  }
-  if (toolNames.has("createTask")) {
-    const createTask = await createTaskTool(ctx);
-    if (createTask) tools.createTask = createTask;
-  }
-  if (personaRole === "teacher") {
-    const allTeacherTools = await teacherTools(ctx);
-    for (const [name, toolImpl] of Object.entries(allTeacherTools)) {
-      if (toolNames.has(name)) tools[name] = toolImpl;
-    }
-  }
-
-  let studentPrefs: Awaited<ReturnType<typeof getStudentPreferences>> | undefined;
-  if (personaRole === "student") {
-    studentPrefs = await getStudentPreferences(ctx);
-    const visualsEnabled = toolNames.has("showStudyBlocks");
-    const allStudentTools = (await studentTools(ctx, { visualsEnabled })) as ToolSet;
-    for (const [name, toolImpl] of Object.entries(allStudentTools)) {
-      if (toolNames.has(name)) tools[name] = toolImpl;
-    }
-  }
+  const studentPrefs = personaRole === "student" ? await getStudentPreferences(ctx) : undefined;
 
   const system = systemPromptFor({
     role: personaRole,
@@ -281,6 +335,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
     abortSignal: request.signal,
     redactions: outgoing.redactions,
     notConfiguredMessage: "The AI chat assistant is not configured. Contact your administrator.",
+    budget: { groups, core: CORE_TOOLS, idProviders: ID_PROVIDERS, texts: recentUserTexts(strippedMessages) },
   });
 
   if (!result.ok) {
@@ -288,7 +343,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
   }
 
   return result.stream.toUIMessageStreamResponse({
-    onError: cloudStreamErrorText,
+    onError: result.errorText,
     messageMetadata: ({ part }) =>
       part.type === "finish" ? { provider: result.provider, catalogVersion: ASSISTANT_CATALOG_VERSION, sources: sources.list() } : undefined,
   });

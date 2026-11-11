@@ -543,6 +543,7 @@ export default async function DashboardPage({
   };
 
   // Default-ordered [id, content] pairs; falsy content = not available to this user.
+  const layout = await getDashboardLayout(ctx).catch(() => null);
   let widgets: [DashboardWidgetId, ReactNode][] = [];
   let fixedBody: ReactNode = null;
   if (role === "admissions") {
@@ -948,7 +949,7 @@ export default async function DashboardPage({
             <h2 id="more-h" className="text-base font-semibold">
               More from your school
             </h2>
-            <CommandGrid layoutKey="command-more" defaultOrder={cards.map((c) => c.id)} cards={cards} />
+            <CommandGrid institutionSlug={institutionSlug} layout={layout} cards={cards} />
           </section>
         )],
     ];
@@ -957,7 +958,6 @@ export default async function DashboardPage({
   // Per-user layout: hide/reorder only what this user is already offered above.
   const content = new Map(widgets.filter(([, node]) => node));
   const available: string[] = [...content.keys()];
-  const layout = await getDashboardLayout(ctx).catch(() => null);
   const shown = applyLayout(available, layout);
   const hiddenIds = new Set(available.filter((id) => !shown.includes(id)));
   const orderedAll = applyLayout(available, { hidden: [], order: layout?.order ?? [] });

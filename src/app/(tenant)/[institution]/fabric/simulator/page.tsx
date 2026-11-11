@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
+import { EmptyState } from "@/components/states";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { Simulator } from "@/modules/fabric/components/simulator/simulator";
 import { listScenarios, pipelineEnrolmentHint, realBaselineFacts, simulatorSignals } from "@/modules/fabric/simulator.queries";
@@ -23,12 +24,20 @@ export default async function SimulatorPage({
   // owner/principal inside fabric.simulator.decide.
   requirePermission(ctx, "scenario.manage");
 
-  const [{ facts }, scenarios, signals, spread] = await Promise.all([
+  const [baseline, scenarios, signals, spread] = await Promise.all([
     realBaselineFacts(ctx),
     listScenarios(ctx),
     simulatorSignals(ctx),
     feeForecastSpread(ctx),
   ]);
+  if (!baseline) {
+    return (
+      <FabricPage title="Simulator" ws="simulator">
+        <EmptyState title="Not enough data to simulate yet" description="The simulator needs enrolled students, staff, rooms and timetable periods. Add them and the baseline appears here." />
+      </FabricPage>
+    );
+  }
+  const { facts } = baseline;
   const enrolmentHint = signals.funnel ? pipelineEnrolmentHint(signals.funnel, facts.students) : null;
   const aiOn = isModuleEnabled(ctx, "ai_briefings");
 

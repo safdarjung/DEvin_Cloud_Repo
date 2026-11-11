@@ -1,6 +1,8 @@
 // Pure mapping between the workflow form (trigger + ordered steps) and the stored node/edge graph.
 // Shape: trigger -> steps -> end. A condition's `false` and an approval's `rejected` branch go to a second end node.
 // Relative .ts imports only (unit-testable under plain node).
+import { CronSchema } from "../reports/schemas.ts";
+import { SECTION_METRICS } from "./catalog.ts";
 import type { GraphEdge, WorkflowNode } from "./schemas.ts";
 
 export const STEP_TYPES = ["condition", "notify", "agent", "approval", "report"] as const;
@@ -62,4 +64,61 @@ export function formFromGraph(nodes: WorkflowNode[], edges: GraphEdge[]): Workfl
   const form: WorkflowForm = { trigger: { label: trigger.label, config: trigger.config }, steps };
   const rebuilt = buildGraph(form);
   return JSON.stringify(signature(rebuilt.nodes, rebuilt.edges)) === JSON.stringify(signature(nodes, edges)) ? form : null;
+}
+
+export type FormErrors = Record<string, string[]>;
+
+function stepFieldErrors(s: StepForm): Record<string, string> {
+  const c = s.config;
+  const out: Record<string, string> = {};
+  if (!s.label.trim()) out.label = "Give the step a name.";
+  switch (s.type) {
+    case "condition":
+      if (!c.metric) out.metric = "Pick a number to check.";
+      else if ((SECTION_METRICS as readonly string[]).includes(c.metric) && !c.section) out.section = "Pick a section.";
+      if (!c.op) out.op = "Pick a comparison.";
+      if (!/^[0-9]{1,6}$/.test(c.value ?? "")) out.value = "Enter a whole number (0 or more).";
+      break;
+    case "notify":
+      if (c.audience === "roles") {
+        if (!c.roles) out.roles = "Pick at least one role.";
+        if (!c.message?.trim()) out.message = "Write the message.";
+        else if (c.message.split("{count}").length > 2) out.message = "Use {count} at most once.";
+      }
+      break;
+    case "approval":
+      if (!c.prompt?.trim()) out.prompt = "Write the question for the approver.";
+      break;
+    case "agent":
+      if (!c.agent) out.agent = "Pick an agent.";
+      if (!c.task?.trim()) out.task = "Write the task for the agent.";
+      break;
+    case "report":
+      if (!c.scheduledReportId) out.scheduledReportId = "Pick a scheduled report.";
+      break;
+  }
+  return out;
+}
+
+/** Inline field errors before saving, keyed `name`, `trigger.cron`, `steps.<i>.<field>`. Zero steps is allowed (empty draft). */
+export function validateWorkflowForm(name: string, form: WorkflowForm): FormErrors {
+  const errors: FormErrors = {};
+  if (!name.trim()) errors.name = ["Give the workflow a name."];
+  if (form.trigger.config.kind === "schedule" && !CronSchema.safeParse(form.trigger.config.cron ?? "").success) {
+    errors["trigger.cron"] = ["Pick when it runs."];
+  }
+  form.steps.forEach((s, i) => {
+    for (const [field, message] of Object.entries(stepFieldErrors(s))) errors[`steps.${i}.${field}`] = [message];
+  });
+  return errors;
+}
+
+/** Server graph errors ("node s2: …") onto the step they belong to (form node ids are s1..sN); `graph` keeps the full list. */
+export function stepErrorsFromGraph(errors: string[]): FormErrors {
+  const out: FormErrors = { graph: errors };
+  for (const e of errors) {
+    const m = /^node s(\d+): (.+)$/.exec(e);
+    if (m) (out[`steps.${Number(m[1]) - 1}`] ??= []).push(m[2]!);
+  }
+  return out;
 }

@@ -10,7 +10,9 @@ import { redact } from "@/lib/ai/redact";
 import { estimateCost } from "@/lib/ai/pricing";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import * as providers from "@/lib/ai/providers";
-import { streamCloudAgent } from "@/lib/ai/cloud-stream";
+import { streamCloudAgent, type StreamExtras } from "@/lib/ai/cloud-stream";
+import { classifyAiError, cloudModelWithFallback, cloudProviderPlan, configuredCloudKeys, streamErrorText } from "@/lib/ai/provider-fallback";
+import { TOKEN_CEILING, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
 import { tolerateNullOptionals } from "@/lib/ai/tool-nulls";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 
@@ -141,15 +143,16 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       const effectiveInstructions = forStep(instructions);
 
       // Cloud provider module is imported here, inside this branch only (C-62).
+      // D28 path: one retry on the other Groq/Gemini provider (with a key) on a size/rate/overload error.
+      const agentCloudModel =
+        step === "cloud" && agentModel
+          ? await cloudModelWithFallback(
+              agentModel,
+              cloudProviderPlan({ mode: "cloud", preferred: agentModel, keys: configuredCloudKeys() })?.fallback ?? null,
+            )
+          : null;
       const model =
-        step === "local"
-          ? providers.getLocalModel()
-          : agentModel === "groq"
-            ? await providers.getGroqModel()
-            : agentModel === "gemini"
-              ? await providers.getGeminiModel()
-              : await providers.getCloudModel("quality");
-      const modelId = modelIdFor(step);
+        step === "local" ? providers.getLocalModel() : agentCloudModel ? agentCloudModel.model : await providers.getCloudModel("quality");
 
       const attempt = (repairNote?: string) =>
         generateText({
@@ -177,6 +180,7 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       }
 
       const data = result.output;
+      const modelId = agentCloudModel ? agentCloudModel.modelsUsed().join("+") : modelIdFor(step);
       const latencyMs = Date.now() - startedAt;
       const costEstimateUsd = estimateCost(step, modelId, result.usage.inputTokens ?? 0, result.usage.outputTokens ?? 0);
 
@@ -277,10 +281,12 @@ export interface StreamAgentInput<TOOLS extends ToolSet> {
   concurrencyKey?: string;
   /** M22-T4 — links usage rows to the agent run that caused them. */
   agentRunId?: string;
+  /** Tool budget hints (tool-budget.ts), same as `streamCloudAgent`'s. */
+  budget?: ToolBudgetHints;
 }
 
 export type StreamAgentResult<TOOLS extends ToolSet> =
-  | { ok: true; provider: ProviderStep; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> }
+  | ({ ok: true; provider: ProviderStep; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> } & StreamExtras)
   | { ok: false; error: { code: ErrorCode; message: string } };
 
 // MEDIUM-1 fix: a caller-unspecified cap, same default order of magnitude
@@ -383,11 +389,16 @@ export async function streamAgent<TOOLS extends ToolSet>(
 
       const startedAt = Date.now();
       const accumulatedUsage = { inputTokens: 0, outputTokens: 0 };
+      const plan = planToolBudget({ texts: [], ...input.budget, system: redacted.text, messages, tools, ceiling: TOKEN_CEILING.local });
+      const logContext = { feature, provider: "local", estimatedTokens: plan.estimatedTokens };
+      console.info("[ai-budget]", { ...logContext, tools: plan.activeTools.length, groups: plan.groups.slice(0, 6) });
       const stream = streamText({
         model,
         system: redacted.text,
-        messages,
-        tools: tolerateNullOptionals(tools),
+        messages: plan.messages,
+        tools: tolerateNullOptionals(plan.tools),
+        activeTools: plan.activeTools,
+        prepareStep: plan.prepareStep,
         stopWhen,
         maxOutputTokens,
         toolCallConcurrency,
@@ -395,7 +406,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
         timeout: TIMEOUT_MS[step],
         onError: ({ error }) => {
           const correlationId = streamAgentCorrelationId();
-          console.error(`[${correlationId}] streamAgent (${feature}) step "${step}" failed`, error);
+          console.error(`[${correlationId}] streamAgent step failed`, { ...logContext, ...classifyAiError(error) });
         },
         onStepFinish: (streamStep) => {
           accumulatedUsage.inputTokens += streamStep.usage.inputTokens ?? 0;
@@ -438,7 +449,14 @@ export async function streamAgent<TOOLS extends ToolSet>(
         )
         .finally(() => releaseConcurrencySlot(concurrencyKey, step));
 
-      return { ok: true, provider: step, modelId, stream };
+      return {
+        ok: true,
+        provider: step,
+        modelId,
+        stream,
+        estimatedTokens: plan.estimatedTokens,
+        errorText: (error: unknown) => streamErrorText(error),
+      };
     } catch {
       // Setup failed before any token streamed (e.g. provider not
       // configured) — safe to try the next step, per this function's own
@@ -483,10 +501,12 @@ export interface StreamChatInput<TOOLS extends ToolSet> {
   redactions?: number;
   /** Required when `mode` is `"cloud"`: shown to the caller if that provider has no key configured. */
   notConfiguredMessage?: string;
+  /** Tool budget hints (tool-budget.ts): groups to pick from, tools always kept, latest user text first. */
+  budget?: ToolBudgetHints;
 }
 
 export type StreamChatResult<TOOLS extends ToolSet> =
-  | { ok: true; provider: ProviderStep; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> }
+  | ({ ok: true; provider: ProviderStep; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> } & StreamExtras)
   | { ok: false; error: { code: ErrorCode; message: string } };
 
 // Redacts every string leaf, keeping the value's shape: structured tool
@@ -536,7 +556,7 @@ export async function streamChat<TOOLS extends ToolSet>(
   }
 
   if (mode === "local") {
-    return streamAgent({ ctx, feature, permission, dataClass, system, messages, tools, stopWhen, maxOutputTokens, concurrencyKey, abortSignal });
+    return streamAgent({ ctx, feature, permission, dataClass, system, messages, tools, stopWhen, maxOutputTokens, concurrencyKey, abortSignal, budget: input.budget });
   }
 
   if (!input.provider) {
@@ -554,8 +574,9 @@ export async function streamChat<TOOLS extends ToolSet>(
     abortSignal,
     redactions: () => tally.count,
     notConfiguredMessage: input.notConfiguredMessage ?? "Cloud AI provider is not configured.",
+    budget: input.budget,
   });
 
   if (!result.ok) return result;
-  return { ok: true, provider: "cloud", modelId: result.modelId, stream: result.stream };
+  return { ...result, provider: "cloud" };
 }

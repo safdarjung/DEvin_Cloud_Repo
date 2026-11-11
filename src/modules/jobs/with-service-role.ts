@@ -1,9 +1,11 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Only imported by `src/app/api/jobs/run/route.ts` and
+// Only imported by `src/app/api/jobs/run/route.ts`,
 // `src/modules/safety/actions.ts` (in-request `runJobNow` of the alert's own
-// job, after the action's permission check) — never by
+// job, after the action's permission check) and
+// `src/modules/workflows/actions.ts` (same, for the run's own workflow.run
+// job after start_workflow_run / decide_workflow_run) — never by
 // `scripts/jobs-run.ts` or anything `runner.ts` itself needs, because this
 // file uses `server-only` and the `@/` alias, neither of which resolve
 // under plain Node (see the header comment in `runner.ts`).

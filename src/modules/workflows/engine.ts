@@ -3,6 +3,7 @@
 import type { ModuleKey } from '../../lib/modules/catalog.ts'
 import type { WorkflowRun } from '../fabric/types.ts'
 import { NODE_MODULE, WORKFLOW_METRICS, type WorkflowMetricKey } from './catalog.ts'
+import { OP_WORDS } from './describe.ts'
 import {
   nextNode,
   type AgentConfig,
@@ -17,7 +18,8 @@ export type NodeOutcome = { status: 'done' | 'skipped'; note: string }
 
 export type EnginePorts = {
   moduleOn(key: ModuleKey): boolean
-  metric(key: WorkflowMetricKey): Promise<number>
+  /** `section`: the condition's class section, set only for a SECTION_METRICS metric. */
+  metric(key: WorkflowMetricKey, section?: string): Promise<number>
   notify(cfg: NotifyConfig, message: string): Promise<NodeOutcome>
   report(cfg: ReportConfig): Promise<NodeOutcome>
   agent(cfg: AgentConfig): Promise<NodeOutcome>
@@ -89,16 +91,16 @@ export async function runWorkflow(graph: ParsedGraph, start: EngineStart, ports:
           nodeId = nextNode(graph, node.id)
           break
         case 'condition': {
-          const { metric, op, value } = node.config
+          const { metric, op, value, section } = node.config
           const moduleKey = WORKFLOW_METRICS[metric].module
           let pass = false
           if (!ports.moduleOn(moduleKey)) {
             push(node.id, 'skipped', `Module off: ${moduleKey}`)
           } else {
-            const v = await ports.metric(metric)
+            const v = section === undefined ? await ports.metric(metric) : await ports.metric(metric, section)
             lastValue = v
             pass = COMPARE[op](v, value)
-            push(node.id, 'done', `${metric} = ${v} (${op} ${value}): ${pass}`)
+            push(node.id, 'done', `${WORKFLOW_METRICS[metric].label}: ${v} (${OP_WORDS[op]} ${value}: ${pass ? 'yes' : 'no'})`)
           }
           nodeId = nextNode(graph, node.id, String(pass)) // missing `false` edge → run done
           break

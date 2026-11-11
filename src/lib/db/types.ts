@@ -6148,6 +6148,41 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"dash_admissions_counts":
+{ Args: { "p_academic_year_id"?: string,"p_institution_id": string }; Returns: {
+              "kind": string,"n": number,"status": string
+            }[]
+                           },
+"dash_curriculum_coverage_counts":
+{ Args: { "p_institution_id": string }; Returns: {
+              "class_section_id": string,"n": number,"subject_id": string
+            }[]
+                           },
+"dash_curriculum_unit_counts":
+{ Args: { "p_institution_id": string }; Returns: {
+              "grade_id": string,"n": number,"subject_id": string
+            }[]
+                           },
+"dash_open_insight_domains":
+{ Args: { "p_institution_id": string,"p_now"?: string }; Returns: {
+              "domain": string,"last7": number,"n": number,"prev7": number,"top_id": string,"top_severity": string
+            }[]
+                           },
+"dash_room_slot_counts":
+{ Args: { "p_institution_id": string,"p_version_id": string }; Returns: {
+              "n": number,"room_id": string,"working_days": number
+            }[]
+                           },
+"dash_route_section_edges":
+{ Args: { "p_institution_id": string }; Returns: {
+              "class_section_id": string,"route_id": string
+            }[]
+                           },
+"dash_section_headcounts":
+{ Args: { "p_institution_id": string }; Returns: {
+              "class_section_id": string,"n": number
+            }[]
+                           },
 "decide_application":
 { Args: { "p_application_id": string,"p_decision": string,"p_institution_id": string,"p_note": string }; Returns: Json
                            },

@@ -79,11 +79,11 @@ describe("systemPromptFor", () => {
     expect(prompt).toContain("never another student, staff member, or school-wide data");
   });
 
-  it("lists one line per enabled chat_tool capability, in order, and skips task-kind capabilities", () => {
+  it("lists each enabled chat_tool capability by label, in order, and skips task-kind capabilities", () => {
     const capabilities: CapabilityKey[] = ["attendance_overview", "navigate", "quiz_generator"];
     const prompt = systemPromptFor({ role: "owner", nonce: NONCE, mode: "local", capabilities, instructions: "" });
-    expect(prompt).toContain("- Attendance:");
-    expect(prompt).toContain("- Navigate:");
+    expect(prompt).toContain("You can use: Attendance, Navigate.");
+    expect(prompt).toContain("call more_tools");
     expect(prompt).not.toContain("Quiz generator");
   });
 

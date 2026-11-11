@@ -4,6 +4,7 @@ import { ArrowLeft, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/states";
+import { plainChatText } from "@/modules/ai/chat-text";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { AgentRun } from "@/modules/fabric/types";
 import type { AgentRunDetail } from "@/modules/agents/queries";
@@ -116,7 +117,7 @@ export function RunDetailPanel({
 
       <Card>
         <CardHeader><CardTitle className="text-base">AI-generated summary</CardTitle></CardHeader>
-        <CardContent className="space-y-1 text-sm"><p>{run.summary || "No summary."}</p><p className="text-xs text-muted-foreground">Suggestion only. Nothing is executed until a person approves it.</p></CardContent>
+        <CardContent className="space-y-1 text-sm"><p className="whitespace-pre-wrap">{plainChatText(run.summary) || "No summary."}</p><p className="text-xs text-muted-foreground">Suggestion only. Nothing is executed until a person approves it.</p></CardContent>
       </Card>
 
       <Card>

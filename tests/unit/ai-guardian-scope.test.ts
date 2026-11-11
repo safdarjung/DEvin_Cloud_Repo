@@ -18,7 +18,6 @@ const listMyChildrenMock = vi.fn(async () => [{ id: CHILD_A }]);
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 vi.mock("@/lib/auth/context", () => ({ getTenantContext: (...a: unknown[]) => getTenantContextMock(...a) }));
 vi.mock("@/lib/ai/gateway", () => ({ streamChat: (...a: unknown[]) => streamChatMock(...a) }));
-vi.mock("@/lib/ai/cloud-stream", () => ({ cloudStreamErrorText: () => "x" }));
 vi.mock("@/modules/people/queries", async () => ({
   ...(await vi.importActual<typeof import("@/modules/people/queries")>("@/modules/people/queries")),
   listMyChildren: () => listMyChildrenMock(),

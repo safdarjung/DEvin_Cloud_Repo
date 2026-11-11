@@ -72,21 +72,31 @@ function toEnquiryRow(row: EnquiryQueryRow): EnquiryRow {
   };
 }
 
+const ENQUIRY_PAGE = 1000;
+
 /** Pipeline board (06 §W4 AC1), grouped by the institution's configured stages. */
 export async function listEnquiriesByStage(ctx: TenantContext): Promise<Record<EnquiryStage, EnquiryRow[]>> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("enquiries")
-    .select(ENQUIRY_COLUMNS)
-    .eq("institution_id", ctx.institution.id)
-    .order("created_at", { ascending: false });
-  if (error) throw error;
+  // Paged with a stable order: one PostgREST response stops at max_rows (1000).
+  const data: EnquiryQueryRow[] = [];
+  for (let from = 0; ; from += ENQUIRY_PAGE) {
+    const { data: page, error } = await supabase
+      .from("enquiries")
+      .select(ENQUIRY_COLUMNS)
+      .eq("institution_id", ctx.institution.id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + ENQUIRY_PAGE - 1);
+    if (error) throw error;
+    data.push(...((page ?? []) as EnquiryQueryRow[]));
+    if (!page || page.length < ENQUIRY_PAGE) break;
+  }
 
   const stages = enquiryStagesFor(ctx);
   const byStage: Record<EnquiryStage, EnquiryRow[]> = {};
   for (const stage of stages) byStage[stage] = [];
 
-  for (const row of (data ?? []) as EnquiryQueryRow[]) {
+  for (const row of data) {
     const parsed = toEnquiryRow(row);
     (byStage[parsed.status] ??= []).push(parsed);
   }
@@ -303,29 +313,20 @@ const APPLICATION_STATUSES: readonly ApplicationStatus[] = [
 /** 06 §W4 AC4 — live counts per enquiry stage and application status. Exported for T-039 (dashboard). */
 export async function getAdmissionsFunnelCounts(ctx: TenantContext, academicYearId?: string): Promise<AdmissionsFunnelCounts> {
   const supabase = await createClient();
-
-  const { data: enquiries, error: enquiryError } = await supabase
-    .from("enquiries")
-    .select("status")
-    .eq("institution_id", ctx.institution.id);
-  if (enquiryError) throw enquiryError;
-
-  let appQuery = supabase.from("applications").select("status").eq("institution_id", ctx.institution.id);
-  if (academicYearId) appQuery = appQuery.eq("academic_year_id", academicYearId);
-  const { data: applications, error: applicationError } = await appQuery;
-  if (applicationError) throw applicationError;
+  // Grouped in SQL: selecting rows would stop at PostgREST's 1000-row cap.
+  const { data, error } = await supabase.rpc("dash_admissions_counts", {
+    p_institution_id: ctx.institution.id,
+    p_academic_year_id: academicYearId,
+  });
+  if (error) throw error;
 
   const enquiryStages: Record<string, number> = {};
   for (const stage of enquiryStagesFor(ctx)) enquiryStages[stage] = 0;
-  for (const row of enquiries ?? []) {
-    const stage = row.status as string;
-    enquiryStages[stage] = (enquiryStages[stage] ?? 0) + 1;
-  }
-
   const applicationStatuses = Object.fromEntries(APPLICATION_STATUSES.map((s) => [s, 0])) as Record<ApplicationStatus, number>;
-  for (const row of applications ?? []) {
-    const status = row.status as ApplicationStatus;
-    if (status in applicationStatuses) applicationStatuses[status] += 1;
+  for (const row of data ?? []) {
+    const n = Number(row.n);
+    if (row.kind === "enquiry") enquiryStages[row.status] = (enquiryStages[row.status] ?? 0) + n;
+    else if (row.status in applicationStatuses) applicationStatuses[row.status as ApplicationStatus] += n;
   }
 
   return { enquiryStages, applicationStatuses };

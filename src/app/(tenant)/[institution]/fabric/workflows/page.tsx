@@ -13,13 +13,19 @@ import type { TenantContext } from "@/lib/auth/types";
 import { hasPermission, requireModule } from "@/lib/auth/require";
 import { humanize } from "@/lib/format";
 import { isModuleEnabled } from "@/lib/modules/catalog";
-import { AGENT_SLUGS } from "@/modules/agents/catalog";
+import { workflowAgentOptions } from "@/modules/agents/queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
+import { getTodaySectionsForTeacher } from "@/modules/attendance/queries";
 import type { Workflow, WorkflowRun } from "@/modules/fabric/types";
 import { reportList } from "@/modules/reports/queries";
+import { describeTrigger } from "@/modules/workflows/describe";
+import { RUN_STATUS_VARIANT, RunSteps, RunTimes, runStatusText } from "@/modules/workflows/components/run-steps";
 import { DecideRunForm, WorkflowRowControls } from "@/modules/workflows/components/workflow-controls";
 import { WorkflowEditor, type FormOptions } from "@/modules/workflows/components/workflow-form";
 import { formFromGraph, type WorkflowForm } from "@/modules/workflows/form-graph";
+import { stepCount } from "@/modules/workflows/graph";
 import { workflowList, workflowRuns } from "@/modules/workflows/queries";
+import { WORKFLOW_TEMPLATES } from "@/modules/workflows/templates";
 
 export const metadata: Metadata = { title: "Workflows" };
 
@@ -27,12 +33,13 @@ const SECTIONS = [
   { id: "workflows", label: "Workflows" },
   { id: "runs", label: "Runs" },
 ];
-const dateTimeFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-const STATUS_VARIANT: Record<string, "success" | "outline" | "destructive" | "secondary"> = { active: "success", draft: "outline", paused: "secondary", disabled: "outline", done: "success", failed: "destructive", running: "secondary", awaiting_approval: "secondary" };
+const STATUS_VARIANT: Record<string, "success" | "outline" | "destructive" | "secondary"> = { active: "success", draft: "outline", paused: "secondary", disabled: "outline" };
+const STATUS_TEXT: Record<string, string> = { active: "On", draft: "Draft", paused: "Paused", disabled: "Disabled" };
 const EMPTY_FORM: WorkflowForm = { trigger: { label: "Run by hand", config: { kind: "manual" } }, steps: [] };
 
 // Workflows: read needs `workflow.read` (the page floor); every control needs `workflow.manage`.
-// The engine is real. Agent steps only queue the existing agents module (drafts, no direct writes); no model call lives here.
+// The engine is real: Run now and approvals run in the request. Agent steps only queue the existing agents module
+// (drafts, no direct writes). The only model call is the optional AI drafter (api/ai/workflow-draft), which saves nothing.
 export default async function WorkflowsPage({ params, searchParams }: { params: Promise<{ institution: string }>; searchParams: Promise<{ section?: string; edit?: string }> }) {
   const { institution: slug } = await params;
   const { section, edit } = await searchParams;
@@ -50,13 +57,28 @@ export default async function WorkflowsPage({ params, searchParams }: { params: 
   );
 }
 
+const STARTERS = WORKFLOW_TEMPLATES.flatMap((t) => {
+  const form = formFromGraph(t.nodes.map(({ id, type, label, config }) => ({ id, type, label, config })), t.edges);
+  return form ? [{ key: t.key, name: t.name, form }] : []; // fee_reminder's approval graph is not the form's shape
+});
+
 async function formOptions(ctx: TenantContext): Promise<FormOptions> {
-  const reports =
+  const soft = <T,>(p: Promise<T[]>, what: string) =>
+    p.catch((e) => {
+      console.error(`workflow form ${what} failed:`, e instanceof Error ? e.message : e);
+      return [] as T[];
+    });
+  const [reports, agents, sections] = await Promise.all([
     isModuleEnabled(ctx, "scheduled_reports") && hasPermission(ctx, "report.schedule")
-      ? await reportList(ctx).then((r) => r.map((x) => ({ id: x.id, name: x.name }))).catch(() => [])
-      : [];
-  return { agents: isModuleEnabled(ctx, "agents") ? [...AGENT_SLUGS] : [], reports, feeReminders: isModuleEnabled(ctx, "finance_plus") };
+      ? soft(reportList(ctx).then((r) => r.map((x) => ({ id: x.id, name: x.name }))), "reports")
+      : [],
+    isModuleEnabled(ctx, "agents") ? soft(workflowAgentOptions(ctx).then((a) => a.map(({ slug, name }) => ({ slug, name }))), "agents") : [],
+    isModuleEnabled(ctx, "attendance") ? soft(getTodaySectionsForTeacher(ctx).then((r) => r.map(({ id, label }) => ({ id, label }))), "sections") : [],
+  ]);
+  return { agents, reports, sections, feeReminders: isModuleEnabled(ctx, "finance_plus"), aiOn: aiTaskOn(ctx, "workflow_draft"), templates: STARTERS };
 }
+
+const nodeLabels = (w?: Workflow): Record<string, string> => Object.fromEntries((w?.nodes ?? []).map((n) => [n.id, n.label]));
 
 async function WorkflowsTab({ ctx, slug, canManage, edit }: { ctx: TenantContext; slug: string; canManage: boolean; edit?: string }) {
   const rows = await workflowList(ctx, {}).catch((e) => {
@@ -121,13 +143,23 @@ async function WorkflowsTab({ ctx, slug, canManage, edit }: { ctx: TenantContext
                   <TableRow key={w.id}>
                     <TableCell className="font-medium">{w.name}</TableCell>
                     <TableCell>
-                      <Badge variant={STATUS_VARIANT[w.status] ?? "outline"}>{humanize(w.status)}</Badge>
+                      <Badge variant={STATUS_VARIANT[w.status] ?? "outline"}>{STATUS_TEXT[w.status] ?? humanize(w.status)}</Badge>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">{triggerText(w)}</TableCell>
-                    <TableCell className="hidden md:table-cell">{w.nodes.filter((n) => n.type !== "trigger" && n.type !== "end").map((n) => n.label).join(" → ") || "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{describeTrigger(w.trigger.type, String(w.trigger.config ?? ""))}</TableCell>
+                    <TableCell className="hidden md:table-cell">{w.nodes.filter((n) => n.type !== "trigger" && n.type !== "end").map((n) => n.label).join(" → ") || <span className="text-muted-foreground">No steps yet</span>}</TableCell>
                     {canManage && (
                       <TableCell>
-                        <WorkflowRowControls institutionSlug={slug} id={w.id} name={w.name} status={w.status} editHref={`${base}?edit=${w.id}`} />
+                        <WorkflowRowControls
+                          institutionSlug={slug}
+                          id={w.id}
+                          name={w.name}
+                          status={w.status}
+                          triggerType={w.trigger.type}
+                          steps={stepCount(w.nodes)}
+                          labels={nodeLabels(w)}
+                          editHref={`${base}?edit=${w.id}`}
+                          runsHref={`${base}?section=runs`}
+                        />
                       </TableCell>
                     )}
                   </TableRow>
@@ -139,11 +171,6 @@ async function WorkflowsTab({ ctx, slug, canManage, edit }: { ctx: TenantContext
       )}
     </div>
   );
-}
-
-function triggerText(w: Workflow): string {
-  const t = w.trigger;
-  return t.type === "manual" ? "By hand" : t.type === "schedule" ? `Schedule ${t.config}` : humanize(String(t.config));
 }
 
 async function RunsTab({ ctx, slug, canManage }: { ctx: TenantContext; slug: string; canManage: boolean }) {
@@ -165,31 +192,21 @@ function RunCard({ run, wf, slug, canDecide }: { run: WorkflowRun; wf?: Workflow
   const node = (id: string) => wf?.nodes.find((n) => n.id === id);
   const waiting = run.status === "awaiting_approval";
   const prompt = run.steps.map((s) => node(s.node_id)).find((n) => n?.type === "approval" && run.steps.find((s) => s.node_id === n.id)?.status !== "done")?.config?.prompt;
+  const labels = nodeLabels(wf);
   return (
     <li>
       <Card>
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center gap-2 text-base">
             {wf?.name ?? "Deleted workflow"}
-            <Badge variant={STATUS_VARIANT[run.status] ?? "outline"}>{humanize(run.status)}</Badge>
-            <span className="text-xs font-normal text-muted-foreground">{dateTimeFmt.format(new Date(run.started_at))}</span>
+            <Badge variant={RUN_STATUS_VARIANT[run.status] ?? "outline"}>{runStatusText(run.status)}</Badge>
           </CardTitle>
+          <RunTimes startedAt={run.started_at} finishedAt={run.finished_at} />
         </CardHeader>
         <CardContent className="space-y-3">
-          {run.steps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No steps recorded yet.</p>
-          ) : (
-            <ol className="space-y-1 text-sm">
-              {run.steps.map((s, i) => (
-                <li key={`${s.node_id}-${i}`} className="flex flex-wrap items-center gap-2">
-                  <Badge variant={STATUS_VARIANT[s.status] ?? "outline"}>{humanize(s.status)}</Badge>
-                  <span className="font-medium">{node(s.node_id)?.label ?? s.node_id}</span>
-                  {s.note && <span className="text-muted-foreground">{s.note}</span>}
-                </li>
-              ))}
-            </ol>
-          )}
-          {waiting && canDecide && <DecideRunForm institutionSlug={slug} runId={run.id} prompt={prompt ?? "Approve this run?"} />}
+          <RunSteps steps={run.steps} labels={labels} />
+          {run.status === "running" && <p className="text-sm text-muted-foreground">Still running in the background; refresh to see the result.</p>}
+          {waiting && canDecide && <DecideRunForm institutionSlug={slug} runId={run.id} prompt={prompt ?? "Approve this run?"} labels={labels} runsHref={`/${slug}/fabric/workflows?section=runs`} />}
           {waiting && !canDecide && <p className="text-sm text-muted-foreground">Waiting for an approver.</p>}
         </CardContent>
       </Card>

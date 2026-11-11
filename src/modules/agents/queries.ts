@@ -284,3 +284,26 @@ export async function agentRunDetail(ctx: TenantContext, input: AgentRunDetailIn
     ),
   };
 }
+
+export interface WorkflowAgentOption {
+  slug: string;
+  name: string;
+  summary: string;
+}
+
+/** Agents a workflow's "Ask an agent" step may name: the catalog plus this school's live custom agents (0134). Runs re-check scope in agent.start. */
+export async function workflowAgentOptions(ctx: TenantContext): Promise<WorkflowAgentOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("agent_definitions")
+    .select("slug, name, summary, base_slug")
+    .eq("institution_id", ctx.institution.id)
+    .not("base_slug", "is", null)
+    .is("archived_at", null)
+    .order("created_at");
+  if (error) throwMapped(error);
+  const custom = (data ?? [])
+    .filter((row) => row.base_slug !== null && isAgentSlug(row.base_slug))
+    .map((row) => ({ slug: row.slug, name: row.name ?? row.slug, summary: row.summary ?? "" }));
+  return [...AGENT_SLUGS.map((slug) => ({ slug, name: AGENT_CATALOG[slug].name, summary: AGENT_CATALOG[slug].summary })), ...custom];
+}

@@ -36,7 +36,8 @@ export function navigateTool(ctx: TenantContext) {
   if (items.length === 0) return null;
   const hrefs = items.map((i) => i.href) as [string, ...string[]];
   return tool({
-    description: `Give the person a link to a page in this app. Pages: ${items.map((i) => `${i.label} (${i.href})`).join(", ")}.`,
+    // The href enum already names every page; listing them again here doubled this tool's prompt cost.
+    description: "Give the person a link to a page in this app: pick the href of the page they need.",
     inputSchema: z.object({ href: z.enum(hrefs) }),
     execute: async ({ href }) => {
       const item = items.find((i) => i.href === href)!;

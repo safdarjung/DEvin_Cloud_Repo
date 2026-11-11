@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toInsightCards, toPriorityActions, toRiskIndicators, type RiskRecentRow } from "@/modules/insights/derived";
+import { toPriorityActions, toRiskIndicators, type OpenDomainRow } from "@/modules/insights/derived";
 import type { Insight } from "@/modules/fabric/types";
 
 const NOW = new Date("2026-11-05T00:00:00Z");
@@ -102,90 +102,39 @@ describe("toPriorityActions", () => {
 });
 
 describe("toRiskIndicators", () => {
-  function recent(domain: string, daysAgo: number): RiskRecentRow {
-    return { domain, created_at: new Date(NOW.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString() };
-  }
+  const row = (domain: string, over: Partial<OpenDomainRow> = {}): OpenDomainRow => ({
+    domain,
+    n: 1,
+    top_id: `${domain}-top`,
+    top_severity: "watch",
+    last7: 0,
+    prev7: 0,
+    ...over,
+  });
 
-  it("returns one indicator per domain with its highest open severity", () => {
-    const open = [
-      insight({ id: "a1", domain: "attendance", severity: "watch" }),
-      insight({ id: "a2", domain: "attendance", severity: "critical" }),
-      insight({ id: "f1", domain: "finance", severity: "warning" }),
-    ];
-    const out = toRiskIndicators(open, [], NOW);
+  it("returns one indicator per domain with its top insight and severity", () => {
+    const out = toRiskIndicators([row("attendance", { top_id: "a2", top_severity: "critical", n: 2 }), row("finance", { top_severity: "warning" })]);
     const byId = new Map(out.map((r) => [r.id, r]));
     expect(byId.get("risk:attendance")?.level).toBe("critical");
     expect(byId.get("risk:attendance")?.insight_id).toBe("a2");
+    expect(byId.get("risk:attendance")?.label).toBe("Attendance: 2 open");
     expect(byId.get("risk:finance")?.level).toBe("warning");
   });
 
   it("computes trend up/down/flat from the last 7 vs the previous 7 days", () => {
-    const open = [insight({ id: "a1", domain: "attendance" })];
-    const up = toRiskIndicators(open, [recent("attendance", 1), recent("attendance", 2), recent("attendance", 10)], NOW);
-    expect(up.find((r) => r.id === "risk:attendance")?.trend).toBe("up");
-
-    const down = toRiskIndicators(open, [recent("attendance", 1), recent("attendance", 9), recent("attendance", 10)], NOW);
-    expect(down.find((r) => r.id === "risk:attendance")?.trend).toBe("down");
-
-    const flat = toRiskIndicators(open, [recent("attendance", 1), recent("attendance", 9)], NOW);
-    expect(flat.find((r) => r.id === "risk:attendance")?.trend).toBe("flat");
+    const trend = (last7: number, prev7: number) => toRiskIndicators([row("attendance", { last7, prev7 })])[0].trend;
+    expect(trend(2, 1)).toBe("up");
+    expect(trend(1, 2)).toBe("down");
+    expect(trend(1, 1)).toBe("flat");
   });
 
   it("sorts by level desc then open count desc", () => {
-    const open = [
-      insight({ id: "s1", domain: "staff", severity: "watch" }),
-      insight({ id: "o1", domain: "operations", severity: "watch" }),
-      insight({ id: "o2", domain: "operations", severity: "watch" }),
-      insight({ id: "ad1", domain: "admissions", severity: "critical" }),
-    ];
-    const out = toRiskIndicators(open, [], NOW);
-    expect(out[0].id).toBe("risk:admissions");
-    expect(out[1].id).toBe("risk:operations"); // watch, n=2 beats watch, n=1
-    expect(out).toHaveLength(3);
+    const out = toRiskIndicators([row("staff"), row("operations", { n: 2 }), row("admissions", { top_severity: "critical" })]);
+    expect(out.map((r) => r.id)).toEqual(["risk:admissions", "risk:operations", "risk:staff"]);
   });
 
   it("caps at 6 indicators", () => {
     const domains = ["attendance", "academics", "finance", "admissions", "operations", "wellbeing", "staff"];
-    const open = domains.map((domain, i) => insight({ id: `d${i}`, domain: domain as Insight["domain"] }));
-    expect(toRiskIndicators(open, [], NOW)).toHaveLength(6);
-  });
-});
-
-describe("toInsightCards", () => {
-  it("uses explanation.why when present, else SIGNALS[signal].why", () => {
-    const withExplanation = insight({
-      explanation: { what: "w", why: "explained why", next_steps: [], provider: "local", model: "m", explained_at: "2026-11-01" },
-    });
-    const withoutExplanation = insight({ explanation: null, signal: "attendance.section_drop" });
-    const [a, b] = toInsightCards([withExplanation, withoutExplanation], "demo", 3);
-    expect(a.whyItMatters).toBe("explained why");
-    expect(b.whyItMatters).toBe("A section's attendance fell sharply against its own recent baseline.");
-  });
-
-  it("formats evidence as '<label>: <value><unit>'", () => {
-    const [card] = toInsightCards([insight({ evidence: [{ label: "Recent attendance", value: 80, unit: "%" }, { label: "Open items", value: 3 }] })], "demo", 3);
-    expect(card.evidence).toEqual(["Recent attendance: 80%", "Open items: 3"]);
-  });
-
-  it("buckets confidence at 0.75/0.5", () => {
-    const [high, medium, low] = toInsightCards(
-      [insight({ id: "h", confidence: 0.75 }), insight({ id: "m", confidence: 0.5 }), insight({ id: "l", confidence: 0.49 })],
-      "demo",
-      3,
-    );
-    expect(high.confidence).toBe("high");
-    expect(medium.confidence).toBe("medium");
-    expect(low.confidence).toBe("low");
-  });
-
-  it("respects the limit", () => {
-    const rows = Array.from({ length: 5 }, (_, i) => insight({ id: `i${i}` }));
-    expect(toInsightCards(rows, "demo", 2)).toHaveLength(2);
-  });
-
-  it("marks requiresApproval from approval_required and builds the review href", () => {
-    const [card] = toInsightCards([insight({ id: "x", approval_required: true })], "greenwood", 3);
-    expect(card.requiresApproval).toBe(true);
-    expect(card.suggestedAction).toEqual({ label: "Review insight", href: "/greenwood/fabric/insights?id=x" });
+    expect(toRiskIndicators(domains.map((d) => row(d)))).toHaveLength(6);
   });
 });

@@ -6,11 +6,12 @@ import {
   WORKFLOW_METRICS,
   NOTIFY_ROLES,
   CONDITION_OPS,
+  SECTION_METRICS,
   type WorkflowEventKey,
   type WorkflowMetricKey,
 } from './catalog.ts'
 import { WorkflowNodeSchema, GraphEdgeSchema, type WorkflowNode } from './schemas.ts'
-import { AGENT_SLUGS, type AgentSlug } from '../agents/catalog.ts'
+import { AGENT_SLUGS, CUSTOM_AGENT_SLUG_RE } from '../agents/catalog.ts'
 
 const MAX_ERRORS = 20
 
@@ -23,6 +24,8 @@ export type ConditionConfig = {
   metric: WorkflowMetricKey
   op: (typeof CONDITION_OPS)[number]
   value: number
+  /** class_sections id, only (and always) for a SECTION_METRICS metric. */
+  section?: string
 }
 
 export type NotifyConfig =
@@ -31,7 +34,8 @@ export type NotifyConfig =
 
 export type ReportConfig = { scheduledReportId: string }
 
-export type AgentConfig = { agent: AgentSlug; task: string }
+/** `agent`: a catalog slug or a school's custom agent slug (`custom_<32 hex>`, 0134). */
+export type AgentConfig = { agent: string; task: string }
 
 export type ApprovalConfig = { prompt: string }
 
@@ -94,20 +98,24 @@ function parseNodeConfig(node: WorkflowNode): ConfigParseResult {
     }
 
     case 'condition': {
-      const extra = keys.find((k) => k !== 'metric' && k !== 'op' && k !== 'value')
-      if (extra) return fail(`unknown config key ${extra}`)
       const metric = config.metric
+      const perSection = (SECTION_METRICS as readonly string[]).includes(metric ?? '')
+      const extra = keys.find((k) => k !== 'metric' && k !== 'op' && k !== 'value' && !(perSection && k === 'section'))
+      if (extra) return fail(`unknown config key ${extra}`)
       if (!metric || !(metric in WORKFLOW_METRICS)) return fail('unknown metric')
       const op = config.op
       if (!op || !(CONDITION_OPS as readonly string[]).includes(op)) return fail('unknown operator')
       const value = config.value
       if (!value || !/^[0-9]{1,6}$/.test(value)) return fail('value must be 1-6 digits')
+      const section = config.section
+      if (perSection && (!section || !z.string().uuid().safeParse(section).success)) return fail(`metric ${metric} needs a section`)
       return {
         ok: true,
         config: {
           metric: metric as WorkflowMetricKey,
           op: op as (typeof CONDITION_OPS)[number],
           value: Number(value),
+          ...(perSection ? { section } : {}),
         },
       }
     }
@@ -154,10 +162,10 @@ function parseNodeConfig(node: WorkflowNode): ConfigParseResult {
       const extra = keys.find((k) => k !== 'agent' && k !== 'task')
       if (extra) return fail(`unknown config key ${extra}`)
       const agent = config.agent
-      if (!agent || !(AGENT_SLUGS as readonly string[]).includes(agent)) return fail('unknown agent')
+      if (!agent || !((AGENT_SLUGS as readonly string[]).includes(agent) || CUSTOM_AGENT_SLUG_RE.test(agent))) return fail('unknown agent')
       const task = config.task
       if (!task || task.length < 1 || task.length > 500) return fail('task must be 1-500 characters')
-      return { ok: true, config: { agent: agent as AgentSlug, task } }
+      return { ok: true, config: { agent, task } }
     }
 
     case 'approval': {
@@ -384,6 +392,11 @@ export function parseGraph(input: { nodes: unknown; edges: unknown }): ParseResu
   }
 
   return { ok: true, graph: { nodes, out, triggerId: triggerNodes[0].id } }
+}
+
+/** Steps between the trigger and the end nodes; 0 = an empty workflow (savable as a draft, never activated or run). */
+export function stepCount(nodes: readonly { type: string }[]): number {
+  return nodes.filter((n) => n.type !== 'trigger' && n.type !== 'end').length
 }
 
 export function triggerColumns(graph: ParsedGraph): { trigger_type: 'schedule' | 'event' | 'manual'; trigger_config: string } {

@@ -257,7 +257,9 @@ describe("executeAgentRun", () => {
     expect(out.status).toBe("failed");
     expect(out.proposals).toEqual([]);
     expect(action).not.toHaveBeenCalled();
-    expect(texts(out.log)).toContain("Run stopped (error)");
+    // A category for the person, never the provider's own message.
+    expect(out.summary).toBe("The assistant could not answer right now. Please try again.");
+    expect(texts(out.log)).toContain("Model error (unavailable)");
   });
 });
 

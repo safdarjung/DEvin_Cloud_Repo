@@ -33,8 +33,7 @@ vi.mock("@/lib/auth/require", async () => {
   return { ...actual, requirePermission: requirePermissionMock };
 });
 vi.mock("@/lib/ai/gateway", () => ({ streamChat: streamChatMock }));
-vi.mock("@/lib/ai/cloud-stream", () => ({ cloudStreamErrorText: () => "x" }));
-vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock }));
+vi.mock("@/modules/agents/tools", () => ({ buildReadTools: buildReadToolsMock, toolNameFor: (name: string) => name.replace(/\./g, "_") }));
 vi.mock("@/modules/ai/assistant/tools", () => ({ navigateTool: navigateToolMock, createTaskTool: createTaskToolMock }));
 vi.mock("@/modules/ai/capabilities/resolve", () => ({
   roleAiConfig: roleAiConfigMock,

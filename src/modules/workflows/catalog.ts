@@ -43,9 +43,18 @@ export const WORKFLOW_METRICS = {
     module: 'admissions',
     event: null,
   },
+  // Counted in the engine ports from public.attendance_daily_counts (0078), not workflow_metric.
+  'attendance.section_absent_today': {
+    label: 'Absent today in one section',
+    module: 'attendance',
+    event: null,
+  },
 } as const
 
 export type WorkflowMetricKey = keyof typeof WORKFLOW_METRICS
+
+// Metrics measured for one class section: the condition node's `section` config (a class_sections id).
+export const SECTION_METRICS: readonly WorkflowMetricKey[] = ['attendance.section_absent_today']
 
 // Notify audience roles (rulings §Actions, `notify` config)
 export const NOTIFY_ROLES = ['owner', 'principal', 'admin', 'teacher', 'accountant', 'admissions', 'exam_controller'] as const

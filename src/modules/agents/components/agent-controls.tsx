@@ -74,7 +74,9 @@ export function AgentCard({
       setFieldErrors(undefined);
       const res = await runAgent(institutionSlug, { slug, task });
       if (res.ok) {
-        toast.success(res.data.status === "awaiting_approval" ? "Run is waiting for human approval" : "Agent run finished");
+        // A failed run is still ok:true (the run row exists); say so instead of "finished".
+        if (res.data.status === "failed") toast.error(res.data.summary || "The agent could not finish this run.");
+        else toast.success(res.data.status === "awaiting_approval" ? "Run is waiting for human approval" : "Agent run finished");
         setOpen(false);
         setTask("");
         router.push(runHref(runsBase, res.data.runId));

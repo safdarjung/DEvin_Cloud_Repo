@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useAnimate, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
+import { motion, useAnimate, useAnimationFrame, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { useEffect } from "react";
 import { fibonacciSphere, rotateYX } from "@/modules/ai/components/orb/orb-layout";
 
@@ -27,7 +27,7 @@ function Layer({ front, x, y }: { front: boolean; x: ReturnType<typeof useSpring
 }
 
 /** The fidgety orb face: breathing, slow spin, pointer lean, periodic wiggle. Button chrome lives in the parent. */
-export function AskAiOrb({ idle, accent }: { idle: boolean; accent: readonly [string, string] }) {
+export function AskAiOrb({ idle, accent, glow, excite }: { idle: boolean; accent: readonly [string, string]; /** Nudge colour while a nudge is showing: dots swirl faster and pulse in it. */ glow?: string; /** Bump to play a short attention wiggle. */ excite: number }) {
   const reduced = useReducedMotion();
   const [scope, animateWiggle] = useAnimate();
   const lx = useMotionValue(0);
@@ -60,6 +60,20 @@ export function AskAiOrb({ idle, accent }: { idle: boolean; accent: readonly [st
     return () => window.removeEventListener("pointermove", onMove);
   }, [reduced, scope, lx, ly]);
 
+  // Spin is driven by hand so its speed can spring up while a nudge shows.
+  const angle = useMotionValue(0);
+  const speed = useSpring(1, { stiffness: 50, damping: 10 });
+  useEffect(() => {
+    speed.set(glow ? 7 : 1);
+  }, [glow, speed]);
+  useAnimationFrame((_, delta) => {
+    if (!reduced) angle.set((angle.get() + (delta / 1000) * (360 / 48) * speed.get()) % 360);
+  });
+  useEffect(() => {
+    if (reduced || excite === 0 || !scope.current) return;
+    void animateWiggle(scope.current, { rotate: [0, -28, 22, -14, 0] }, { duration: 0.8 });
+  }, [excite, reduced, scope, animateWiggle]);
+
   useEffect(() => {
     if (reduced || !idle) return;
     const id = setInterval(() => void animateWiggle(scope.current, { rotate: [0, -14, 11, -6, 0] }, { duration: 0.7 }), WIGGLE_MS);
@@ -69,11 +83,18 @@ export function AskAiOrb({ idle, accent }: { idle: boolean; accent: readonly [st
   return (
     <span className="absolute inset-0 grid place-items-center overflow-hidden rounded-full" style={{ background: `linear-gradient(145deg, ${accent[0]}, ${accent[1]})` }}>
       <motion.span ref={scope} className="block size-[78%]" animate={reduced ? undefined : { scale: [1, 1.05, 1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
-        <motion.span className="block size-full" animate={reduced ? undefined : { rotate: 360 }} transition={{ duration: 48, repeat: Infinity, ease: "linear" }}>
-          <svg aria-hidden viewBox="-1.2 -1.2 2.4 2.4" className="size-full overflow-visible fill-white">
+        <motion.span className="block size-full" style={{ rotate: angle }}>
+          <motion.svg
+            aria-hidden
+            viewBox="-1.2 -1.2 2.4 2.4"
+            className="size-full overflow-visible fill-white transition-[fill] duration-300"
+            style={glow ? { fill: glow } : undefined}
+            animate={reduced || !glow ? { opacity: 1 } : { opacity: [1, 0.55, 1] }}
+            transition={glow ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
+          >
             <Layer front={false} x={bx} y={by} />
             <Layer front x={sx} y={sy} />
-          </svg>
+          </motion.svg>
         </motion.span>
       </motion.span>
     </span>

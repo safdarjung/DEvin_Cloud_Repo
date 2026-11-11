@@ -8,7 +8,9 @@ import { inr } from "@/lib/format";
 import { currentTermCollections } from "@/modules/core/dashboard.queries";
 import { FinanceIntelChart, type FinanceChartPoint } from "@/modules/fabric/components/finance-intel-chart";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
-import { PlannedWidget, SimpleTable, StatusChip, loadSection, renderSection } from "@/modules/fabric/components/fabric-sections";
+import { SimpleTable, StatusChip, loadSection, renderSection } from "@/modules/fabric/components/fabric-sections";
+import { expensesBudgetVsActual } from "@/modules/expenses/queries";
+import { listLateFeeRules } from "@/modules/fee-plans/queries";
 import { listDefaulters, listTermOptions } from "@/modules/finance/queries";
 import { financeSeries, listForecasts } from "@/modules/forecasts/queries";
 
@@ -32,7 +34,7 @@ export default async function FinanceIntelPage({
   requirePermission(ctx, "finance.read");
   const base = `/${institutionSlug}`;
 
-  const [forecast, collections, defaulters] = await Promise.all([
+  const [forecast, collections, defaulters, budgets, lateFees] = await Promise.all([
     loadSection(ctx, "forecast", "forecast.read", "forecasts", async () => {
       const [series, rows] = await Promise.all([financeSeries(ctx), listForecasts(ctx, { kind: "fee_collections_term" })]);
       return { series, rows };
@@ -43,6 +45,8 @@ export default async function FinanceIntelPage({
       const term = terms[0];
       return term ? { term, rows: await listDefaulters(ctx, { termId: term.id }) } : null;
     }),
+    loadSection(ctx, "budgets", "expense.read", "expenses", () => expensesBudgetVsActual(ctx, {})),
+    loadSection(ctx, "late-fee-rules", "finance.structure.manage", "fee_plans", () => listLateFeeRules(ctx)),
   ]);
 
   const today = new Date().toISOString().slice(0, 10);
@@ -192,8 +196,51 @@ export default async function FinanceIntelPage({
             { description: "Unpaid and part-paid invoices, current term", action: { href: `${base}/finance/defaulters`, label: "All defaulters" } },
           )}
 
-          <PlannedWidget title="Budget vs actual" note="Budgets are not tracked yet, so no variance is shown." />
-          <PlannedWidget title="Late-fee rules" note="Automatic late fees are not available yet." />
+          {renderSection(
+            "Budget vs actual",
+            budgets,
+            (b) =>
+              b.rows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No expense budgets are set for this financial year.</p>
+              ) : (
+                <SimpleTable
+                  caption="Expense budget against actual spend"
+                  head={["Category", "Period", "Budget", "Spent"]}
+                  numericCols={[2, 3]}
+                  rows={b.rows.map((r) => ({
+                    key: r.budgetId,
+                    cells: [r.categoryName, `${r.periodStart} to ${r.periodEnd}`, paiseToInr(r.budgetPaise), <>{paiseToInr(r.actualPaise)}{r.overByPaise > 0 && <StatusChip tone="bad"> Over</StatusChip>}</>],
+                  }))}
+                />
+              ),
+            { description: "This financial year, by category", action: { href: `${base}/finance/expenses`, label: "Expenses" } },
+          )}
+
+          {renderSection(
+            "Late-fee rules",
+            lateFees,
+            (rules) => {
+              const set = rules.filter((r) => r.rule);
+              if (set.length === 0) return <p className="text-sm text-muted-foreground">No late-fee rules are set for the current academic year.</p>;
+              return (
+                <SimpleTable
+                  caption="Late-fee rules by fee structure"
+                  head={["Fee structure", "Rule", "Grace", "Cap"]}
+                  numericCols={[2, 3]}
+                  rows={set.map(({ feeStructureId, feeStructureName, gradeName, rule }) => ({
+                    key: feeStructureId,
+                    cells: [
+                      `${feeStructureName} (${gradeName})`,
+                      `${inr(rule!.amount)}${rule!.kind === "per_day" ? " per day" : " flat"}${rule!.isActive ? "" : " (off)"}`,
+                      `${rule!.graceDays} days`,
+                      rule!.cap === null ? "No cap" : inr(rule!.cap),
+                    ],
+                  }))}
+                />
+              );
+            },
+            { description: "Current academic year" },
+          )}
         </div>
 
         {forecast.state === "ok" && (

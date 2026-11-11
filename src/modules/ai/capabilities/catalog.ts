@@ -209,6 +209,8 @@ export const CAPABILITY_KEYS = [
   // AI website builder (api/ai/website-draft, website-theme)
   "website_page_draft",
   "website_theme_draft",
+  // AI workflow drafter (api/ai/workflow-draft)
+  "workflow_draft",
 ] as const;
 
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
@@ -1191,5 +1193,17 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     module: "website",
     data: "aggregate",
     defaultOn: LEADERS,
+  },
+  // Prompt carries the request, the workflow catalog, section labels and agent names/summaries only.
+  workflow_draft: {
+    key: "workflow_draft",
+    label: "Workflow drafter",
+    description: "Turn a plain-language request into a draft workflow. You review it, save it and turn it on.",
+    kind: "task",
+    roles: ["owner", "principal"],
+    permission: "workflow.manage",
+    module: "workflows",
+    data: "aggregate",
+    defaultOn: ["owner", "principal"],
   },
 };

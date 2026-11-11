@@ -51,6 +51,17 @@ describe("redact", () => {
     expect(count).toBe(0);
   });
 
+  it("leaves money amounts that are JSON numbers in tool results alone (paise totals looked like phones)", () => {
+    const json = '{"duePaise":7360000000,"collectedPaise":[6123456789,9876543210]}';
+    expect(redact(json)).toEqual({ text: json, count: 0 });
+  });
+
+  it("still redacts a phone or Aadhaar written as a JSON string", () => {
+    const { text, count } = redact('{"phone":"9876543210","aadhaar":"123456789012"}');
+    expect(count).toBe(2);
+    expect(text).not.toMatch(/\d{4}/);
+  });
+
   it("counts multiple redactions across types", () => {
     const { count } = redact("Reach 9876543210 or guardian@example.com; ref 123456789012.", ["Priya"]);
     expect(count).toBe(3);

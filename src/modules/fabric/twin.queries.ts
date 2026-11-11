@@ -67,91 +67,68 @@ async function resolveVersionId(ctx: TenantContext, state: TwinState): Promise<s
  */
 async function roomLoadById(ctx: TenantContext, versionId: string): Promise<RoomRow[]> {
   const supabase = await createClient();
-  const [{ data: rooms, error: roomsError }, { count: nonBreakCount, error: periodsError }, { data: slotRows, error: slotsError }] =
+  const [{ data: rooms, error: roomsError }, { count: nonBreakCount, error: periodsError }, { data: slotCounts, error: slotsError }] =
     await Promise.all([
       supabase.from("rooms").select("id, name, capacity").eq("institution_id", ctx.institution.id),
       supabase.from("periods").select("id", { count: "exact", head: true }).eq("institution_id", ctx.institution.id).eq("is_break", false),
-      supabase.from("timetable_slots").select("room_id, weekday").eq("institution_id", ctx.institution.id).eq("version_id", versionId).not("room_id", "is", null),
+      // Grouped in SQL: row selects stop at PostgREST's 1000-row cap.
+      supabase.rpc("dash_room_slot_counts", { p_institution_id: ctx.institution.id, p_version_id: versionId }),
     ]);
   if (roomsError) throw roomsError;
   if (periodsError) throw periodsError;
   if (slotsError) throw slotsError;
 
   // Working days = weekdays this version actually schedules (weekday is 1..6 by 0069's check); 6 before any room slot exists.
-  const workingDays = new Set((slotRows ?? []).map((row) => row.weekday)).size || 6;
+  const workingDays = Number(slotCounts?.[0]?.working_days ?? 0) || 6;
   const periodsTotal = workingDays * (nonBreakCount ?? 0);
-  const usedByRoom = new Map<string, number>();
-  for (const row of slotRows ?? []) {
-    if (!row.room_id) continue;
-    usedByRoom.set(row.room_id, (usedByRoom.get(row.room_id) ?? 0) + 1);
-  }
+  const usedByRoom = new Map((slotCounts ?? []).map((row) => [row.room_id, Number(row.n)]));
   return (rooms ?? []).map((room) => ({ id: room.id, name: room.name, periodsTotal, periodsUsed: usedByRoom.get(room.id) ?? 0 }));
 }
 
 /** Every active enrolment's section, grouped — section label and headcount for the student_group nodes. */
 async function sectionLoad(ctx: TenantContext): Promise<{ id: string; label: string; capacity: number | null; enrolled: number }[]> {
   const supabase = await createClient();
-  const [{ data: sections, error: sectionsError }, { data: enrolments, error: enrolError }] = await Promise.all([
+  const [{ data: sections, error: sectionsError }, { data: counts, error: enrolError }] = await Promise.all([
     supabase.from("class_sections").select("id, name, capacity, grades(code)").eq("institution_id", ctx.institution.id),
-    supabase.from("enrolments").select("student_id, class_section_id").eq("institution_id", ctx.institution.id).eq("status", "active"),
+    supabase.rpc("dash_section_headcounts", { p_institution_id: ctx.institution.id }),
   ]);
   if (sectionsError) throw sectionsError;
   if (enrolError) throw enrolError;
 
-  const enrolledBySection = new Map<string, number>();
-  for (const e of enrolments ?? []) {
-    enrolledBySection.set(e.class_section_id, (enrolledBySection.get(e.class_section_id) ?? 0) + 1);
-  }
+  const enrolledBySection = new Map((counts ?? []).map((c) => [c.class_section_id, Number(c.n)]));
   return (sections ?? []).map((s) => {
     const grade = s.grades as { code: string } | null;
     return { id: s.id, label: `${grade?.code ?? "?"}-${s.name}`, capacity: s.capacity, enrolled: enrolledBySection.get(s.id) ?? 0 };
   });
 }
 
+const SLOT_PAGE = 1000;
+
 /** teaches/uses edges — the version's slots (teacher, section, room). */
 async function slotEdges(ctx: TenantContext, versionId: string): Promise<SlotRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("timetable_slots")
-    .select("teacher_id, class_section_id, room_id")
-    .eq("institution_id", ctx.institution.id)
-    .eq("version_id", versionId);
-  if (error) throw error;
-  return (data ?? []).map((r) => ({ teacherId: r.teacher_id, sectionId: r.class_section_id, roomId: r.room_id }));
+  // Paged with a stable order: one PostgREST response stops at max_rows (1000).
+  const out: SlotRow[] = [];
+  for (let from = 0; ; from += SLOT_PAGE) {
+    const { data, error } = await supabase
+      .from("timetable_slots")
+      .select("teacher_id, class_section_id, room_id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("version_id", versionId)
+      .order("id")
+      .range(from, from + SLOT_PAGE - 1);
+    if (error) throw error;
+    out.push(...(data ?? []).map((r) => ({ teacherId: r.teacher_id, sectionId: r.class_section_id, roomId: r.room_id })));
+    if (!data || data.length < SLOT_PAGE) return out;
+  }
 }
 
 /** transports edges — each assigned student's active section, via their route. Not version-scoped: transport isn't part of the timetable. */
 async function routeSectionEdges(ctx: TenantContext): Promise<RouteAssignmentRow[]> {
   const supabase = await createClient();
-  const { data: assignments, error: assignError } = await supabase
-    .from("transport_assignments")
-    .select("route_id, student_id")
-    .eq("institution_id", ctx.institution.id);
-  if (assignError) throw assignError;
-  const rows = assignments ?? [];
-  if (rows.length === 0) return [];
-
-  const studentIds = [...new Set(rows.map((r) => r.student_id))];
-  const { data: enrolments, error: enrolError } = await supabase
-    .from("enrolments")
-    .select("student_id, class_section_id")
-    .eq("institution_id", ctx.institution.id)
-    .eq("status", "active")
-    .in("student_id", studentIds);
-  if (enrolError) throw enrolError;
-  const sectionByStudent = new Map((enrolments ?? []).map((e) => [e.student_id, e.class_section_id]));
-
-  const seen = new Set<string>();
-  const out: RouteAssignmentRow[] = [];
-  for (const row of rows) {
-    const sectionId = sectionByStudent.get(row.student_id);
-    if (!sectionId) continue;
-    const key = `${row.route_id}->${sectionId}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ routeId: row.route_id, sectionId });
-  }
-  return out;
+  const { data, error } = await supabase.rpc("dash_route_section_edges", { p_institution_id: ctx.institution.id });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({ routeId: r.route_id, sectionId: r.class_section_id }));
 }
 
 /**

@@ -24,6 +24,7 @@ import { BlockRenderer } from "@/modules/ai/blocks/BlockRenderer";
 import { BlockSchema, type Block } from "@/modules/ai/blocks/schemas";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
+import { lastHasText, plainChatText, readToolLabel } from "@/modules/ai/chat-text";
 import type { StudentSkill } from "@/modules/ai/prompts/student-skills";
 import { saveStudyChat, saveStudyNote } from "@/modules/ai/student-study.actions";
 import { BorderBeam } from "@/components/widgets/viz";
@@ -49,7 +50,8 @@ const TOOL_LABELS: Record<string, string> = {
 
 function toolLabel(type: string): string {
   const name = type.startsWith("tool-") ? type.slice(5) : type;
-  return TOOL_LABELS[name] ?? `Using ${name}…`;
+  const read = readToolLabel(name);
+  return TOOL_LABELS[name] ?? (read ? `Checking: ${read}…` : `Using ${name}…`);
 }
 
 const ShowStudyBlocksInputSchema = z.object({ blocks: z.array(BlockSchema).min(1).max(5) });
@@ -134,7 +136,7 @@ function MessageParts({ message, institutionSlug, resumedChatId }: { message: UI
         if (part.type === "text") {
           return (
             <p key={index} className="whitespace-pre-wrap">
-              {part.text}
+              {plainChatText(part.text)}
             </p>
           );
         }
@@ -292,7 +294,7 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
               <MessageParts message={message} institutionSlug={institutionSlug} resumedChatId={resumedChatId} />
             </div>
           ))}
-          {busy && messages.at(-1)?.role !== "assistant" && (
+          {busy && !lastHasText(messages) && (
             <div role="status" className="self-start rounded-lg rounded-bl-sm bg-muted px-3 py-2 text-xs text-muted-foreground">
               <span className="animate-pulse">Thinking…</span>
             </div>

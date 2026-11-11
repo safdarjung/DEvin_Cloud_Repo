@@ -4,7 +4,7 @@
 // relative, type-only imports may use `@/`.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/db/types";
-import { AGENT_CATALOG_VERSION, AGENT_SLUGS, type AgentSlug } from "./catalog.ts";
+import { AGENT_CATALOG_VERSION, AGENT_SLUGS, CUSTOM_AGENT_SLUG_RE, type AgentSlug } from "./catalog.ts";
 
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 
@@ -18,7 +18,9 @@ export interface QueueWorkflowAgentRunInput {
 
 export type QueueWorkflowAgentRunResult =
   | { status: "queued"; runId: string; created: boolean }
-  | { status: "disabled" };
+  | { status: "disabled" }
+  /** A custom agent (0134) that was archived or never existed in this institution. */
+  | { status: "missing" };
 
 function isAgentSlug(slug: string): slug is AgentSlug {
   return (AGENT_SLUGS as readonly string[]).includes(slug);
@@ -29,7 +31,8 @@ export async function queueWorkflowAgentRun(
   admin: SupabaseClient<Database>,
   input: QueueWorkflowAgentRunInput,
 ): Promise<QueueWorkflowAgentRunResult> {
-  if (!isAgentSlug(input.slug)) {
+  const custom = CUSTOM_AGENT_SLUG_RE.test(input.slug);
+  if (!custom && !isAgentSlug(input.slug)) {
     throw new Error("invalid_agent");
   }
 
@@ -42,13 +45,20 @@ export async function queueWorkflowAgentRun(
     );
   if (upsertError) throw upsertError;
 
+  // A custom agent runs as its base narrowed to its own scope; agent.start
+  // (runTarget) enforces that and the base being on when the run starts.
   const { data: definition, error: defError } = await admin
     .from("agent_definitions")
-    .select("id, is_enabled")
+    .select("id, is_enabled, archived_at")
     .eq("institution_id", input.institutionId)
     .eq("slug", input.slug)
-    .single();
+    .maybeSingle();
   if (defError) throw defError;
+  if (!definition) {
+    if (custom) return { status: "missing" };
+    throw new Error("agent_definition_missing");
+  }
+  if (definition.archived_at) return { status: "missing" };
   if (!definition.is_enabled) return { status: "disabled" };
 
   const { data: inserted, error: insertError } = await admin

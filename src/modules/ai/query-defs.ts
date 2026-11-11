@@ -4,6 +4,7 @@
 // ai/usage/page.tsx:21's only caller.
 import { defineQuery } from "@/lib/actions/define-query";
 import { z } from "zod";
+import { getAskAiNudges } from "./nudges.queries";
 import { usageByRole, usageSummary } from "./queries";
 
 export const usageSummaryQuery = defineQuery({
@@ -21,4 +22,13 @@ export const usageByRoleQuery = defineQuery({
   schema: z.object({}).strict(),
   permission: "ai.usage.read",
   handler: (_input, ctx) => usageByRole(ctx),
+});
+
+// Ask AI orb nudges. notification.read is held by every role; each source inside re-checks its own permission and module.
+export const askNudgesQuery = defineQuery({
+  name: "ai.askNudges",
+  module: "core",
+  schema: z.object({}).strict(),
+  permission: "notification.read",
+  handler: (_input, ctx) => getAskAiNudges(ctx),
 });

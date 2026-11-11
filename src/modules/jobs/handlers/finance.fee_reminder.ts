@@ -6,6 +6,7 @@
 // invoice paid between enqueue and run is excluded by the query itself, not
 // by a payload snapshot.
 import { z } from "zod";
+import { inChunks } from "../../../lib/db/in-chunks.ts";
 import { createNotification } from "../../notifications/service.ts";
 import type { JobHandler } from "../types.ts";
 
@@ -74,15 +75,17 @@ export const feeReminder: JobHandler = async (job, { admin }) => {
   // page explicitly, never rely on PostgREST's default 1,000-row cap.
   const invoices: OverdueInvoice[] = [];
   if (invoiceIds) {
-    const { data, error } = await admin
-      .from("invoices")
-      .select("id, student_id, invoice_no, due_on, total, paid_total")
-      .eq("institution_id", job.institution_id)
-      .in("id", invoiceIds)
-      .in("status", ["issued", "part_paid"])
-      .order("id");
-    if (error) throw error;
-    invoices.push(...((data as OverdueInvoice[] | null) ?? []));
+    const institutionId = job.institution_id;
+    const rows = (await inChunks(invoiceIds, (chunk) =>
+      admin
+        .from("invoices")
+        .select("id, student_id, invoice_no, due_on, total, paid_total")
+        .eq("institution_id", institutionId)
+        .in("id", chunk)
+        .in("status", ["issued", "part_paid"]),
+    )) as OverdueInvoice[];
+    rows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // keep the old order("id")
+    invoices.push(...rows);
   }
   for (let from = 0; termId; from += PAGE_SIZE) {
     const { data: page, error } = await admin

@@ -15,6 +15,12 @@ const TWELVE_DIGIT = /\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/g;
 // prefix, and any single space/dash between digits (98765 43210, 9876-543-210).
 const PHONE_IN = /(?:\+91[\s-]?|\b0[\s-]?|\b)[6-9](?:[\s-]?\d){9}\b/g;
 
+// A bare JSON number in a tool result (`"duePaise":7360000000,`) is an amount
+// or count, never a phone/Aadhaar (those are stored and serialized as strings).
+function isJsonNumber(match: string, offset: number, whole: string): boolean {
+  return /^\d+$/.test(match) && /[:[,]/.test(whole[offset - 1] ?? "") && /[,}\]]/.test(whole[offset + match.length] ?? "");
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -27,11 +33,13 @@ export function redact(text: string, denyNames: readonly string[] = []): RedactR
       count += 1;
       return "[REDACTED_EMAIL]";
     })
-    .replace(TWELVE_DIGIT, () => {
+    .replace(TWELVE_DIGIT, (match: string, offset: number, whole: string) => {
+      if (isJsonNumber(match, offset, whole)) return match;
       count += 1;
       return "[REDACTED_ID]";
     })
-    .replace(PHONE_IN, () => {
+    .replace(PHONE_IN, (match: string, offset: number, whole: string) => {
+      if (isJsonNumber(match, offset, whole)) return match;
       count += 1;
       return "[REDACTED_PHONE]";
     });

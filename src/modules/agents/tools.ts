@@ -67,9 +67,23 @@ function isProposable(risk: RiskClass | undefined): risk is ProposalRisk {
 // Exported for draft-tools.ts (P1, phase3-tasks.md) — same describe-only
 // contract, reused rather than copied.
 export function describeInput(schema: z.ZodType) {
-  return jsonSchema<unknown>(
-    z.toJSONSchema(schema, { target: "draft-7", io: "input", unrepresentable: "any" }) as JSONSchema7,
+  const described = z.toJSONSchema(schema, { target: "draft-7", io: "input", unrepresentable: "any" });
+  return jsonSchema<unknown>(dropFormatPatterns(described) as JSONSchema7);
+}
+
+// Zod spells `format: "uuid"`/`"date-time"` out again as a 160-480 char regex
+// `pattern`; per tool that regex was most of the prompt tokens. The format
+// keeps the hint for the model, and the query/action's own Zod parse still
+// validates every input, so nothing is loosened. `$schema` is noise too.
+function dropFormatPatterns(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(dropFormatPatterns);
+  if (node === null || typeof node !== "object") return node;
+  const { pattern, format } = node as { pattern?: unknown; format?: unknown };
+  // String checks: a `properties` map may itself have fields named "pattern"/"format"/"$schema".
+  const entries = Object.entries(node).filter(
+    ([key, value]) => !(key === "$schema" && typeof value === "string") && !(key === "pattern" && typeof pattern === "string" && typeof format === "string"),
   );
+  return Object.fromEntries(entries.map(([key, value]) => [key, dropFormatPatterns(value)]));
 }
 
 function readTool(

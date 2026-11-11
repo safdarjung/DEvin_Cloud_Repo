@@ -10,12 +10,21 @@ import "server-only";
 // gateway); existing callers (executor.ts, the 3 agent routes) just
 // updated their import path, no behavior change.
 import { tolerateNullOptionals } from "@/lib/ai/tool-nulls";
-import { APICallError, stepCountIs, streamText, type LanguageModel, type ModelMessage, type ToolSet } from "ai";
+import { stepCountIs, streamText, type ModelMessage, type ToolSet } from "ai";
 import type { ErrorCode } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import { estimateCost } from "@/lib/ai/pricing";
-import { geminiModelId, getGeminiModel, getGroqModel, groqModelId } from "@/lib/ai/providers";
+import { geminiModelId, groqModelId } from "@/lib/ai/providers";
+import {
+  classifyAiError,
+  cloudModelWithFallback,
+  configuredCloudKeys,
+  cloudProviderPlan,
+  streamErrorText,
+  type CloudModel,
+} from "@/lib/ai/provider-fallback";
+import { ceilingFor, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 
 // Matches the quiz/remark routes' own output cap, scaled down: these
@@ -35,25 +44,36 @@ export interface CloudAgentInput<TOOLS extends ToolSet> {
   notConfiguredMessage: string;
   /** Agent runs (M22): usage rows carry the run id so the run's cost is attributable. */
   agentRunId?: string;
+  /** Tool budget hints (tool-budget.ts); omitted: every tool is one group and no text to match. */
+  budget?: ToolBudgetHints;
+}
+
+export interface StreamExtras {
+  /** Estimated first-step prompt tokens (chars/4) after the tool budget. */
+  estimatedTokens: number;
+  /** `onError` for `toUIMessageStreamResponse`: an envelope with a category message, never provider text. */
+  errorText: (error: unknown) => string;
 }
 
 export type CloudAgentResult<TOOLS extends ToolSet> =
-  | { ok: true; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> }
+  | ({ ok: true; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> } & StreamExtras)
   | { ok: false; error: { code: ErrorCode; message: string } };
 
-function resolveAgentModel(provider: AgentProvider): { modelId: string; getModel: () => Promise<LanguageModel> } {
-  return provider === "groq"
-    ? { modelId: groqModelId(), getModel: getGroqModel }
-    : { modelId: geminiModelId(), getModel: getGeminiModel };
+function agentModelId(provider: AgentProvider): string {
+  return provider === "groq" ? groqModelId() : geminiModelId();
 }
 
 export async function streamCloudAgent<TOOLS extends ToolSet>(
   input: CloudAgentInput<TOOLS>,
 ): Promise<CloudAgentResult<TOOLS>> {
-  const { ctx, feature, provider, system, messages, tools, abortSignal, notConfiguredMessage } = input;
+  const { ctx, feature, system, tools, abortSignal, notConfiguredMessage } = input;
   const redactionsAt = (): number => (typeof input.redactions === "function" ? input.redactions() : input.redactions ?? 0);
   const agentRunId = input.agentRunId ?? null;
-  const { modelId, getModel } = resolveAgentModel(provider);
+  // Only providers with a key: the routing pick yields to the other when its key is missing.
+  const providers = cloudProviderPlan({ mode: "cloud", preferred: input.provider, keys: configuredCloudKeys() });
+  const provider = providers?.primary ?? input.provider;
+  const fallback = providers?.fallback ?? null;
+  const modelId = agentModelId(provider);
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;
   try {
@@ -102,9 +122,10 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   }
 
   const startedAt = Date.now();
-  let model: LanguageModel;
+  let cloud: CloudModel;
   try {
-    model = await getModel();
+    if (!providers) throw new Error("no cloud provider key configured");
+    cloud = await cloudModelWithFallback(provider, fallback);
   } catch {
     releaseConcurrencySlot(concurrencyId, "cloud");
     await logUsage({
@@ -130,11 +151,28 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   // as the logged total in the `.catch` branch below, instead of 0s.
   const accumulatedUsage = { inputTokens: 0, outputTokens: 0 };
 
-  const stream = streamText({
-    model,
+  // Budget against the smaller of the two ceilings: a step may land on the fallback.
+  const plan = planToolBudget({
+    texts: [],
+    ...input.budget,
     system,
-    messages,
-    tools: tolerateNullOptionals(tools),
+    messages: input.messages,
+    tools,
+    ceiling: ceilingFor(fallback ? [provider, fallback] : [provider]),
+  });
+  const logContext = { feature, provider, fallback, estimatedTokens: plan.estimatedTokens };
+  console.info("[ai-budget]", { ...logContext, tools: plan.activeTools.length, groups: plan.groups.slice(0, 6) });
+  const usedModel = () => cloud.modelsUsed().join("+");
+
+  const stream = streamText({
+    model: cloud.model,
+    system,
+    messages: plan.messages,
+    tools: tolerateNullOptionals(plan.tools),
+    activeTools: plan.activeTools,
+    prepareStep: plan.prepareStep,
+    // The SDK default logs the whole provider error, request body included.
+    onError: ({ error }) => console.error("[ai-stream] provider error", { ...logContext, ...classifyAiError(error) }),
     stopWhen: stepCountIs(6),
     // Fix round 1 (security review, MED, carried over): `stepCountIs(6)`
     // bounds the number of steps, not the cost of any one of them —
@@ -159,11 +197,11 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
         ctx,
         feature,
         provider: "cloud",
-        model: modelId,
+        model: usedModel(),
         inputTokens: usage.inputTokens ?? 0,
         outputTokens: usage.outputTokens ?? 0,
         latencyMs: Date.now() - startedAt,
-        costEstimateUsd: estimateCost("cloud", modelId, usage.inputTokens ?? 0, usage.outputTokens ?? 0),
+        costEstimateUsd: estimateCost("cloud", usedModel(), usage.inputTokens ?? 0, usage.outputTokens ?? 0),
         ok: true,
         errorCode: null,
         redactions: redactionsAt(),
@@ -171,38 +209,31 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
       }),
     )
     .catch((err: unknown) => {
-      const correlationId = crypto.randomUUID();
-      console.error(`[${correlationId}] streamCloudAgent stream failed (feature=${feature})`, err);
+      // Category only: the raw error carries the request body (prompt, tool results).
+      const info = classifyAiError(err);
+      console.error("[ai-stream] stream failed", { ...logContext, ...info });
       return logUsage({
         ctx,
         feature,
         provider: "cloud",
-        model: modelId,
+        model: usedModel(),
         inputTokens: accumulatedUsage.inputTokens,
         outputTokens: accumulatedUsage.outputTokens,
         latencyMs: Date.now() - startedAt,
-        costEstimateUsd: estimateCost("cloud", modelId, accumulatedUsage.inputTokens, accumulatedUsage.outputTokens),
+        costEstimateUsd: estimateCost("cloud", usedModel(), accumulatedUsage.inputTokens, accumulatedUsage.outputTokens),
         ok: false,
-        errorCode: "ai_unavailable",
+        errorCode: info.kind === "busy" ? "rate_limited" : "ai_unavailable",
         redactions: redactionsAt(),
         agentRunId,
       });
     })
     .finally(() => releaseConcurrencySlot(concurrencyId, "cloud"));
 
-  return { ok: true, modelId, stream };
-}
-
-/**
- * Stream `onError` for the cloud agent routes: the SDK default sends a bare "An error
- * occurred.". Returns a category only, never the provider's message (it can echo request data).
- */
-export function cloudStreamErrorText(error: unknown): string {
-  const cause = (error as { lastError?: unknown } | null)?.lastError ?? error; // RetryError wraps the last attempt
-  const status = APICallError.isInstance(cause) ? cause.statusCode : undefined;
-  console.error("[ai-stream] provider error", { name: cause instanceof Error ? cause.name : typeof cause, status });
-  if (status === 401 || status === 403) return "The AI provider rejected the configured API key.";
-  if (status === 404) return "The configured AI model was not found.";
-  if (status === 429) return "The AI provider is rate-limiting requests; try again in a minute.";
-  return "The AI provider could not answer right now; please try again.";
+  return {
+    ok: true,
+    modelId,
+    stream,
+    estimatedTokens: plan.estimatedTokens,
+    errorText: (error: unknown) => streamErrorText(error),
+  };
 }

@@ -1,6 +1,6 @@
 import "server-only";
 // live-fabric lane "simulator" (F-UI-08): real-data loaders replacing
-// src/modules/fabric/demo/simulator.ts's BASELINE_FACTS/scenarios() fixture
+// the former BASELINE_FACTS/scenarios() fixture
 // (runScenario/sensitivity stay pure and are re-exported unchanged — they
 // take BaselineFacts/ScenarioAssumptions, not a data source, so nothing
 // about them changes). Cross-module reads go through the owner's
@@ -18,7 +18,7 @@ import { collectionReport } from "@/modules/finance/queries";
 import { financeSeries } from "@/modules/forecasts/queries";
 import { getAdmissionsFunnelCounts, type AdmissionsFunnelCounts } from "@/modules/admissions/queries";
 import { defaultPublishedVersionId, timetableTeacherWorkload } from "@/modules/timetable/queries";
-import { BASELINE_FACTS, runScenario, sensitivity, type BaselineFacts } from "@/modules/fabric/demo/simulator";
+import { runScenario, sensitivity, type BaselineFacts } from "@/modules/fabric/demo/simulator";
 import { ScenarioAssumptionsSchema } from "@/modules/fabric/simulator.schemas";
 import type { FinanceForecastPoint, ScenarioAssumptions, ScenarioStatus } from "@/modules/fabric/types";
 
@@ -40,11 +40,11 @@ export interface RealBaselineFacts {
  * current academic year billed total ÷ students ÷ 12 as the average
  * monthly fee (finance.collectionReport, integer paise), non-break periods
  * as periods/day, and room count + average capacity (direct read, see
- * header). Cost has no real source (ASSUMED_COST_RATIO); if there are no
- * students or rooms yet, falls back to BASELINE_FACTS's fixture shape for
- * the fields that would otherwise divide by zero.
+ * header). Cost has no real source (ASSUMED_COST_RATIO). Returns null when
+ * any input (students, staff, rooms, periods) is still zero: the model has
+ * nothing real to run on, and invented numbers are worse than an empty page.
  */
-export async function realBaselineFacts(ctx: TenantContext): Promise<RealBaselineFacts> {
+export async function realBaselineFacts(ctx: TenantContext): Promise<RealBaselineFacts | null> {
   const supabase = await createClient();
   const [{ students, staff }, yearRows, roomsResult, periodsResult] = await Promise.all([
     peopleCounts(ctx),
@@ -59,29 +59,24 @@ export async function realBaselineFacts(ctx: TenantContext): Promise<RealBaselin
   if (roomsResult.error) throw roomsResult.error;
   if (periodsResult.error) throw periodsResult.error;
 
-  const billedRupeesYear = yearRows.reduce((sum, row) => sum + (row.billed ?? 0), 0);
-  const avgFeePaiseMonth =
-    students > 0 ? Math.round((billedRupeesYear * 100) / students / 12) : BASELINE_FACTS.avg_fee_paise_month;
-
   const rooms = roomsResult.data?.length ?? 0;
+  const periodsPerDay = periodsResult.count ?? 0;
+  if (students <= 0 || staff <= 0 || rooms <= 0 || periodsPerDay <= 0) return null;
+
+  const billedRupeesYear = yearRows.reduce((sum, row) => sum + (row.billed ?? 0), 0);
+  const avgFeePaiseMonth = Math.round((billedRupeesYear * 100) / students / 12);
   const totalCapacity = (roomsResult.data ?? []).reduce((sum, room) => sum + room.capacity, 0);
-  const maxStudentsPerRoom = rooms > 0 ? Math.round(totalCapacity / rooms) : BASELINE_FACTS.max_students_per_room;
-
-  const periodsPerDay = periodsResult.count && periodsResult.count > 0 ? periodsResult.count : BASELINE_FACTS.periods_per_day;
-
-  const teachers = staff > 0 ? staff : BASELINE_FACTS.teachers;
-  const revenuePaiseMonth = Math.round(avgFeePaiseMonth * (students > 0 ? students : BASELINE_FACTS.students));
-  const costPaiseMonth = Math.round(revenuePaiseMonth * ASSUMED_COST_RATIO);
+  const revenuePaiseMonth = Math.round(avgFeePaiseMonth * students);
 
   return {
     facts: {
-      students: students > 0 ? students : BASELINE_FACTS.students,
+      students,
       avg_fee_paise_month: avgFeePaiseMonth,
-      teachers,
-      cost_paise_month: costPaiseMonth,
-      rooms: rooms > 0 ? rooms : BASELINE_FACTS.rooms,
+      teachers: staff,
+      cost_paise_month: Math.round(revenuePaiseMonth * ASSUMED_COST_RATIO),
+      rooms,
       periods_per_day: periodsPerDay,
-      max_students_per_room: maxStudentsPerRoom,
+      max_students_per_room: Math.round(totalCapacity / rooms),
     },
     costIsAssumption: true,
   };
