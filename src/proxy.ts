@@ -3,16 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 import { sanitizeNextPath } from "@/lib/auth/next-url";
 import { defaultDemoEmail, demoAutoLoginEnabled, signInAsDemo } from "@/lib/auth/demo-session";
 import type { Database } from "@/lib/db/types";
-import { isMarketingPath } from "@/lib/marketing/routes";
+import { hasSessionCookie, proxyDecision } from "@/proxy-decision";
 
 // Session refresh only — never authorization. Server Actions can bypass
 // proxy matchers, so every action re-verifies (04 §3, 07 §1 T13).
-// "start": public invite-code sign-up (F18 §H), reached with no session.
-// "auth": password reset (forgot-password, callback, reset-password), reached with no session.
-const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout", "start", "auth"]);
+// Which requests get demo auto-login or a login redirect: src/proxy-decision.ts.
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  // Read before getClaims: a failed refresh clears the cookie on `request`.
+  const hadSessionCookie = hasSessionCookie(request.cookies.getAll());
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -38,32 +38,37 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  let { data } = await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
 
-  const pathname = request.nextUrl.pathname;
-  const firstSegment = pathname.split("/")[1] ?? "";
+  const { pathname, searchParams } = request.nextUrl;
+  const input = {
+    method: request.method,
+    pathname,
+    searchParams,
+    headers: request.headers,
+    hasSessionCookie: hadSessionCookie,
+    claimsValid: Boolean(data?.claims),
+    autoLoginEnabled: demoAutoLoginEnabled(),
+  };
+  let decision = proxyDecision(input);
 
-  // Demo-only convenience (see demoAutoLoginEnabled): a visitor with no session
-  // is signed in as a demo account, so the demo never stops at a login screen.
-  // /login?switch=1 and /logout are left alone so the role picker still works.
-  const isLogin = firstSegment === "login";
-  // ?reset: just changed password, show the sign-in form instead of a demo session.
-  const wantsPicker = request.nextUrl.searchParams.has("switch") || request.nextUrl.searchParams.has("reset");
-  const isMarketing = isMarketingPath(pathname) && firstSegment !== "select";
-  if (!data?.claims && demoAutoLoginEnabled() && !isMarketing && firstSegment !== "logout" && firstSegment !== "start" && firstSegment !== "auth" && !(isLogin && wantsPicker)) {
+  // Demo-only convenience (see demoAutoLoginEnabled): a visitor with no session who
+  // opens a page is signed in as the default demo account, so the demo never stops
+  // at a login screen. Never for prefetches or background requests: their late
+  // Set-Cookie would overwrite an account the visitor just picked.
+  if (decision === "auto-login") {
     if (await signInAsDemo(supabase, defaultDemoEmail())) {
-      data = (await supabase.auth.getClaims()).data;
-      if (isLogin) {
-        const redirect = NextResponse.redirect(new URL(sanitizeNextPath(request.nextUrl.searchParams.get("next") ?? undefined), request.url));
+      if (pathname.split("/")[1] === "login") {
+        const redirect = NextResponse.redirect(new URL(sanitizeNextPath(searchParams.get("next") ?? undefined), request.url));
         response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
         return redirect;
       }
+      return response;
     }
+    decision = proxyDecision({ ...input, autoLoginEnabled: false });
   }
 
-  const isTenantPath = !isMarketingPath(pathname) && !NON_TENANT_FIRST_SEGMENTS.has(firstSegment);
-
-  if (isTenantPath && !data?.claims) {
+  if (decision === "redirect-to-login") {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);

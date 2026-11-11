@@ -28,7 +28,9 @@ export async function POST(request: Request): Promise<Response> {
   if (typeof email !== "string" || !DEMO_ACCOUNT_EMAILS.includes(email)) return redirectTo("/login");
 
   const supabase = await createClient();
-  if (!(await signInAsDemo(supabase, email))) return redirectTo("/login");
+  // ?switch=1 keeps the role picker open: plain /login would auto-sign the visitor in as the default demo
+  // account, so a failed click on "Parent" would silently land them in the principal's session.
+  if (!(await signInAsDemo(supabase, email))) return redirectTo("/login?switch=1");
 
   const next = form?.get("next");
   const path = sanitizeNextPath(typeof next === "string" ? next : null);

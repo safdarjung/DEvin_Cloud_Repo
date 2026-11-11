@@ -24,6 +24,7 @@ export const MARKETING_SEGMENTS = [
   "icon",
   "apple-icon",
   "select",
+  "tour",
 ] as const;
 
 const SET = new Set<string>(MARKETING_SEGMENTS);
