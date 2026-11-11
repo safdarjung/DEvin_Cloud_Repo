@@ -193,6 +193,9 @@ export const ATTEMPT_TIMEOUT_MS = 10_000;
 /** A provider that just failed is skipped for this long (per server instance), so later requests do not wait on it again. */
 export const COOLDOWN_MS = 60_000;
 
+/** Pause before the one extra pass over every provider when all of them failed. */
+export const SECOND_PASS_WAIT_MS = 1_500;
+
 class AttemptTimeout extends Error {}
 
 const coolUntil = new Map<AgentProvider, number>();
@@ -239,32 +242,38 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
     return models.get(provider) ?? null;
   };
   const run = async <T>(aborted: () => boolean, first: () => PromiseLike<T>, call: (m: WrappedModel) => PromiseLike<T>): Promise<T> => {
-    const now = Date.now();
-    const ready = order.filter((p) => (coolUntil.get(p) ?? 0) <= now);
-    // Everything failed recently: try them all again rather than refuse.
-    const line = ready.length > 0 ? ready : order;
     let err: unknown = new Error("no cloud provider available");
-    let from: AgentProvider | null = null;
-    for (let i = 0; i < line.length; i++) {
-      const provider = line[i];
-      const model = provider === primary ? null : await modelFor(provider);
-      if (provider !== primary && !model) continue;
-      if (from) {
-        const info = err instanceof AttemptTimeout ? { status: undefined, kind: "timeout" } : classifyAiError(err);
-        console.warn("[ai-fallback] retrying on the other provider", { from, to: provider, status: info.status, kind: info.kind });
+    // Second pass: free tiers answer 503/429 in bursts, and a short wait often clears them (2026-11-11).
+    for (let pass = 0; pass < 2; pass++) {
+      if (pass === 1) await new Promise((resolve) => setTimeout(resolve, SECOND_PASS_WAIT_MS));
+      const now = Date.now();
+      const ready = order.filter((p) => (coolUntil.get(p) ?? 0) <= now);
+      // Everything failed recently (always so on the second pass): try them all again rather than refuse.
+      const line = pass === 0 && ready.length > 0 ? ready : order;
+      let from: AgentProvider | null = null;
+      for (let i = 0; i < line.length; i++) {
+        const provider = line[i];
+        const model = provider === primary ? null : await modelFor(provider);
+        if (provider !== primary && !model) continue;
+        if (from) {
+          const info = err instanceof AttemptTimeout ? { status: undefined, kind: "timeout" } : classifyAiError(err);
+          console.warn("[ai-fallback] retrying on the other provider", { from, to: provider, status: info.status, kind: info.kind });
+        }
+        try {
+          const work = model ? call(model) : first();
+          const result = await (i < line.length - 1 ? capped(work) : work);
+          note(FACTORY[provider].id());
+          return result;
+        } catch (e) {
+          if (aborted()) throw e;
+          err = e;
+          from = provider;
+          // A request too large for this provider says nothing about its health.
+          if (e instanceof AttemptTimeout || classifyAiError(e).kind !== "too_large") coolUntil.set(provider, Date.now() + COOLDOWN_MS);
+        }
       }
-      try {
-        const work = model ? call(model) : first();
-        const result = await (i < line.length - 1 ? capped(work) : work);
-        note(FACTORY[provider].id());
-        return result;
-      } catch (e) {
-        if (aborted()) throw e;
-        err = e;
-        from = provider;
-        // A request too large for this provider says nothing about its health.
-        if (e instanceof AttemptTimeout || classifyAiError(e).kind !== "too_large") coolUntil.set(provider, Date.now() + COOLDOWN_MS);
-      }
+      // One provider only, or nothing worth waiting for: no second pass.
+      if (order.length < 2 || !(err instanceof AttemptTimeout || shouldFallback(err))) break;
     }
     throw err;
   };

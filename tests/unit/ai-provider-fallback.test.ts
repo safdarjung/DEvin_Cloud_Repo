@@ -284,6 +284,22 @@ describe("cloudModelWithFallback with a last resort", () => {
     }
   });
 
+  it("all providers busy on the first pass: one more pass after a short wait gets the answer", async () => {
+    let geminiCalls = 0;
+    zaiModel.current = failing(apiError(429));
+    groqModel.current = failing(apiError(429));
+    geminiModel.current = new MockLanguageModelV4({
+      doStream: async (...args) => {
+        geminiCalls += 1;
+        if (geminiCalls === 1) throw apiError(503);
+        return answering("from gemini on the second pass").doStream(...args);
+      },
+    });
+    const { text } = await answerChain();
+    expect(text).toBe("from gemini on the second pass");
+    expect(geminiCalls).toBe(2);
+  });
+
   it("every provider failing surfaces the error instead of hanging", async () => {
     zaiModel.current = failing(apiError(429));
     groqModel.current = failing(apiError(401));
