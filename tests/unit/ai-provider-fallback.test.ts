@@ -221,6 +221,25 @@ describe("cloudModelWithFallback with a last resort", () => {
     expect(warn.mock.calls.map((c) => (c[1] as { from: string; to: string }).from + ">" + (c[1] as { to: string }).to)).toEqual(["zai>groq", "groq>gemini"]);
   });
 
+  it("a provider that hangs is left after the attempt limit and the next one answers", async () => {
+    vi.useFakeTimers();
+    try {
+      zaiModel.current = new MockLanguageModelV4({ doStream: () => new Promise(() => {}) });
+      groqModel.current = answering("from groq");
+      geminiModel.current = answering("from gemini");
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const cloud = await cloudModelWithFallback("zai", "groq", "gemini");
+      const m = cloud.model as unknown as { doStream: (p: unknown) => PromiseLike<unknown> };
+      const pending = m.doStream({ prompt: [] });
+      await vi.advanceTimersByTimeAsync(12_000);
+      await pending;
+      expect(cloud.modelsUsed()).toEqual(["openai/gpt-oss-120b"]);
+      expect((warn.mock.calls[0][1] as { kind: string }).kind).toBe("timeout");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("an error that is not size or rate on the fallback stops the chain", async () => {
     zaiModel.current = failing(apiError(429));
     groqModel.current = failing(apiError(401));

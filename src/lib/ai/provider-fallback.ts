@@ -190,6 +190,24 @@ export interface CloudModel {
  * with the same (already redacted) prompt and tools. Throws when the
  * primary's key is missing, like `getGroqModel`/`getGeminiModel`.
  */
+/**
+ * How long one provider may take when another is still in line. Z.ai's free
+ * model was seen to hang past the gateway's whole 30 s budget (2026-11-11),
+ * which left no time for the retry. The last provider in line is not capped.
+ */
+export const ATTEMPT_TIMEOUT_MS = 12_000;
+
+class AttemptTimeout extends Error {}
+
+function capped<T>(work: PromiseLike<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new AttemptTimeout("provider attempt timed out")), ATTEMPT_TIMEOUT_MS);
+  });
+  // The slow request is left to the caller's own abort signal; its late result or error is ignored.
+  return Promise.race([Promise.resolve(work), limit]).finally(() => clearTimeout(timer));
+}
+
 export async function cloudModelWithFallback(primary: AgentProvider, fallback: AgentProvider | null, last: AgentProvider | null = null): Promise<CloudModel> {
   const used: string[] = [];
   const note = (id: string) => {
@@ -216,7 +234,7 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
     let from = primary;
     if (at < 0) {
       try {
-        const result = await first();
+        const result = await (chain.length > 0 ? capped(first()) : first());
         note(FACTORY[primary].id());
         return result;
       } catch (e) {
@@ -226,16 +244,16 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
     }
     for (let i = Math.max(at, 0); i < chain.length; i++) {
       const provider = chain[i];
-      if (failed && !shouldFallback(err)) throw err;
+      if (failed && !(err instanceof AttemptTimeout) && !shouldFallback(err)) throw err;
       const model = await modelFor(provider);
       if (!model) continue;
       if (failed) {
-        const info = classifyAiError(err);
+        const info = err instanceof AttemptTimeout ? { status: undefined, kind: "timeout" } : classifyAiError(err);
         console.warn("[ai-fallback] retrying on the other provider", { from, to: provider, status: info.status, kind: info.kind });
       }
       at = i;
       try {
-        const result = await call(model);
+        const result = await (i < chain.length - 1 ? capped(call(model)) : call(model));
         note(FACTORY[provider].id());
         return result;
       } catch (e) {
