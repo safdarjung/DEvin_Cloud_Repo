@@ -41,22 +41,22 @@ describe("structuredCloudPlan", () => {
     expect(structuredCloudPlan({ groq: false, gemini: false, zai: false }, 100)).toBeNull();
   });
 
-  it("a Z.ai key makes Z.ai first, with Groq as the retry when the request fits Groq's ceiling", () => {
-    expect(structuredCloudPlan(all, 5_500)).toEqual({ primary: "zai", fallback: "groq", last: "gemini" });
+  it("all keyed: Gemini first, Groq the retry when the request fits Groq's ceiling, Z.ai the second backup", () => {
+    expect(structuredCloudPlan(all, 5_500)).toEqual({ primary: "gemini", fallback: "groq", last: "zai" });
   });
 
-  it("Z.ai first, Gemini the retry when the request is above Groq's ceiling (never Groq)", () => {
-    expect(structuredCloudPlan(all, 5_501)).toEqual({ primary: "zai", fallback: "gemini" });
+  it("a request above Groq's ceiling skips Groq and retries on Z.ai", () => {
+    expect(structuredCloudPlan(all, 5_501)).toEqual({ primary: "gemini", fallback: "zai" });
     expect(structuredCloudPlan({ groq: true, gemini: false, zai: true }, 5_501)).toEqual({ primary: "zai", fallback: null });
   });
 
-  it("only a Z.ai key: Z.ai, no retry; too big for it: too_large", () => {
+  it("only a Z.ai key: Z.ai, no retry; too big for every provider: too_large", () => {
     expect(structuredCloudPlan({ groq: false, gemini: false, zai: true }, 100)).toEqual({ primary: "zai", fallback: null });
     expect(structuredCloudPlan(all, 24_001)).toBe("too_large");
   });
 
-  it("a request that fits Groq runs there with Gemini as its retry", () => {
-    expect(structuredCloudPlan(both, 5_500)).toEqual({ primary: "groq", fallback: "gemini" });
+  it("Groq and Gemini keyed: Gemini answers with Groq as its retry when the request fits Groq", () => {
+    expect(structuredCloudPlan(both, 5_500)).toEqual({ primary: "gemini", fallback: "groq" });
   });
 
   it("a request over Groq's ceiling goes straight to Gemini, with no retry on Groq", () => {

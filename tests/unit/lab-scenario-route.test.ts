@@ -81,15 +81,15 @@ afterEach(() => {
 });
 
 describe("POST /api/ai/lab-scenario", () => {
-  it("local_only principal with a Groq key: runs on Groq (owner cloud exception), never local or Anthropic", async () => {
+  it("local_only principal with cloud keys: runs on Gemini first (owner cloud exception), never local or Anthropic", async () => {
     getTenantContextMock.mockResolvedValue(fakeCtx("principal"));
     generateTextMock.mockResolvedValueOnce({ output: MODEL_OUTPUT, usage: { inputTokens: 10, outputTokens: 20 } });
 
     const res = await POST(request({ institutionSlug: "demo", text: "fees up 8% over 3 years" }));
 
     expect(res.status).toBe(200);
-    expect((await res.json()).data).toMatchObject({ provider: "cloud", model: "openai/gpt-oss-120b" });
-    expect(generateTextMock.mock.calls[0][0].model).toBe("groq-model-handle");
+    expect((await res.json()).data).toMatchObject({ provider: "cloud", model: "gemini-flash-lite-latest" });
+    expect(generateTextMock.mock.calls[0][0].model).toBe("gemini-model-handle");
     expect(providers.getLocalModel).not.toHaveBeenCalled();
     expect(providers.getCloudModel).not.toHaveBeenCalled();
   });

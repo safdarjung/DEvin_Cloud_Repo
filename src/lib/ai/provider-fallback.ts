@@ -58,40 +58,40 @@ export interface CloudPlan {
   last?: AgentProvider | null;
 }
 
-/**
- * Which cloud provider answers and which one (if any) gets the one retry.
- * Only providers with a key are ever named. With a Z.ai key Z.ai answers
- * whatever the pick, and its retry is Groq only when the request fits Groq's
- * ceiling, else Gemini. Otherwise the preferred one yields to the other when
- * its own key is missing.
- */
-export function cloudProviderPlan({ mode, preferred, keys, requestTokens = Infinity }: CloudPlanInput): CloudPlan | null {
-  if (mode !== "cloud") return null;
-  if (keys.zai) {
-    const viaGroq = keys.groq && requestTokens <= TOKEN_CEILING.groq;
-    // Gemini is the last resort after Groq: Groq's daily cap runs out (2026-11-11).
-    return { primary: "zai", fallback: viaGroq ? "groq" : keys.gemini ? "gemini" : null, ...(viaGroq && keys.gemini ? { last: "gemini" as const } : {}) };
-  }
-  const other: AgentProvider = preferred === "groq" ? "gemini" : "groq";
-  if (keys[preferred]) return { primary: preferred, fallback: keys[other] ? other : null };
-  return keys[other] ? { primary: other, fallback: null } : null;
+/** Owner decision 2026-11-11 (D53, amended): Gemini answers first, Groq is the backup, Z.ai the second backup. */
+const CLOUD_ORDER = ["gemini", "groq", "zai"] as const;
+
+/** Keyed providers in order; Groq is skipped as a backup for a request above its ceiling. */
+function orderedPlan(keys: CloudPlanInput["keys"], fits: (p: AgentProvider) => boolean, backupFits: (p: AgentProvider) => boolean): CloudPlan | null {
+  const keyed = CLOUD_ORDER.filter((p) => keys[p] && fits(p));
+  if (keyed.length === 0) return null;
+  const [primary, ...rest] = keyed;
+  const backups = rest.filter(backupFits);
+  return { primary, fallback: backups[0] ?? null, ...(backups[1] ? { last: backups[1] } : {}) };
 }
 
 /**
- * A one-shot structured call (runStructured): the first keyed provider whose
- * per-request ceiling (TOKEN_CEILING, the same one chat uses) holds the whole
- * request, in order Z.ai, Groq, Gemini; the next keyed one that also fits gets
- * the one retry. "too_large" when a key exists but nothing fits: the caller
- * says so instead of trimming the user's own text. null when no cloud key is set.
+ * Which cloud provider answers a chat and which ones get the retries. Only
+ * providers with a key are ever named. Gemini first, then Groq (only when the
+ * request fits Groq's ceiling), then Z.ai. `preferred` (the old Groq/Gemini
+ * routing pick) no longer changes the order.
  */
-export function structuredCloudPlan(
-  keys: CloudPlanInput["keys"],
-  requestTokens: number,
-): CloudPlan | "too_large" | null {
-  const keyed = (["zai", "groq", "gemini"] as const).filter((p) => keys[p]);
-  if (keyed.length === 0) return null;
-  const fits = keyed.filter((p) => requestTokens <= TOKEN_CEILING[p]);
-  return fits.length === 0 ? "too_large" : { primary: fits[0], fallback: fits[1] ?? null, ...(fits[2] ? { last: fits[2] } : {}) };
+export function cloudProviderPlan({ mode, keys, requestTokens = Infinity }: CloudPlanInput): CloudPlan | null {
+  if (mode !== "cloud") return null;
+  return orderedPlan(keys, () => true, (p) => p !== "groq" || requestTokens <= TOKEN_CEILING.groq);
+}
+
+/**
+ * A one-shot structured call (runStructured): the keyed providers whose
+ * per-request ceiling (TOKEN_CEILING, the same one chat uses) holds the whole
+ * request, in order Gemini, Groq, Z.ai; the later ones are the retries.
+ * "too_large" when a key exists but nothing fits: the caller says so instead
+ * of trimming the user's own text. null when no cloud key is set.
+ */
+export function structuredCloudPlan(keys: CloudPlanInput["keys"], requestTokens: number): CloudPlan | "too_large" | null {
+  if (!CLOUD_ORDER.some((p) => keys[p])) return null;
+  const fits = (p: AgentProvider) => requestTokens <= TOKEN_CEILING[p];
+  return orderedPlan(keys, fits, fits) ?? "too_large";
 }
 
 export function configuredCloudKeys(): CloudPlanInput["keys"] {
@@ -216,7 +216,7 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
   const base = await FACTORY[primary].get();
   // A bare model id string resolves through the SDK's global provider: nothing to wrap.
   if (typeof base === "string") return { model: base, modelsUsed: () => [FACTORY[primary].id()] };
-  // The retries in order: the plan's fallback, then its last resort (D53: Z.ai, then Groq, then Gemini).
+  // The retries in order: the plan's fallback, then its last resort (D53: Gemini, then Groq, then Z.ai).
   const chain = [fallback, last].filter((p): p is AgentProvider => p !== null);
   const models = new Map<AgentProvider, WrappedModel | null>();
   const modelFor = async (provider: AgentProvider): Promise<WrappedModel | null> => {

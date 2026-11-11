@@ -358,9 +358,10 @@ Full text: `docs/planning/fabric/07-master-plan-v1-v2.md` §2. Summary:
 - **Consequence:** Remotion needs a company licence for teams above 3 people; owner to confirm before the swap.
 - **Revisit:** at the swap to `/`.
 
-### D53 — Z.ai (GLM) is the first cloud provider; Groq is the backup (2026-11-11, owner decision)
+### D53 — Cloud provider order: Gemini, then Groq, then Z.ai (2026-11-11, owner decision)
 
-- **Decision:** when `ZAI_API_KEY` is set, chat and structured AI calls go to Z.ai first (default model `glm-4.7-flash`, override `ZAI_MODEL`). The single retry goes to Groq when the request fits Groq's 5,500-token ceiling, otherwise to Gemini. With no Z.ai key the D28/D29 behaviour is unchanged. File and photo reading stays Gemini-only.
+- **Decision:** chat and structured AI calls go to Gemini first, Groq is the backup when the request fits Groq's 5,500-token ceiling, and Z.ai (default model `glm-4.7-flash`, override `ZAI_MODEL`) is the second backup. Only providers with a key are used. Each attempt is capped at 12 s while another provider is in line. The old Groq/Gemini routing pick (D29) no longer changes the order. File and photo reading stays Gemini-only.
+- **History:** the owner first asked for Z.ai first with Groq as backup; on production the free Z.ai model hung or answered 429 on every call, so the owner changed the order the same day.
 - **Why:** owner asked for Z.ai's cheaper model in place of Groq. The account had no paid balance on 2026-11-11, so the default is the free model; the paid cheap model is `glm-5.3-flash`.
 - **Limits:** Z.ai ignores `json_schema`, so structured calls use JSON-object mode with the schema in the prompt and Zod validation after. The free model answers 429 "overloaded" under load and was seen to fail one quiz with invalid output. `tool_choice` supports only `auto`.
 - **Gates unchanged:** same role cloud switch, redaction and lazy import as Groq/Gemini (rule 6). UI honesty labels name Z.ai, Groq and Gemini. New dependency: `@ai-sdk/openai-compatible` 3.0.80 (official OpenAI-compatible provider).

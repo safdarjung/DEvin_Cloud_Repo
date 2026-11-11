@@ -74,16 +74,16 @@ describe("cloudProviderPlan (fallback decision table)", () => {
   const all = { groq: true, gemini: true, zai: true };
   it.each([
     ["local mode never names a cloud provider, keys or not", { mode: "local", preferred: "groq", keys: both }, null],
-    ["groq first, gemini as the one retry", { mode: "cloud", preferred: "groq", keys: both }, { primary: "groq", fallback: "gemini" }],
-    ["gemini first, groq as the one retry", { mode: "cloud", preferred: "gemini", keys: both }, { primary: "gemini", fallback: "groq" }],
-    ["missing fallback key: no fallback", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false, zai: false } }, { primary: "groq", fallback: null }],
-    ["missing preferred key: the other provider answers, no fallback", { mode: "cloud", preferred: "groq", keys: { groq: false, gemini: true, zai: false } }, { primary: "gemini", fallback: null }],
+    ["gemini first whatever the old routing pick, groq the retry when the request fits groq", { mode: "cloud", preferred: "groq", keys: both, requestTokens: 5_500 }, { primary: "gemini", fallback: "groq" }],
+    ["gemini first, a request above groq's ceiling gets no groq retry", { mode: "cloud", preferred: "gemini", keys: both, requestTokens: 5_501 }, { primary: "gemini", fallback: null }],
+    ["no gemini key: groq answers, no fallback", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false, zai: false } }, { primary: "groq", fallback: null }],
+    ["no groq key: gemini answers, no fallback", { mode: "cloud", preferred: "groq", keys: { groq: false, gemini: true, zai: false } }, { primary: "gemini", fallback: null }],
     ["no keys: no cloud", { mode: "cloud", preferred: "gemini", keys: { groq: false, gemini: false, zai: false } }, null],
     ["local mode never names a cloud provider, Z.ai key or not", { mode: "local", preferred: "groq", keys: all, requestTokens: 100 }, null],
-    ["zai keyed: zai first, groq the retry when it fits groq's ceiling, gemini the last resort", { mode: "cloud", preferred: "gemini", keys: all, requestTokens: 5_500 }, { primary: "zai", fallback: "groq", last: "gemini" }],
-    ["zai keyed: a request above groq's ceiling gets gemini as the retry", { mode: "cloud", preferred: "groq", keys: all, requestTokens: 5_501 }, { primary: "zai", fallback: "gemini" }],
-    ["zai keyed, request size unknown: never groq", { mode: "cloud", preferred: "groq", keys: all }, { primary: "zai", fallback: "gemini" }],
-    ["zai keyed, only groq as backup and the request too big for it: no retry", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false, zai: true }, requestTokens: 6_000 }, { primary: "zai", fallback: null }],
+    ["all keyed: gemini first, groq the retry when it fits, zai the second backup", { mode: "cloud", preferred: "gemini", keys: all, requestTokens: 5_500 }, { primary: "gemini", fallback: "groq", last: "zai" }],
+    ["all keyed: a request above groq's ceiling skips groq and retries on zai", { mode: "cloud", preferred: "groq", keys: all, requestTokens: 5_501 }, { primary: "gemini", fallback: "zai" }],
+    ["all keyed, request size unknown: never groq", { mode: "cloud", preferred: "groq", keys: all }, { primary: "gemini", fallback: "zai" }],
+    ["no gemini key: groq first with zai as its backup", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false, zai: true }, requestTokens: 6_000 }, { primary: "groq", fallback: "zai" }],
     ["only a zai key: zai, no retry", { mode: "cloud", preferred: "groq", keys: { groq: false, gemini: false, zai: true }, requestTokens: 100 }, { primary: "zai", fallback: null }],
   ] as const)("%s", (_name, input, expected) => {
     expect(cloudProviderPlan(input)).toEqual(expected);

@@ -68,10 +68,10 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   const budgetAt = (ceiling: number) =>
     planToolBudget({ texts: [], ...input.budget, system, messages: input.messages, tools, ceiling });
   const keys = configuredCloudKeys();
-  // Z.ai is budgeted to its own ceiling first; that size picks its one retry (Groq only when it fits).
-  const zaiTokens = keys.zai ? budgetAt(TOKEN_CEILING.zai).estimatedTokens + RESULT_RESERVE_TOKENS : undefined;
-  // Only providers with a key: the routing pick yields to the other when its key is missing.
-  const providers = cloudProviderPlan({ mode: "cloud", preferred: input.provider, keys, requestTokens: zaiTokens });
+  // Budgeted to the first provider's ceiling; that size decides whether Groq may be a backup (only when it fits).
+  const requestTokens = budgetAt(TOKEN_CEILING.gemini).estimatedTokens + RESULT_RESERVE_TOKENS;
+  // Only providers with a key, in the fixed order Gemini, Groq, Z.ai.
+  const providers = cloudProviderPlan({ mode: "cloud", preferred: input.provider, keys, requestTokens });
   const provider = providers?.primary ?? input.provider;
   const fallback = providers?.fallback ?? null;
   const last = providers?.last ?? null;

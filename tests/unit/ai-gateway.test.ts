@@ -118,9 +118,8 @@ describe("runStructured", () => {
     );
   });
 
-  it("agentCloud + GROQ_API_KEY: a local_only school runs on Groq (preferred over Gemini)", async () => {
+  it("agentCloud + only GROQ_API_KEY: a local_only school runs on Groq with Groq's options", async () => {
     process.env.GROQ_API_KEY = "test-key";
-    process.env.GEMINI_API_KEY = "test-key";
     generateTextMock.mockResolvedValueOnce(usageResult());
     const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
     expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "openai/gpt-oss-120b" } });
@@ -132,20 +131,20 @@ describe("runStructured", () => {
     expect(providers.getLocalModel).not.toHaveBeenCalled();
   });
 
-  it("agentCloud + ZAI_API_KEY: Z.ai answers first, Groq's options ride along for its retry, usage names the GLM model", async () => {
+  it("agentCloud + all three keys: Gemini answers first, Groq's options ride along for its retry, usage names the Gemini model", async () => {
     process.env.ZAI_API_KEY = "test-key";
     process.env.GROQ_API_KEY = "test-key";
     process.env.GEMINI_API_KEY = "test-key";
     generateTextMock.mockResolvedValueOnce(usageResult());
     const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, maxOutputTokens: 500, agentCloud: true });
-    expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "glm-4.7-flash" } });
+    expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "gemini-flash-lite-latest" } });
     expect(generateTextMock.mock.calls[0][0]).toMatchObject({
-      model: "zai-model-handle",
+      model: "gemini-model-handle",
       maxOutputTokens: 1024,
       providerOptions: { groq: { reasoningEffort: "low", strictJsonSchema: false } },
     });
-    expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ ok: true, provider: "cloud", model: "glm-4.7-flash" }));
-    expect(providers.getGroqModel).not.toHaveBeenCalled();
+    expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ ok: true, provider: "cloud", model: "gemini-flash-lite-latest" }));
+    expect(providers.getZaiModel).not.toHaveBeenCalled();
     expect(providers.getLocalModel).not.toHaveBeenCalled();
   });
 
