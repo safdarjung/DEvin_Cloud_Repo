@@ -26,12 +26,13 @@ export default async function PortalLeavePage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   if (ctx.membership.role !== "guardian") notFound();
   requirePermission(ctx, "student_leave.request");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/leave`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/leave`, allParams);
   const rows = await studentLeaveRequests(ctx, { studentId: selection.studentId });
   const daysByStatus = new Map<string, number>();
   for (const r of rows) daysByStatus.set(r.status, (daysByStatus.get(r.status) ?? 0) + r.days);

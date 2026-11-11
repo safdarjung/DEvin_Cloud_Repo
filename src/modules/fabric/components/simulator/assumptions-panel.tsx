@@ -83,10 +83,13 @@ export function AssumptionsPanel({
   assumptions,
   baseline,
   onChange,
+  enrolmentHint,
 }: {
   assumptions: ScenarioAssumptions;
   baseline: ScenarioAssumptions;
   onChange: (next: ScenarioAssumptions) => void;
+  /** Real admissions pipeline (offered + accepted, not yet enrolled) as an enrolment delta; null when unavailable. */
+  enrolmentHint?: { pending: number; pct: number } | null;
 }) {
   return (
     <div className="space-y-5">
@@ -128,6 +131,22 @@ export function AssumptionsPanel({
               className="w-full accent-[var(--chart-1)]"
             />
             <p className="text-xs text-muted-foreground">{s.caption(value)}</p>
+            {s.key === "enrolment_delta_pct" && enrolmentHint && (
+              <p className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                Admissions pipeline: {enrolmentHint.pending} offered/accepted, not yet enrolled (+{enrolmentHint.pct}% if all join).
+                {value !== enrolmentHint.pct && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-1.5 text-xs"
+                    onClick={() => onChange({ ...assumptions, enrolment_delta_pct: enrolmentHint.pct })}
+                  >
+                    Use +{enrolmentHint.pct}%
+                  </Button>
+                )}
+              </p>
+            )}
           </div>
         );
       })}

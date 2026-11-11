@@ -15,6 +15,7 @@ import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { deleteLessonPlan, markCovered, upsertLessonPlan } from "@/modules/academics/curriculum.actions";
 import type { LessonPlanRow, SectionUnitRow } from "@/modules/academics/curriculum.queries";
 import { AnimatedList, ProgressBar } from "@/components/widgets/viz";
+import { LessonPlanAiDraft } from "@/modules/ai/components/LessonPlanAiDraft";
 
 export interface SubjectUnits {
   subjectId: string;
@@ -30,6 +31,8 @@ interface Props {
   subjects: SubjectUnits[];
   plans: LessonPlanRow[];
   canManage: boolean;
+  /** features-18 §C: lesson_plan_writer capability on for this role. */
+  canDraftWithAi?: boolean;
 }
 
 const NO_UNIT = "none";
@@ -45,7 +48,7 @@ interface Draft {
   resources: string;
 }
 
-export function LessonPlansView({ institutionSlug, classSectionId, today, subjects, plans, canManage }: Props) {
+export function LessonPlansView({ institutionSlug, classSectionId, today, subjects, plans, canManage, canDraftWithAi = false }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -288,6 +291,16 @@ export function LessonPlansView({ institutionSlug, classSectionId, today, subjec
                   </SelectContent>
                 </Select>
               </label>
+              {canDraftWithAi && draft.curriculumUnitId !== NO_UNIT && (
+                <LessonPlanAiDraft
+                  key={draft.curriculumUnitId}
+                  institutionSlug={institutionSlug}
+                  classSectionId={classSectionId}
+                  subjectId={draft.subjectId}
+                  curriculumUnitId={draft.curriculumUnitId}
+                  onDraft={(form) => setDraft((d) => (d ? { ...d, ...form, title: d.title || form.title } : d))}
+                />
+              )}
               <label className="block space-y-1 text-sm">
                 Title
                 <Input required maxLength={120} value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />

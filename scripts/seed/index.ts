@@ -22,10 +22,28 @@ import { run as runNotifications } from "./sections/notifications.ts";
 import { run as runHomeroom } from "./sections/homeroom.ts";
 import { run as runOperations } from "./sections/operations.ts";
 import { run as runPeople } from "./sections/people.ts";
+import { run as runPayroll } from "./sections/payroll.ts";
 import { run as runPtm } from "./sections/ptm.ts";
+import { run as runAlumni } from "./sections/alumni.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
+import { run as runHealth } from "./sections/health.ts";
+import { run as runHelpdesk } from "./sections/helpdesk.ts";
+import { run as runHostel } from "./sections/hostel.ts";
+import { run as runSchoolLabs } from "./sections/school-labs.ts";
 import { run as runVisitors } from "./sections/visitors.ts";
+import { run as runCanteen } from "./sections/canteen.ts";
+import { run as runScholarships } from "./sections/scholarships.ts";
+import { run as runInventory } from "./sections/inventory.ts";
+import { run as runCompliance } from "./sections/compliance.ts";
+import { run as runDuties } from "./sections/duties.ts";
+import { run as runExpenses } from "./sections/expenses.ts";
+import { run as runClubs } from "./sections/clubs.ts";
+import { run as runBehaviour } from "./sections/behaviour.ts";
+import { run as runAchievements } from "./sections/achievements.ts";
+import { run as runSafety } from "./sections/safety.ts";
+import { run as runResources } from "./sections/resources.ts";
+import { run as runForms } from "./sections/forms.ts";
 import { run as runWebsite } from "./sections/website.ts";
 import { run as runWorkflows } from "./sections/workflows.ts";
 
@@ -61,8 +79,36 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "certificates", run: runCertificates },
   // X07-T9: registered last — reads students/guardians/staff ids every earlier section wrote.
   { name: "visitors", run: runVisitors },
+  // Features-18 #10: needs people's studentsBySection and core's accountant login.
+  { name: "canteen", run: runCanteen },
+  // Features-18 #9: needs studentsBySection (people), accountant/admin/principal logins (core), academicYearId.
+  { name: "scholarships", run: runScholarships },
+  // Features-18 #3: needs core.ts's demo staff logins and people.ts's teacherStaffIds; no rng draws.
+  { name: "payroll", run: runPayroll },
+  { name: "inventory", run: runInventory },
+  // Features-18 #22/#24: compliance needs the admin login; duties needs people.ts teacherStaffIds. No rng draws.
+  { name: "compliance", run: runCompliance },
+  { name: "duties", run: runDuties },
+  // Features-18 #8: needs core's accountant/principal logins; no rng draws.
+  { name: "expenses", run: runExpenses },
+  // Features-18 #6: needs studentsBySection (people), staff logins (core).
+  { name: "clubs", run: runClubs },
+  { name: "hostel", run: runHostel },
+  // Features-18 #19: needs timetable periods, academics sections/subjects, people teacherStaffIds; no rng draws.
+  { name: "school-labs", run: runSchoolLabs },
+  { name: "behaviour", run: runBehaviour },
+  { name: "achievements", run: runAchievements },
+  // Features-18 #21: needs core's demo logins and academics' current-year sections; no rng draws.
+  { name: "safety", run: runSafety },
+  // Features-18 #23: needs academics sections/subjects/curriculum units and core teacher login.
+  { name: "resources", run: runResources },
+  { name: "forms", run: runForms },
+  { name: "health", run: runHealth },
+  { name: "helpdesk", run: runHelpdesk },
   // X08-T10: needs class_sections (academics), studentsBySection (people).
   { name: "ptm", run: runPtm },
+  // Features-18 #14: only profiles for already-graduated students (none in demo).
+  { name: "alumni", run: runAlumni },
   // X01-T12: last — needs class_sections/subject_assignments (academics),
   // studentsBySection (people), demo logins (core).
   { name: "homeroom", run: runHomeroom },

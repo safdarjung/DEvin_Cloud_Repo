@@ -4,18 +4,23 @@ import "server-only";
 // (runScenario/sensitivity stay pure and are re-exported unchanged — they
 // take BaselineFacts/ScenarioAssumptions, not a data source, so nothing
 // about them changes). Cross-module reads go through the owner's
-// queries.ts (peopleCounts, collectionReport); rooms/periods have no
+// queries.ts (peopleCounts, collectionReport; simulatorSignals adds
+// financeSeries, getAdmissionsFunnelCounts, timetableTeacherWorkload); rooms/periods have no
 // owner query yet, so they're read directly here — the same
 // cross-cutting-aggregate pattern src/modules/timetable/queries.ts already
 // uses for the same two tables (timetableRoomUtilisation), both RLS'd to
 // any active member (0069).
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { peopleCounts } from "@/modules/people/counts.queries";
 import { collectionReport } from "@/modules/finance/queries";
+import { financeSeries } from "@/modules/forecasts/queries";
+import { getAdmissionsFunnelCounts, type AdmissionsFunnelCounts } from "@/modules/admissions/queries";
+import { defaultPublishedVersionId, timetableTeacherWorkload } from "@/modules/timetable/queries";
 import { BASELINE_FACTS, runScenario, sensitivity, type BaselineFacts } from "@/modules/fabric/demo/simulator";
 import { ScenarioAssumptionsSchema } from "@/modules/fabric/simulator.schemas";
-import type { ScenarioAssumptions, ScenarioStatus } from "@/modules/fabric/types";
+import type { FinanceForecastPoint, ScenarioAssumptions, ScenarioStatus } from "@/modules/fabric/types";
 
 export { runScenario, sensitivity, type BaselineFacts };
 
@@ -79,6 +84,81 @@ export async function realBaselineFacts(ctx: TenantContext): Promise<RealBaselin
       max_students_per_room: maxStudentsPerRoom,
     },
     costIsAssumption: true,
+  };
+}
+
+function monthsBetween(from: string, to: string): number {
+  const [fy, fm] = from.split("-").map(Number);
+  const [ty, tm] = to.split("-").map(Number);
+  return (ty! - fy!) * 12 + (tm! - fm!);
+}
+
+function addMonths(ym: string, n: number): string {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(Date.UTC(y!, m! - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/**
+ * forecasts.financeSeries points -> "YYYY-MM" -> forecast fee collections in
+ * rupees/month, for the simulator chart's Forecast line. Each forecast term
+ * is spread evenly over the months until the next term starts (the last term
+ * reuses the previous term's length; a lone term with no neighbour is
+ * dropped — its length can't be inferred). History terms are skipped.
+ */
+export function forecastByMonth(points: FinanceForecastPoint[]): Record<string, number> {
+  const sorted = [...points].sort((a, b) => a.month.localeCompare(b.month));
+  const out: Record<string, number> = {};
+  sorted.forEach((p, i) => {
+    // financeSeries' forecast rows carry collected 0 and a non-zero band; history rows have low = high = collected.
+    if (p.collected_paise !== 0 || p.forecast_high_paise <= 0) return;
+    const next = sorted[i + 1];
+    const prev = sorted[i - 1];
+    const span = next ? monthsBetween(p.month, next.month) : prev ? monthsBetween(prev.month, p.month) : 0;
+    if (span <= 0) return;
+    for (let m = 0; m < span; m++) out[addMonths(p.month, m)] = Math.round(p.expected_paise / span) / 100;
+  });
+  return out;
+}
+
+const ENROLMENT_DELTA_MAX_PCT = 30; // ScenarioAssumptionsSchema.enrolment_delta_pct max
+
+/** Offered + accepted applications (not yet enrolled) as a whole-percent enrolment delta vs `students`, capped at the slider max; null when there's nothing to hint. */
+export function pipelineEnrolmentHint(funnel: AdmissionsFunnelCounts, students: number): { pending: number; pct: number } | null {
+  const pending = funnel.applicationStatuses.offered + funnel.applicationStatuses.accepted;
+  if (pending === 0 || students <= 0) return null;
+  return { pending, pct: Math.min(ENROLMENT_DELTA_MAX_PCT, Math.round((pending / students) * 100)) };
+}
+
+/** Mean periods/week across timetabled teachers, 1 decimal; null with none. */
+export function avgTeacherPeriodsWeek(rows: { periods_week: number }[]): number | null {
+  if (rows.length === 0) return null;
+  return Math.round((rows.reduce((sum, r) => sum + r.periods_week, 0) / rows.length) * 10) / 10;
+}
+
+export interface SimulatorSignals {
+  /** "YYYY-MM" -> forecast fee collections, rupees/month. Empty when no forecast is visible. */
+  forecastByMonth: Record<string, number>;
+  /** Admissions funnel counts for the enrolment hint (pipelineEnrolmentHint); null without admissions.enquiry.read. */
+  funnel: AdmissionsFunnelCounts | null;
+  /** Real teacher load from the published timetable; null without timetable.manage or a published version. */
+  teacherLoad: { avgPeriodsWeek: number; maxPeriods: number } | null;
+}
+
+/** Real signals the simulator shows beside its model. Each read is skipped unless the caller holds that owner query's permission. */
+export async function simulatorSignals(ctx: TenantContext): Promise<SimulatorSignals> {
+  const [series, funnel, workload] = await Promise.all([
+    hasPermission(ctx, "forecast.read") ? financeSeries(ctx) : [],
+    hasPermission(ctx, "admissions.enquiry.read") ? getAdmissionsFunnelCounts(ctx) : null,
+    hasPermission(ctx, "timetable.manage")
+      ? defaultPublishedVersionId(ctx).then((versionId) => (versionId ? timetableTeacherWorkload(ctx, versionId) : []))
+      : [],
+  ]);
+  const avgPeriodsWeek = avgTeacherPeriodsWeek(workload);
+  return {
+    forecastByMonth: forecastByMonth(series),
+    funnel,
+    teacherLoad: avgPeriodsWeek == null ? null : { avgPeriodsWeek, maxPeriods: workload[0]!.max_periods },
   };
 }
 

@@ -3,6 +3,7 @@
 // solid) + confidence band, KPI strip with deltas, risk flag chips,
 // sensitivity table. `scenario`/`baseline` are both plain runScenario()
 // output — pure, client-computed, no server round-trip per slider move.
+// Optional real overlays: forecasts' fee-collection line, timetable load.
 import { AlertTriangle, ArrowDown, ArrowUp } from "lucide-react";
 import { Area, CartesianGrid, ComposedChart, Legend, Line, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartFrame, chartAxis, chartGrid, chartTooltip, formatINRCompact } from "@/components/chart";
@@ -18,7 +19,7 @@ const RISK_LABELS: Record<string, string> = {
   margin_under_5pct: "Margin under 5%",
 };
 
-const PARAM_LABELS: Record<string, string> = {
+export const PARAM_LABELS: Record<string, string> = {
   enrolment_delta_pct: "Enrolment change",
   staff_delta: "Staff change",
   fee_change_pct: "Fee change",
@@ -52,10 +53,16 @@ export function ResultsPanel({
   scenario,
   baseline,
   sensitivity,
+  forecastByMonth = {},
+  teacherLoad = null,
 }: {
   scenario: ScenarioResults;
   baseline: ScenarioResults;
   sensitivity: SensitivityRow[];
+  /** "YYYY-MM" -> forecast fee collections, rupees/month (forecasts.financeSeries, term spread evenly). */
+  forecastByMonth?: Record<string, number>;
+  /** Real mean periods/week from the published timetable; replaces the modelled teacher-load figure when present. */
+  teacherLoad?: { avgPeriodsWeek: number; maxPeriods: number } | null;
 }) {
   const revenueRupees = scenario.revenue_paise.map((p) => p / 100);
   const costRupees = scenario.cost_paise.map((p) => p / 100);
@@ -66,6 +73,7 @@ export function ResultsPanel({
     revenue: revenueRupees[i] ?? 0,
     cost: costRupees[i] ?? 0,
     baselineRevenue: baselineRevenueRupees[i] ?? 0,
+    forecast: forecastByMonth[ym] ?? null,
     // shortcut: the model gives one confidence_low/high_pct for the whole
     // horizon (widens with it), not a per-month series — applied uniformly
     // to every month rather than interpolated; upgrade if runScenario ever
@@ -83,13 +91,19 @@ export function ResultsPanel({
     baselineHorizonRevenue > 0 ? ((baselineHorizonRevenue - baselineHorizonCost) / baselineHorizonRevenue) * 100 : -100;
   const peakUtilisation = Math.max(...scenario.capacity_utilisation_pct, 0);
   const baselinePeakUtilisation = Math.max(...baseline.capacity_utilisation_pct, 0);
-  const teacherLoad = scenario.teacher_load_hours[0] ?? 0;
-  const baselineTeacherLoad = baseline.teacher_load_hours[0] ?? 0;
+  const hasForecast = chartData.some((d) => d.forecast != null);
+  const modelledLoad = scenario.teacher_load_hours[0] ?? 0;
+  const modelledBaselineLoad = baseline.teacher_load_hours[0] ?? 0;
+  // Real timetable load, moved by the model's scenario/baseline ratio (staff + enrolment deltas).
+  const teacherLoadValue = teacherLoad
+    ? Math.round(teacherLoad.avgPeriodsWeek * (modelledBaselineLoad > 0 ? modelledLoad / modelledBaselineLoad : 1) * 10) / 10
+    : modelledLoad;
+  const baselineTeacherLoad = teacherLoad ? teacherLoad.avgPeriodsWeek : modelledBaselineLoad;
 
   return (
     <div className="space-y-6">
       <ChartFrame
-        summary={`Revenue ${inr(horizonRevenue)} vs cost ${inr(horizonCost)} over ${scenario.months.length} months, scenario vs baseline.`}
+        summary={`Revenue ${inr(horizonRevenue)} vs cost ${inr(horizonCost)} over ${scenario.months.length} months, scenario vs baseline${hasForecast ? ", with the fee-collection forecast" : ""}.`}
         heightClass="h-64 sm:h-80"
       >
         <ComposedChart data={chartData} margin={{ left: 4, right: 8, top: 8 }}>
@@ -117,6 +131,17 @@ export function ResultsPanel({
           />
           <Line isAnimationActive animationDuration={300} dataKey="revenue" name="Scenario revenue" stroke="var(--chart-1)" strokeWidth={2} dot={{ r: 3 }} />
           <Line isAnimationActive animationDuration={300} dataKey="cost" name="Scenario cost" stroke="var(--chart-2)" strokeWidth={2} dot={{ r: 3 }} />
+          {hasForecast && (
+            <Line
+              isAnimationActive animationDuration={300}
+              dataKey="forecast"
+              name="Forecast (fee collections)"
+              stroke="var(--chart-3)"
+              strokeDasharray="2 3"
+              strokeWidth={2}
+              dot={false}
+            />
+          )}
         </ComposedChart>
       </ChartFrame>
 
@@ -142,9 +167,12 @@ export function ResultsPanel({
           <Delta current={peakUtilisation} base={baselinePeakUtilisation} invert />
         </div>
         <div className="rounded-lg border p-3">
-          <p className="text-xs text-muted-foreground">Teacher load (h/wk)</p>
-          <p className="text-lg font-semibold"><AnimatedNumber value={teacherLoad} /></p>
-          <Delta current={teacherLoad} base={baselineTeacherLoad} invert />
+          <p className="text-xs text-muted-foreground">{teacherLoad ? "Teacher load (periods/wk)" : "Teacher load (h/wk)"}</p>
+          <p className="text-lg font-semibold"><AnimatedNumber value={teacherLoadValue} /></p>
+          <Delta current={teacherLoadValue} base={baselineTeacherLoad} invert />
+          {teacherLoad && (
+            <p className="text-xs text-muted-foreground">Today {teacherLoad.avgPeriodsWeek} of {teacherLoad.maxPeriods} (timetable)</p>
+          )}
         </div>
       </div>
 

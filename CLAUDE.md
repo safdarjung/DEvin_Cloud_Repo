@@ -7,7 +7,9 @@ CoolSkool is an AI-powered school operating system for budget-conscious Indian p
 - **`ponytail` (full)** — smallest-complete-change discipline on every edit: reuse before you write, no speculative abstractions, no unrequested flexibility. End non-trivial changes with what you skipped and the risk.
 - **`andrej-karpathy-skills:karpathy-guidelines`** — load before writing code (pre-code protocol below).
 - **Context7 (`docs-lookup` agent)** — for any library API you're not certain of, against the versions pinned in `package.json`. If unreachable in your environment, fall back to installed `.d.ts`/`node_modules` source and say so rather than guessing.
-- **`caveman`** — terse replies, no filler, payload (code/commands/paths/errors) stays exact. Full sentences only for security warnings, irreversible actions, step order, and questions back to the user.
+- **`caveman`, dialect dropped** — terse replies in plain, grammatical English: no filler, no caveman dialect or broken grammar. Payload (code/commands/paths/errors) stays exact. Full sentences for security warnings, irreversible actions, step order, and questions back to the user.
+- **Skills** — every installed skill is available; invoke the one that fits the task (planning, TDD, debugging, review, security, frontend design, verification) without waiting to be asked.
+- **Model routing for delegated work** — the lead plans, briefs and reviews. Execution agents are chosen by task difficulty: Opus for security-sensitive, money, RLS/migration, AI-gateway and review work; Sonnet for standard full-stack modules, UI pages and seed data; Haiku for mechanical edits (registry lines, doc rows, test fixtures).
 
 If your harness doesn't auto-activate `ponytail`/`caveman` (they're user-level toggles, not portable with the repo), apply their rules anyway from this file.
 

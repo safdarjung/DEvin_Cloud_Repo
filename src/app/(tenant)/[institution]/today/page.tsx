@@ -19,6 +19,7 @@ import { listTeacherAssignments } from "@/modules/academics/assignments.queries"
 import { curriculumCoverageBySection } from "@/modules/academics/curriculum.queries";
 import { submissionsForAssignment } from "@/modules/academics/submissions.queries";
 import { assignmentStatusVariant } from "@/modules/academics/status";
+import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { getSession, getTodaySectionsForTeacher } from "@/modules/attendance/queries";
 import { getMyPapers } from "@/modules/exams/queries";
 import { insightCards } from "@/modules/insights/derived";
@@ -420,6 +421,11 @@ export default async function TodayPage({ params }: { params: Promise<{ institut
           )
         }
       />
+
+      {hasPermission(ctx, "ai.generate") && (
+        // Teacher view: no school-wide counts, so only the required props are neutral.
+        <DailyBriefing institutionSlug={institutionSlug} openEnquiries={0} enrolledCount={0} collections={null} />
+      )}
 
       {kpis.length > 0 && (
         <KpiStrip>

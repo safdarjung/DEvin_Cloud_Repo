@@ -14,6 +14,7 @@ import { AnimatedList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { deleteDiaryEntry, postDiaryEntry } from "@/modules/diary/actions";
 import type { DiaryEntryRow } from "@/modules/diary/queries";
+import { TranslateButton } from "@/modules/ai/components/TranslateButton";
 
 const ANY_SUBJECT = "any";
 const dateLabel = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -26,6 +27,7 @@ export function DiaryView({
   today,
   subjects,
   entries,
+  canTranslate = false,
 }: {
   institutionSlug: string;
   classSectionId: string;
@@ -33,6 +35,8 @@ export function DiaryView({
   today: string;
   subjects: { id: string; name: string }[];
   entries: DiaryEntryRow[];
+  /** Shows the AI translate control only; the route re-checks. */
+  canTranslate?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -120,6 +124,7 @@ export function DiaryView({
               Note for the class
               <Textarea required rows={4} maxLength={2000} value={body} onChange={(e) => setBody(e.target.value)} />
             </label>
+            {canTranslate && <TranslateButton institutionSlug={institutionSlug} text={body} onUse={setBody} />}
             <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
               <label className="space-y-1 text-sm">
                 Due date (optional)

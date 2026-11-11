@@ -155,7 +155,7 @@ async function setupPaidInvoice(institutionId: string, studentId: string, amount
 async function backdateLoan(loanId: string, daysLate: number): Promise<void> {
   await sql`
     update public.library_loans
-    set issued_on = current_date - ${daysLate + 14}::int, due_on = current_date - ${daysLate}::int
+    set issued_on = (now() at time zone 'Asia/Kolkata')::date - ${daysLate + 14}::int, due_on = (now() at time zone 'Asia/Kolkata')::date - ${daysLate}::int
     where id = ${loanId}::uuid
   `;
 }

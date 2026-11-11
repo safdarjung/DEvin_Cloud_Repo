@@ -17,12 +17,13 @@ export default async function PortalAssignmentsPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requireModule(ctx, "assignments");
   requirePermission(ctx, "assignment.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assignments`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assignments`, allParams);
   const assignments = await listStudentAssignments(ctx, selection.studentId);
   // Student branch only: guardians keep the plain list linking to the staff page.
   const isStudent = ctx.membership.role === "student";

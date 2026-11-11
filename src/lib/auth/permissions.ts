@@ -105,7 +105,91 @@ export type Permission =
   | "practice.attempt"
   | "scenario.manage"
   | "studio.request"
-  | "studio.approve";
+  | "studio.approve"
+  // features-18 (0113–0124); matrix in .superpowers/sdd/features-18/ROLES.md.
+  | "behaviour.read"
+  | "behaviour.write"
+  | "health.read"
+  | "health.write"
+  | "club.read"
+  | "club.manage"
+  | "club.join"
+  | "hostel.read"
+  | "hostel.manage"
+  | "expense.read"
+  | "expense.manage"
+  | "concession.read"
+  | "concession.manage"
+  | "concession.approve"
+  | "canteen.read"
+  | "canteen.manage"
+  | "inventory.read"
+  | "inventory.manage"
+  | "helpdesk.raise"
+  | "helpdesk.manage"
+  | "form.manage"
+  | "form.respond"
+  | "alumni.read"
+  | "alumni.manage"
+  | "payroll.manage"
+  | "payslip.read"
+  | "lab.read"
+  | "lab.book"
+  | "lab.manage"
+  // features-18 §A3 (0128–0132).
+  | "achievement.read"
+  | "achievement.write"
+  | "achievement.verify"
+  | "safety.alert.send"
+  | "safety.alert.read"
+  | "safety.headcount.mark"
+  | "compliance.read"
+  | "compliance.manage"
+  | "resource.read"
+  | "resource.manage"
+  | "duty.read"
+  | "duty.manage"
+  | "duty.swap";
+
+// Shared by owner/principal/admin (features-18 *.read / *.manage rows).
+const LEADERSHIP_F18 = [
+  "behaviour.read",
+  "behaviour.write",
+  "health.read",
+  "health.write",
+  "club.read",
+  "club.manage",
+  "hostel.read",
+  "hostel.manage",
+  "expense.read",
+  "expense.manage",
+  "concession.read",
+  "concession.manage",
+  "canteen.read",
+  "canteen.manage",
+  "inventory.read",
+  "inventory.manage",
+  "helpdesk.manage",
+  "form.manage",
+  "alumni.read",
+  "alumni.manage",
+  "payslip.read",
+  "lab.read",
+  "lab.book",
+  "lab.manage",
+  "achievement.read",
+  "achievement.write",
+  "achievement.verify",
+  "safety.alert.send",
+  "safety.alert.read",
+  "safety.headcount.mark",
+  "compliance.read",
+  "compliance.manage",
+  "resource.read",
+  "resource.manage",
+  "duty.read",
+  "duty.manage",
+] as const satisfies readonly Permission[];
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   owner: [
@@ -194,6 +278,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "scenario.manage",
     "studio.request",
     "studio.approve",
+    ...LEADERSHIP_F18,
+    "concession.approve",
+    "payroll.manage",
   ],
   principal: [
     "institution.settings.manage",
@@ -281,6 +368,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "scenario.manage",
     "studio.request",
     "studio.approve",
+    ...LEADERSHIP_F18,
+    "concession.approve",
   ],
   admin: [
     "institution.settings.manage",
@@ -351,6 +440,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "message.send",
     "scenario.manage",
     "studio.request",
+    ...LEADERSHIP_F18,
   ],
   admissions: [
     "dashboard.view",
@@ -380,6 +470,12 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "insight.read",
     "insight.review",
     "survey.respond",
+    "club.read",
+    "alumni.read",
+    "payslip.read",
+    "safety.alert.read",
+    "resource.read",
+    "duty.read",
   ],
   accountant: [
     "dashboard.view",
@@ -407,6 +503,21 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "data.export",
     "library.read",
     "survey.respond",
+    "club.read",
+    "expense.read",
+    "expense.manage",
+    "concession.read",
+    "concession.manage",
+    "canteen.read",
+    "canteen.manage",
+    "inventory.read",
+    "inventory.manage",
+    "payroll.manage",
+    "payslip.read",
+    "safety.alert.read",
+    "compliance.read",
+    "resource.read",
+    "duty.read",
   ],
   exam_controller: [
     "dashboard.view",
@@ -436,6 +547,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "insight.review",
     "forecast.read",
     "survey.respond",
+    "club.read",
+    "payslip.read",
+    "safety.alert.read",
+    "resource.read",
+    "duty.read",
   ],
   teacher: [
     "student.read",
@@ -469,6 +585,23 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "survey.respond",
     "message.read",
     "message.send",
+    "behaviour.read",
+    "behaviour.write",
+    "club.read",
+    "club.join",
+    "helpdesk.raise",
+    "form.respond",
+    "payslip.read",
+    "lab.read",
+    "lab.book",
+    "achievement.read",
+    "achievement.write",
+    "safety.alert.read",
+    "safety.headcount.mark",
+    "resource.read",
+    "resource.manage",
+    "duty.read",
+    "duty.swap",
   ],
   student: [
     "student.read",
@@ -490,6 +623,15 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "library.read",
     "practice.attempt",
+    "behaviour.read",
+    "club.read",
+    "club.join",
+    "canteen.read",
+    "helpdesk.raise",
+    "form.respond",
+    "achievement.read",
+    "safety.alert.read",
+    "resource.read",
   ],
   guardian: [
     "student.read",
@@ -514,6 +656,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "student_leave.request",
     "message.read",
     "message.send",
+    "behaviour.read",
+    "health.read",
+    "club.read",
+    "club.join",
+    "canteen.read",
+    "helpdesk.raise",
+    "form.respond",
+    "achievement.read",
+    "safety.alert.read",
+    "resource.read",
   ],
 };
 

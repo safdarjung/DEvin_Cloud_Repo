@@ -4,7 +4,7 @@ import { z } from "zod";
 import { uuid } from "../../lib/schemas/common.ts";
 
 // Mirrors migration 0067's `entity_type`/`mime` check constraints exactly.
-export const ENTITY_TYPES = ["student", "staff", "application", "submission"] as const;
+export const ENTITY_TYPES = ["student", "staff", "application", "submission", "resource"] as const;
 export const ALLOWED_MIMES = ["application/pdf", "image/jpeg", "image/png"] as const;
 export const MAX_DOCUMENT_SIZE_BYTES = 10485760;
 

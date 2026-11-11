@@ -16,6 +16,7 @@ export interface ModuleListItem {
   label: string;
   description: string;
   core: boolean;
+  priceInr: number;
   enabled: boolean;
   requires: ModuleKey[];
   options: ModuleOption[];
@@ -63,6 +64,7 @@ export function listModules(ctx: TenantContext): ModuleCategoryGroup[] {
         label: entry.label as string,
         description: entry.description as string,
         core: entry.core === true,
+        priceInr: entry.priceInr as number,
         enabled: isModuleEnabled(ctx, key),
         requires: [...((entry.requires as ModuleKey[] | undefined) ?? [])],
         options,

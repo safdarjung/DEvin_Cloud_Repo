@@ -4,7 +4,7 @@
 // demo/twin.ts's fixture produced. No Supabase here, so this half is
 // plain-unit-testable (CLAUDE.md "unit tests for mapping/pure logic").
 // `changeImpact` from demo/twin.ts is reused unchanged (lane brief).
-import type { ISODate, TwinEdge, TwinNode, TwinSnapshot } from "@/modules/fabric/types";
+import type { InsightSeverity, ISODate, TimetableConflict, TwinEdge, TwinNode, TwinSnapshot } from "@/modules/fabric/types";
 
 export interface SectionRow {
   id: string;
@@ -16,7 +16,7 @@ export interface SectionRow {
 export interface RoomRow {
   id: string;
   name: string;
-  /** Periods/week the bell schedule offers this room (6 x non-break periods) — not seating capacity. */
+  /** Periods/week the bell schedule offers this room (working days x non-break periods) — not seating capacity. */
   periodsTotal: number;
   periodsUsed: number;
 }
@@ -163,4 +163,75 @@ export function buildTwinSnapshot(input: TwinSnapshotInput): TwinSnapshot {
     nodes,
     edges,
   };
+}
+
+/**
+ * Scenario view: `current` with a saved simulator scenario's deltas applied
+ * linearly to node load — sections and routes scale with enrolment, teacher
+ * periods spread over (teachers + staff delta, floored at 1). Rooms and
+ * edges are unchanged: the scenario adds no sections or slots.
+ */
+export function applyScenario(
+  current: TwinSnapshot,
+  deltas: { enrolmentDeltaPct: number; staffDelta: number },
+  scenarioId: string,
+): TwinSnapshot {
+  const enrolmentFactor = 1 + deltas.enrolmentDeltaPct / 100;
+  const teachers = current.nodes.filter((n) => n.type === "teacher").length;
+  const teacherFactor = teachers > 0 ? teachers / Math.max(1, teachers + deltas.staffDelta) : 1;
+  const factorFor = (type: TwinNode["type"]): number =>
+    type === "student_group" || type === "route" ? enrolmentFactor : type === "teacher" ? teacherFactor : 1;
+
+  const nodes = current.nodes.map((n) => {
+    const factor = factorFor(n.type);
+    if (factor === 1 || n.load == null) return n;
+    const load = Math.round(n.load * factor);
+    return { ...n, load, utilisation_pct: utilisationPct(load, n.capacity ?? 0) };
+  });
+  return { ...current, state: "scenario", scenario_id: scenarioId, nodes };
+}
+
+export interface NodeConflicts {
+  count: number;
+  severity: InsightSeverity;
+}
+
+const CONFLICT_SEVERITY: Record<TimetableConflict["kind"], InsightSeverity> = {
+  room_capacity: "critical",
+  teacher_double_booked: "critical",
+  room_double_booked: "critical",
+  teacher_unavailable: "warning",
+};
+const SEVERITY_RANK: Record<InsightSeverity, number> = { info: 0, watch: 1, warning: 2, critical: 3 };
+
+/**
+ * timetableConflicts' rows -> per-node count + worst severity. Conflicts name
+ * their entities by label (room name, "grade-section", teacher name), the
+ * same labels buildTwinSnapshot gives those nodes.
+ * shortcut: two nodes sharing a label both get the conflict; key by id if
+ * timetableConflicts ever returns entity ids.
+ */
+export function conflictsByNode(nodes: TwinNode[], conflicts: TimetableConflict[]): Record<string, NodeConflicts> {
+  const idsByLabel = new Map<string, string[]>();
+  for (const n of nodes) idsByLabel.set(n.label, [...(idsByLabel.get(n.label) ?? []), n.id]);
+
+  const out: Record<string, NodeConflicts> = {};
+  for (const conflict of conflicts) {
+    const severity = CONFLICT_SEVERITY[conflict.kind];
+    for (const id of new Set(conflict.entities.flatMap((label) => idsByLabel.get(label) ?? []))) {
+      const prev = out[id];
+      out[id] = {
+        count: (prev?.count ?? 0) + 1,
+        severity: prev && SEVERITY_RANK[prev.severity] > SEVERITY_RANK[severity] ? prev.severity : severity,
+      };
+    }
+  }
+  return out;
+}
+
+/** Attendance % tier against settings.attendance.alert_thresholds — same comparisons as attendance's sectionsBelowThreshold. */
+export function attendanceTier(pct: number, thresholds: { warn: number; critical: number }): "ok" | "watch" | "critical" {
+  if (pct < thresholds.critical) return "critical";
+  if (pct < thresholds.warn) return "watch";
+  return "ok";
 }

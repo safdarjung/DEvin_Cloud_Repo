@@ -19,11 +19,12 @@ export default async function PortalFeesPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "finance.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/fees`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/fees`, allParams);
   const receipts = await listReceiptsForStudent(ctx, selection.studentId);
 
   return (

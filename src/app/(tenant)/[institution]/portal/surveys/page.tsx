@@ -21,13 +21,14 @@ export default async function PortalSurveysPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   if (ctx.membership.role !== "guardian") notFound();
   requirePermission(ctx, "survey.respond");
 
   // Surveys are addressed to the guardian, not a child; the id only keeps the selected child in the URL.
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/surveys`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/surveys`, allParams);
   const surveys = await surveyMine(ctx);
 
   return (

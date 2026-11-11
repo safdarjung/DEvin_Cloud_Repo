@@ -6,6 +6,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
+import { closeInviteCodesHelper, mintInviteCode } from "../helpers/invite-codes";
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -76,6 +77,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await sql.end();
+  await closeInviteCodesHelper();
 });
 
 function institutionsRequest(body: unknown, headers: Record<string, string> = {}): Request {
@@ -94,7 +96,7 @@ describe("POST /api/v1/institutions (M03-T4)", () => {
 
     const res = await createInstitution(
       institutionsRequest(
-        { input: { name: "API Institutions School", slug } },
+        { input: { name: "API Institutions School", slug, code: await mintInviteCode() } },
         { authorization: `Bearer ${token}` },
       ),
     );
@@ -119,7 +121,7 @@ describe("POST /api/v1/institutions (M03-T4)", () => {
 
   it("no token -> 401 unauthenticated", async () => {
     const res = await createInstitution(
-      institutionsRequest({ input: { name: "No Token School", slug: `api-inst-notoken-${crypto.randomUUID().slice(0, 8)}` } }),
+      institutionsRequest({ input: { name: "No Token School", slug: `api-inst-notoken-${crypto.randomUUID().slice(0, 8)}`, code: "ANY-CODE" } }),
     );
     expect(res.status).toBe(401);
     const body = await res.json();
@@ -132,7 +134,7 @@ describe("POST /api/v1/institutions (M03-T4)", () => {
 
     const res = await createInstitution(
       institutionsRequest(
-        { input: { name: "Reserved Slug School", slug: "admin" } },
+        { input: { name: "Reserved Slug School", slug: "admin", code: await mintInviteCode() } },
         { authorization: `Bearer ${token}` },
       ),
     );
@@ -149,24 +151,47 @@ describe("POST /api/v1/institutions (M03-T4)", () => {
     const slug = `api-inst-dup-${crypto.randomUUID().slice(0, 8)}`;
 
     const first = await createInstitution(
-      institutionsRequest({ input: { name: "Dup School One", slug } }, { authorization: `Bearer ${token1}` }),
+      institutionsRequest({ input: { name: "Dup School One", slug, code: await mintInviteCode() } }, { authorization: `Bearer ${token1}` }),
     );
     expect(first.status).toBe(200);
     const firstBody = await first.json();
     institutionIdsToDelete.add(firstBody.data.institutionId);
 
     const second = await createInstitution(
-      institutionsRequest({ input: { name: "Dup School Two", slug } }, { authorization: `Bearer ${token2}` }),
+      institutionsRequest({ input: { name: "Dup School Two", slug, code: await mintInviteCode() } }, { authorization: `Bearer ${token2}` }),
     );
     expect(second.status).toBe(409);
     const secondBody = await second.json();
     expect(secondBody.error.code).toBe("conflict");
   });
 
+  it("no code, wrong code or a used-up code -> rejected and no school is created (0127)", async () => {
+    const { userId, token } = await newSignedInUser("badcode");
+    userIdsToDelete.add(userId);
+    const slug = `api-inst-badcode-${crypto.randomUUID().slice(0, 8)}`;
+    const auth = { authorization: `Bearer ${token}` };
+
+    const missing = await createInstitution(institutionsRequest({ input: { name: "Bad Code School", slug } }, auth));
+    expect((await missing.json()).error.code).toBe("validation_failed");
+
+    const usedUp = await mintInviteCode({ maxUses: 1, usedCount: 1 });
+    const bodies = [];
+    for (const code of ["WRONG-CODE", usedUp]) {
+      const res = await createInstitution(institutionsRequest({ input: { name: "Bad Code School", slug, code } }, auth));
+      expect(res.status).toBe(403);
+      bodies.push(await res.json());
+    }
+    expect(bodies[0]).toEqual(bodies[1]);
+    expect(bodies[0].error.code).toBe("forbidden");
+
+    const rows = await sql`select 1 from public.institutions where slug = ${slug}`;
+    expect(rows).toHaveLength(0);
+  });
+
   it("cross-site Origin -> 403 forbidden", async () => {
     const res = await createInstitution(
       institutionsRequest(
-        { input: { name: "CSRF School", slug: `api-inst-csrf-${crypto.randomUUID().slice(0, 8)}` } },
+        { input: { name: "CSRF School", slug: `api-inst-csrf-${crypto.randomUUID().slice(0, 8)}`, code: "ANY-CODE" } },
         { origin: "https://evil.example" },
       ),
     );

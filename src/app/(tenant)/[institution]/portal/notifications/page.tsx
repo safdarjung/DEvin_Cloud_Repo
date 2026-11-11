@@ -18,11 +18,12 @@ export default async function PortalNotificationsPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "notification.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/notifications`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/notifications`, allParams);
   const notifications = await listMyNotifications(ctx);
 
   return (

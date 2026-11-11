@@ -2,17 +2,20 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, ErrorState } from "@/components/states";
-import { listStudioRequests, type StudioRequestRecord } from "@/modules/fabric/studio.queries";
+import { listModules } from "@/modules/core/queries";
+import { catalogMatches, listStudioRequests, type StudioRequestRecord, type StudioRequestStatus } from "@/modules/fabric/studio.queries";
 import { RequestDetail } from "@/modules/fabric/components/studio/request-detail";
 import { RequestList } from "@/modules/fabric/components/studio/request-list";
 import { RequestWizard } from "@/modules/fabric/components/studio/request-wizard";
+
+const STATUS_FILTERS: StudioRequestStatus[] = ["submitted", "proposed", "approved", "in_progress", "delivered", "rejected"];
 
 export default async function CustomStudioPage({
   params,
   searchParams,
 }: {
   params: Promise<{ institution: string }>;
-  searchParams: Promise<{ request?: string }>;
+  searchParams: Promise<{ request?: string; status?: string }>;
 }) {
   const { institution: slug } = await params;
   const sp = await searchParams;
@@ -32,6 +35,12 @@ export default async function CustomStudioPage({
 
   const selectedId = sp.request;
   const selected = selectedId ? items.find((r) => r.id === selectedId) : undefined;
+  const statusFilter = STATUS_FILTERS.find((s) => s === sp.status);
+  // U2: only before proposing — once the AI has proposed, its resolution says the same thing.
+  const matches =
+    selected?.status === "submitted"
+      ? catalogMatches(selected, listModules(ctx).flatMap((group) => group.modules))
+      : [];
 
   return (
     <div data-fabric-ws="studio" className="space-y-4">
@@ -50,11 +59,11 @@ export default async function CustomStudioPage({
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <div className={selected ? "hidden lg:block" : undefined}>
-            <RequestList base={base} items={items} selectedId={selectedId} />
+            <RequestList base={base} items={items} selectedId={selectedId} statusFilter={statusFilter} />
           </div>
           <div className={selected ? undefined : "hidden lg:block"}>
             {selected ? (
-              <RequestDetail institutionSlug={slug} base={base} request={selected} canApprove={canApprove} />
+              <RequestDetail institutionSlug={slug} base={base} request={selected} canApprove={canApprove} catalogMatches={matches} />
             ) : (
               <EmptyState
                 title={selectedId ? "Request not in this list" : "Pick a request"}

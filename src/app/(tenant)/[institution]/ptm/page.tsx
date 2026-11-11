@@ -13,6 +13,7 @@ import { CloseSurveyButton, SurveyForm } from "@/modules/ptm/components/SurveyAd
 import { PtmSlotsManager } from "@/modules/ptm/components/PtmSlotsManager";
 import { ptmEvents, ptmTeacherSchedule } from "@/modules/ptm/queries";
 import { surveyList } from "@/modules/ptm/survey.queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
 import { FadeIn } from "@/components/motion";
 import { ProgressBar } from "@/components/widgets/viz";
 
@@ -32,6 +33,7 @@ export default async function PtmPage({ params }: { params: Promise<{ institutio
   const canSlots = hasPermission(ctx, "ptm.slot.manage");
   if (!canManage && !canSlots) throw new AppError("forbidden", "You do not have access to parent-teacher meetings.");
   const canSurveys = canManage && hasPermission(ctx, "survey.manage");
+  const canBrief = aiTaskOn(ctx, "ptm_brief");
 
   const [eventsR, sectionsR, surveysR] = await Promise.allSettled([
     ptmEvents(ctx, canManage),
@@ -84,7 +86,7 @@ export default async function PtmPage({ params }: { params: Promise<{ institutio
                       valueLabel={`${schedules[i].filter((s) => s.booking).length} / ${schedules[i].length}`}
                     />
                   )}
-                  <PtmSlotsManager institutionSlug={institutionSlug} eventId={e.id} dayStartsAt={e.dayStartsAt} dayEndsAt={e.dayEndsAt} slots={schedules[i]} />
+                  <PtmSlotsManager institutionSlug={institutionSlug} eventId={e.id} dayStartsAt={e.dayStartsAt} dayEndsAt={e.dayEndsAt} slots={schedules[i]} canBrief={canBrief} />
                 </CardContent>
               </Card>
               </FadeIn>

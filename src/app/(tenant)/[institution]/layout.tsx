@@ -14,6 +14,8 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
 import { getClaims } from "@/lib/supabase/server";
+import { brandingStyle } from "@/modules/core/setup/branding-utils";
+import { getLayoutBranding } from "@/modules/core/setup/branding.queries";
 import { startOfToday } from "@/modules/fabric/components/fabric-page";
 import { FabricProvider } from "@/modules/fabric/components/fabric-provider";
 import { fabricSeed } from "@/modules/fabric/components/fabric-seed";
@@ -81,10 +83,12 @@ export default async function TenantLayout({
     // Same permission /settings/modules requires.
     settingsHref: hasPermission(ctx, "institution.settings.manage") ? `${base}/settings/modules` : undefined,
   };
+  // F18 §H: school branding (validated colour as CSS variables, logo via signed URL); default theme when unset.
+  const branding = await getLayoutBranding(ctx);
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col" style={brandingStyle(branding.primaryColor)}>
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-(--z-toast) focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
@@ -97,6 +101,7 @@ export default async function TenantLayout({
           <TenantHeader
             institutionSlug={ctx.institution.slug}
             institutionName={ctx.institution.name}
+            logoUrl={branding.logoUrl ?? undefined}
             role={ctx.membership.role}
             userName={sidebarUser.name}
             userEmail={userEmail}

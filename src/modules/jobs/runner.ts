@@ -193,6 +193,66 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
 }
 
 /**
+ * Runs ONE already-enqueued job inside the request that enqueued it (a fast
+ * path for jobs that must not wait for a scheduler, e.g. notify.safety_alert).
+ * Same steps as `runOnceCore` — claim, `dispatch` (module gate + handler),
+ * `jobs_complete` — so a later runner pass sees it succeeded. The claim is a
+ * conditional UPDATE keyed on idempotency key + institution + `queued`, so it
+ * never takes a job a runner already holds. It does not use an attempt; on
+ * failure or timeout the job goes straight back to `queued` (no backoff) with
+ * `last_error` set, and the error is rethrown. The handler keeps running after
+ * a timeout, which is safe only because handlers are idempotent (lesson 11).
+ * Returns false when there was nothing queued to claim.
+ */
+export async function runJobNow(
+  admin: SupabaseClient<Database>,
+  { institutionId, idempotencyKey, timeoutMs }: { institutionId: string; idempotencyKey: string; timeoutMs: number },
+): Promise<boolean> {
+  const workerId = `inline-${crypto.randomUUID()}`;
+  const { data, error } = await admin
+    .from("jobs")
+    .update({ status: "running", locked_at: new Date().toISOString(), locked_by: workerId })
+    .eq("idempotency_key", idempotencyKey)
+    .eq("institution_id", institutionId)
+    .eq("status", "queued")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  const job = toJobRow(data);
+  if (!job) return false;
+
+  const ports = createRunnerPorts(admin);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      ports.dispatch(job),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("in-request budget exceeded")), timeoutMs);
+      }),
+    ]);
+    await ports.completeJob(job.id, true);
+    return true;
+  } catch (err) {
+    const { error: releaseError } = await admin
+      .from("jobs")
+      .update({
+        status: "queued",
+        locked_at: null,
+        locked_by: null,
+        last_error: sanitizeLastError(err instanceof Error ? err.message : "unknown error"),
+      })
+      .eq("id", job.id)
+      .eq("locked_by", workerId)
+      .eq("status", "running");
+    // Unreleased, the runner's 10-minute stale reclaim still picks it up.
+    if (releaseError) console.error(`job ${job.id} release failed`, { code: releaseError.code });
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Claims and processes jobs until the budget, the max count, or an empty
  * queue is hit. Never loses a job on a handler exception: every claimed job
  * is completed, dead-lettered, or left for the next run's stale-job reclaim

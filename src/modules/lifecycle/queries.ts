@@ -81,3 +81,52 @@ export async function lifecycleHistory(ctx: TenantContext, studentId: string): P
 
   return { enrolments, events };
 }
+
+export interface PromotionSection {
+  id: string;
+  label: string;
+  name: string;
+  gradeSortKey: number;
+  /** Active enrolments (from-year only; 0 for to-year sections). */
+  students: number;
+}
+
+export interface PromotionPlan {
+  from: PromotionSection[];
+  to: PromotionSection[];
+}
+
+/** Sections of both years with the from-year's active head-count: the preview the promote form shows before the confirm step. */
+export async function promotionPlan(ctx: TenantContext, fromYearId: string, toYearId: string): Promise<PromotionPlan> {
+  const supabase = await createClient();
+  const load = async (yearId: string) => {
+    const { data, error } = await supabase
+      .from("class_sections")
+      .select("id, name, grades(code, sort_key)")
+      .eq("institution_id", ctx.institution.id)
+      .eq("academic_year_id", yearId);
+    if (error) throw error;
+    return (data ?? []).map((r) => {
+      const g = r.grades as { code: string; sort_key: number } | null;
+      return { id: r.id, name: r.name, label: `${g?.code ?? "?"}-${r.name}`, gradeSortKey: g?.sort_key ?? 0 };
+    });
+  };
+  const [from, to] = await Promise.all([load(fromYearId), load(toYearId)]);
+  const counts = await Promise.all(
+    from.map(async (s) => {
+      const { count, error } = await supabase
+        .from("enrolments")
+        .select("id", { count: "exact", head: true })
+        .eq("institution_id", ctx.institution.id)
+        .eq("class_section_id", s.id)
+        .eq("status", "active");
+      if (error) throw error;
+      return count ?? 0;
+    }),
+  );
+  const byOrder = (a: PromotionSection, b: PromotionSection) => a.gradeSortKey - b.gradeSortKey || a.name.localeCompare(b.name);
+  return {
+    from: from.map((s, i) => ({ ...s, students: counts[i] })).sort(byOrder),
+    to: to.map((s) => ({ ...s, students: 0 })).sort(byOrder),
+  };
+}

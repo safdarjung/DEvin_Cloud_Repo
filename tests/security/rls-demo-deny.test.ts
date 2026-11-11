@@ -25,6 +25,7 @@ const DEMO_ROLE_LOGINS: Record<string, string> = {
 // in this set must hold >=1 demo row — otherwise "0 rows" proves nothing
 // (there was nothing to leak), and the deny probe below would be vacuous.
 const EMPTY_IN_DEMO = new Set<string>([
+  "alumni_profiles", // §8.1 fixes students at 3,024 (all statuses); no graduated student in demo, /alumni shows its empty state
   "ai_usage_events", // M22 ruling: seeded agent runs cost 0, no model called
   "announcement_audiences", // no announcement published in the demo tenant
   "announcements", // no announcement published in the demo tenant
@@ -44,6 +45,7 @@ const EMPTY_IN_DEMO = new Set<string>([
   "practice_attempts", // 0103: no practice quiz taken in the demo tenant
   "simulation_scenarios", // 0106: no what-if scenario saved in the demo tenant
   "question_bank", // not used by the demo exam flow
+  "safety_alert_sections", // 0129: seeded alerts target all/staff, none targets specific sections
   "studio_requests", // 0107: no Custom Studio request submitted in the demo tenant
   "result_remarks", // no result remark added in the demo tenant
   "scheduled_reports", // M15: none scheduled in the demo tenant

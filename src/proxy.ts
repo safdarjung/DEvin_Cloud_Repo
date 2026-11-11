@@ -7,7 +7,8 @@ import { isMarketingPath } from "@/lib/marketing/routes";
 
 // Session refresh only — never authorization. Server Actions can bypass
 // proxy matchers, so every action re-verifies (04 §3, 07 §1 T13).
-const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout"]);
+// "start": public invite-code sign-up (F18 §H), reached with no session.
+const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout", "start"]);
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -47,7 +48,7 @@ export async function proxy(request: NextRequest) {
   const isLogin = firstSegment === "login";
   const wantsPicker = request.nextUrl.searchParams.has("switch");
   const isMarketing = isMarketingPath(pathname) && firstSegment !== "select";
-  if (!data?.claims && demoAutoLoginEnabled() && !isMarketing && firstSegment !== "logout" && !(isLogin && wantsPicker)) {
+  if (!data?.claims && demoAutoLoginEnabled() && !isMarketing && firstSegment !== "logout" && firstSegment !== "start" && !(isLogin && wantsPicker)) {
     if (await signInAsDemo(supabase, defaultDemoEmail())) {
       data = (await supabase.auth.getClaims()).data;
       if (isLogin) {

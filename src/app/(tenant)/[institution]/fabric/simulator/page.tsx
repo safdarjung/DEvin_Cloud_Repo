@@ -2,7 +2,10 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
 import { Simulator } from "@/modules/fabric/components/simulator/simulator";
-import { listScenarios, realBaselineFacts } from "@/modules/fabric/simulator.queries";
+import { listScenarios, pipelineEnrolmentHint, realBaselineFacts, simulatorSignals } from "@/modules/fabric/simulator.queries";
+import { feeForecastSpread } from "@/modules/fabric/lab.queries";
+import { isModuleEnabled } from "@/lib/modules/catalog";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 
 export default async function SimulatorPage({
   params,
@@ -17,11 +20,29 @@ export default async function SimulatorPage({
   // owner/principal inside fabric.simulator.decide.
   requirePermission(ctx, "scenario.manage");
 
-  const [{ facts }, scenarios] = await Promise.all([realBaselineFacts(ctx), listScenarios(ctx)]);
+  const [{ facts }, scenarios, signals, spread] = await Promise.all([
+    realBaselineFacts(ctx),
+    listScenarios(ctx),
+    simulatorSignals(ctx),
+    feeForecastSpread(ctx),
+  ]);
+  const enrolmentHint = signals.funnel ? pipelineEnrolmentHint(signals.funnel, facts.students) : null;
+  const aiOn = isModuleEnabled(ctx, "ai_briefings");
 
   return (
     <FabricPage title="Simulator" ws="simulator">
-      <Simulator institutionSlug={institutionSlug} role={ctx.membership.role} facts={facts} initialScenarios={scenarios} />
+      <Simulator
+        institutionSlug={institutionSlug}
+        role={ctx.membership.role}
+        facts={facts}
+        initialScenarios={scenarios}
+        forecastByMonth={signals.forecastByMonth}
+        enrolmentHint={enrolmentHint}
+        teacherLoad={signals.teacherLoad}
+        spread={spread}
+        canAiScenario={aiOn && isAiCapabilityEnabled(ctx, "lab_scenario")}
+        canExplain={aiOn && isAiCapabilityEnabled(ctx, "lab_explain")}
+      />
     </FabricPage>
   );
 }

@@ -7,10 +7,16 @@ import { homePathFor, navItemsFor } from "@/lib/nav";
 // Live workspaces (2026-11-06): twin + marketplace need dashboard.view; students needs
 // mastery.review (+ mastery module), simulator scenario.manage, studio studio.request.
 const VIEW_WORKSPACES = ["/fabric/twin", "/fabric/marketplace"];
-const LEADER_WORKSPACES = [...VIEW_WORKSPACES, "/fabric/students", "/fabric/simulator", "/fabric/studio"];
+const LEADER_WORKSPACES = [...VIEW_WORKSPACES, "/fabric/students", "/fabric/simulator", "/fabric/studio", "/fabric/workflows"];
 const FABRIC_HREFS = [
   "/fabric/learning", "/fabric/operations", "/fabric/finance-intel", "/fabric/insights",
-  "/fabric/agents", "/fabric/data", "/fabric/trust",
+  "/fabric/agents", "/fabric/data", "/fabric/trust", "/fabric/lab",
+];
+// features-18 pages held by owner, principal and admin (ROLES.md nav gates).
+const F18_LEADERS = [
+  "/students/lifecycle", "/exams/seating", "/behaviour", "/health", "/clubs", "/finance/concessions", "/finance/expenses",
+  "/staff", "/library", "/visitors", "/certificates", "/hostel", "/labs", "/canteen", "/inventory", "/alumni", "/helpdesk", "/forms", "/documents",
+  "/achievements", "/safety", "/compliance", "/resources", "/duties",
 ];
 // Permission-gated links (insight.read / forecast.read / agent.run): staff roles
 // without them don't get dead pages. Demo tenant, no module settings.
@@ -40,6 +46,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/modules",
     "/settings/ai",
     "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
+    ...F18_LEADERS, "/finance/fee-plans", "/payroll",
   ],
   principal: [
     ...FABRIC_HREFS,
@@ -61,6 +68,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/modules",
     "/settings/ai",
     "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
+    ...F18_LEADERS, "/finance/fee-plans",
   ],
   admin: [
     ...FABRIC_HREFS,
@@ -81,23 +89,32 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/modules",
     "/settings/ai",
     "/diary", "/lesson-plans", "/ptm", "/timetable", "/assistant", "/messages",
+    ...F18_LEADERS,
   ],
-  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
-  accountant: ["/dashboard", "/students", "/finance", "/finance/ledger", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant"],
+  admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant",
+    "/students/lifecycle", "/clubs", "/staff", "/certificates", "/alumni", "/documents", "/safety", "/resources", "/duties"],
+  accountant: ["/dashboard", "/students", "/finance", "/finance/ledger", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant",
+    "/clubs", "/finance/fee-plans", "/finance/concessions", "/finance/expenses", "/payroll", "/staff", "/canteen", "/inventory", "/safety", "/compliance", "/resources", "/duties"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/timetable", "/assistant"],
-  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages"],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/timetable", "/assistant",
+    "/exams/seating", "/clubs", "/staff", "/safety", "/resources", "/duties"],
+  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages",
+    "/behaviour", "/clubs", "/labs", "/staff", "/visitors", "/helpdesk", "/forms", "/achievements", "/safety", "/resources", "/duties"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   // They get the portal's own sidebar (formerly PortalNav's tab strip).
   student: [
     "/portal", "/portal/subjects", "/portal/study", "/portal/practice", "/portal/assignments",
     "/portal/results", "/portal/attendance", "/portal/fees", "/portal/notifications",
+    "/portal/behaviour", "/portal/clubs", "/portal/canteen", "/portal/forms", "/portal/helpdesk",
+    "/portal/achievements", "/portal/safety", "/portal/resources",
   ],
   guardian: [
     "/portal", "/portal/attendance", "/portal/results", "/portal/assignments", "/portal/updates",
     "/portal/fees", "/portal/messages", "/portal/meetings", "/portal/assistant", "/portal/leave",
     "/portal/surveys", "/portal/notifications",
+    "/portal/behaviour", "/portal/health", "/portal/canteen", "/portal/clubs", "/portal/forms", "/portal/helpdesk",
+    "/portal/achievements", "/portal/safety", "/portal/resources",
   ],
 };
 

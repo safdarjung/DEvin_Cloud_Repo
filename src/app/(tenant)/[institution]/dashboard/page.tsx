@@ -29,6 +29,8 @@ import { Panel, PanelEmpty, type FeedItem, type StatTileProps } from "@/modules/
 import { DailyBriefing } from "@/modules/core/components/dashboard/DailyBriefing";
 import { FeesByClassChart } from "@/modules/core/components/dashboard/FeesByClassChart";
 import { GradeDistributionChart } from "@/modules/core/components/dashboard/GradeDistributionChart";
+import { SetupChecklist } from "@/modules/core/setup/components/SetupChecklist";
+import { getSetupStatus } from "@/modules/core/setup/queries";
 import { formatINR, getDashboardData } from "@/modules/core/dashboard.queries";
 import { listExams, listRecheckQueue, listSectionOptions } from "@/modules/exams/queries";
 import { upcomingExamPapers } from "@/modules/exams/upcoming.queries";
@@ -956,7 +958,13 @@ export default async function DashboardPage({
     );
   }
 
+  // F18 §H: setup progress for school managers, until every step is done or skipped.
+  const setupStatus = hasPermission(ctx, "institution.settings.manage") ? await getSetupStatus(ctx).catch(() => null) : null;
+
   return (
-    <GsapStage className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12">{body}</GsapStage>
+    <>
+      {setupStatus && !setupStatus.complete && <SetupChecklist institutionSlug={institutionSlug} status={setupStatus} />}
+      <GsapStage className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12">{body}</GsapStage>
+    </>
   );
 }

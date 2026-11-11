@@ -15,11 +15,12 @@ export default async function PortalAttendancePage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "attendance.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/attendance`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/attendance`, allParams);
   const profile = await getStudentProfile(ctx, selection.studentId);
   const termId = profile?.enrolment ? await getCurrentTermId(ctx, profile.enrolment.academicYearId) : null;
 

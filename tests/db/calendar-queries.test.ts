@@ -27,11 +27,12 @@ async function createEvent(
   academicYearId: string,
   overrides: Partial<{ kind: string; title: string; startsOn: string; endsOn: string; audience: string }> = {},
 ): Promise<string> {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
   const [row] = await sql`
     insert into public.academic_calendar_events (institution_id, academic_year_id, kind, title, starts_on, ends_on, audience, created_by)
     values (
       ${inst.institutionId}, ${academicYearId}, ${overrides.kind ?? "event"}, ${overrides.title ?? "Event"},
-      ${overrides.startsOn ?? "2026-11-10"}, ${overrides.endsOn ?? "2026-11-10"}, ${overrides.audience ?? "all"},
+      ${overrides.startsOn ?? today}, ${overrides.endsOn ?? today}, ${overrides.audience ?? "all"},
       ${inst.users.owner.id}
     )
     returning id

@@ -1,5 +1,7 @@
 "use client";
 
+import { LimitedBadge } from "@/components/honesty";
+import { formatPriceInr, PRICE_NOTE } from "@/lib/modules/catalog";
 import { CheckIcon, XIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,6 +53,11 @@ export function ModuleDetail({
             <TabsContent value="overview" className="space-y-3 text-sm">
               <p>
                 <span className="text-muted-foreground">Category:</span> {category}
+              </p>
+              <p className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground">Price:</span> <strong>{formatPriceInr(module.priceInr)}</strong>
+                <LimitedBadge />
+                <span className="text-xs text-muted-foreground">{PRICE_NOTE}</span>
               </p>
               {module.options.length > 0 && (
                 <div>

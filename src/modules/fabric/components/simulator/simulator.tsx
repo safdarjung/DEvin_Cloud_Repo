@@ -12,11 +12,14 @@ import { LimitedBadge } from "@/components/honesty";
 import { inr } from "@/lib/format";
 import type { Role } from "@/lib/auth/permissions";
 import { runScenario, sensitivity, type BaselineFacts } from "@/modules/fabric/demo/simulator";
-import type { SavedScenario } from "@/modules/fabric/simulator.queries";
+import type { SavedScenario, SimulatorSignals } from "@/modules/fabric/simulator.queries";
 import type { ScenarioAssumptions } from "@/modules/fabric/types";
 import { downloadFile, toCsv } from "@/modules/fabric/components/download";
+import { ExplainButton } from "@/modules/fabric/components/lab/explain-button";
 import { AssumptionsPanel, baselineAssumptions } from "./assumptions-panel";
 import { ResultsPanel } from "./results-panel";
+import { RiskPanel } from "./risk-panel";
+import { ScenarioAi } from "./scenario-ai";
 import { ScenarioList } from "./scenario-list";
 
 export function Simulator({
@@ -24,11 +27,24 @@ export function Simulator({
   role,
   facts,
   initialScenarios,
+  forecastByMonth,
+  enrolmentHint,
+  teacherLoad,
+  spread,
+  canAiScenario,
+  canExplain,
 }: {
   institutionSlug: string;
   role: Role;
   facts: BaselineFacts;
   initialScenarios: SavedScenario[];
+  forecastByMonth: SimulatorSignals["forecastByMonth"];
+  enrolmentHint: { pending: number; pct: number } | null;
+  teacherLoad: SimulatorSignals["teacherLoad"];
+  /** Monte Carlo revenue spread (lab.queries.feeForecastSpread). */
+  spread: { sigmaPct: number; fromBacktest: boolean };
+  canAiScenario: boolean;
+  canExplain: boolean;
 }) {
   const baseline = useMemo(() => baselineAssumptions(facts), [facts]);
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(baseline);
@@ -79,13 +95,35 @@ export function Simulator({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_320px]">
         <details className="rounded-lg border p-3 lg:border-none lg:p-0" open>
           <summary className="cursor-pointer text-sm font-medium lg:hidden">Assumptions</summary>
-          <div className="mt-3 lg:mt-0">
-            <AssumptionsPanel assumptions={assumptions} baseline={baseline} onChange={setAssumptions} />
+          <div className="mt-3 space-y-4 lg:mt-0">
+            {canAiScenario && <ScenarioAi institutionSlug={institutionSlug} current={assumptions} onApply={setAssumptions} />}
+            <AssumptionsPanel assumptions={assumptions} baseline={baseline} onChange={setAssumptions} enrolmentHint={enrolmentHint} />
           </div>
         </details>
 
-        <div>
-          <ResultsPanel scenario={scenarioResults} baseline={baselineResults} sensitivity={sensitivityRows} />
+        <div className="space-y-4">
+          <ResultsPanel
+            scenario={scenarioResults}
+            baseline={baselineResults}
+            sensitivity={sensitivityRows}
+            forecastByMonth={forecastByMonth}
+            teacherLoad={teacherLoad}
+          />
+          {canExplain && (
+            <ExplainButton
+              key={JSON.stringify(assumptions)}
+              institutionSlug={institutionSlug}
+              kind="scenario"
+              target={assumptions}
+              label="Explain this result"
+            />
+          )}
+          <RiskPanel
+            assumptions={assumptions}
+            facts={facts}
+            spread={spread}
+            onApplyFee={(fee) => setAssumptions({ ...assumptions, fee_change_pct: fee })}
+          />
         </div>
 
         <div>

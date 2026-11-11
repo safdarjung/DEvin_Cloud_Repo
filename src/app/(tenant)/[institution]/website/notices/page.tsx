@@ -9,6 +9,7 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, requireModule } from "@/lib/auth/require";
 import { NoticeForm } from "@/modules/website/components/NoticeForm";
 import { listNotices } from "@/modules/website/queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
 
 // Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
 const ROW_ENTER = "motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-(--duration-slow)";
@@ -68,7 +69,7 @@ export default async function NoticesPage({ params }: { params: Promise<{ instit
           </CardContent>
         </Card>
         <div className="min-w-0 self-start">
-          <NoticeForm institutionSlug={institutionSlug} />
+          <NoticeForm institutionSlug={institutionSlug} canTranslate={aiTaskOn(ctx, "translate")} />
         </div>
       </FadeIn>
     </div>

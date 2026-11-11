@@ -1,34 +1,40 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ActionResult } from "@/lib/actions/result";
 import { upsertNotice } from "@/modules/website/actions";
+import { TranslateButton } from "@/modules/ai/components/TranslateButton";
 
 interface NoticeFormProps {
   institutionSlug: string;
+  /** Shows the AI translate control only; the route re-checks. */
+  canTranslate?: boolean;
 }
 
 // shortcut: no edit-existing-notice flow here — the packet's acceptance
 // criteria only need notices created and shown publicly per is_public/dates
 // (criterion 5); upgrade to an edit form once a packet needs it.
-export function NoticeForm({ institutionSlug }: NoticeFormProps) {
+export function NoticeForm({ institutionSlug, canTranslate = false }: NoticeFormProps) {
   const router = useRouter();
+  const [body, setBody] = useState("");
   const [state, formAction, pending] = useActionState<ActionResult<{ id: string }> | null, FormData>(
     async (_prev, formData) => {
       const publishAtLocal = String(formData.get("publishAt") ?? "");
       const expiresAtLocal = String(formData.get("expiresAt") ?? "");
-      return upsertNotice(institutionSlug, {
+      const result = await upsertNotice(institutionSlug, {
         title: String(formData.get("title") ?? "").trim(),
         body: String(formData.get("body") ?? "").trim(),
         publishAt: publishAtLocal ? new Date(publishAtLocal).toISOString() : new Date().toISOString(),
         expiresAt: expiresAtLocal ? new Date(expiresAtLocal).toISOString() : undefined,
         isPublic: formData.get("isPublic") === "on",
       });
+      if (result.ok) setBody(""); // body is controlled now, so the form reset no longer clears it
+      return result;
     },
     null,
   );
@@ -53,7 +59,10 @@ export function NoticeForm({ institutionSlug }: NoticeFormProps) {
         required
         maxLength={5000}
         className="min-h-24"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
       />
+      {canTranslate && <TranslateButton institutionSlug={institutionSlug} text={body} onUse={setBody} />}
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">

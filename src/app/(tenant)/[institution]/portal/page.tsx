@@ -70,7 +70,8 @@ export default async function PortalOverviewPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "student.read");
   // Fix round 1 (packet rule 3) — each tile reads a different tab's data,
@@ -81,7 +82,7 @@ export default async function PortalOverviewPage({
   requirePermission(ctx, "exam.result.read");
   requirePermission(ctx, "assignment.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal`, allParams);
   // String() keeps TS from narrowing `role` away, so the shared code below still compiles for both roles.
   if (String(ctx.membership.role) === "guardian") {
     return (

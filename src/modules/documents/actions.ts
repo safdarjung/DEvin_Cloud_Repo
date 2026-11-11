@@ -27,11 +27,12 @@ type DocumentsClient = Awaited<ReturnType<typeof createClient>>;
 const BUCKET = "tenant-docs";
 const READ_URL_EXPIRES_IN = 60;
 
-const ENTITY_TABLE: Record<string, "students" | "staff" | "applications" | "assignment_submissions"> = {
+const ENTITY_TABLE: Record<string, "students" | "staff" | "applications" | "assignment_submissions" | "resources"> = {
   student: "students",
   staff: "staff",
   application: "applications",
   submission: "assignment_submissions",
+  resource: "resources",
 };
 
 const POSTGRES_RLS_VIOLATION = "42501";

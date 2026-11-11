@@ -17,6 +17,7 @@ import {
   notifyRecheckDecided,
   notifyResultsPublished,
   notifyStudentLeaveDecided,
+  notifySafetyAlert,
   workflowRun,
 } from "./handlers/index.ts";
 
@@ -32,6 +33,7 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "notify.gate_pass": "visitors",
   "notify.student_leave_decided": "student_leave",
   "notify.diary_entry": "diary",
+  "notify.safety_alert": "safety",
   "finance.fee_reminder": "finance_plus",
   "report.generate": "scheduled_reports",
   "fee_plans.late_fees": "fee_plans",
@@ -54,6 +56,7 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "notify.gate_pass": notifyGatePass,
   "notify.student_leave_decided": notifyStudentLeaveDecided,
   "notify.diary_entry": notifyDiaryEntry,
+  "notify.safety_alert": notifySafetyAlert,
   "finance.generate_term_invoices": generateTermInvoices,
   "report.generate": generateReport,
   "finance.fee_reminder": feeReminder,

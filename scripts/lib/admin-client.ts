@@ -7,13 +7,14 @@ import type { Database } from "../../src/lib/db/types.ts";
 // `react-server` condition that makes `server-only` safe; plain `node` has
 // no alias resolution at all). Scripts run as plain Node processes outside
 // Next entirely, so they need their own copy of the same allow-list check.
-const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "test"]);
+// "invite": scripts/invite-create.ts (F18 §H) inserts platform_invite_codes.
+const ALLOWED_CALLERS = new Set(["seed", "reset", "jobs", "invite", "test"]);
 
 export function createScriptAdminClient() {
   const caller = process.env.SERVICE_ROLE_CALLER;
   if (!caller || !ALLOWED_CALLERS.has(caller)) {
     throw new Error(
-      "createScriptAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/test",
+      "createScriptAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/invite/test",
     );
   }
 

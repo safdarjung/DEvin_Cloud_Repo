@@ -2,7 +2,7 @@
 // replacement for demo/twin.ts's fixture, tested separately by
 // tests/unit/fabric-fixtures/twin.test.ts, which this file doesn't touch).
 import { describe, expect, it } from "vitest";
-import { buildTwinSnapshot, utilisationTier } from "@/modules/fabric/twin.mapping";
+import { applyScenario, attendanceTier, buildTwinSnapshot, conflictsByNode, utilisationTier } from "@/modules/fabric/twin.mapping";
 
 const BASE = { id: "snap-1", institutionId: "inst-1", asOf: "2026-11-06T00:00:00.000Z", state: "current" as const };
 
@@ -101,5 +101,87 @@ describe("buildTwinSnapshot", () => {
     expect(snap.state).toBe("current");
     expect(snap.as_of).toBe(BASE.asOf);
     expect(snap.scenario_id).toBeNull();
+  });
+});
+
+describe("applyScenario", () => {
+  const current = buildTwinSnapshot({
+    ...BASE,
+    sections: [{ id: "sec-1", label: "5-A", capacity: 40, enrolled: 30 }],
+    rooms: [{ id: "room-1", name: "Room 1", periodsTotal: 48, periodsUsed: 24 }],
+    teachers: [
+      { id: "t-1", name: "Asha", periodsWeek: 30, maxPeriods: 36 },
+      { id: "t-2", name: "Ravi", periodsWeek: 20, maxPeriods: 36 },
+    ],
+    routes: [{ id: "route-1", name: "Route 1", capacity: 40, assigned: 20 }],
+    slots: [{ teacherId: "t-1", sectionId: "sec-1", roomId: "room-1" }],
+    routeAssignments: [],
+  });
+  const node = (snap: ReturnType<typeof applyScenario>, id: string) => snap.nodes.find((n) => n.id === id)!;
+
+  it("scales section and route load by the enrolment delta and keeps capacity", () => {
+    const snap = applyScenario(current, { enrolmentDeltaPct: 10, staffDelta: 0 }, "scn-1");
+    expect(node(snap, "sec-1")).toMatchObject({ load: 33, capacity: 40, utilisation_pct: 83 });
+    expect(node(snap, "route-1")).toMatchObject({ load: 22, capacity: 40, utilisation_pct: 55 });
+  });
+
+  it("spreads teacher periods over teachers + staff delta", () => {
+    const snap = applyScenario(current, { enrolmentDeltaPct: 0, staffDelta: 2 }, "scn-1");
+    expect(node(snap, "t-1").load).toBe(15); // 30 x 2/4
+    expect(node(snap, "t-2").load).toBe(10);
+  });
+
+  it("never divides by zero when the staff delta removes every teacher", () => {
+    const snap = applyScenario(current, { enrolmentDeltaPct: 0, staffDelta: -5 }, "scn-1");
+    expect(node(snap, "t-1").load).toBe(60); // floored at 1 remaining teacher: 30 x 2/1
+  });
+
+  it("leaves rooms and edges unchanged and stamps scenario state + id without touching the input", () => {
+    const snap = applyScenario(current, { enrolmentDeltaPct: 20, staffDelta: 3 }, "scn-1");
+    expect(node(snap, "room-1")).toEqual(current.nodes.find((n) => n.id === "room-1"));
+    expect(snap.edges).toEqual(current.edges);
+    expect(snap.state).toBe("scenario");
+    expect(snap.scenario_id).toBe("scn-1");
+    expect(current.nodes.find((n) => n.id === "sec-1")!.load).toBe(30);
+  });
+});
+
+describe("conflictsByNode", () => {
+  const nodes = buildTwinSnapshot({
+    ...BASE,
+    sections: [{ id: "sec-1", label: "5-A", capacity: 40, enrolled: 30 }],
+    rooms: [{ id: "room-1", name: "Room 1", periodsTotal: 48, periodsUsed: 24 }],
+    teachers: [{ id: "t-1", name: "Asha", periodsWeek: 40, maxPeriods: 36 }],
+    routes: [],
+    slots: [],
+    routeAssignments: [],
+  }).nodes;
+
+  it("counts conflicts per node by entity label, keeping the worst severity", () => {
+    const result = conflictsByNode(nodes, [
+      { id: "c1", day: "Mon", period: 1, kind: "room_capacity", entities: ["Room 1", "5-A"], suggestion: "" },
+      { id: "c2", day: "Tue", period: 2, kind: "room_capacity", entities: ["Room 1", "5-A"], suggestion: "" },
+      { id: "c3", day: "", period: 0, kind: "teacher_unavailable", entities: ["Asha"], suggestion: "" },
+      { id: "c4", day: "", period: 0, kind: "teacher_unavailable", entities: ["Nobody"], suggestion: "" },
+    ]);
+    expect(result).toEqual({
+      "room-1": { count: 2, severity: "critical" },
+      "sec-1": { count: 2, severity: "critical" },
+      "t-1": { count: 1, severity: "warning" },
+    });
+  });
+
+  it("returns an empty map when there are no conflicts", () => {
+    expect(conflictsByNode(nodes, [])).toEqual({});
+  });
+});
+
+describe("attendanceTier", () => {
+  const thresholds = { warn: 80, critical: 75 };
+  it("critical below the critical threshold, watch below warn, ok otherwise", () => {
+    expect(attendanceTier(74.9, thresholds)).toBe("critical");
+    expect(attendanceTier(75, thresholds)).toBe("watch");
+    expect(attendanceTier(79.9, thresholds)).toBe("watch");
+    expect(attendanceTier(80, thresholds)).toBe("ok");
   });
 });

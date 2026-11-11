@@ -75,7 +75,7 @@ async function issueLoan(inst: TestInstitution, copyId: string, borrower: { stud
 async function backdateDueOn(loanId: string, daysAgo: number): Promise<void> {
   await sql`
     update public.library_loans
-    set issued_on = current_date - ${daysAgo + 14}::int, due_on = current_date - ${daysAgo}::int
+    set issued_on = (now() at time zone 'Asia/Kolkata')::date - ${daysAgo + 14}::int, due_on = (now() at time zone 'Asia/Kolkata')::date - ${daysAgo}::int
     where id = ${loanId}::uuid
   `;
 }

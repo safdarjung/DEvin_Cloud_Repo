@@ -330,3 +330,17 @@ export async function getAdmitCards(
     };
   });
 }
+
+export interface RoomOption {
+  id: string;
+  name: string;
+  capacity: number;
+}
+
+/** Rooms the seating generator may use (rooms_select: every member of the institution). */
+export async function listRoomOptions(ctx: TenantContext): Promise<RoomOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("rooms").select("id, name, capacity").eq("institution_id", ctx.institution.id).order("name");
+  if (error) throw error;
+  return data ?? [];
+}

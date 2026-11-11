@@ -40,6 +40,7 @@ describe("Fabric navigation", () => {
     const principal = new Set([
       "dashboard.view",
       "insight.read",
+      "insight.review",
       "forecast.read",
       "agent.run",
       "ai.generate",
@@ -59,6 +60,7 @@ describe("Fabric navigation", () => {
       "/fabric/operations",
       "/fabric/finance-intel",
       "/fabric/insights",
+      "/fabric/lab",
       "/fabric/twin",
       "/fabric/agents",
       "/fabric/marketplace",

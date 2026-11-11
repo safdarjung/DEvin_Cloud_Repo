@@ -16,11 +16,12 @@ export default async function PortalMessagesPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "message.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/messages`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/messages`, allParams);
   const [threads, teachers] = await Promise.all([
     myThreads(ctx, { studentId: selection.studentId }),
     messageableTeachers(ctx, selection.studentId),

@@ -12,6 +12,7 @@
 import type { ModuleKey } from "@/lib/modules/catalog";
 import type { Permission, Role } from "@/lib/auth/permissions";
 import type { FeatureKey } from "@/lib/auth/entitlements";
+import { ASSISTANT_QUERIES } from "@/modules/ai/assistant/catalog";
 
 export type CapabilityKind = "chat_tool" | "task";
 export type CapabilityData = "aggregate" | "personal" | "own";
@@ -54,7 +55,50 @@ export const DRAFTABLE_ACTIONS: readonly string[] = [
   "ptm.event.create",
   "finance.reminders.send",
   "admissions.enquiry.note",
+  // features-18 §E: draft-safe writes of the new modules. Never: money moves,
+  // payroll, concession decisions, marks/results, membership/roles, health,
+  // behaviour, hostel allocation, safety, duty rosters, void/verify/publish/
+  // renew/setup (deny-list pinned in tests/unit/ai-feature-coverage.test.ts).
+  "helpdesk.message.reply",
+  "form.create",
+  "form.update",
+  "clubs.create",
+  "clubs.update",
+  "clubs.event.create",
+  "expenses.record",
+  "expenses.category.create",
+  "expenses.budget.set",
+  "inventory.movement.record",
+  "scholarships.award.request",
+  "achievement.record",
+  "resource.create",
+  "compliance.item.create",
+  "compliance.item.update",
+  "schoolLabs.booking.book",
+  "visitors.checkIn",
+  "library.loan.issue",
 ] as const;
+
+// features-18 §E: one read capability per new module, on by default for every
+// role allowed it. "aggregate" only when every query is an ASSISTANT_QUERIES
+// aggregate; on cloud the kernel still drops each non-aggregate query.
+function moduleTool(
+  key: CapabilityKey,
+  label: string,
+  description: string,
+  module: ModuleKey,
+  permission: Permission,
+  roles: readonly Role[],
+  queries: readonly string[],
+  drafts?: readonly string[],
+): Capability {
+  const data = queries.every((q) => ASSISTANT_QUERIES[q]?.aggregate) ? "aggregate" : "personal";
+  return { key, label, description, kind: "chat_tool", roles, permission, module, data, defaultOn: roles, queries, ...(drafts && { drafts }) };
+}
+
+const LEADERS: readonly Role[] = ["owner", "principal", "admin"];
+const OFFICE: readonly Role[] = ["owner", "principal", "admin", "accountant"];
+const LEADERS_AND_TEACHERS: readonly Role[] = ["owner", "principal", "admin", "teacher"];
 
 // Staff roles whose AI uses the school assistant read groups. Accountant and
 // exam_controller joined with the AI-roles ADR (owner decision 2026-11-07);
@@ -124,6 +168,44 @@ export const CAPABILITY_KEYS = [
   "attendance_insight",
   "daily_briefing",
   "practice_quiz",
+  "lab_scenario",
+  "lab_explain",
+  // features-18 §C draft routes (api/ai/lesson-plan, question-paper, fee-reminder-draft, ptm-brief)
+  "lesson_plan_writer",
+  "question_paper_builder",
+  "fee_reminder_writer",
+  "ptm_brief",
+  // features-18 §C2 draft routes (api/ai/helpdesk-triage, translate, form-draft, substitution-note)
+  "helpdesk_triage",
+  "translate",
+  "form_draft",
+  "substitution_note",
+  // features-18 §E: one chat capability per new module (reads + safe drafts)
+  "clubs_overview",
+  "hostel_overview",
+  "expenses_overview",
+  "concessions_overview",
+  "canteen_overview",
+  "inventory_overview",
+  "helpdesk_overview",
+  "forms_overview",
+  "alumni_overview",
+  "payroll_overview",
+  "labs_overview",
+  "achievements_overview",
+  "resources_overview",
+  "compliance_overview",
+  "duties_overview",
+  "safety_overview",
+  "behaviour_points",
+  "library_overview",
+  "visitors_overview",
+  "workflows_overview",
+  "child_activities",
+  "my_activities",
+  // features-18 §C2/§H task routes (api/ai/lab-safety-note, import-mapping)
+  "lab_safety_note",
+  "import_mapping",
 ] as const;
 
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
@@ -151,7 +233,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   exam_overview: {
     key: "exam_overview",
     label: "Exams",
-    description: "Exam list, grade distribution, subject/section/term options, and a named student's or exam's results.",
+    description: "Exam list, grade distribution, subject/section/term options, a named student's or exam's results, and exam seating.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "exam.result.read",
@@ -166,6 +248,9 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
       "exams.listTermOptions",
       "exams.listResultsForStudent",
       "exams.listResultsForExam",
+      "examSeating.slots",
+      "examSeating.chart",
+      "examSeating.studentSeats",
     ],
   },
   mastery_curriculum: {
@@ -188,7 +273,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   timetable_overview: {
     key: "timetable_overview",
     label: "Timetable",
-    description: "Room utilisation and a section's/teacher's schedule, teacher workload, and scheduling conflicts.",
+    description: "Room utilisation and a section's/teacher's schedule, teacher workload, scheduling conflicts, and substitutions.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "timetable.read",
@@ -201,19 +286,29 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
       "timetable.forTeacher",
       "timetable.teacherWorkload",
       "timetable.conflicts",
+      "timetable.coverNeeded",
+      "timetable.substitutionCandidates",
+      "timetable.substitutions",
     ],
   },
   finance_overview: {
     key: "finance_overview",
     label: "Finance",
-    description: "Term fee collection summary and report, students with outstanding fees, and a named student's invoices.",
+    description: "Term fee collection summary and report, students with outstanding fees, a named student's invoices, and fee plan rules.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "finance.read",
     module: "fees",
     data: "personal",
     defaultOn: ASSISTANT_ROLES,
-    queries: ["finance.termCollectionSummary", "finance.collectionReport", "finance.listDefaulters", "finance.listInvoicesForStudent"],
+    queries: [
+      "finance.termCollectionSummary",
+      "finance.collectionReport",
+      "finance.listDefaulters",
+      "finance.listInvoicesForStudent",
+      "feePlans.lateFeeRules",
+      "feePlans.instalments",
+    ],
   },
   admissions_overview: {
     key: "admissions_overview",
@@ -233,7 +328,8 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   people_overview: {
     key: "people_overview",
     label: "People",
-    description: "Student directory, a student's profile, staff availability today, pending approvals, and assignment submissions.",
+    description:
+      "Student directory, a student's profile and lifecycle history, certificates, staff availability, attendance and leave, pending approvals, and assignment submissions.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "student.read",
@@ -246,19 +342,24 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
       "people.staffAvailabilityToday",
       "core.approvals.pending",
       "academics.submissionsForAssignment",
+      "lifecycle.history",
+      "certificates.list",
+      "people.pendingLeaveApprovals",
+      "people.leaveRequests",
+      "people.staffAttendanceForDate",
     ],
   },
   insights_forecasts: {
     key: "insights_forecasts",
     label: "Insights & forecasts",
-    description: "At-risk indicators by section, performance forecasts, and generated insights.",
+    description: "At-risk indicators by section, performance forecasts, generated insights, and the analysis lab's section comparisons.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "insight.read",
     module: "insights",
     data: "personal",
     defaultOn: ASSISTANT_ROLES,
-    queries: ["insights.riskIndicators", "forecasts.cards", "insights.list"],
+    queries: ["insights.riskIndicators", "forecasts.cards", "insights.list", "lab.correlation", "lab.anomalies", "lab.feeRisk", "lab.trendBreaks"],
   },
   calendar_notices: {
     key: "calendar_notices",
@@ -480,11 +581,12 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     label: "Quiz generator",
     description: "Generate a draft quiz from the Assignments page.",
     kind: "task",
-    roles: ["owner", "principal", "admin", "admissions", "teacher"],
+    // Admissions has no Assignments page, so no way to run it (Orb coverage test).
+    roles: ["owner", "principal", "admin", "teacher"],
     permission: "ai.generate",
     module: "ai_teacher",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "admissions", "teacher"],
+    defaultOn: ["owner", "principal", "admin", "teacher"],
   },
   report_remark: {
     key: "report_remark",
@@ -531,6 +633,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     label: "Daily briefing",
     description: "AI-generated dashboard briefing.",
     kind: "task",
+    // Teacher has no /dashboard; the Orb opens it from /today (orb-chips TASK_PAGES).
     roles: ["owner", "principal", "admin", "admissions", "teacher"],
     permission: "insight.read",
     module: "ai_briefings",
@@ -547,6 +650,79 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     module: "practice",
     data: "own",
     defaultOn: ["student"],
+  },
+  // features-18 §D (api/ai/lab-*): text -> simulator sliders (scenario.manage
+  // holders), and narration of computed lab aggregates (insight.review AND
+  // ai.generate — accountant/exam_controller lack ai.generate, teacher lacks
+  // insight.review: school-wide analysis only).
+  lab_scenario: {
+    key: "lab_scenario",
+    label: "Scenario from text",
+    description: "Turn a described what-if into simulator assumptions you review before applying.",
+    kind: "task",
+    roles: ["owner", "principal", "admin"],
+    permission: "scenario.manage",
+    module: "ai_briefings",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "admin"],
+  },
+  lab_explain: {
+    key: "lab_explain",
+    label: "Explain analysis",
+    description: "Plain-language explanation of Analysis lab, simulator and twin results, from the computed numbers only.",
+    kind: "task",
+    roles: ["owner", "principal", "admin", "admissions"],
+    permission: "insight.review",
+    module: "ai_briefings",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "admin", "admissions"],
+  },
+  // features-18 §C — page drafts. Each route checks its page permission
+  // below AND the gateway's ai.generate, so roles without ai.generate
+  // (accountant, exam_controller) stay out of the ceiling.
+  lesson_plan_writer: {
+    key: "lesson_plan_writer",
+    label: "Lesson plan from a unit",
+    description: "Draft a lesson plan for a curriculum unit on the Lesson plans page. Saved only when you save the form.",
+    kind: "task",
+    roles: ["owner", "principal", "teacher"],
+    permission: "assignment.manage",
+    module: "lesson_plans",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "teacher"],
+  },
+  question_paper_builder: {
+    key: "question_paper_builder",
+    label: "Question paper from a blueprint",
+    description: "Fill a marks blueprint from the question bank; AI drafts only the missing questions, which you review before use.",
+    kind: "task",
+    roles: ["owner", "principal", "teacher"],
+    permission: "question.manage",
+    module: "question_bank",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "teacher"],
+  },
+  fee_reminder_writer: {
+    key: "fee_reminder_writer",
+    label: "Fee reminder draft",
+    description: "Draft a call script, SMS and WhatsApp reminder for one overdue invoice. Copy it; sending stays with the reminder action.",
+    kind: "task",
+    roles: ["owner", "principal", "admin"],
+    permission: "finance.structure.manage",
+    module: "fees",
+    data: "personal",
+    defaultOn: ["owner", "principal", "admin"],
+  },
+  ptm_brief: {
+    key: "ptm_brief",
+    label: "Parent meeting brief",
+    description: "One-page brief for a parent-teacher meeting: strengths, concerns and talking points. Nothing is stored.",
+    kind: "task",
+    roles: ["owner", "principal", "admin", "teacher"],
+    permission: "ptm.slot.manage",
+    module: "ptm",
+    data: "personal",
+    defaultOn: ["owner", "principal", "admin", "teacher"],
   },
 
   // ---- Teacher chat capabilities (P3) ----------------------------------
@@ -805,5 +981,189 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     defaultOn: ["owner", "principal", "exam_controller"],
     queries: ["exams.markOutliers"],
     instruction: "Explain each flagged mark plainly and suggest who should check it; you cannot change marks.",
+  },
+
+  // ---- features-18 §C2 draft routes: write nothing but usage; a person saves -------
+  helpdesk_triage: {
+    key: "helpdesk_triage",
+    label: "Helpdesk triage",
+    description: "Suggest a category, priority and reply for a ticket, with similar past tickets. You apply and send.",
+    kind: "task",
+    roles: ["owner", "principal", "admin"],
+    permission: "helpdesk.manage",
+    module: "helpdesk",
+    data: "personal",
+    defaultOn: ["owner", "principal", "admin"],
+  },
+  // Route checks ai.generate only: any staff role that holds it may translate its own text.
+  translate: {
+    key: "translate",
+    label: "Translate",
+    description: "Translate a reply, diary note or form text into an Indian language as a draft to review before sending.",
+    kind: "task",
+    roles: ["owner", "principal", "admin", "admissions", "teacher"],
+    permission: "ai.generate",
+    module: "ai_teacher",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "admin", "admissions", "teacher"],
+  },
+  form_draft: {
+    key: "form_draft",
+    label: "Form from a description",
+    description: "Draft a form's title and fields from a short description. You edit, save and publish it.",
+    kind: "task",
+    roles: ["owner", "principal", "admin"],
+    permission: "form.manage",
+    module: "forms",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "admin"],
+  },
+  substitution_note: {
+    key: "substitution_note",
+    label: "Substitution handover note",
+    description: "A short note for the substitute from the class's lesson plan and latest diary entry. Copy and share it yourself.",
+    kind: "task",
+    roles: ["owner", "principal", "admin"],
+    permission: "timetable.manage",
+    module: "substitution",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "admin"],
+  },
+
+  // ---- features-18 §E: new modules, reads + human-confirmed drafts --------
+  // Each query/draft still re-checks its own permission, module and RLS per
+  // caller (buildReadTools/buildDraftTools); `roles` = staff roles holding `permission`.
+  clubs_overview: moduleTool(
+    "clubs_overview", "Clubs & houses", "Clubs, club events and members, and the house points leaderboard. Drafts new clubs and events.",
+    "clubs", "club.read", ASSISTANT_ROLES,
+    ["clubs.houseLeaderboard", "clubs.list", "clubs.events", "clubs.members"], ["clubs.create", "clubs.update", "clubs.event.create"],
+  ),
+  hostel_overview: moduleTool(
+    "hostel_overview", "Hostel", "Hostel rooms and occupancy, current allocations and roll call.",
+    "hostel", "hostel.read", LEADERS, ["hostel.rooms", "hostel.allocations", "hostel.rollCall"],
+  ),
+  expenses_overview: moduleTool(
+    "expenses_overview", "Expenses", "Monthly expense totals, budget vs actual and the expense register. Drafts expenses, categories and budgets.",
+    "expenses", "expense.read", OFFICE,
+    ["expenses.monthlyTotals", "expenses.budgetVsActual", "expenses.categories", "expenses.list"],
+    ["expenses.record", "expenses.category.create", "expenses.budget.set"],
+  ),
+  concessions_overview: moduleTool(
+    "concessions_overview", "Concessions", "Concession counts and value by rule and grade, and the concession rules. Drafts an award request; deciding stays manual.",
+    "scholarships", "concession.read", OFFICE, ["scholarships.summary", "scholarships.rules"], ["scholarships.award.request"],
+  ),
+  canteen_overview: moduleTool(
+    "canteen_overview", "Canteen", "Canteen menu and one day's sales and top-up totals.",
+    "canteen", "canteen.read", OFFICE, ["canteen.items", "canteen.daySales"],
+  ),
+  inventory_overview: moduleTool(
+    "inventory_overview", "Inventory", "Stock on hand, low-stock items and stock movements. Drafts a stock movement.",
+    "inventory", "inventory.read", OFFICE, ["inventory.stock", "inventory.lowStockCount", "inventory.movements"], ["inventory.movement.record"],
+  ),
+  helpdesk_overview: moduleTool(
+    "helpdesk_overview", "Helpdesk", "Open and overdue ticket counts and the ticket list. Drafts a reply you send yourself.",
+    "helpdesk", "helpdesk.manage", LEADERS, ["helpdesk.counts", "helpdesk.tickets"], ["helpdesk.message.reply"],
+  ),
+  forms_overview: moduleTool(
+    "forms_overview", "Forms", "Forms, per-field results and responses. Drafts or edits a draft form; publishing stays manual.",
+    "forms", "form.manage", LEADERS, ["form.results", "form.list", "form.responses"], ["form.create", "form.update"],
+  ),
+  alumni_overview: moduleTool(
+    "alumni_overview", "Alumni", "Alumni counts per batch year and their cities.",
+    "alumni", "alumni.read", ["owner", "principal", "admin", "admissions"], ["alumni.counts"],
+  ),
+  payroll_overview: moduleTool(
+    "payroll_overview", "Payroll totals", "Monthly payroll cost and run totals. No salaries of named staff.",
+    "payroll", "payroll.manage", ["owner", "accountant"], ["payroll.monthlyCost", "payroll.runs"],
+  ),
+  labs_overview: moduleTool(
+    "labs_overview", "Labs", "School labs, how much each is booked, and a lab's safety warnings. Drafts a lab booking.",
+    "school_labs", "lab.read", LEADERS_AND_TEACHERS, ["schoolLabs.labs", "schoolLabs.utilisation", "schoolLabs.safetyWarnings"], ["schoolLabs.booking.book"],
+  ),
+  achievements_overview: moduleTool(
+    "achievements_overview", "Achievements", "Achievement counts by category and level, the achievement list and a student's portfolio. Drafts a new achievement.",
+    "achievements", "achievement.read", LEADERS_AND_TEACHERS,
+    ["achievements.summary", "achievements.list", "achievements.portfolio"], ["achievement.record"],
+  ),
+  resources_overview: moduleTool(
+    "resources_overview", "Resources", "Published resource counts by subject and the resources you can read. Drafts a new resource.",
+    "resources", "resource.read", ASSISTANT_ROLES, ["resources.summary", "resources.browse"], ["resource.create"],
+  ),
+  compliance_overview: moduleTool(
+    "compliance_overview", "Compliance", "Compliance item counts by status and the item list. Drafts new or updated items.",
+    "compliance", "compliance.read", OFFICE, ["compliance.summary", "compliance.items"], ["compliance.item.create", "compliance.item.update"],
+  ),
+  duties_overview: moduleTool(
+    "duties_overview", "Duty roster", "Duty types, duty counts by type and the roster.",
+    "duties", "duty.read", ASSISTANT_ROLES, ["duties.types", "duties.countByType", "duties.roster"],
+  ),
+  safety_overview: moduleTool(
+    "safety_overview", "Safety alerts", "Safety alerts you can see and one alert's acknowledgement counts. Sending alerts stays manual.",
+    "safety", "safety.alert.read", ASSISTANT_ROLES, ["safety.alerts", "safety.alertSummary"],
+  ),
+  behaviour_points: moduleTool(
+    "behaviour_points", "Behaviour points", "Merit and demerit point totals per student. No incident details.",
+    "behaviour", "behaviour.write", LEADERS_AND_TEACHERS, ["behaviour.pointTotals"],
+  ),
+  library_overview: moduleTool(
+    "library_overview", "Library", "The library catalogue and overdue loans. Drafts a book issue.",
+    "library", "library.manage", LEADERS, ["library.catalog", "library.overdue"], ["library.loan.issue"],
+  ),
+  visitors_overview: moduleTool(
+    "visitors_overview", "Visitors & gate passes", "Visitor log, gate passes and a student's authorised pickups. Drafts a visitor check-in.",
+    "visitors", "gatepass.manage", LEADERS_AND_TEACHERS, ["visitors.list", "visitors.gatePasses", "visitors.pickupList"], ["visitors.checkIn"],
+  ),
+  workflows_overview: moduleTool(
+    "workflows_overview", "Workflows", "Automation workflows and their recent runs.",
+    "workflows", "workflow.read", LEADERS, ["workflows.list", "workflows.runs"],
+  ),
+  // Own data only: the kernel pins a guardian's studentId to the verified child; RLS scopes the rest.
+  child_activities: {
+    key: "child_activities",
+    label: "Child's school life",
+    description: "Your child's achievements, class resources, library loans, forms to fill, your helpdesk tickets and safety alerts.",
+    kind: "chat_tool",
+    roles: ["guardian"],
+    permission: "resource.read",
+    module: "core",
+    data: "own",
+    defaultOn: ["guardian"],
+    queries: ["achievements.portfolio", "resources.forStudent", "library.myLoans", "form.mine", "helpdesk.myTickets", "safety.alerts"],
+  },
+  my_activities: {
+    key: "my_activities",
+    label: "My school life",
+    description: "Your achievements, class resources, library loans, forms to fill, your helpdesk tickets and safety alerts.",
+    kind: "chat_tool",
+    roles: ["student"],
+    permission: "resource.read",
+    module: "core",
+    data: "own",
+    defaultOn: ["student"],
+    queries: ["achievements.portfolio", "resources.forStudent", "library.myLoans", "form.mine", "helpdesk.myTickets", "safety.alerts"],
+  },
+
+  // ---- features-18 task routes: write nothing but usage; a person applies --
+  lab_safety_note: {
+    key: "lab_safety_note",
+    label: "Lab safety note",
+    description: "Reword a lab's safety check as a short warning. Falls back to the plain list if the wording changes any item.",
+    kind: "task",
+    roles: LEADERS_AND_TEACHERS,
+    permission: "lab.read",
+    module: "school_labs",
+    data: "aggregate",
+    defaultOn: LEADERS_AND_TEACHERS,
+  },
+  import_mapping: {
+    key: "import_mapping",
+    label: "Import column matching",
+    description: "Suggest which import column each unmatched spreadsheet header holds. Headers only, never rows; you confirm each match.",
+    kind: "task",
+    roles: LEADERS,
+    permission: "data.import",
+    module: "core",
+    data: "aggregate",
+    defaultOn: LEADERS,
   },
 };

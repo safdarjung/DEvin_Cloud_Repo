@@ -130,6 +130,10 @@ flowchart TD
 
 - `20261028000111` · DBT-153 (backend session, claimed 2026-11-10) · `compute_mastery` gains optional `p_class_section_id`, `p_run_at`; new service-only `compute_mastery_sweep`. No table changes.
 - `20261028000112` · DBT-159 (backend session, claimed 2026-11-10) · `security invoker` aggregates `ai_usage_sum`, `ai_usage_by_provider`, `ai_usage_tokens_by_role`. No table changes.
+- `20261028000113`–`20261028000125` · features-18 (backend session, claimed 2026-11-10; spec `.superpowers/sdd/features-18/SPEC.md`, roles `ROLES.md`) · 0113 behaviour incidents · 0114 health profiles, visits, vaccinations · 0115 clubs, houses, house points, club events · 0116 hostel rooms, allocations, roll calls · 0117 expenses and budgets · 0118 scholarships/concession rules and awards · 0119 canteen items and wallet transactions · 0120 inventory items and movements · 0121 helpdesk tickets and messages · 0122 forms and responses · 0123 alumni profiles + `sync_alumni` · 0124 payroll structures, runs, payslips · 0125 analysis-lab `security invoker` functions (no tables).
+- `20261028000126` · school_labs tables (backend session, claimed 2026-11-10; spec features-18 §A2).
+- `20261028000127` · school_setup (backend session, claimed 2026-11-10).
+- `20261028000128`–`20261028000132` · features-18 §A3 (backend session, claimed 2026-11-11) · 0128 achievements · 0129 safety alerts, acknowledgements, headcounts · 0130 compliance items and events · 0131 learning resources · 0132 duty roster and swaps.
 
 ## 4. Review requirements
 

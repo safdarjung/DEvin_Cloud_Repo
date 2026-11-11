@@ -5,6 +5,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import type { TenantContext } from "@/lib/auth/types";
+import { portalRedirectUrl, type PortalSearchParams } from "./portal-url";
 import { getMyStudent, listMyChildren, type ChildSummary } from "./queries";
 
 export interface PortalSelection {
@@ -44,17 +45,19 @@ export const resolvePortalSelection = cache(async function resolvePortalSelectio
   ctx: TenantContext,
   studentParam: string | undefined,
   currentPath: string,
+  /** The page's full awaited searchParams, so the redirect keeps `ticket`, `form`, tabs, etc. */
+  searchParams?: PortalSearchParams,
 ): Promise<PortalSelection> {
   if (ctx.membership.role === "student") {
     const me = await getMyStudent(ctx);
     if (!me || (studentParam && studentParam !== me.id)) notFound();
-    if (!studentParam) redirect(`${currentPath}?student=${me.id}`);
+    if (!studentParam) redirect(portalRedirectUrl(currentPath, me.id, searchParams));
     return { studentId: me.id, studentName: fullName(me), children: null };
   }
 
   const children = await listMyChildren(ctx);
   const selected = studentParam ? children.find((c) => c.id === studentParam) : children[0];
   if (!selected) notFound();
-  if (!studentParam) redirect(`${currentPath}?student=${selected.id}`);
+  if (!studentParam) redirect(portalRedirectUrl(currentPath, selected.id, searchParams));
   return { studentId: selected.id, studentName: fullName(selected), children };
 });

@@ -18,11 +18,12 @@ export default async function PortalMeetingsPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "ptm.book");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/meetings`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/meetings`, allParams);
   const rows = await ptmForStudent(ctx, selection.studentId);
 
   const events = new Map<string, { title: string; date: string; closes: string; rows: PtmBookableRow[] }>();

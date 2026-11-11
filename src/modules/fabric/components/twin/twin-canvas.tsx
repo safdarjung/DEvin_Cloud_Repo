@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import type { Edge, Node } from "@xyflow/react";
 import { FadeIn } from "@/components/motion";
 import type { InsightSeverity, TwinEdge, TwinNode, TwinNodeType } from "@/modules/fabric/types";
+import type { TwinOverlays } from "@/modules/fabric/twin.queries";
 import { twinNodeTypes, type TwinNodeData } from "./nodes";
 
 const FlowCanvas = dynamic(() => import("@/lib/genui/flow-canvas"), {
@@ -14,7 +15,7 @@ const FlowCanvas = dynamic(() => import("@/lib/genui/flow-canvas"), {
   loading: () => <div className="h-[480px] animate-pulse rounded-xl border border-dashed" aria-hidden />,
 });
 
-function toFlowNode(n: TwinNode, impactSeverity: InsightSeverity | undefined): Node {
+function toFlowNode(n: TwinNode, impactSeverity: InsightSeverity | undefined, overlays: TwinOverlays | null | undefined): Node {
   const data: TwinNodeData = {
     label: n.label,
     nodeType: n.type,
@@ -22,6 +23,8 @@ function toFlowNode(n: TwinNode, impactSeverity: InsightSeverity | undefined): N
     load: n.load,
     utilisation_pct: n.utilisation_pct,
     impactSeverity,
+    conflicts: overlays?.conflicts[n.id],
+    attendance: n.type === "student_group" ? overlays?.attendance[n.id] : undefined,
   };
   return { id: n.id, type: n.type, position: { x: n.x ?? 0, y: n.y ?? 0 }, data };
 }
@@ -35,6 +38,7 @@ export function TwinCanvas({
   edges,
   hiddenTypes,
   impactById,
+  overlays,
   onNodeClick,
 }: {
   nodes: TwinNode[];
@@ -42,6 +46,8 @@ export function TwinCanvas({
   hiddenTypes: Set<TwinNodeType>;
   /** node id -> severity, while "Show impact" is active (entity-drawer.tsx). */
   impactById?: Map<string, InsightSeverity>;
+  /** Live conflict/attendance badges (twin.queries.ts twinOverlays); null on Historical. */
+  overlays?: TwinOverlays | null;
   onNodeClick: (id: string) => void;
 }) {
   const visible = nodes.filter((n) => !hiddenTypes.has(n.type));
@@ -51,7 +57,7 @@ export function TwinCanvas({
   return (
     <FadeIn>
       <FlowCanvas
-        nodes={visible.map((n) => toFlowNode(n, impactById?.get(n.id)))}
+        nodes={visible.map((n) => toFlowNode(n, impactById?.get(n.id), overlays))}
         edges={visibleEdges.map(toFlowEdge)}
         nodeTypes={twinNodeTypes}
         height={480}
@@ -64,6 +70,8 @@ export function TwinCanvas({
           <li key={n.id}>
             <button type="button" onClick={() => onNodeClick(n.id)}>
               {n.label}
+              {overlays?.conflicts[n.id] && `, ${overlays.conflicts[n.id]!.count} timetable conflict(s)`}
+              {n.type === "student_group" && overlays?.attendance[n.id] && `, attendance ${overlays.attendance[n.id]!.pct}%`}
             </button>
           </li>
         ))}

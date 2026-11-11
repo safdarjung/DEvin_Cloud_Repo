@@ -12,10 +12,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/states";
 import type { ChangeImpact, TwinNodeType, TwinSnapshot } from "@/modules/fabric/types";
-import type { TwinState } from "@/modules/fabric/twin.queries";
+import type { TwinOverlays } from "@/modules/fabric/twin.queries";
+import type { AttentionItem } from "@/modules/fabric/lab";
+import { ExplainButton } from "@/modules/fabric/components/lab/explain-button";
+import { AttentionPanel } from "./attention-panel";
 import { EntityDrawer } from "./entity-drawer";
 import { TwinLegend } from "./legend";
-import { TwinStateToggle } from "./state-toggle";
+import { TwinStateToggle, type TwinView } from "./state-toggle";
 import { TwinCanvas } from "./twin-canvas";
 
 export function TwinWorkspace({
@@ -23,19 +26,35 @@ export function TwinWorkspace({
   current,
   historical,
   hasHistorical,
+  scenario,
+  scenarioRequested,
+  overlays,
+  attention = null,
+  institutionSlug,
+  canExplain = false,
 }: {
+  /** Ranked conflicts + section anomalies for the current version; null when the caller can read neither. */
+  attention?: AttentionItem[] | null;
+  institutionSlug: string;
+  /** lab_explain is on for this caller: sections get "Explain with AI" in the drawer. */
+  canExplain?: boolean;
   base: string;
   current: TwinSnapshot | null;
   historical: TwinSnapshot | null;
   hasHistorical: boolean;
+  scenario: { name: string; snapshot: TwinSnapshot } | null;
+  scenarioRequested: boolean;
+  /** Live conflicts/attendance for the current version — not shown on Historical (a different version). */
+  overlays: TwinOverlays | null;
 }) {
-  const [state, setState] = useState<TwinState>("current");
+  const [state, setState] = useState<TwinView>(scenario ? "scenario" : "current");
   const [hiddenTypes, setHiddenTypes] = useState<Set<TwinNodeType>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [impact, setImpact] = useState<ChangeImpact | null>(null);
   const [query, setQuery] = useState("");
 
-  const snapshot = state === "historical" ? historical : current;
+  const snapshot = state === "historical" ? historical : state === "scenario" ? (scenario?.snapshot ?? current) : current;
+  const liveOverlays = state === "historical" ? null : overlays;
 
   const impactById = useMemo(() => {
     if (!impact) return undefined;
@@ -81,7 +100,13 @@ export function TwinWorkspace({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <TwinStateToggle state={state} hasHistorical={hasHistorical} onChange={setState} />
+        <TwinStateToggle
+          state={state}
+          hasHistorical={hasHistorical}
+          scenarioName={scenario?.name ?? null}
+          scenarioRequested={scenarioRequested}
+          onChange={setState}
+        />
         <div className="flex items-center gap-2">
           <form onSubmit={handleSearch} className="flex items-center gap-1.5">
             <Input
@@ -106,11 +131,20 @@ export function TwinWorkspace({
         </div>
       </div>
 
+      {attention && state !== "historical" && <AttentionPanel items={attention} onSelect={selectNode} />}
+
       <TwinLegend hiddenTypes={hiddenTypes} onToggle={toggleType} />
 
       {snapshot && (
         <div key={state}>
-          <TwinCanvas nodes={snapshot.nodes} edges={snapshot.edges} hiddenTypes={hiddenTypes} impactById={impactById} onNodeClick={selectNode} />
+          <TwinCanvas
+            nodes={snapshot.nodes}
+            edges={snapshot.edges}
+            hiddenTypes={hiddenTypes}
+            impactById={impactById}
+            overlays={liveOverlays}
+            onNodeClick={selectNode}
+          />
         </div>
       )}
 
@@ -128,6 +162,11 @@ export function TwinWorkspace({
         }}
         onFocusNode={selectNode}
         onShowImpact={setImpact}
+        explain={
+          canExplain && selectedNode?.type === "student_group" && state !== "historical" ? (
+            <ExplainButton key={selectedNode.id} institutionSlug={institutionSlug} kind="section" target={selectedNode.id} />
+          ) : null
+        }
       />
     </div>
   );

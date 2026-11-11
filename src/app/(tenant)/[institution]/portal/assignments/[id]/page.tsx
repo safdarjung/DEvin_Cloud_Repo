@@ -31,12 +31,13 @@ export default async function PortalAssignmentDetailPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug, id } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requireModule(ctx, "assignments");
   requirePermission(ctx, "assignment.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assignments/${id}`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assignments/${id}`, allParams);
   const [assignment, submissions] = await Promise.all([getAssignment(ctx, id), mySubmissions(ctx, selection.studentId)]);
   // mySubmissions only lists this student's section assignments, so a miss is also a scope check.
   const mine = submissions.find((s) => s.assignmentId === id);

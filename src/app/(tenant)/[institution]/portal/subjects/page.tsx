@@ -18,12 +18,13 @@ export default async function PortalSubjectsPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "student.read");
   requirePermission(ctx, "academics.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/subjects`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/subjects`, allParams);
   const profile = await getStudentProfile(ctx, selection.studentId);
   const sectionId = profile?.enrolment?.classSectionId;
   const subjects = sectionId ? await listPortalSubjects(ctx, sectionId) : null;

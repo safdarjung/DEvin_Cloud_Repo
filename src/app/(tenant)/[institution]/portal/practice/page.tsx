@@ -20,13 +20,14 @@ export default async function PortalPracticePage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "student.read");
   if (!hasPermission(ctx, "practice.attempt") || !hasPermission(ctx, "ai.study")) redirect(`/${institutionSlug}/portal`);
   if (!isModuleEnabled(ctx, "practice")) notFound();
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/practice`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/practice`, allParams);
   const profile = await getStudentProfile(ctx, selection.studentId);
   const sectionId = profile?.enrolment?.classSectionId;
   const [subjects, attempts, progress] = await Promise.all([

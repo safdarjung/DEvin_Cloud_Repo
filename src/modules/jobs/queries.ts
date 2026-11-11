@@ -13,6 +13,23 @@ export interface AttentionJobRow {
 }
 
 /**
+ * One job's status by its idempotency key, for the module that enqueued it.
+ * Same user-client RLS as below (`jobs_select`: owner/principal/admin);
+ * anyone else gets null. Status only — never payload or last_error.
+ */
+export async function getJobStatusByKey(ctx: TenantContext, idempotencyKey: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("status")
+    .eq("institution_id", ctx.institution.id)
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.status ?? null;
+}
+
+/**
  * Jobs an admin should look at: dead-lettered, or queued again after a
  * failure (06 §W12 backoff) — i.e. anything with a recorded `last_error`.
  * Uses the signed-in user client, not the service-role client: RLS

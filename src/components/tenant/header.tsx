@@ -9,6 +9,7 @@ import type { Role } from "@/lib/auth/permissions";
 export function TenantHeader({
   institutionSlug,
   institutionName,
+  logoUrl,
   role,
   userName,
   userEmail,
@@ -23,6 +24,8 @@ export function TenantHeader({
 }: {
   institutionSlug: string;
   institutionName: string;
+  /** Signed URL of the school logo (setup branding); omitted when unset. */
+  logoUrl?: string;
   role: Role;
   userName: string;
   userEmail?: string;
@@ -42,7 +45,7 @@ export function TenantHeader({
     <header className="sticky top-0 z-(--z-header) flex h-14 items-center justify-between gap-2 border-b border-topbar-border bg-topbar px-3 sm:px-4 lg:px-6">
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <MobileNav items={navItems} user={sidebarUser} />
-        <HeaderCrumb institutionName={institutionName} />
+        <HeaderCrumb institutionName={institutionName} logoUrl={logoUrl} />
         <span className="hidden shrink-0 md:inline-flex lg:hidden xl:inline-flex"><RoleBadge role={role} /></span>
         {isDemo && (
           <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-foreground sm:inline">

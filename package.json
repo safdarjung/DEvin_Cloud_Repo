@@ -24,6 +24,8 @@
     "db:migration:new": "supabase migration new",
     "seed": "node --env-file-if-exists=.env.local scripts/seed/index.ts",
     "demo:reset": "node --env-file-if-exists=.env.local scripts/demo-reset.ts",
+    "invite:create": "node --env-file-if-exists=.env.local scripts/invite-create.ts",
+    "invite:create:hosted": "node --env-file=.env.development.local scripts/invite-create.ts",
     "db:backup": "node --env-file-if-exists=.env.local scripts/db-backup.ts",
     "db:restore": "node --env-file-if-exists=.env.local scripts/db-restore.ts",
     "db:drill": "node --env-file-if-exists=.env.local scripts/db-drill.ts",

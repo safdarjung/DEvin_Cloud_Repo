@@ -25,7 +25,8 @@ export type AssistantMessageMetadata = {
   sources: AssistantSource[];
 };
 
-// 38 queries: 18 aggregate (cloud + local) + 20 personal (local only)
+// Aggregate entries go to cloud and local; the rest are local only.
+// tests/unit/ai-feature-coverage.test.ts pins the reviewed aggregate list.
 export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   // Aggregate — safe for cloud (no person identifiers)
   "attendance.attendanceTodaySummary": {
@@ -162,12 +163,91 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   "insights.list": {
     description: "Generated insights for the school",
   },
+
+  // ---- features-18 §E (2026-11-11). Aggregate only after reading each return
+  // shape: counts, totals, catalogue names (items, categories, houses, labs,
+  // rules of no person). Rows with names, person ids, notes or free text stay
+  // local-only. Never listed: health.*, behaviour incidents/timeline,
+  // helpdesk threads, payroll structures/payslips, concession awards, canteen
+  // statements, safety pending acknowledgements, alumni.list, core.setup.*,
+  // documents.*, *Html renders and bulk exports.
+  "clubs.houseLeaderboard": { description: "House points leaderboard: house names, points and member counts", aggregate: true },
+  "expenses.categories": { description: "Expense categories with their active flag", aggregate: true },
+  "expenses.monthlyTotals": { description: "Net expense total per month (paise) for recent months", aggregate: true },
+  "expenses.budgetVsActual": { description: "Budget vs actual spend (paise) per expense category and budget period", aggregate: true },
+  "inventory.stock": { description: "Stock on hand per inventory item with its reorder level and low-stock flag", aggregate: true },
+  "inventory.lowStockCount": { description: "Number of active inventory items at or below their reorder level", aggregate: true },
+  "scholarships.summary": { description: "Concession counts by status and approved value by rule and by grade" },
+  "canteen.items": { description: "Canteen menu items with prices (paise) and on-sale flag", aggregate: true },
+  "canteen.daySales": { description: "Canteen sales by item and top-up totals for one day", aggregate: true },
+  "hostel.rooms": { description: "Hostel rooms with capacity and current occupancy count", aggregate: true },
+  "alumni.counts": { description: "Alumni count per batch year and the list of cities" },
+  "payroll.runs": { description: "Latest payroll runs: month, status, payslip count, gross and net totals" },
+  "payroll.monthlyCost": { description: "Payroll cost of finalized months: staff count, gross and net totals" },
+  "schoolLabs.labs": { description: "School labs with kind, capacity and active flag", aggregate: true },
+  "schoolLabs.utilisation": { description: "Bookings and periods used per lab in a date range", aggregate: true },
+  "schoolLabs.safetyWarnings": { description: "A lab's expired, hazard-classed or out-of-stock register items", aggregate: true },
+  "achievements.summary": { description: "Achievement counts by category and level", aggregate: true },
+  "resources.summary": { description: "Published teaching resource counts by subject", aggregate: true },
+  "duties.types": { description: "Duty types with slots per day and active flag", aggregate: true },
+  "duties.countByType": { description: "Duty assignment count per duty type in a date range", aggregate: true },
+  "compliance.summary": { description: "Compliance item counts by category and status", aggregate: true },
+  "helpdesk.counts": { description: "Open and overdue helpdesk ticket counts", aggregate: true },
+  "form.results": { description: "Per-field answer counts for one form, no names", aggregate: true },
+  "examSeating.slots": { description: "Exam slots with sections, paper and student counts, and seating plan status", aggregate: true },
+  "feePlans.lateFeeRules": { description: "Late-fee rule per fee structure: kind, amount, grace days, cap", aggregate: true },
+  "lab.correlation": { description: "Attendance vs marks correlation by section and subject", aggregate: true },
+  "lab.anomalies": { description: "Sections whose attendance, marks or fee overdue rate stand out (z-scores)", aggregate: true },
+  "lab.feeRisk": { description: "Fee overdue rates by grade and attendance band", aggregate: true },
+  "lab.trendBreaks": { description: "Sections whose recent attendance broke from their own trend", aggregate: true },
+
+  "clubs.list": { description: "Clubs with patron teacher, capacity and active flag" },
+  "clubs.events": { description: "Club events with dates, venue, capacity and status" },
+  "clubs.members": { description: "Members of one club" },
+  "expenses.list": { description: "Expense register page: description, payee, amount, voided flag" },
+  "inventory.movements": { description: "Stock movements of inventory items with notes" },
+  "scholarships.rules": { description: "Concession rules: name, criteria, percent or fixed amount, active flag" },
+  "hostel.allocations": { description: "Current hostel room allocations" },
+  "hostel.rollCall": { description: "Hostel roll call for a date" },
+  "helpdesk.tickets": { description: "Helpdesk tickets with status, priority, due date, raiser and assignee" },
+  "form.list": { description: "Forms with status, fields and response counts" },
+  "form.responses": { description: "Every response to one form" },
+  "achievements.list": { description: "Student achievements with category, level and verified flag" },
+  "achievements.portfolio": { description: "One student's achievements" },
+  "resources.browse": { description: "Teaching resources the caller may read, optionally for one subject" },
+  "resources.forStudent": { description: "Published resources for one child's section" },
+  "duties.roster": { description: "Duty roster with staff names for a date range" },
+  "compliance.items": { description: "Compliance items with due status and owner" },
+  "safety.alerts": { description: "Safety alerts the caller can see, active and recent" },
+  "safety.alertSummary": { description: "One alert's acknowledgement counts and section headcount board" },
+  "behaviour.pointTotals": { description: "Merit and demerit point totals per student" },
+  "library.catalog": { description: "Library catalogue: titles, authors, copies and available copies" },
+  "library.overdue": { description: "Overdue library loans with borrower and fine" },
+  "library.myLoans": { description: "The caller's or their child's library loans" },
+  "visitors.list": { description: "Visitor log for a date" },
+  "visitors.gatePasses": { description: "Student gate passes and their status" },
+  "visitors.pickupList": { description: "Authorised pickup people for one student" },
+  "certificates.list": { description: "Issued certificates" },
+  "examSeating.chart": { description: "Seating chart of one plan: rooms and seats" },
+  "examSeating.studentSeats": { description: "One student's exam seats" },
+  "feePlans.instalments": { description: "Instalments of one fee invoice" },
+  "lifecycle.history": { description: "A student's promotion, transfer and exit history" },
+  "workflows.list": { description: "Automation workflows and their status" },
+  "workflows.runs": { description: "Recent automation workflow runs" },
+  "people.pendingLeaveApprovals": { description: "Staff leave requests waiting for approval" },
+  "people.leaveRequests": { description: "The caller's own staff leave requests" },
+  "people.staffAttendanceForDate": { description: "Staff attendance for a date" },
+  "timetable.coverNeeded": { description: "Periods that need a substitute teacher on a date" },
+  "timetable.substitutionCandidates": { description: "Free teachers who could cover one period" },
+  "timetable.substitutions": { description: "Substitutions assigned for a date" },
+  "form.mine": { description: "Published forms waiting for the caller or their child" },
+  "helpdesk.myTickets": { description: "The caller's own helpdesk tickets" },
 };
 
 /**
  * Return the queries available to a provider, keyed by registry name.
- * - `"local"` gets all 38 queries (aggregate + personal)
- * - `"groq"` and `"gemini"` get only the 18 aggregate queries
+ * - `"local"` gets every query (aggregate + personal)
+ * - `"groq"` and `"gemini"` get only the aggregate queries
  *
  * Keys keep the registry's dotted name (`.` → `_` happens in `toolNameFor`,
  * M22's tool builder — not here).

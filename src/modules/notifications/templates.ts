@@ -23,6 +23,7 @@ export const NOTIFICATION_TYPES = [
   "workflow_alert",
   "student_leave_decided",
   "diary_entry",
+  "safety_alert",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -93,6 +94,19 @@ const WorkflowAlertVars = z.object({ workflow: z.string().min(1).max(80), messag
 const DiaryEntryVars = z
   .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
   .strict();
+// Features-18 #21 — safety alert (0129). Every var is re-read from the alert row.
+const SafetyAlertVars = z
+  .object({
+    kind: z.enum(["emergency", "drill", "closure"]),
+    title: z.string().min(1).max(200),
+    message: z.string().min(1).max(1000),
+    school: z.string().min(1),
+  })
+  .strict();
+const SAFETY_KIND_LABEL = {
+  en: { emergency: "EMERGENCY", drill: "DRILL", closure: "SCHOOL CLOSURE" },
+  hi: { emergency: "आपातकाल", drill: "अभ्यास (ड्रिल)", closure: "विद्यालय बंद" },
+} as const;
 
 export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
@@ -224,6 +238,15 @@ export const NOTIFICATION_TEMPLATES = {
       lang === "hi"
         ? `${v.section} (${v.subject}): ${v.excerpt}`
         : `${v.section} (${v.subject}): ${v.excerpt}`,
+  }),
+  // In-app is real; sms is the simulated adapter. No whatsapp/email: no
+  // approved WhatsApp template exists for it.
+  safety_alert: def({
+    channels: ["in_app", "sms"],
+    category: "announcement",
+    varsSchema: SafetyAlertVars,
+    title: (lang) => (lang === "hi" ? "सुरक्षा अलर्ट" : "Safety alert"),
+    body: (v, lang) => `${SAFETY_KIND_LABEL[lang][v.kind]}: ${v.title} — ${v.message} -${v.school}`,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

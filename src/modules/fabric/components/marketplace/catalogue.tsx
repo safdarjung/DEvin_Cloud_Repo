@@ -2,7 +2,7 @@
 
 // F-UI-11 marketplace catalogue — real module catalog (src/lib/modules/catalog.ts)
 // via marketplaceCatalog(ctx), grouped by its real categories. No vendors,
-// prices, ratings, or install counts: that data doesn't exist, so it is
+// ratings, or install counts: that data doesn't exist, so it is
 // omitted rather than invented (CLAUDE.md rule 7 / live-fabric BRIEF).
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -11,14 +11,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/states";
 import { Stagger } from "@/components/motion";
+import { LimitedBadge } from "@/components/honesty";
 import { downloadFile, toCsv } from "@/modules/fabric/components/download";
-import type { ModuleKey } from "@/lib/modules/catalog";
+import { formatPriceInr, PRICE_NOTE, type ModuleKey } from "@/lib/modules/catalog";
 import type { ModuleCategoryGroup, ModuleListItem } from "@/modules/fabric/marketplace.queries";
 import { ModuleDetail } from "./module-detail";
 
 interface FlatModule extends ModuleListItem {
   category: ModuleCategoryGroup["category"];
 }
+
+const SELECT_CLASS = "h-9 rounded-lg border border-input bg-transparent px-3 text-sm";
 
 export function Catalogue({
   institutionSlug,
@@ -39,17 +42,24 @@ export function Catalogue({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [installedOnly, setInstalledOnly] = useState(false);
+  const [priceFilter, setPriceFilter] = useState<"all" | "included" | "paid">("all");
+  const [sort, setSort] = useState<"default" | "asc" | "desc">("default");
   const [selectedKey, setSelectedKey] = useState<ModuleKey | null>(null);
 
   const filtered = allModules.filter((m) => {
     if (category && m.category !== category) return false;
     if (installedOnly && !m.enabled) return false;
+    if (priceFilter === "included" && m.priceInr !== 0) return false;
+    if (priceFilter === "paid" && m.priceInr === 0) return false;
     if (query) {
       const q = query.toLowerCase();
       if (!m.label.toLowerCase().includes(q) && !m.description.toLowerCase().includes(q)) return false;
     }
     return true;
   });
+  if (sort !== "default") filtered.sort((a, b) => (sort === "asc" ? a.priceInr - b.priceInr : b.priceInr - a.priceInr));
+
+  const monthlyTotal = allModules.reduce((sum, m) => (m.enabled ? sum + m.priceInr : sum), 0);
 
   const installedCount = allModules.filter((m) => m.enabled).length;
   const selected = selectedKey ? byKey.get(selectedKey) ?? null : null;
@@ -62,6 +72,8 @@ export function Catalogue({
     setQuery("");
     setCategory(null);
     setInstalledOnly(false);
+    setPriceFilter("all");
+    setSort("default");
   }
 
   function exportInstalled() {
@@ -85,6 +97,29 @@ export function Catalogue({
         <Button type="button" variant="outline" size="sm" onClick={exportInstalled} disabled={installedCount === 0}>
           Export installed
         </Button>
+        <select
+          value={priceFilter}
+          onChange={(e) => setPriceFilter(e.target.value as typeof priceFilter)}
+          aria-label="Filter by price"
+          className={SELECT_CLASS}
+        >
+          <option value="all">All prices</option>
+          <option value="included">Included only</option>
+          <option value="paid">Paid only</option>
+        </select>
+        <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} aria-label="Sort by price" className={SELECT_CLASS}>
+          <option value="default">Default order</option>
+          <option value="asc">Price: low to high</option>
+          <option value="desc">Price: high to low</option>
+        </select>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-sm" role="status">
+        <span>
+          Monthly total for installed modules: <strong>{formatPriceInr(monthlyTotal)}</strong>
+        </span>
+        <LimitedBadge />
+        <span className="text-xs text-muted-foreground">{PRICE_NOTE}</span>
       </div>
 
       <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
@@ -133,7 +168,9 @@ export function Catalogue({
                 <CardDescription>{m.description}</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-muted-foreground">{m.category}</p>
+                <p className="text-xs text-muted-foreground">
+                  {m.category} · <span className="font-medium text-foreground">{formatPriceInr(m.priceInr)}</span>
+                </p>
               </CardContent>
             </Card>
           ))}

@@ -20,6 +20,9 @@ import type { Database } from "@/lib/db/types";
 // src/modules/insights/briefings.ts writes through
 // src/modules/insights/briefings.service-role.ts after its own permission
 // + module checks, institution_id always from ctx.
+// "school_start" (F18 §H): /api/public/start peeks the invite code, creates
+// the owner's auth user (sign-up is disabled) and deletes that same user if
+// the school is not created — src/modules/core/setup/with-service-role.ts.
 const ALLOWED_CALLERS = new Set([
   "seed",
   "reset",
@@ -30,13 +33,14 @@ const ALLOWED_CALLERS = new Set([
   "payments_webhook",
   "agents",
   "briefings",
+  "school_start",
 ]);
 
 export function createAdminClient() {
   const caller = process.env.SERVICE_ROLE_CALLER;
   if (!caller || !ALLOWED_CALLERS.has(caller)) {
     throw new Error(
-      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/agents/briefings/test",
+      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/agents/briefings/school_start/test",
     );
   }
 

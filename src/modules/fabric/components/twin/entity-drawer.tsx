@@ -1,9 +1,11 @@
 "use client";
 // F-UI-09 — node facts + connected nodes + "Show impact" (changeImpact,
 // reused unchanged from demo/twin.ts — pure graph logic, lane brief) +
-// "Open record" (real page for the 2 types that have one today; hidden for
-// room/route, rule 7: no fake destination).
+// "Open record" (the closest real page per type — no per-teacher/room/route
+// record page exists, so those open the surface that lists them; rule 7: no
+// fake destination).
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { changeImpact } from "@/modules/fabric/demo/twin";
 import type { ChangeImpact, TwinNode, TwinSnapshot } from "@/modules/fabric/types";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,7 +15,9 @@ import { utilisationTier } from "@/modules/fabric/twin.mapping";
 
 const OPEN_RECORD_HREF: Partial<Record<TwinNode["type"], string>> = {
   student_group: "/attendance",
-  teacher: "/students",
+  teacher: "/fabric/operations", // Teacher workload section
+  room: "/timetable",
+  route: "/fabric/operations", // Transport routes section
 };
 
 export function EntityDrawer({
@@ -25,7 +29,10 @@ export function EntityDrawer({
   onOpenChange,
   onFocusNode,
   onShowImpact,
+  explain = null,
 }: {
+  /** Optional "Explain with AI" control for this node (sections only, set by the workspace). */
+  explain?: ReactNode;
   open: boolean;
   node: TwinNode | null;
   snapshot: TwinSnapshot | null;
@@ -99,6 +106,8 @@ export function EntityDrawer({
               </Link>
             )}
           </div>
+
+          {explain}
 
           {showingThisNode && impact && (
             <ul className="space-y-1.5 rounded-lg border p-3 text-sm">

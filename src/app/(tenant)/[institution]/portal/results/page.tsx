@@ -18,12 +18,13 @@ export default async function PortalResultsPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requireModule(ctx, "exams");
   requirePermission(ctx, "exam.result.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/results`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/results`, allParams);
   const results = await listResultsForStudent(ctx, selection.studentId);
 
   return (

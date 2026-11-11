@@ -75,3 +75,51 @@ export async function getStudioRequest(ctx: TenantContext, requestId: string): P
   if (error) throw error;
   return data ? toRecord(data) : null;
 }
+
+export interface CatalogModule {
+  key: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+}
+
+const MATCH_STOP_WORDS = new Set([
+  "about", "also", "added", "could", "each", "every", "from", "have", "into", "more", "need", "only", "should",
+  "than", "that", "their", "them", "then", "there", "they", "this", "want", "what", "when", "where", "which", "will",
+  "with", "would", "school",
+]);
+const MAX_CATALOG_MATCHES = 3;
+
+/** Lowercase words of 4+ letters, minus stop words, with a trailing plural "s" dropped. */
+function matchTokens(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length >= 4 && !MATCH_STOP_WORDS.has(w))
+      .map((w) => (w.length > 4 && w.endsWith("s") ? w.slice(0, -1) : w)),
+  );
+}
+
+/**
+ * U2 — "may already exist": modules (core.listModules, flattened) whose label
+ * shares a word with the request, or whose description shares 2+ words.
+ * Deterministic word overlap, no AI; label hits weigh double. Strongest first, max 3.
+ */
+export function catalogMatches(
+  request: { title: string; problem: string; desiredOutcome: string },
+  modules: CatalogModule[],
+): CatalogModule[] {
+  const words = matchTokens(`${request.title} ${request.problem} ${request.desiredOutcome}`);
+  return modules
+    .map((module) => {
+      const labelWords = matchTokens(module.label);
+      const labelHits = [...labelWords].filter((w) => words.has(w)).length;
+      const descHits = [...matchTokens(module.description)].filter((w) => !labelWords.has(w) && words.has(w)).length;
+      return { module, score: labelHits * 2 + descHits, matched: labelHits > 0 || descHits >= 2 };
+    })
+    .filter((m) => m.matched)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_CATALOG_MATCHES)
+    .map((m) => m.module);
+}

@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { closeInviteCodesHelper, mintInviteCode } from "../helpers/invite-codes";
 
 // M03-T2 — public.invite_member / accept_invitation / revoke_invitation
 // (06 M03 Task 2). Real signed-in clients, same shape as
@@ -39,9 +40,14 @@ async function newSignedInUser(label: string) {
 
 async function createInstitution(ownerClient: Awaited<ReturnType<typeof newSignedInUser>>["client"], label: string) {
   const slug = `invite-${label}-${crypto.randomUUID().slice(0, 8)}`;
-  const { data, error } = await ownerClient.rpc("create_institution", { p_name: `Invite ${label} School`, p_slug: slug });
-  if (error || !data) throw error ?? new Error("institution was not created");
-  return data as string;
+  // 0127: invite code only (create_institution is no longer granted to `authenticated`).
+  const { data, error } = await ownerClient.rpc("create_institution_with_invite", {
+    p_code: await mintInviteCode(),
+    p_name: `Invite ${label} School`,
+    p_slug: slug,
+  });
+  if (error || !data?.[0]) throw error ?? new Error("institution was not created");
+  return data[0].institution_id;
 }
 
 async function insertStaff(institutionId: string, employeeNo: string, userId: string | null = null) {
@@ -127,6 +133,7 @@ afterEach(async () => {
 
 afterAll(async () => {
   await sql.end();
+  await closeInviteCodesHelper();
 });
 
 describe("public.invite_member / accept_invitation / revoke_invitation (M03-T2)", () => {

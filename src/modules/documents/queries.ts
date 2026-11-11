@@ -41,3 +41,80 @@ export async function listDocumentsForEntity(
     createdAt: row.created_at,
   }));
 }
+
+export interface DocumentRow extends DocumentListItem {
+  entityType: string;
+  entityId: string;
+  entityLabel: string;
+}
+
+export const DOCUMENTS_PAGE_SIZE = 25;
+
+const escapeLike = (s: string) => s.replace(/[\\%_,()"]/g, " ").trim();
+
+/** Institution-wide list of active documents the caller's RLS lets them read (metadata only). Page-bounded; `q` matches file name or kind. */
+export async function listDocuments(
+  ctx: TenantContext,
+  opts: { entityType?: string; q?: string; page?: number },
+): Promise<{ rows: DocumentRow[]; total: number; page: number }> {
+  const supabase = await createClient();
+  const page = Math.max(1, Math.floor(opts.page ?? 1) || 1);
+  const from = (page - 1) * DOCUMENTS_PAGE_SIZE;
+  let builder = supabase
+    .from("documents")
+    .select("id, kind, file_name, mime, size_bytes, created_at, entity_type, entity_id", { count: "exact" })
+    .eq("institution_id", ctx.institution.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .range(from, from + DOCUMENTS_PAGE_SIZE - 1);
+  if (opts.entityType) builder = builder.eq("entity_type", opts.entityType);
+  const q = opts.q ? escapeLike(opts.q) : "";
+  if (q) builder = builder.or(`file_name.ilike.%${q}%,kind.ilike.%${q}%`);
+  const { data, error, count } = await builder;
+  if (error) throw error;
+  const docs = data ?? [];
+
+  // Human labels for student/staff owners; other entity types show their short id.
+  const ids = (t: string) => [...new Set(docs.filter((d) => d.entity_type === t).map((d) => d.entity_id))];
+  const [students, staff] = await Promise.all([
+    ids("student").length ? supabase.from("students").select("id, first_name, last_name, admission_no").in("id", ids("student")) : Promise.resolve({ data: [] }),
+    ids("staff").length ? supabase.from("staff").select("id, full_name").in("id", ids("staff")) : Promise.resolve({ data: [] }),
+  ]);
+  const labels = new Map<string, string>();
+  for (const s of students.data ?? []) labels.set(s.id, `${s.first_name} ${s.last_name ?? ""} (${s.admission_no})`.replace("  ", " "));
+  for (const s of staff.data ?? []) labels.set(s.id, s.full_name);
+
+  return {
+    page,
+    total: count ?? 0,
+    rows: docs.map((d) => ({
+      id: d.id,
+      kind: d.kind,
+      fileName: d.file_name,
+      mime: d.mime,
+      sizeBytes: d.size_bytes,
+      createdAt: d.created_at,
+      entityType: d.entity_type,
+      entityId: d.entity_id,
+      entityLabel: labels.get(d.entity_id) ?? `${d.entity_type} ${d.entity_id.slice(0, 8)}`,
+    })),
+  };
+}
+
+/** Owners a document can be uploaded for from this page: students (search) or staff. Capped at 20. */
+export async function documentOwnerOptions(ctx: TenantContext, entityType: "student" | "staff", q: string): Promise<{ id: string; label: string }[]> {
+  const supabase = await createClient();
+  const term = escapeLike(q);
+  if (entityType === "student") {
+    let b = supabase.from("students").select("id, first_name, last_name, admission_no").eq("institution_id", ctx.institution.id).order("admission_no").limit(20);
+    if (term) b = b.or(`admission_no.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%`);
+    const { data, error } = await b;
+    if (error) throw error;
+    return (data ?? []).map((s) => ({ id: s.id, label: `${s.first_name} ${s.last_name ?? ""} (${s.admission_no})`.replace("  ", " ") }));
+  }
+  let b = supabase.from("staff").select("id, full_name").eq("institution_id", ctx.institution.id).order("full_name").limit(20);
+  if (term) b = b.ilike("full_name", `%${term}%`);
+  const { data, error } = await b;
+  if (error) throw error;
+  return (data ?? []).map((s) => ({ id: s.id, label: s.full_name }));
+}

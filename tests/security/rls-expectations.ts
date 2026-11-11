@@ -1001,4 +1001,283 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin"],
     write: ["owner", "principal", "admin"],
   },
+
+  // Features-18 (0113-0126). Matrices from each migration header + .superpowers/sdd/features-18/ROLES.md.
+  // 0113 behaviour: M all; teacher taught students; student/guardian own/child non-voided. Void via definer only.
+  behaviour_incidents: {
+    classes: ["S", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  // 0114 health: M rw; guardian reads own children; teachers/students none.
+  health_profiles: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  health_visits: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  vaccinations: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0115 clubs/houses: every member reads; M writes; house_points via award_house_points only.
+  clubs: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  club_events: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  houses: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  house_points: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // 0115: staff read all; student/guardian own rows (club_*: write via definers only).
+  club_members: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  club_event_signups: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  house_members: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0116 hostel: M only (library-shaped); allocations via RPC only.
+  hostel_rooms: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  hostel_allocations: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: [],
+  },
+  hostel_roll_calls: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  hostel_roll_call_entries: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0117 expenses: finance roles; void via definer.
+  expense_categories: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  expenses: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  budgets: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  // 0118 scholarships: finance roles; decision via definer (owner/principal).
+  concession_rules: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  concession_awards: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  // 0119 canteen: finance roles + student/guardian read; transactions via definers only.
+  canteen_items: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  canteen_transactions: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "accountant", "student", "guardian"],
+    write: [],
+  },
+  // 0120 inventory: finance roles; movements via definer only.
+  inventory_items: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin", "accountant"],
+  },
+  inventory_movements: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: [],
+  },
+  // 0121 helpdesk: M all; teacher/student/guardian own raised; tickets via definers only, messages insertable by M + raiser.
+  helpdesk_tickets: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: [],
+  },
+  helpdesk_messages: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+  },
+  // 0122 forms: M manage; respondents read via my_open_forms definer; responses via submit_form_response only.
+  forms: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  form_sections: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin"],
+    write: ["owner", "principal", "admin"],
+  },
+  form_responses: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // 0123 alumni: read M+admissions; update M columns; rows via sync_alumni only.
+  alumni_profiles: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0124 payroll: owner/accountant manage; other staff read own payslips + finalized runs; writes via definers.
+  salary_structures: {
+    classes: ["S"],
+    read: ["owner", "accountant"],
+    write: ["owner", "accountant"],
+  },
+  payroll_runs: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: [],
+  },
+  payslips: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: [],
+  },
+  // 0126 school labs: lab.read = M + teacher; M manages; teacher books/logs own via definers/RLS.
+  school_labs: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  school_lab_bookings: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: [],
+  },
+  school_lab_equipment: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  school_lab_experiments: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  school_lab_incidents: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  // 0128-0132 (features-18 tail): roles from ROLES.md + each migration's RLS matrix.
+  // 0128: M all; teacher taught students; student/guardian own/child non-voided; insert only (verify/void via definers).
+  achievements: {
+    classes: ["S", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  // 0130: compliance.read = M + accountant; M writes (insert/update/delete); renew via definer.
+  compliance_items: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0130: append-only renewal history, written only by renew_compliance_item.
+  compliance_events: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "accountant"],
+    write: [],
+  },
+  // 0132: roster public to staff; written by generate_duty_roster / swap definers.
+  duty_assignments: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: [],
+  },
+  // 0132: M all; teacher only swaps they are party to; writes via definers.
+  duty_swap_requests: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: [],
+  },
+  // 0132: staff read; M insert/update.
+  duty_types: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"],
+    write: ["owner", "principal", "admin"],
+  },
+  // 0131: M all; staff published; teacher own; student/guardian published for own sections.
+  resources: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  // 0131: select follows parent resource visibility; M/teacher(own, taught section) insert/delete.
+  resource_sections: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
+  },
+  // 0129: staff all; members audience=all; student/guardian sections audience. Created/closed via definers.
+  safety_alerts: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // 0129: staff all; student/guardian own sections. Via definers.
+  safety_alert_sections: {
+    classes: ["S"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // 0129: M all; others own row. Via acknowledge_safety_alert.
+  safety_acknowledgements: {
+    classes: ["S", "O"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  // 0129: M all; teacher taught sections. Via mark_safety_headcount.
+  safety_headcounts: {
+    classes: ["S", "T"],
+    read: ["owner", "principal", "admin", "teacher"],
+    write: [],
+  },
 };

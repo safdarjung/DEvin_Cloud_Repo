@@ -21,11 +21,12 @@ export default async function PortalAssistantPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "student.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assistant`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/assistant`, allParams);
 
   return (
     <>

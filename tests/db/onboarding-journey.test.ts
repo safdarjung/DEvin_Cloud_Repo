@@ -8,6 +8,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { afterAll, describe, expect, it, vi } from "vitest";
+import { closeInviteCodesHelper, mintInviteCode } from "../helpers/invite-codes";
 
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -79,6 +80,7 @@ async function cleanupInstitution(institutionId: string): Promise<void> {
 
 afterAll(async () => {
   await sql.end();
+  await closeInviteCodesHelper();
 });
 
 function actionRequest(name: string, slug: string, input: unknown, token: string): Request {
@@ -112,7 +114,7 @@ describe("onboarding journey over HTTP (M03-T11)", () => {
     let institutionId: string | undefined;
 
     try {
-      // 1. Brand-new user -> POST /api/v1/institutions.
+      // 1. Brand-new user with an invite code (0127) -> POST /api/v1/institutions.
       const owner = await newSignedInUser("owner");
       createdUserIds.push(owner.userId);
       const slug = `onboarding-journey-${crypto.randomUUID().slice(0, 8)}`;
@@ -121,7 +123,7 @@ describe("onboarding journey over HTTP (M03-T11)", () => {
         new Request("http://localhost/api/v1/institutions", {
           method: "POST",
           headers: { "content-type": "application/json", authorization: `Bearer ${owner.token}` },
-          body: JSON.stringify({ input: { name: "Onboarding Journey School", slug } }),
+          body: JSON.stringify({ input: { name: "Onboarding Journey School", slug, code: await mintInviteCode() } }),
         }),
       );
       expect(createRes.status).toBe(200);

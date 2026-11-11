@@ -6,6 +6,7 @@ import { requireModule, requirePermission } from "@/lib/auth/require";
 import { listLabelledTeachableSections, listSectionSubjects } from "@/modules/academics/assignments.queries";
 import { DiaryView } from "@/modules/diary/components/DiaryView";
 import { diaryForSection } from "@/modules/diary/queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
 
 const TZ = "Asia/Kolkata";
 
@@ -48,6 +49,7 @@ export default async function DiaryPage({
         today={today}
         subjects={subjects}
         entries={entries}
+        canTranslate={aiTaskOn(ctx, "translate")}
       />
     </div>
   );

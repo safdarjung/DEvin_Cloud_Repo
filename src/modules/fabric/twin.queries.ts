@@ -7,10 +7,20 @@ import "server-only";
 // per role; the institution_id filters below are defense in depth, same
 // shape as every other queries.ts in this codebase.
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import type { TwinSnapshot } from "@/modules/fabric/types";
-import { buildTwinSnapshot, type RoomRow, type RouteAssignmentRow, type SlotRow } from "@/modules/fabric/twin.mapping";
-import { defaultPublishedVersionId, timetableTeacherWorkload } from "@/modules/timetable/queries";
+import {
+  attendanceTier,
+  buildTwinSnapshot,
+  conflictsByNode,
+  type NodeConflicts,
+  type RoomRow,
+  type RouteAssignmentRow,
+  type SlotRow,
+} from "@/modules/fabric/twin.mapping";
+import { attendanceDailyCounts, getAttendanceSettings, percentageFromCounts, todayInInstitutionTimezone } from "@/modules/attendance/queries";
+import { defaultPublishedVersionId, timetableConflicts, timetableTeacherWorkload } from "@/modules/timetable/queries";
 import { transportRoutes } from "@/modules/transport/queries";
 
 export type TwinState = "current" | "historical";
@@ -61,13 +71,15 @@ async function roomLoadById(ctx: TenantContext, versionId: string): Promise<Room
     await Promise.all([
       supabase.from("rooms").select("id, name, capacity").eq("institution_id", ctx.institution.id),
       supabase.from("periods").select("id", { count: "exact", head: true }).eq("institution_id", ctx.institution.id).eq("is_break", false),
-      supabase.from("timetable_slots").select("room_id").eq("institution_id", ctx.institution.id).eq("version_id", versionId).not("room_id", "is", null),
+      supabase.from("timetable_slots").select("room_id, weekday").eq("institution_id", ctx.institution.id).eq("version_id", versionId).not("room_id", "is", null),
     ]);
   if (roomsError) throw roomsError;
   if (periodsError) throw periodsError;
   if (slotsError) throw slotsError;
 
-  const periodsTotal = 6 * (nonBreakCount ?? 0);
+  // Working days = weekdays this version actually schedules (weekday is 1..6 by 0069's check); 6 before any room slot exists.
+  const workingDays = new Set((slotRows ?? []).map((row) => row.weekday)).size || 6;
+  const periodsTotal = workingDays * (nonBreakCount ?? 0);
   const usedByRoom = new Map<string, number>();
   for (const row of slotRows ?? []) {
     if (!row.room_id) continue;
@@ -148,7 +160,7 @@ async function routeSectionEdges(ctx: TenantContext): Promise<RouteAssignmentRow
  * no timetable version to build `state` from (no published version yet, or
  * — for "historical" — no archived one / RLS hides it): the page shows
  * LimitedBadge rather than an empty graph claiming to be real. Scenario
- * state isn't built here — no saved-scenario table exists on this base yet.
+ * state is the current snapshot through twin.mapping's applyScenario (page).
  */
 export async function twinSnapshot(ctx: TenantContext, state: TwinState): Promise<TwinSnapshot | null> {
   const versionId = await resolveVersionId(ctx, state);
@@ -175,4 +187,43 @@ export async function twinSnapshot(ctx: TenantContext, state: TwinState): Promis
     slots,
     routeAssignments,
   });
+}
+
+export interface TwinOverlays {
+  /** Current-version timetable conflicts by node id; empty without timetable.manage. */
+  conflicts: Record<string, NodeConflicts>;
+  /** Section id -> attendance % over the last ATTENDANCE_HEAT_DAYS days and its alert tier; empty without attendance.read. */
+  attendance: Record<string, { pct: number; tier: "ok" | "watch" | "critical" }>;
+}
+
+const ATTENDANCE_HEAT_DAYS = 14;
+
+/** Per-section attendance % over the window — one by-section attendance_daily_counts call (not attendanceTrend per section). */
+async function sectionAttendance(ctx: TenantContext): Promise<TwinOverlays["attendance"]> {
+  const settings = getAttendanceSettings(ctx);
+  const to = todayInInstitutionTimezone(ctx);
+  const from = new Date(Date.parse(`${to}T00:00:00Z`) - (ATTENDANCE_HEAT_DAYS - 1) * 86_400_000).toISOString().slice(0, 10);
+  const rows = await attendanceDailyCounts(ctx, { from, to, bySection: true });
+
+  const bySection = new Map<string, { status: string; n: number }[]>();
+  for (const row of rows) {
+    if (!row.classSectionId) continue;
+    bySection.set(row.classSectionId, [...(bySection.get(row.classSectionId) ?? []), { status: row.status, n: row.n }]);
+  }
+  const out: TwinOverlays["attendance"] = {};
+  for (const [sectionId, counts] of bySection) {
+    const { percentage, totalInDenominator } = percentageFromCounts(counts, settings.statuses);
+    if (totalInDenominator === 0) continue;
+    out[sectionId] = { pct: Math.round(percentage), tier: attendanceTier(percentage, settings.thresholds) };
+  }
+  return out;
+}
+
+/** Live overlays for the current snapshot (its id is the published version id). Each read is skipped unless the caller holds that owner query's permission. */
+export async function twinOverlays(ctx: TenantContext, current: TwinSnapshot): Promise<TwinOverlays> {
+  const [conflicts, attendance] = await Promise.all([
+    hasPermission(ctx, "timetable.manage") ? timetableConflicts(ctx, current.id) : [],
+    hasPermission(ctx, "attendance.read") ? sectionAttendance(ctx) : {},
+  ]);
+  return { conflicts: conflictsByNode(current.nodes, conflicts), attendance };
 }

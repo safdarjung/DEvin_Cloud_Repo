@@ -73,16 +73,63 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   attendance_insight: ["ask", "Give me an attendance insight briefing for this week."],
   daily_briefing: ["ask", "Give me today's school briefing in five bullets."],
   practice_quiz: ["create", "Make me a 5-question practice quiz on my weakest unit."],
+  lab_scenario: ["create", "Turn a described what-if into simulator assumptions."],
+  lab_explain: ["ask", "Explain which sections stand out from the school average."],
+  lesson_plan_writer: ["create", "Draft a lesson plan for a curriculum unit I teach."],
+  question_paper_builder: ["create", "Build a question paper for a unit I teach from the question bank."],
+  fee_reminder_writer: ["create", "Draft a reminder for the oldest overdue fee invoice."],
+  ptm_brief: ["create", "Prepare a parent-teacher meeting brief for a student I teach."],
+  helpdesk_triage: ["create", "Suggest a category, priority and reply for the oldest open helpdesk ticket."],
+  translate: ["create", "Translate my latest notice into Hindi."],
+  form_draft: ["create", "Draft a consent form for next week's school trip."],
+  substitution_note: ["create", "Write a handover note for today's substitute teachers."],
+  clubs_overview: ["ask", "Which house leads the points table, and what club events are coming up?"],
+  hostel_overview: ["ask", "How full are the hostel rooms right now?"],
+  expenses_overview: ["ask", "Which expense categories are over budget this year?"],
+  concessions_overview: ["ask", "How many concession requests are pending, and what value is approved by grade?"],
+  canteen_overview: ["ask", "What sold most in the canteen today?"],
+  inventory_overview: ["ask", "Which inventory items are low on stock?"],
+  helpdesk_overview: ["ask", "How many helpdesk tickets are open or overdue?"],
+  forms_overview: ["ask", "How many people have answered each of our open forms?"],
+  alumni_overview: ["ask", "How many alumni do we have per batch year?"],
+  payroll_overview: ["ask", "How has monthly payroll cost changed over recent months?"],
+  labs_overview: ["ask", "Which labs are booked most, and do any have safety warnings?"],
+  achievements_overview: ["ask", "Summarise this year's student achievements by category and level."],
+  resources_overview: ["ask", "Which subjects have the fewest published resources?"],
+  compliance_overview: ["ask", "Which compliance items are overdue or due soon?"],
+  duties_overview: ["ask", "How many duties of each type are on the roster this week?"],
+  safety_overview: ["ask", "Are there any active safety alerts, and who has acknowledged them?"],
+  behaviour_points: ["ask", "Which students have the most merit points this term?"],
+  library_overview: ["ask", "Which library loans are overdue?"],
+  visitors_overview: ["ask", "Who visited the school today, and which gate passes are open?"],
+  workflows_overview: ["ask", "Which automation workflows ran recently, and did any fail?"],
+  child_activities: ["ask", "What achievements, resources and forms does my child have right now?"],
+  my_activities: ["ask", "Which forms and library books do I need to deal with?"],
+  lab_safety_note: ["ask", "Which lab chemicals are expired or hazardous right now?"],
+  import_mapping: ["ask", "Which columns does the student import need?"],
 };
 
-/** Institution-relative page that runs each page-level task (where its component is rendered). */
-const TASK_PAGES: Partial<Record<CapabilityKey, string>> = {
+/** Institution-relative page that runs each page-level task (where its component is rendered); the first one in the person's apps wins. */
+const TASK_PAGES: Partial<Record<CapabilityKey, string | readonly string[]>> = {
   quiz_generator: "/assignments",
   report_remark: "/exams",
   enquiry_reply: "/admissions",
   attendance_insight: "/attendance",
-  daily_briefing: "/dashboard",
+  // Teachers have /today instead of /dashboard.
+  daily_briefing: ["/dashboard", "/today"],
   practice_quiz: "/portal/practice",
+  lab_scenario: "/fabric/simulator",
+  lab_explain: "/fabric/lab",
+  lesson_plan_writer: "/lesson-plans",
+  question_paper_builder: "/question-bank",
+  fee_reminder_writer: "/finance/defaulters",
+  ptm_brief: "/ptm",
+  helpdesk_triage: "/helpdesk",
+  form_draft: "/forms",
+  substitution_note: "/staff",
+  lab_safety_note: "/labs",
+  // /setup has no nav item; the dashboard's setup checklist links to its step 3 (people import).
+  import_mapping: "/dashboard",
 };
 
 const MODULE_ICONS: Partial<Record<ModuleKey, OrbIconKey>> = {
@@ -90,7 +137,8 @@ const MODULE_ICONS: Partial<Record<ModuleKey, OrbIconKey>> = {
   timetable: "CalendarClock", assignments: "FileText", lesson_plans: "BookOpen", mastery: "Target", insights: "Lightbulb",
   messaging: "MessagesSquare", announcements: "Megaphone", calendar: "CalendarDays", people: "Users", question_bank: "ListChecks",
   practice: "Puzzle", diary: "NotebookPen", student_leave: "CalendarOff", website: "Globe", ai_briefings: "Sun", ai_student: "Book",
-  ai_teacher: "Bot",
+  ai_teacher: "Bot", expenses: "Banknote", scholarships: "Banknote", payroll: "Banknote", library: "BookText", resources: "BookOpen",
+  forms: "ClipboardList", helpdesk: "MessagesSquare", safety: "Shield", workflows: "Zap",
 };
 
 const ORDER: Record<OrbChipKind, number> = { ask: 0, create: 1, open: 2 };
@@ -103,10 +151,11 @@ export function orbChips(
   for (const key of keys) {
     const cap = CAPABILITIES[key];
     const [kind, prompt] = STARTERS[key];
-    const page = cap.kind === "task" ? TASK_PAGES[key] : undefined;
-    const href = page ? `/${opts.slug}${page}` : undefined;
+    const pages = cap.kind === "task" ? [TASK_PAGES[key] ?? []].flat() : [];
     const icon = MODULE_ICONS[cap.module] ?? "Sparkles";
-    if (href && opts.appHrefs.includes(href)) chips.push({ key, label: cap.label, kind: "open", icon, href });
+    // A sub-page counts when its section is in the person's apps (e.g. /finance/defaulters under /finance).
+    const href = pages.map((p) => `/${opts.slug}${p}`).find((h) => opts.appHrefs.some((a) => h === a || h.startsWith(`${a}/`)));
+    if (href) chips.push({ key, label: cap.label, kind: "open", icon, href });
     else if (opts.chatOn) chips.push({ key, label: cap.label, kind, icon, prompt });
   }
   return chips.sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);

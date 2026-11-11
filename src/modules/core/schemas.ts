@@ -5,13 +5,16 @@ import { z } from "zod";
 // Relative + .ts: the seed scripts (plain node, no path alias) import this file.
 import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
 import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
-import { MARKETING_SEGMENTS } from "../../lib/marketing/routes.ts";
 
-// Mirrors app.create_institution's list (0064) + 0101's check constraint, plus
-// every public marketing path: a school slug must never shadow a public page.
-const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+// Equal to the SQL check institutions_slug_not_reserved (0127), which is the
+// authority: a school slug must never shadow an app route or public page.
+// tests/unit/reserved-slugs.test.ts keeps the two equal and fails when a new
+// top-level src/app route segment is not reserved.
+export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "api", "s", "login", "logout", "auth", "admin", "app", "www", "static", "public", "demo", "invite", "onboarding",
-  "portal", "sw", ...MARKETING_SEGMENTS,
+  "portal", "sw", "select", "product", "modules", "ai", "security", "pricing", "how-it-works", "faq", "contact",
+  "roles", "legal", "offline", "icon", "apple-icon", "opengraph-image", "sitemap", "robots", "manifest", "llms", "for-agents",
+  "platform", "start", "tour",
 ]);
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate
@@ -71,6 +74,10 @@ export const AiRoleConfigSchema = z
   .strict();
 
 export type AiRoleConfig = z.infer<typeof AiRoleConfigSchema>;
+
+// F18 §H setup wizard steps (institutions.settings.setup keys).
+export const SETUP_STEPS = ["structure", "branding", "people", "invite", "modules"] as const;
+export type SetupStep = (typeof SETUP_STEPS)[number];
 
 export const InstitutionSettingsSchema = z
   .object({
@@ -220,6 +227,24 @@ export const InstitutionSettingsSchema = z
         forecasts: z.boolean().optional(),
         agents: z.boolean().optional(),
         workflows: z.boolean().optional(),
+        behaviour: z.boolean().optional(),
+        health: z.boolean().optional(),
+        clubs: z.boolean().optional(),
+        hostel: z.boolean().optional(),
+        school_labs: z.boolean().optional(),
+        achievements: z.boolean().optional(),
+        safety: z.boolean().optional(),
+        compliance: z.boolean().optional(),
+        resources: z.boolean().optional(),
+        duties: z.boolean().optional(),
+        expenses: z.boolean().optional(),
+        scholarships: z.boolean().optional(),
+        canteen: z.boolean().optional(),
+        inventory: z.boolean().optional(),
+        helpdesk: z.boolean().optional(),
+        forms: z.boolean().optional(),
+        alumni: z.boolean().optional(),
+        payroll: z.boolean().optional(),
       })
       .strict()
       .optional(),
@@ -234,6 +259,17 @@ export const InstitutionSettingsSchema = z
       .optional(),
     // Per-role AI config (AI roles ADR): narrows what each role's AI may do; never grants beyond permissions.ts.
     ai_roles: z.partialRecord(z.enum(AI_ROLES), AiRoleConfigSchema).optional(),
+    // F18 §H — written only by core.setup.saveBranding (logo_path = this
+    // school's `<institution_id>/logo.<ext>` in the public `school-branding`
+    // bucket, 0127; never a URL) and core.setup.setProgress.
+    branding: z
+      .object({
+        logo_path: z.string().regex(/^[0-9a-f-]{36}\/logo\.(png|jpg|jpeg|webp)$/).optional(),
+        primary_color: z.string().regex(/^#[0-9a-f]{6}$/).optional(),
+      })
+      .strict()
+      .optional(),
+    setup: z.partialRecord(z.enum(SETUP_STEPS), z.enum(["done", "dismissed"])).optional(),
   })
   .strict();
 
@@ -414,11 +450,12 @@ export type TermUpsertInput = z.infer<typeof TermUpsertSchema>;
 // patch): a key that's present must still be the full, valid shape for
 // that key; `.partial()` only makes top-level keys optional. Modules are
 // never updated via updateSettings; they go through core.module.set.
+// Same for branding/setup: only the core.setup.* actions write them.
 export const UpdateInstitutionSettingsSchema = z
   .object({
     name: shortText.optional(),
     timezone: z.string().trim().min(1).max(100).optional(),
-    settings: InstitutionSettingsSchema.omit({ modules: true }).partial().optional(),
+    settings: InstitutionSettingsSchema.omit({ modules: true, branding: true, setup: true }).partial().optional(),
   })
   .strict();
 export type UpdateInstitutionSettingsInput = z.infer<typeof UpdateInstitutionSettingsSchema>;

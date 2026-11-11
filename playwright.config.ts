@@ -49,6 +49,7 @@ export default defineConfig({
     : {
         command: "pnpm dev",
         url: "http://localhost:3000",
-        reuseExistingServer: !process.env.CI,
+        // Never reuse a running dev server: `pnpm dev` now points at the hosted database (.env.development.local), and e2e must run on local.
+        reuseExistingServer: false,
       },
 });

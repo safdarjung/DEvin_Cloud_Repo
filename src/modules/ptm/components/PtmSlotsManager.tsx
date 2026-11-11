@@ -10,6 +10,7 @@ import { AnimatedList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { addPtmSlots, removePtmSlot } from "@/modules/ptm/actions";
 import type { PtmScheduleRow } from "@/modules/ptm/queries";
+import { PtmBriefButton } from "@/modules/ai/components/PtmBriefButton";
 
 /** A teacher's own slots for one published PTM event: add a time range, remove a slot, see who booked. */
 export function PtmSlotsManager({
@@ -18,12 +19,15 @@ export function PtmSlotsManager({
   dayStartsAt,
   dayEndsAt,
   slots,
+  canBrief = false,
 }: {
   institutionSlug: string;
   eventId: string;
   dayStartsAt: string;
   dayEndsAt: string;
   slots: PtmScheduleRow[];
+  /** features-18 §C: ptm_brief capability on for this role. */
+  canBrief?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -100,6 +104,9 @@ export function PtmSlotsManager({
                   </span>
                 ) : (
                   <Badge variant="outline">Open</Badge>
+                )}
+                {s.booking && canBrief && (
+                  <PtmBriefButton institutionSlug={institutionSlug} studentId={s.booking.studentId} studentName={s.booking.studentName} />
                 )}
                 <Button
                   size="sm"

@@ -69,7 +69,7 @@ async function setupInvoice(
 }
 
 async function setDueOn(invoiceId: string, daysAgo: number): Promise<void> {
-  await sql`update public.invoices set due_on = current_date - ${daysAgo}::int where id = ${invoiceId}`;
+  await sql`update public.invoices set due_on = (now() at time zone 'Asia/Kolkata')::date - ${daysAgo}::int where id = ${invoiceId}`;
 }
 
 async function createRule(
@@ -192,8 +192,8 @@ describe("fee_plans migration (0087 part 2) — apply_late_fees", () => {
       await sql`
         insert into public.invoice_instalments (institution_id, invoice_id, seq, due_on, amount)
         values
-          (${inst.institutionId}, ${invoiceId}, 1, current_date - 10, 4000),
-          (${inst.institutionId}, ${invoiceId}, 2, current_date + 30, 6000)
+          (${inst.institutionId}, ${invoiceId}, 1, (now() at time zone 'Asia/Kolkata')::date - 10, 4000),
+          (${inst.institutionId}, ${invoiceId}, 2, (now() at time zone 'Asia/Kolkata')::date + 30, 6000)
       `;
 
       const first = await applyLateFees(inst.institutionId);
@@ -313,7 +313,7 @@ describe("fee_plans migration (0087 part 2) — enqueue_due_late_fees sweep", ()
 
 describe("fee_plans migration (0087 part 2) — ledger_voucher_lines", () => {
   async function dateRange(): Promise<{ from: string; to: string }> {
-    const [{ today }] = await sql<{ today: Date }[]>`select current_date as today`;
+    const [{ today }] = await sql<{ today: Date }[]>`select (now() at time zone 'Asia/Kolkata')::date as today`;
     const iso = (d: Date) => d.toISOString().slice(0, 10);
     return { from: iso(new Date(today.getTime() - 30 * 86_400_000)), to: iso(new Date(today.getTime() + 1 * 86_400_000)) };
   }
@@ -353,7 +353,7 @@ describe("fee_plans migration (0087 part 2) — ledger_voucher_lines", () => {
       const invoiceJournal = all.filter((r) => r.voucher_type === "Journal" && r.voucher_no === invoiceRow.invoice_no);
       expect(invoiceJournal.length).toBeGreaterThanOrEqual(2); // fees_receivable + fee_income
 
-      const [{ today }] = await sql<{ today: Date }[]>`select current_date as today`;
+      const [{ today }] = await sql<{ today: Date }[]>`select (now() at time zone 'Asia/Kolkata')::date as today`;
       const yyyymmdd = today.toISOString().slice(0, 10).replace(/-/g, "");
       const lateFeeJournal = all.filter((r) => r.voucher_type === "Journal" && r.charge_head === "late_fee");
       expect(lateFeeJournal).toHaveLength(2);

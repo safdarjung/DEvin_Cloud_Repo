@@ -17,12 +17,13 @@ export default async function PortalThreadPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug, threadId } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   if (!uuid.safeParse(threadId).success) notFound();
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "message.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/messages/${threadId}`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/messages/${threadId}`, allParams);
   // Per-child isolation: the thread must belong to the selected child.
   const thread = (await myThreads(ctx, { studentId: selection.studentId })).find((t) => t.id === threadId);
   if (!thread) notFound();

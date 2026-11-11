@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/states";
 import { LimitedBadge } from "@/components/honesty";
 import { humanize, inr } from "@/lib/format";
-import type { StudioRequestRecord, StudioRequestStatus } from "@/modules/fabric/studio.queries";
+import type { CatalogModule, StudioRequestRecord, StudioRequestStatus } from "@/modules/fabric/studio.queries";
 import { StudioControls } from "./studio-controls";
 
 const TIMELINE: StudioRequestStatus[] = ["submitted", "proposed", "approved", "in_progress", "delivered"];
@@ -31,11 +31,14 @@ export function RequestDetail({
   base,
   request,
   canApprove,
+  catalogMatches = [],
 }: {
   institutionSlug: string;
   base: string;
   request: StudioRequestRecord;
   canApprove: boolean;
+  /** Existing modules whose wording overlaps the request (studio.queries catalogMatches) — shown before proposing. */
+  catalogMatches?: CatalogModule[];
 }) {
   const proposal = request.proposal;
   const rejected = request.status === "rejected";
@@ -190,6 +193,24 @@ export function RequestDetail({
               <div>
                 <p className="text-sm font-medium">Notes</p>
                 <List items={request.notes} />
+              </div>
+            )}
+            {request.status === "submitted" && catalogMatches.length > 0 && (
+              <div className="space-y-2 rounded-lg border p-3">
+                <p className="text-sm font-medium">May already exist</p>
+                <p className="text-xs text-muted-foreground">Word match against the module catalog, before asking AI for a proposal.</p>
+                <ul className="space-y-1.5 text-sm">
+                  {catalogMatches.map((m) => (
+                    <li key={m.key} className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-medium">{m.label}</span>
+                      <Badge variant={m.enabled ? "success" : "secondary"}>{m.enabled ? "On" : "Off"}</Badge>
+                      <span className="text-muted-foreground">{m.description}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href={`/${institutionSlug}/fabric/marketplace`} className="text-sm text-primary hover:underline">
+                  Browse modules
+                </Link>
               </div>
             )}
             <StudioControls institutionSlug={institutionSlug} requestId={request.id} status={request.status} canApprove={canApprove} />

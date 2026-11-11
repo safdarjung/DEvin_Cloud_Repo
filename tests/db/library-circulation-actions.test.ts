@@ -32,9 +32,7 @@ afterAll(async () => {
 });
 
 function isoDate(offsetDays: number): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + offsetDays);
-  return d.toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(Date.now() + offsetDays * 864e5);
 }
 
 async function studentIdFor(institutionId: string, role: string): Promise<string> {
@@ -65,7 +63,7 @@ async function createCopy(institutionId: string, bookId: string, accessionNo: st
 async function backdateDueOn(loanId: string, daysAgo: number): Promise<void> {
   await sql`
     update public.library_loans
-    set issued_on = current_date - ${daysAgo + 14}::int, due_on = current_date - ${daysAgo}::int
+    set issued_on = (now() at time zone 'Asia/Kolkata')::date - ${daysAgo + 14}::int, due_on = (now() at time zone 'Asia/Kolkata')::date - ${daysAgo}::int
     where id = ${loanId}::uuid
   `;
 }

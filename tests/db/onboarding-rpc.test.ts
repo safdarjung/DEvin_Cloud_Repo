@@ -1,6 +1,7 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
+import { closeInviteCodesHelper, mintInviteCode } from "../helpers/invite-codes";
 
 // M03-T1 — public.create_institution (06 M03 Task 1). Real signed-in
 // clients, same shape as tests/db/tenant-context.test.ts: a fresh auth user
@@ -35,6 +36,19 @@ async function newSignedInUser(label: string) {
   return { userId: data.user.id, email, client };
 }
 
+type SignedInClient = Awaited<ReturnType<typeof newSignedInUser>>["client"];
+
+// 0127: `authenticated` reaches create_institution only through
+// create_institution_with_invite, so every school here spends a fresh code.
+async function createInstitution(client: SignedInClient, name: string, slug: string) {
+  const { data, error } = await client.rpc("create_institution_with_invite", {
+    p_code: await mintInviteCode(),
+    p_name: name,
+    p_slug: slug,
+  });
+  return { data: data?.[0]?.institution_id ?? null, error };
+}
+
 // Deletes everything create_institution could have written for these
 // institution ids, in FK order; audit_events is immutable history (0003's
 // block_mutation trigger) so its delete needs the same test-only bypass
@@ -67,18 +81,28 @@ afterEach(async () => {
 
 afterAll(async () => {
   await sql.end();
+  await closeInviteCodesHelper();
 });
 
 describe("public.create_institution (M03-T1)", () => {
+  it("a signed-in user cannot call create_institution directly (0127: invite code only)", async () => {
+    const { userId, client } = await newSignedInUser("direct");
+    userIdsToDelete.add(userId);
+
+    const { data, error } = await client.rpc("create_institution", {
+      p_name: "Direct School",
+      p_slug: `onboard-direct-${crypto.randomUUID().slice(0, 8)}`,
+    });
+    expect(data).toBeNull();
+    expect(error?.code).toBe("42501");
+  });
+
   it("new user creates an institution and becomes its active owner", async () => {
     const { userId, client } = await newSignedInUser("basic");
     userIdsToDelete.add(userId);
     const slug = `onboard-basic-${crypto.randomUUID().slice(0, 8)}`;
 
-    const { data, error } = await client.rpc("create_institution", {
-      p_name: "New Basic School",
-      p_slug: slug,
-    });
+    const { data, error } = await createInstitution(client, "New Basic School", slug);
     expect(error).toBeNull();
     const institutionId = data as string;
     institutionIdsToDelete.add(institutionId);
@@ -99,7 +123,7 @@ describe("public.create_institution (M03-T1)", () => {
     userIdsToDelete.add(userId);
     const slug = `onboard-year-${crypto.randomUUID().slice(0, 8)}`;
 
-    const { data, error } = await client.rpc("create_institution", { p_name: "Year School", p_slug: slug });
+    const { data, error } = await createInstitution(client, "Year School", slug);
     expect(error).toBeNull();
     const institutionId = data as string;
     institutionIdsToDelete.add(institutionId);
@@ -123,7 +147,7 @@ describe("public.create_institution (M03-T1)", () => {
     const { userId, client } = await newSignedInUser("reserved");
     userIdsToDelete.add(userId);
 
-    const { error } = await client.rpc("create_institution", { p_name: "Reserved Slug School", p_slug: "admin" });
+    const { error } = await createInstitution(client, "Reserved Slug School", "admin");
     expect(error?.message).toBe("code:validation_failed");
   });
 
@@ -134,11 +158,11 @@ describe("public.create_institution (M03-T1)", () => {
     userIdsToDelete.add(userId2);
     const slug = `onboard-dup-${crypto.randomUUID().slice(0, 8)}`;
 
-    const first = await client1.rpc("create_institution", { p_name: "Dup School One", p_slug: slug });
+    const first = await createInstitution(client1, "Dup School One", slug);
     expect(first.error).toBeNull();
     institutionIdsToDelete.add(first.data as string);
 
-    const second = await client2.rpc("create_institution", { p_name: "Dup School Two", p_slug: slug });
+    const second = await createInstitution(client2, "Dup School Two", slug);
     expect(second.error?.message).toBe("code:conflict");
   });
 
@@ -148,15 +172,12 @@ describe("public.create_institution (M03-T1)", () => {
 
     for (let i = 0; i < 3; i++) {
       const slug = `onboard-quota-${i}-${crypto.randomUUID().slice(0, 8)}`;
-      const result = await client.rpc("create_institution", { p_name: `Quota School ${i}`, p_slug: slug });
+      const result = await createInstitution(client, `Quota School ${i}`, slug);
       expect(result.error).toBeNull();
       institutionIdsToDelete.add(result.data as string);
     }
 
-    const fourth = await client.rpc("create_institution", {
-      p_name: "Quota School 4",
-      p_slug: `onboard-quota-4-${crypto.randomUUID().slice(0, 8)}`,
-    });
+    const fourth = await createInstitution(client, "Quota School 4", `onboard-quota-4-${crypto.randomUUID().slice(0, 8)}`);
     expect(fourth.error?.message).toBe("code:quota_exceeded");
   });
 
@@ -165,7 +186,7 @@ describe("public.create_institution (M03-T1)", () => {
     userIdsToDelete.add(userId);
     const slug = `onboard-guard-${crypto.randomUUID().slice(0, 8)}`;
 
-    const created = await client.rpc("create_institution", { p_name: "Guard School", p_slug: slug });
+    const created = await createInstitution(client, "Guard School", slug);
     expect(created.error).toBeNull();
     const institutionId = created.data as string;
     institutionIdsToDelete.add(institutionId);
@@ -189,7 +210,7 @@ describe("public.create_institution (M03-T1)", () => {
     userIdsToDelete.add(userId);
     const slug = `onboard-inv-${crypto.randomUUID().slice(0, 8)}`;
 
-    const created = await client.rpc("create_institution", { p_name: "Invitations School", p_slug: slug });
+    const created = await createInstitution(client, "Invitations School", slug);
     expect(created.error).toBeNull();
     const institutionId = created.data as string;
     institutionIdsToDelete.add(institutionId);

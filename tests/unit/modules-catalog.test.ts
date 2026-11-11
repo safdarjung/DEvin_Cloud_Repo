@@ -7,6 +7,7 @@ import {
   isModuleEnabled,
   allModulesOn,
   MODULE_DISABLED_MESSAGE,
+  monthlyTotalInr,
 } from '@/lib/modules/catalog';
 import { InstitutionSettingsSchema, UpdateInstitutionSettingsSchema, DEFAULT_INSTITUTION_SETTINGS, SetModuleEnabledSchema } from '@/modules/core/schemas';
 
@@ -312,6 +313,27 @@ describe('modules-catalog', () => {
     it('is a string', () => {
       expect(typeof MODULE_DISABLED_MESSAGE).toBe('string');
       expect(MODULE_DISABLED_MESSAGE.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('priceInr', () => {
+    it('every module has an integer price >= 0 and core is 0', () => {
+      for (const key of MODULE_KEYS) {
+        const e = MODULES[key] as Record<string, unknown>;
+        expect(Number.isInteger(e.priceInr)).toBe(true);
+        expect(e.priceInr as number).toBeGreaterThanOrEqual(0);
+        if (e.core === true) expect(e.priceInr).toBe(0);
+      }
+    });
+
+    it('monthlyTotalInr sums enabled non-core modules only', () => {
+      const off = Object.fromEntries(OPTIONAL_MODULE_KEYS.map((k) => [k, false]));
+      expect(monthlyTotalInr({ institution: { settings: { modules: off } } })).toBe(0);
+      const one = { ...off, library: true };
+      expect(monthlyTotalInr({ institution: { settings: { modules: one } } })).toBe(MODULES.library.priceInr);
+      const all = Object.fromEntries(OPTIONAL_MODULE_KEYS.map((k) => [k, true]));
+      const sum = OPTIONAL_MODULE_KEYS.reduce((a, k) => a + MODULES[k].priceInr, 0);
+      expect(monthlyTotalInr({ institution: { settings: { modules: all } } })).toBe(sum);
     });
   });
 });

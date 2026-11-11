@@ -13,6 +13,7 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { BulkActions } from "@/modules/finance/components/BulkActions";
 import { DefaultersTable } from "@/modules/finance/components/DefaultersTable";
 import { listDefaulters, listTermOptions } from "@/modules/finance/queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
 
 // T-032 — 06 §W9 defaulters list (AC4). Same staff-only gate as the ledger
 // page — `finance.structure.manage` matches `app.finance_roles()`, the role
@@ -34,6 +35,7 @@ export default async function DefaultersPage({
   const termId = requestedTermId ?? terms[0]?.id;
   const defaulters = termId ? await listDefaulters(ctx, { termId }) : [];
   const canRemind = hasPermission(ctx, "finance.reminder.send") && isModuleEnabled(ctx, "finance_plus") && defaulters.length > 0;
+  const aiDraftTermId = termId && aiTaskOn(ctx, "fee_reminder_writer") ? termId : undefined;
 
   // Derived only from the rows above (unpaid / part-paid invoices this term).
   const billed = defaulters.reduce((sum, d) => sum + d.total, 0);
@@ -113,10 +115,10 @@ export default async function DefaultersPage({
           {termId ? (
             canRemind ? (
               <BulkActions kind="remind" institutionSlug={institutionSlug}>
-                <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} selectable />
+                <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} selectable aiDraftTermId={aiDraftTermId} />
               </BulkActions>
             ) : (
-              <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} />
+              <DefaultersTable institutionSlug={institutionSlug} defaulters={defaulters} aiDraftTermId={aiDraftTermId} />
             )
           ) : (
             <EmptyState title="No terms set up yet" />

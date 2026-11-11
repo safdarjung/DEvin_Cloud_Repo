@@ -19,6 +19,7 @@ export type JobType =
   | "forecast.run"
   | "notify.student_leave_decided"
   | "notify.diary_entry"
+  | "notify.safety_alert"
   | "mastery.compute"
   | "workflow.run";
 

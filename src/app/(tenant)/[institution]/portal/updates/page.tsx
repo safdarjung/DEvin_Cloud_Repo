@@ -29,12 +29,13 @@ export default async function PortalUpdatesPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   if (ctx.membership.role !== "guardian") notFound();
   requirePermission(ctx, "assignment.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/updates`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/updates`, allParams);
   const today = todayInInstitutionTimezone(ctx);
   const entries = await diaryForStudent(ctx, selection.studentId, shiftDays(today, -HISTORY_DAYS), shiftDays(today, 30));
   const needsAck = entries.filter((e) => e.requiresAck);

@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
-import { MODULES } from "@/lib/modules/catalog";
+import { formatPriceInr, MODULES } from "@/lib/modules/catalog";
 import { listModules } from "@/modules/core/queries";
 import { FeatureToggle } from "@/modules/core/components/FeatureToggle";
 
@@ -35,6 +35,7 @@ export default async function ModulesPage({
                 <CardHeader>
                   <CardTitle className="text-base">{mod.label}</CardTitle>
                   <CardDescription>{mod.description}</CardDescription>
+                  <p className="text-xs font-medium">{formatPriceInr(mod.priceInr)}</p>
                   {mod.requires.length > 0 && (
                     <p className="text-xs text-muted-foreground mt-2">
                       Needs:{" "}

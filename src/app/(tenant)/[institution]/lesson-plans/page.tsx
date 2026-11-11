@@ -6,6 +6,7 @@ import { hasPermission, requireModule, requirePermission } from "@/lib/auth/requ
 import { listLabelledTeachableSections, listSectionSubjects } from "@/modules/academics/assignments.queries";
 import { LessonPlansView } from "@/modules/academics/components/LessonPlansView";
 import { curriculumLessonPlans, curriculumSectionUnits } from "@/modules/academics/curriculum.queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
 
 const TZ = "Asia/Kolkata";
 
@@ -53,6 +54,7 @@ export default async function LessonPlansPage({
         subjects={subjects.map((s, i) => ({ subjectId: s.id, subjectName: s.name, units: unitsPerSubject[i] }))}
         plans={plans}
         canManage={hasPermission(ctx, "assignment.manage")}
+        canDraftWithAi={aiTaskOn(ctx, "lesson_plan_writer")}
       />
     </div>
   );

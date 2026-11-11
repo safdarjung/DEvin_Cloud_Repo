@@ -201,8 +201,8 @@ describe("M23 workflow acceptance: event workflow through the runner, approval, 
 
         // --- real runner: absence job -> workflow event -> run -> condition -> notify -> approval ---
         const ports = createRunnerPorts(admin);
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
 
         const runsRes = await dispatchQuery("workflows.runs", inst.slug, { workflowId }, principalAuth);
         expect(runsRes.status).toBe(200);
@@ -243,7 +243,7 @@ describe("M23 workflow acceptance: event workflow through the runner, approval, 
         expect(approveRes.status).toBe(200);
         expect((await approveRes.json()).ok).toBe(true);
 
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
 
         const runsAfterRes = await dispatchQuery("workflows.runs", inst.slug, { workflowId }, principalAuth);
         const runsAfterBody = await runsAfterRes.json();
@@ -287,8 +287,8 @@ describe("M23 workflow acceptance: event workflow through the runner, approval, 
         );
         expect(submitRes2.status).toBe(200);
 
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
 
         const runsStillRes = await dispatchQuery("workflows.runs", inst.slug, { workflowId }, principalAuth);
         const runsStillBody = await runsStillRes.json();
@@ -316,7 +316,7 @@ describe("M23 workflow acceptance: event workflow through the runner, approval, 
         `;
 
         const beforeSweep = new Date();
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
 
         const scheduleRunsRes = await dispatchQuery("workflows.runs", inst.slug, { workflowId: scheduleWorkflowId }, principalAuth);
         const scheduleRunsBody = await scheduleRunsRes.json();
@@ -328,7 +328,7 @@ describe("M23 workflow acceptance: event workflow through the runner, approval, 
         `;
         expect(new Date(nextRunAt).getTime()).toBe(nextTwentyHundredIst(beforeSweep).getTime());
 
-        await runOnceCore({ workerId: "workflows-acceptance-worker" }, ports);
+        await runOnceCore({ workerId: "workflows-acceptance-worker", max: 500 }, ports);
         const scheduleRunsAgainRes = await dispatchQuery("workflows.runs", inst.slug, { workflowId: scheduleWorkflowId }, principalAuth);
         const scheduleRunsAgainBody = await scheduleRunsAgainRes.json();
         expect(scheduleRunsAgainBody.data).toHaveLength(1); // still just the one run

@@ -32,6 +32,14 @@ const eslintConfig = defineConfig([
     },
   },
   {
+    // F18 §H: /api/public/start's own scoped helper (invite peek, owner
+    // account create/delete) — the route imports the helper, not the client.
+    files: ["src/modules/core/setup/with-service-role.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
+  {
     // T-024: the public enquiry route's own scoped helper and the route
     // that calls it — no other file under src/modules/website/** or
     // src/app/s/** may import the admin client (the renderer uses the anon

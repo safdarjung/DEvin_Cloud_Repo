@@ -21,11 +21,12 @@ export default async function PortalReceiptPage({
   searchParams: Promise<{ student?: string }>;
 }) {
   const { institution: institutionSlug, id } = await params;
-  const { student: studentParam } = await searchParams;
+  const allParams = await searchParams;
+  const { student: studentParam } = allParams;
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "finance.read");
 
-  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/fees/receipts/${id}`);
+  const selection = await resolvePortalSelection(ctx, studentParam, `/${institutionSlug}/portal/fees/receipts/${id}`, allParams);
   const receipt = await getReceipt(ctx, id);
   if (!receipt || receipt.snapshot.studentId !== selection.studentId) notFound();
 
