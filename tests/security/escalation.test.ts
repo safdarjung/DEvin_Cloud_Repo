@@ -167,6 +167,19 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "website.page.save_version": { permission: "website.edit", input: () => ({ pageId: U(), blocks: [] }) },
   "website.page.publish": { permission: "website.publish", input: () => ({ pageId: U(), versionId: U() }) },
   "website.live_set": { permission: "website.publish", input: () => ({ isLive: true }) },
+  "website.theme.save": {
+    permission: "website.publish",
+    input: () => ({
+      primary: "#1E3A8A",
+      accent: "#D4A017",
+      background: "#FFFDF7",
+      foreground: "#1F2937",
+      headingFont: "classic_serif",
+      bodyFont: "system",
+      radius: "small",
+      heroStyle: "banner",
+    }),
+  },
   "website.notice.upsert": {
     permission: "website.edit",
     input: () => ({ title: "Probe", body: "Probe", publishAt: at, isPublic: true }),

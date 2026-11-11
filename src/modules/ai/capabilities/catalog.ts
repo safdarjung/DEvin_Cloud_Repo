@@ -206,6 +206,9 @@ export const CAPABILITY_KEYS = [
   // features-18 §C2/§H task routes (api/ai/lab-safety-note, import-mapping)
   "lab_safety_note",
   "import_mapping",
+  // AI website builder (api/ai/website-draft, website-theme)
+  "website_page_draft",
+  "website_theme_draft",
 ] as const;
 
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
@@ -1163,6 +1166,29 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     roles: LEADERS,
     permission: "data.import",
     module: "core",
+    data: "aggregate",
+    defaultOn: LEADERS,
+  },
+  // Prompt carries the school name, the brief and the page's own public blocks only.
+  website_page_draft: {
+    key: "website_page_draft",
+    label: "Website page builder",
+    description: "Draft or refine a public website page from a short brief. You edit, save a version and publish it.",
+    kind: "task",
+    roles: ["owner", "principal", "admin", "admissions"],
+    permission: "website.edit",
+    module: "website",
+    data: "aggregate",
+    defaultOn: ["owner", "principal", "admin", "admissions"],
+  },
+  website_theme_draft: {
+    key: "website_theme_draft",
+    label: "Website look suggestion",
+    description: "Suggest colours, fonts and a hero style for the public website from a short description. You review and save it.",
+    kind: "task",
+    roles: LEADERS,
+    permission: "website.publish",
+    module: "website",
     data: "aggregate",
     defaultOn: LEADERS,
   },

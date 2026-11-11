@@ -18,6 +18,7 @@ import { createAnonClient, createClient } from "@/lib/supabase/server";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { parseBlocksSafely, type Block } from "./blocks";
+import { parseThemeSafely, type WebsiteTheme } from "./theme";
 
 export interface PublicSite {
   institutionId: string;
@@ -319,6 +320,7 @@ export async function listEvents(ctx: TenantContext): Promise<EventRow[]> {
 export interface WebsiteSummary {
   id: string;
   isLive: boolean;
+  theme: WebsiteTheme;
 }
 
 /** `null` when no website row exists yet for this institution (fresh test fixture; demo/seeded institutions always have one). */
@@ -326,10 +328,10 @@ export async function getWebsite(ctx: TenantContext): Promise<WebsiteSummary | n
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("websites")
-    .select("id, is_live")
+    .select("id, is_live, theme")
     .eq("institution_id", ctx.institution.id)
     .maybeSingle();
   if (error) throwMapped(error);
   if (!data) return null;
-  return { id: data.id, isLive: data.is_live };
+  return { id: data.id, isLive: data.is_live, theme: parseThemeSafely(data.theme) };
 }

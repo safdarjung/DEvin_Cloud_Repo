@@ -14,8 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/actions/result";
-import { BlockSchema, type Block } from "@/modules/website/blocks";
+import { BlockSchema, MAX_BLOCKS, type Block } from "@/modules/website/blocks";
 import { savePageVersion } from "@/modules/website/actions";
+import type { WebsiteTheme } from "@/modules/website/theme";
+import { AiDraftBadge } from "@/modules/ai/components/AiDraft";
+import { LivePreview } from "./LivePreview";
+import { PageBuilderPanel, type PageDraft } from "./PageBuilderPanel";
+
 
 const BLOCK_TYPES = [
   { value: "hero", label: "Hero" },
@@ -294,14 +299,29 @@ function BlockFields({ block, onChange }: FieldProps<Block>) {
 
 interface BlockEditorProps {
   institutionSlug: string;
+  institutionName: string;
   pageId: string;
   initialBlocks: Block[];
+  /** The saved site look, so the live preview matches the public site. */
+  theme: WebsiteTheme;
+  /** AI on for this school and role (aiTaskOn website_page_draft); templates show either way. */
+  aiOn: boolean;
 }
 
-export function BlockEditor({ institutionSlug, pageId, initialBlocks }: BlockEditorProps) {
+export function BlockEditor({ institutionSlug, institutionName, pageId, initialBlocks, theme, aiOn }: BlockEditorProps) {
   const router = useRouter();
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
   const [newType, setNewType] = useState<BlockType>("hero");
+  const [draft, setDraft] = useState<PageDraft | null>(null);
+  // Bumped when a draft is loaded so per-block field state (RichTextFields) remounts from the new blocks.
+  const [loadCount, setLoadCount] = useState(0);
+
+  function applyDraft(mode: "replace" | "append") {
+    if (!draft) return;
+    setBlocks((bs) => (mode === "replace" ? draft.blocks : [...bs, ...draft.blocks]));
+    setLoadCount((n) => n + 1);
+    setDraft(null);
+  }
 
   const errors = blocks.map(firstBlockError);
   const hasErrors = errors.some((e) => e !== null);
@@ -343,72 +363,113 @@ export function BlockEditor({ institutionSlug, pageId, initialBlocks }: BlockEdi
 
   return (
     <div className="space-y-4">
-      {blocks.map((block, index) => (
-        <div key={index} className="space-y-3 rounded-lg border bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Badge variant="secondary" className="capitalize">
-              {block.type.replace("_", " ")}
-            </Badge>
-            <div className="flex gap-1">
-              <Button type="button" variant="outline" size="sm" onClick={() => moveBlock(index, -1)} disabled={index === 0}>
-                Up
+      <PageBuilderPanel
+        institutionSlug={institutionSlug}
+        institutionName={institutionName}
+        aiOn={aiOn}
+        refineTarget={draft?.blocks ?? blocks}
+        onDraft={setDraft}
+      />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="min-w-0 space-y-4">
+          {blocks.map((block, index) => (
+            <div key={`${loadCount}-${index}`} className="space-y-3 rounded-lg border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Badge variant="secondary" className="capitalize">
+                  {block.type.replace("_", " ")}
+                </Badge>
+                <div className="flex gap-1">
+                  <Button type="button" variant="outline" size="sm" onClick={() => moveBlock(index, -1)} disabled={index === 0}>
+                    Up
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => moveBlock(index, 1)}
+                    disabled={index === blocks.length - 1}
+                  >
+                    Down
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => removeBlock(index)}>
+                    Remove
+                  </Button>
+                </div>
+              </div>
+              <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
+              {errors[index] && (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors[index]}
+                </p>
+              )}
+            </div>
+          ))}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={newType} onValueChange={(v) => setNewType(v as BlockType)}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {BLOCK_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" onClick={() => setBlocks((bs) => [...bs, defaultBlockFor(newType)])}>
+              Add block
+            </Button>
+          </div>
+
+          <form action={formAction} className="flex flex-wrap items-center gap-3 border-t pt-4">
+            <Button type="submit" disabled={pending || hasErrors}>
+              {pending ? "Saving…" : "Save as new version"}
+            </Button>
+            {state && !state.ok && (
+              <span role="alert" className="text-destructive text-sm">
+                {state.error.message}
+              </span>
+            )}
+            {state?.ok && (
+              <span role="status" className="text-sm text-muted-foreground">
+                Saved as version {state.data.versionNo}.
+              </span>
+            )}
+          </form>
+        </div>
+
+        <div className="min-w-0 space-y-2 xl:self-start">
+          {draft ? (
+            <div className="flex flex-wrap items-center gap-2" role="status">
+              {draft.source === "ai" ? (
+                <AiDraftBadge provider={draft.provider} text="AI draft, not in the editor yet" />
+              ) : (
+                <Badge variant="outline">Template draft, not in the editor yet</Badge>
+              )}
+              <Button type="button" size="sm" onClick={() => applyDraft("replace")}>
+                Use this draft
               </Button>
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                onClick={() => moveBlock(index, 1)}
-                disabled={index === blocks.length - 1}
+                variant="outline"
+                disabled={blocks.length + draft.blocks.length > MAX_BLOCKS}
+                onClick={() => applyDraft("append")}
               >
-                Down
+                Append to page
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={() => removeBlock(index)}>
-                Remove
+              <Button type="button" size="sm" variant="ghost" onClick={() => setDraft(null)}>
+                Discard
               </Button>
             </div>
-          </div>
-          <BlockFields block={block} onChange={(next) => updateBlock(index, next)} />
-          {errors[index] && (
-            <p role="alert" className="text-sm text-destructive">
-              {errors[index]}
-            </p>
+          ) : (
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Live preview (unsaved changes)</p>
           )}
+          <LivePreview blocks={draft?.blocks ?? blocks} theme={theme} />
         </div>
-      ))}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Select value={newType} onValueChange={(v) => setNewType(v as BlockType)}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {BLOCK_TYPES.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button type="button" variant="outline" onClick={() => setBlocks((bs) => [...bs, defaultBlockFor(newType)])}>
-          Add block
-        </Button>
       </div>
-
-      <form action={formAction} className="flex flex-wrap items-center gap-3 border-t pt-4">
-        <Button type="submit" disabled={pending || hasErrors}>
-          {pending ? "Saving…" : "Save as new version"}
-        </Button>
-        {state && !state.ok && (
-          <span role="alert" className="text-destructive text-sm">
-            {state.error.message}
-          </span>
-        )}
-        {state?.ok && (
-          <span role="status" className="text-sm text-muted-foreground">
-            Saved as version {state.data.versionNo}.
-          </span>
-        )}
-      </form>
     </div>
   );
 }

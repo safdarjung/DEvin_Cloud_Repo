@@ -16,12 +16,14 @@ import {
   CreatePageSchema,
   PublishPageSchema,
   SavePageVersionSchema,
+  SaveWebsiteThemeSchema,
   SetWebsiteLiveSchema,
   UpsertEventSchema,
   UpsertNoticeSchema,
   type CreatePageInput,
   type PublishPageInput,
   type SavePageVersionInput,
+  type SaveWebsiteThemeInput,
   type SetWebsiteLiveInput,
   type UpsertEventInput,
   type UpsertNoticeInput,
@@ -245,6 +247,34 @@ export const setWebsiteLive = defineAction({
     revalidatePath(`/${ctx.institution.slug}/website`);
     revalidatePath(`/s/${ctx.institution.slug}`, "layout");
     return { id: data.id, isLive: data.is_live };
+  },
+});
+
+export const saveWebsiteTheme = defineAction({
+  name: "website.theme.save",
+  schema: SaveWebsiteThemeSchema,
+  module: "website",
+  // The look changes the live site at once, with no publish step, so it
+  // takes the publish permission, same as setWebsiteLive.
+  permission: "website.publish",
+  handler: async (input: SaveWebsiteThemeInput, ctx) => {
+    const supabase = await createClient();
+    const website = await getOrCreateWebsite(supabase, ctx);
+
+    const { data, error } = await supabase
+      .from("websites")
+      .update({ theme: input })
+      .eq("id", website.id)
+      .eq("institution_id", ctx.institution.id)
+      .select("id")
+      .maybeSingle();
+    if (error) throwMapped(error);
+    if (!data) throw new AppError("not_found", "Website not found.");
+
+    await audit(ctx, { action: "website.theme.saved", entityType: "website", entityId: data.id, after: input });
+    revalidatePath(`/${ctx.institution.slug}/website/theme`);
+    revalidatePath(`/s/${ctx.institution.slug}`, "layout");
+    return { id: data.id };
   },
 });
 

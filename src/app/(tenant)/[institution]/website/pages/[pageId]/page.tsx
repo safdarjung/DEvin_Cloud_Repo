@@ -8,7 +8,9 @@ import { hasPermission, requirePermission, requireModule } from "@/lib/auth/requ
 import { BlockEditor } from "@/modules/website/components/BlockEditor";
 import { DraftPreview } from "@/modules/website/components/DraftPreview";
 import { VersionList } from "@/modules/website/components/VersionList";
-import { getPageWithVersions, getVersion } from "@/modules/website/queries";
+import { aiTaskOn } from "@/modules/ai/task-route";
+import { getPageWithVersions, getVersion, getWebsite } from "@/modules/website/queries";
+import { DEFAULT_WEBSITE_THEME } from "@/modules/website/theme";
 
 export const metadata: Metadata = { title: "Page editor" };
 
@@ -22,7 +24,7 @@ export default async function PageEditorPage({
   requireModule(ctx, "website");
   requirePermission(ctx, "website.edit");
 
-  const page = await getPageWithVersions(ctx, pageId);
+  const [page, website] = await Promise.all([getPageWithVersions(ctx, pageId), getWebsite(ctx)]);
   if (!page) notFound();
 
   const latest = page.versions[0];
@@ -32,16 +34,23 @@ export default async function PageEditorPage({
     <div className="space-y-4">
       <PageHeader title={page.title} description={`/${page.slug}`} back={{ href: `/${institutionSlug}/website`, label: "Website" }} />
 
-      <FadeIn className="grid gap-4 lg:grid-cols-3">
-        <Card className="min-w-0 lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Edit</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <BlockEditor institutionSlug={institutionSlug} pageId={page.id} initialBlocks={latestBlocks} />
-          </CardContent>
-        </Card>
+      <Card className="min-w-0">
+        <CardHeader>
+          <CardTitle>Edit</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BlockEditor
+            institutionSlug={institutionSlug}
+            institutionName={ctx.institution.name}
+            pageId={page.id}
+            initialBlocks={latestBlocks}
+            theme={website?.theme ?? DEFAULT_WEBSITE_THEME}
+            aiOn={aiTaskOn(ctx, "website_page_draft")}
+          />
+        </CardContent>
+      </Card>
 
+      <FadeIn className="grid gap-4 lg:grid-cols-3">
         <Card className="min-w-0 self-start">
           <CardHeader>
             <CardTitle>Versions</CardTitle>
@@ -56,16 +65,16 @@ export default async function PageEditorPage({
             />
           </CardContent>
         </Card>
-      </FadeIn>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Preview (last saved version)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DraftPreview blocks={latestBlocks} slug={page.slug} institutionId={ctx.institution.id} />
-        </CardContent>
-      </Card>
+        <Card className="min-w-0 lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Preview (last saved version)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DraftPreview blocks={latestBlocks} slug={page.slug} institutionId={ctx.institution.id} />
+          </CardContent>
+        </Card>
+      </FadeIn>
     </div>
   );
 }

@@ -36,6 +36,11 @@ export default async function WebsitePage({ params }: { params: Promise<{ instit
             <Button variant="outline" asChild>
               <Link href={`/${institutionSlug}/website/events`}>Events</Link>
             </Button>
+            {canPublish && (
+              <Button variant="outline" asChild>
+                <Link href={`/${institutionSlug}/website/theme`}>Look &amp; feel</Link>
+              </Button>
+            )}
             {canPublish && <WebsiteLiveToggle institutionSlug={institutionSlug} isLive={website?.isLive ?? false} />}
           </>
         }

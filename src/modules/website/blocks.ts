@@ -149,7 +149,8 @@ export const BlockSchema = z.discriminatedUnion("type", [
   ContactBlockSchema,
 ]);
 
-export const BlocksSchema = z.array(BlockSchema).max(50);
+export const MAX_BLOCKS = 50;
+export const BlocksSchema = z.array(BlockSchema).max(MAX_BLOCKS);
 
 export type Block = z.infer<typeof BlockSchema>;
 export type HeroBlock = z.infer<typeof HeroBlockSchema>;

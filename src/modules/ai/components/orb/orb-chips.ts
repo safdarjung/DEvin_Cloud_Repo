@@ -107,6 +107,8 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   my_activities: ["ask", "Which forms and library books do I need to deal with?"],
   lab_safety_note: ["ask", "Which lab chemicals are expired or hazardous right now?"],
   import_mapping: ["ask", "Which columns does the student import need?"],
+  website_page_draft: ["create", "Draft an admissions page for our school website."],
+  website_theme_draft: ["create", "Suggest a warm, traditional look for our school website."],
 };
 
 /** Institution-relative page that runs each page-level task (where its component is rendered); the first one in the person's apps wins. */
@@ -130,6 +132,8 @@ const TASK_PAGES: Partial<Record<CapabilityKey, string | readonly string[]>> = {
   lab_safety_note: "/labs",
   // /setup has no nav item; the dashboard's setup checklist links to its step 3 (people import).
   import_mapping: "/dashboard",
+  website_page_draft: "/website",
+  website_theme_draft: "/website/theme",
 };
 
 const MODULE_ICONS: Partial<Record<ModuleKey, OrbIconKey>> = {

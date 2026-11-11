@@ -146,6 +146,7 @@ export const PAGE_PATHS = new Set([
   "website/notices",
   "website/pages/*",
   "website/pages/*/versions/*",
+  "website/theme",
 ]);
 
 /** True when some route under `[institution]` has a page.tsx at this exact depth/shape. */

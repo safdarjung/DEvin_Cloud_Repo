@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { longText, phoneIN, shortText, uuid } from "@/lib/schemas/common";
 import { BlocksSchema } from "./blocks";
+import { WebsiteThemeSchema, type WebsiteTheme } from "./theme";
 
 // Fixed set from 05 §4.1's default `settings.academic.grade_groups`
 // (primary + middle + secondary + senior_secondary), not read from the
@@ -113,3 +114,9 @@ export const UpsertEventSchema = z
   .strict();
 
 export type UpsertEventInput = z.infer<typeof UpsertEventSchema>;
+
+// The theme form posts the whole look; the schema lives with its renderer
+// helpers in theme.ts so the public site re-validates with the same rules.
+export const SaveWebsiteThemeSchema = WebsiteThemeSchema;
+
+export type SaveWebsiteThemeInput = WebsiteTheme;
