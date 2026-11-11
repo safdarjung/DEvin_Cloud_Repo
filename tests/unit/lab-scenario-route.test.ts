@@ -1,8 +1,9 @@
 // features-18 §D — POST /api/ai/lab-scenario with the REAL gateway
 // (runStructured) and mocked model/provider factories (tests/unit/ai-gateway.test.ts
-// mocks). Proves: local_only never builds a cloud provider even with cloud
-// keys set (the route does not opt into agentCloud), model output is
-// clamped to slider ranges, and permission/capability gates hold.
+// mocks). Proves: the route runs on Groq under the owner cloud exception
+// (aggregate text only), a role whose cloud switch is off never builds a cloud
+// provider, model output is clamped to slider ranges, and permission/capability
+// gates hold.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { permissionsFor, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
@@ -39,9 +40,9 @@ const providers = await import("@/lib/ai/providers");
 const { POST } = await import("@/app/api/ai/lab-scenario/route");
 const { LAB_DATA_BLOCK_MARKER_PATTERN } = await import("@/modules/fabric/lab.prompts");
 
-function fakeCtx(role: Role, aiPolicy: TenantContext["institution"]["ai_policy"] = "local_only"): TenantContext {
+function fakeCtx(role: Role, aiPolicy: TenantContext["institution"]["ai_policy"] = "local_only", settings: Record<string, unknown> = {}): TenantContext {
   return {
-    institution: { id: "inst-1", slug: "demo", name: "Demo", settings: {}, ai_policy: aiPolicy, is_demo: false },
+    institution: { id: "inst-1", slug: "demo", name: "Demo", settings, ai_policy: aiPolicy, is_demo: false },
     user: { id: "user-1", profile: { fullName: "Test", phone: null, avatarPath: null, isPlatformAdmin: false } },
     membership: { role, staffId: null, guardianId: null, studentId: null },
     permissions: new Set(permissionsFor(role)),
@@ -80,8 +81,21 @@ afterEach(() => {
 });
 
 describe("POST /api/ai/lab-scenario", () => {
-  it("local_only principal: runs on the local model only, never builds a cloud provider, returns clamped assumptions", async () => {
+  it("local_only principal with a Groq key: runs on Groq (owner cloud exception), never local or Anthropic", async () => {
     getTenantContextMock.mockResolvedValue(fakeCtx("principal"));
+    generateTextMock.mockResolvedValueOnce({ output: MODEL_OUTPUT, usage: { inputTokens: 10, outputTokens: 20 } });
+
+    const res = await POST(request({ institutionSlug: "demo", text: "fees up 8% over 3 years" }));
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).data).toMatchObject({ provider: "cloud", model: "openai/gpt-oss-120b" });
+    expect(generateTextMock.mock.calls[0][0].model).toBe("groq-model-handle");
+    expect(providers.getLocalModel).not.toHaveBeenCalled();
+    expect(providers.getCloudModel).not.toHaveBeenCalled();
+  });
+
+  it("principal whose role cloud switch is off: runs on the local model only, never builds a cloud provider, returns clamped assumptions", async () => {
+    getTenantContextMock.mockResolvedValue(fakeCtx("principal", "local_only", { ai_roles: { principal: { cloud: false } } }));
     generateTextMock.mockResolvedValueOnce({ output: MODEL_OUTPUT, usage: { inputTokens: 10, outputTokens: 20 } });
 
     const res = await POST(request({ institutionSlug: "demo", text: "45% more students, two more teachers, fees up 8% over 3 years" }));

@@ -27,6 +27,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "form_draft",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: FormDraftGenerationSchema,
       instructions: FORM_DRAFT_INSTRUCTIONS,
       prompt: buildFormDraftPrompt({ description: input.description }),

@@ -46,11 +46,6 @@ describe("new demo seed sections", () => {
     expect(rows.map((r) => r.status).sort()).toEqual(["approved", "proposed", "rejected", "submitted"]);
   });
 
-  it("local_only demo tenant has no cloud AI usage", async () => {
-    const [row] = await sql`select count(*)::int as n from public.ai_usage_events where institution_id = ${inst} and provider <> 'local'`;
-    expect(row!.n).toBe(0);
-  });
-
   it("reversals post matching ledger entries", async () => {
     const [row] = await sql`select count(*)::int as n from public.payment_reversals r join public.ledger_entries l on l.payment_id = r.payment_id
       where r.institution_id = ${inst} and l.memo like r.kind || '%'`;

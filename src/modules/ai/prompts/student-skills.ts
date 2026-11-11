@@ -91,7 +91,7 @@ function randomNonce(): string {
 // means no adult reviews this chat afterward, so the model's own
 // behavior here is the only safeguard; plan §9's "content safety" and
 // GU-12's gate both name this requirement, not a separate feature.
-const BASE_INSTRUCTIONS =
+export const BASE_INSTRUCTIONS =
   "You are a study helper for a school student. Be encouraging and accurate. If you are not sure " +
   "of something, say so plainly instead of guessing. You never write homework answers to be " +
   "submitted as the student's own graded work without them understanding it — you teach, you don't " +

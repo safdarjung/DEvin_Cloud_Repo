@@ -48,6 +48,7 @@ import "@/modules/payroll/actions";
 import "@/modules/behaviour/actions";
 import "@/modules/achievements/actions";
 import "@/modules/resources/actions";
+import "@/modules/study/actions";
 import "@/modules/hostel/actions";
 import "@/modules/ptm/actions";
 import "@/modules/alumni/actions";

@@ -34,6 +34,7 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
+  Layers,
   LayoutDashboard,
   Library,
   LibraryBig,
@@ -120,6 +121,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/clubs", label: "Clubs & houses", icon: Trophy, permission: "club.read", group: "Academics", module: "clubs" },
   { href: "/achievements", label: "Achievements", icon: Medal, permission: "achievement.read", group: "Academics", module: "achievements" },
   { href: "/resources", label: "Resources", icon: LibraryBig, permission: "resource.read", group: "Academics", module: "resources" },
+  // Teachers build and share study material; leaders see school-wide engagement on the same page.
+  { href: "/study-studio", label: "Study studio", icon: Layers, permission: "resource.manage", group: "Academics", module: "ai_teacher" },
   { href: "/admissions", label: "Admissions", icon: ClipboardList, permission: "admissions.enquiry.read", group: "Operations", module: "admissions" },
   { href: "/finance", label: "Finance", icon: Banknote, permission: "finance.read", group: "Operations" },
   // The page requires finance.structure.manage (owner/principal/admin), not finance.read.
@@ -233,6 +236,7 @@ export const STUDENT_NAV: readonly NavItem[] = [
   portal("/subjects", "Subjects", Book, "Learning"),
   { ...portal("/study", "Study", BookOpen, "Learning"), permission: "ai.study" },
   { ...portal("/practice", "Practice", Target, "Learning", "practice"), permission: "ai.study" },
+  { ...portal("/study/studio", "Study studio", Layers, "Learning", "ai_student"), permission: "ai.study" },
   portal("/assignments", "Assignments", FileText, "Academic", "assignments"),
   portal("/results", "Results", GraduationCap, "Academic", "exams"),
   { ...portal("/timetable", "Timetable", CalendarDays, "Academic", "timetable"), permission: "timetable.read" },

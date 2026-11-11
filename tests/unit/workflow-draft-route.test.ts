@@ -87,7 +87,10 @@ const body = { institutionSlug: "demo", description: "number of absent students 
 const ORIGINAL_ENV = { ...process.env };
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.GROQ_API_KEY = "test-key";
+  // Keyless install (no Groq/Gemini key) on a local_only school: these routes run on the local model and
+  // Anthropic is never built. The Groq/Gemini path they opt into is covered in ai-structured-cloud.test.ts.
+  delete process.env.GROQ_API_KEY;
+  delete process.env.GEMINI_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
   process.env.AI_CLOUD_ENABLED = "true";
 });

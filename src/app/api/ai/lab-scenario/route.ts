@@ -90,10 +90,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     return json(fail("ai_unavailable", "This AI feature is turned off for your role."));
   }
 
-  // No agentCloud: the institution's ai_policy decides (local_only never reaches a cloud provider).
   const generated = await runStructured({
     ctx,
     feature: "lab_scenario",
+    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
     schema: LabScenarioGenerationSchema,
     instructions: LAB_SCENARIO_INSTRUCTIONS,
     prompt: buildLabScenarioPrompt(input.text),

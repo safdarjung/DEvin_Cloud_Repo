@@ -7,6 +7,7 @@ import { masteryCompute } from "./mastery.compute.ts";
 import { notifyAnnouncement } from "./notify.announcement.ts";
 import { notifyAttendanceAbsence } from "./notify.attendance_absence.ts";
 import { notifyDiaryEntry } from "./notify.diary_entry.ts";
+import { notifyStudyReminders } from "./notify.study_reminders.ts";
 import { notifyEnquiryReceived } from "./notify.enquiry_received.ts";
 import { notifyEnrolmentWelcome } from "./notify.enrolment_welcome.ts";
 import { notifyGatePass } from "./notify.gate_pass.ts";
@@ -28,6 +29,7 @@ export {
   notifyAnnouncement,
   notifyAttendanceAbsence,
   notifyDiaryEntry,
+  notifyStudyReminders,
   notifyEnquiryReceived,
   notifyEnrolmentWelcome,
   notifyGatePass,

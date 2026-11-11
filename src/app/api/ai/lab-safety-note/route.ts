@@ -50,6 +50,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "lab_safety_note",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: LabSafetyNoteGenerationSchema,
       instructions: LAB_SAFETY_NOTE_INSTRUCTIONS,
       prompt: buildLabSafetyNotePrompt(lab.name, warnings),

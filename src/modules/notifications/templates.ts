@@ -24,6 +24,7 @@ export const NOTIFICATION_TYPES = [
   "student_leave_decided",
   "diary_entry",
   "safety_alert",
+  "study_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -94,6 +95,8 @@ const WorkflowAlertVars = z.object({ workflow: z.string().min(1).max(80), messag
 const DiaryEntryVars = z
   .object({ section: z.string().min(1), subject: z.string().min(1), excerpt: z.string().min(1) })
   .strict();
+// 0138 — daily study studio reminder; one composed line (flashcards due, today's plan, an exam soon).
+const StudyReminderVars = z.object({ summary: z.string().min(1).max(300) }).strict();
 // Features-18 #21 — safety alert (0129). Every var is re-read from the alert row.
 const SafetyAlertVars = z
   .object({
@@ -247,6 +250,14 @@ export const NOTIFICATION_TEMPLATES = {
     varsSchema: SafetyAlertVars,
     title: (lang) => (lang === "hi" ? "सुरक्षा अलर्ट" : "Safety alert"),
     body: (v, lang) => `${SAFETY_KIND_LABEL[lang][v.kind]}: ${v.title} — ${v.message} -${v.school}`,
+  }),
+  // In-app only: a nudge, not worth an SMS.
+  study_reminder: def({
+    channels: ["in_app"],
+    category: "academic",
+    varsSchema: StudyReminderVars,
+    title: (lang) => (lang === "hi" ? "आज की पढ़ाई" : "Today's study"),
+    body: (v) => v.summary,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;
 

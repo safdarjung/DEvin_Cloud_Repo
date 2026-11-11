@@ -1,9 +1,7 @@
-// Capability chips for the App Orb: every enabled AI capability gets one.
+// Capability chips for the App Orb: every enabled AI capability gets one (orb-groups.ts sorts them into sections).
 // Chat capabilities send a concrete starter prompt; page tasks link to the
 // page that runs them (or fall back to the matching chat prompt).
-import type { ModuleKey } from "@/lib/modules/catalog";
 import { CAPABILITIES, type CapabilityKey } from "@/modules/ai/capabilities/catalog";
-import type { OrbIconKey } from "./orb-icons";
 
 export type OrbChipKind = "ask" | "create" | "open";
 
@@ -11,8 +9,6 @@ export interface OrbChip {
   key: string;
   label: string;
   kind: OrbChipKind;
-  /** Icon on the orb, by the capability's module. */
-  icon: OrbIconKey;
   /** Chat chips: the message sent on click. */
   prompt?: string;
   /** "open" chips: the page that runs the task. */
@@ -110,6 +106,8 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   website_page_draft: ["create", "Draft an admissions page for our school website."],
   website_theme_draft: ["create", "Suggest a warm, traditional look for our school website."],
   workflow_draft: ["create", "Every school day at 10:00, tell me how many students are absent in X-A."],
+  study_studio: ["create", "Make revision notes and flashcards for my next exam's units."],
+  teacher_study_studio: ["create", "Draft a flashcard deck for a unit I teach and share it with my section."],
 };
 
 /** Institution-relative page that runs each page-level task (where its component is rendered); the first one in the person's apps wins. */
@@ -136,15 +134,8 @@ const TASK_PAGES: Partial<Record<CapabilityKey, string | readonly string[]>> = {
   website_page_draft: "/website",
   website_theme_draft: "/website/theme",
   workflow_draft: "/fabric/workflows",
-};
-
-const MODULE_ICONS: Partial<Record<ModuleKey, OrbIconKey>> = {
-  attendance: "CalendarCheck", exams: "GraduationCap", fees: "Banknote", finance_plus: "Banknote", admissions: "ClipboardList",
-  timetable: "CalendarClock", assignments: "FileText", lesson_plans: "BookOpen", mastery: "Target", insights: "Lightbulb",
-  messaging: "MessagesSquare", announcements: "Megaphone", calendar: "CalendarDays", people: "Users", question_bank: "ListChecks",
-  practice: "Puzzle", diary: "NotebookPen", student_leave: "CalendarOff", website: "Globe", ai_briefings: "Sun", ai_student: "Book",
-  ai_teacher: "Bot", expenses: "Banknote", scholarships: "Banknote", payroll: "Banknote", library: "BookText", resources: "BookOpen",
-  forms: "ClipboardList", helpdesk: "MessagesSquare", safety: "Shield", workflows: "Zap",
+  study_studio: "/portal/study/studio",
+  teacher_study_studio: "/study-studio",
 };
 
 const ORDER: Record<OrbChipKind, number> = { ask: 0, create: 1, open: 2 };
@@ -158,11 +149,10 @@ export function orbChips(
     const cap = CAPABILITIES[key];
     const [kind, prompt] = STARTERS[key];
     const pages = cap.kind === "task" ? [TASK_PAGES[key] ?? []].flat() : [];
-    const icon = MODULE_ICONS[cap.module] ?? "Sparkles";
     // A sub-page counts when its section is in the person's apps (e.g. /finance/defaulters under /finance).
     const href = pages.map((p) => `/${opts.slug}${p}`).find((h) => opts.appHrefs.some((a) => h === a || h.startsWith(`${a}/`)));
-    if (href) chips.push({ key, label: cap.label, kind: "open", icon, href });
-    else if (opts.chatOn) chips.push({ key, label: cap.label, kind, icon, prompt });
+    if (href) chips.push({ key, label: cap.label, kind: "open", href });
+    else if (opts.chatOn) chips.push({ key, label: cap.label, kind, prompt });
   }
   return chips.sort((a, b) => ORDER[a.kind] - ORDER[b.kind]);
 }

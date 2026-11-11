@@ -74,7 +74,7 @@ function aiOutput(bullets: string[], caveat = "A pattern in averages is not a ca
 }
 
 describe("POST /api/ai/lab-explain", () => {
-  it("principal fee_risk: AI bullets returned; prompt is nonce-delimited, name-free, id-free; no agentCloud; output capped", async () => {
+  it("principal fee_risk: AI bullets returned; prompt is nonce-delimited, name-free, id-free; owner cloud exception; output capped", async () => {
     const inst = await createTestInstitution("lab-explain-principal");
     try {
       await seedSection(inst);
@@ -91,7 +91,7 @@ describe("POST /api/ai/lab-explain", () => {
       expect(runStructuredMock).toHaveBeenCalledTimes(1);
       const call = runStructuredMock.mock.calls[0][0];
       expect(call.feature).toBe("lab_explain");
-      expect(call.agentCloud).toBeUndefined();
+      expect(call.agentCloud).toBe(true);
       expect(call.maxOutputTokens).toBe(1024);
       expect(call.prompt.match(LAB_DATA_BLOCK_MARKER_PATTERN)).toHaveLength(2);
       expect(call.prompt).toContain('"grade":"Grade VI"');

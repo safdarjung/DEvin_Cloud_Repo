@@ -13,7 +13,7 @@ import { getTenantContext } from "@/lib/auth/context";
 import type { Permission } from "@/lib/auth/permissions";
 import { requirePermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
-import { isModuleEnabled } from "@/lib/modules/catalog";
+import { isModuleEnabled, type ModuleKey } from "@/lib/modules/catalog";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 import type { CapabilityKey } from "@/modules/ai/capabilities/catalog";
 import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
@@ -61,6 +61,8 @@ export interface AiTaskRouteOptions<I extends { institutionSlug: string }, O> {
   maxBodyBytes: number;
   permission: Permission;
   capability: CapabilityKey;
+  /** AI module the route needs; staff routes use the default, student routes pass "ai_student". */
+  module?: ModuleKey;
   run: (ctx: TenantContext, input: I) => Promise<ActionResult<O>>;
 }
 
@@ -92,7 +94,7 @@ export function aiTaskRoute<I extends { institutionSlug: string }, O>(opts: AiTa
       if (err instanceof AppError) return json(fail(err.code, err.message, err.fieldErrors));
       throw err;
     }
-    if (!isModuleEnabled(ctx, "ai_teacher")) return json(fail("ai_unavailable", "AI features are not available for your institution."));
+    if (!isModuleEnabled(ctx, opts.module ?? "ai_teacher")) return json(fail("ai_unavailable", "AI features are not available for your institution."));
     if (!isAiCapabilityEnabled(ctx, opts.capability)) return json(fail("ai_unavailable", "This AI feature is turned off for your role."));
 
     try {

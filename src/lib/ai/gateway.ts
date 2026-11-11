@@ -1,5 +1,5 @@
 import "server-only";
-import { generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output, streamText, type ModelMessage, type StopCondition, type ToolSet } from "ai";
+import { asSchema, generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output, streamText, type ModelMessage, type StopCondition, type ToolSet } from "ai";
 import type { z } from "zod";
 import { fail, ok, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import type { Permission } from "@/lib/auth/permissions";
@@ -11,10 +11,18 @@ import { estimateCost } from "@/lib/ai/pricing";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import * as providers from "@/lib/ai/providers";
 import { streamCloudAgent, type StreamExtras } from "@/lib/ai/cloud-stream";
-import { classifyAiError, cloudModelWithFallback, cloudProviderPlan, configuredCloudKeys, streamErrorText } from "@/lib/ai/provider-fallback";
-import { TOKEN_CEILING, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
+import {
+  classifyAiError,
+  cloudModelWithFallback,
+  configuredCloudKeys,
+  streamErrorText,
+  structuredCloudPlan,
+  userFacingAiError,
+} from "@/lib/ai/provider-fallback";
+import { TOKEN_CEILING, estimateTokens, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
 import { tolerateNullOptionals } from "@/lib/ai/tool-nulls";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
+import { roleAiConfig } from "@/modules/ai/capabilities/resolve";
 
 // 06 §W10 — local 60s, cloud 30s.
 const TIMEOUT_MS: Record<ProviderStep, number> = { local: 60_000, cloud: 30_000 };
@@ -33,10 +41,18 @@ export interface RunStructuredInput<T> {
   /**
    * Owner cloud exception (D28, extended 2026-11-06 — 12-decision-log.md): with
    * `GROQ_API_KEY` (else `GEMINI_API_KEY`) set, run on that provider regardless of
-   * `ai_policy`; the prompt is still redacted. Only for prompts without student-personal data; callers opt in
-   * one by one, every other caller keeps the policy plan (C-62).
+   * `ai_policy` (Gemini also takes a request too big for Groq's ceiling, and is
+   * Groq's retry on a size/rate error); the prompt is still redacted. Only for prompts without student-personal data; callers opt in
+   * one by one, every other caller keeps the policy plan (C-62). D50: a role whose
+   * cloud switch is off keeps the policy plan too.
    */
   agentCloud?: boolean;
+  /**
+   * Rules the provider schema cannot carry (Zod refinements such as "answer is one
+   * of the options"): checked on every answer, so a miss gets the one repair retry
+   * instead of reaching the caller as an unrepaired failure.
+   */
+  strictSchema?: z.ZodType;
 }
 
 export interface RunStructuredOutput<T> {
@@ -50,8 +66,9 @@ function stepModelId(step: ProviderStep): string {
   return step === "local" ? providers.localModelId() : providers.cloudModelId("quality");
 }
 
+// Groq checks the JSON against the schema server-side and answers 400 json_validate_failed: same repair path.
 function isSchemaValidationError(err: unknown): boolean {
-  return NoObjectGeneratedError.isInstance(err) || NoOutputGeneratedError.isInstance(err);
+  return NoObjectGeneratedError.isInstance(err) || NoOutputGeneratedError.isInstance(err) || classifyAiError(err).providerCode === "json_validate_failed";
 }
 
 function unavailableMessage(step: ProviderStep, aiPolicy: AiPolicy): string {
@@ -67,14 +84,24 @@ function unavailableMessage(step: ProviderStep, aiPolicy: AiPolicy): string {
  * return. Never throws across the action boundary.
  */
 export async function runStructured<T>(input: RunStructuredInput<T>): Promise<ActionResult<RunStructuredOutput<T>>> {
-  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate", agentCloud } = input;
+  const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate", agentCloud, strictSchema } = input;
 
   if (!hasPermission(ctx, permission)) {
     return fail("forbidden", "You do not have permission to use AI features.");
   }
 
-  const agentModel =
-    agentCloud !== true ? null : process.env.GROQ_API_KEY ? "groq" : process.env.GEMINI_API_KEY ? "gemini" : null;
+  // The whole request against each provider's per-request ceiling (Groq counts max_tokens too).
+  const cloudPlan =
+    agentCloud === true && roleAiConfig(ctx, ctx.membership.role).cloud
+      ? structuredCloudPlan(
+          configuredCloudKeys(),
+          estimateTokens(instructions + prompt + JSON.stringify(asSchema(schema).jsonSchema)) + Math.max(maxOutputTokens ?? 1024, 1024),
+        )
+      : null;
+  if (cloudPlan === "too_large") {
+    return fail("validation_failed", "This request is too long for the AI service. Shorten the text and try again.");
+  }
+  const agentModel = cloudPlan?.primary ?? null;
   const plan: ProviderStep[] = agentModel
     ? ["cloud"]
     : resolvePlan({
@@ -146,16 +173,13 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       // D28 path: one retry on the other Groq/Gemini provider (with a key) on a size/rate/overload error.
       const agentCloudModel =
         step === "cloud" && agentModel
-          ? await cloudModelWithFallback(
-              agentModel,
-              cloudProviderPlan({ mode: "cloud", preferred: agentModel, keys: configuredCloudKeys() })?.fallback ?? null,
-            )
+          ? await cloudModelWithFallback(agentModel, cloudPlan?.fallback ?? null)
           : null;
       const model =
         step === "local" ? providers.getLocalModel() : agentCloudModel ? agentCloudModel.model : await providers.getCloudModel("quality");
 
-      const attempt = (repairNote?: string) =>
-        generateText({
+      const attempt = async (repairNote?: string) => {
+        const answer = await generateText({
           model,
           instructions: repairNote ? `${effectiveInstructions}\n\n${forStep(repairNote)}` : effectiveInstructions,
           prompt: effectivePrompt,
@@ -167,6 +191,13 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
           maxOutputTokens: agentModel === "groq" && maxOutputTokens ? Math.max(maxOutputTokens, 1024) : maxOutputTokens,
           providerOptions: agentModel === "groq" ? { groq: { reasoningEffort: "low", strictJsonSchema: false } } : undefined,
         });
+        const strict = strictSchema?.safeParse(answer.output);
+        if (strict && !strict.success) {
+          const message = strict.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
+          throw new NoObjectGeneratedError({ message, response: answer.response, usage: answer.usage, finishReason: answer.finishReason });
+        }
+        return answer;
+      };
 
       let result;
       try {
@@ -201,11 +232,14 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       return ok({ data, provider: step, model: modelId, fallback: isFallback });
     } catch (err) {
       const latencyMs = Date.now() - startedAt;
-      const errorCode: ErrorCode = isSchemaValidationError(err) ? "ai_invalid_output" : "ai_unavailable";
-      const message =
-        errorCode === "ai_invalid_output"
-          ? "AI returned output that did not match the expected schema after one repair attempt."
-          : unavailableMessage(step, ctx.institution.ai_policy);
+      const info = classifyAiError(err);
+      // Status/code only: provider messages can echo the prompt.
+      console.warn("[ai-structured] call failed", { feature, provider: agentModel ?? step, ...info });
+      const { code: errorCode, message } = isSchemaValidationError(err)
+        ? { code: "ai_invalid_output" as const, message: "AI returned output that did not match the expected schema after one repair attempt." }
+        : agentModel
+          ? userFacingAiError(info.kind)
+          : { code: "ai_unavailable" as const, message: unavailableMessage(step, ctx.institution.ai_policy) };
 
       await logUsage({
         ctx,

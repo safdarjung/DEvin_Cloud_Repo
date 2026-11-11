@@ -52,6 +52,7 @@ export const POST = aiTaskRoute<FeeReminderRequest, FeeReminderResponse>({
     const generated = await runStructured({
       ctx,
       feature: "fee_reminder_draft",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: FeeReminderGenerationSchema,
       instructions: FEE_REMINDER_INSTRUCTIONS,
       prompt: buildFeeReminderPrompt({

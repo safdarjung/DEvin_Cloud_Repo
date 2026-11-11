@@ -43,6 +43,7 @@ export const POST = aiTaskRoute<LessonPlanDraftRequest, LessonPlanDraftResponse>
     const generated = await runStructured({
       ctx,
       feature: "lesson_plan_draft",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: LessonPlanGenerationSchema,
       instructions: LESSON_PLAN_INSTRUCTIONS,
       prompt: buildLessonPlanPrompt({ subjectName, unitTitle, periods: input.periods, notes: input.notes ?? null }),

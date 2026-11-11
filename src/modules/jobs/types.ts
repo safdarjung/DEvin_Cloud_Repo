@@ -21,7 +21,8 @@ export type JobType =
   | "notify.diary_entry"
   | "notify.safety_alert"
   | "mastery.compute"
-  | "workflow.run";
+  | "workflow.run"
+  | "notify.study_reminders";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";
 

@@ -44,6 +44,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     enqueueDueWorkflows: vi.fn(async () => 0),
     enqueueDueLateFees: vi.fn(async () => 0),
     enqueueMasteryCompute: vi.fn(async () => 0),
+    enqueueStudyReminders: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };

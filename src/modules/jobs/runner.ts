@@ -66,6 +66,8 @@ export interface RunnerPorts {
   enqueueMasteryCompute(): Promise<number>;
   /** M21-T8: enqueues due `forecast.run` jobs (`public.enqueue_due_forecasts`). */
   enqueueDueForecasts(): Promise<void>;
+  /** 0138: enqueues the daily `notify.study_reminders` job per institution (`public.enqueue_study_reminders`). */
+  enqueueStudyReminders(): Promise<number>;
   now(): number;
 }
 
@@ -187,6 +189,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
     async enqueueDueForecasts() {
       const { error } = await admin.rpc("enqueue_due_forecasts");
       if (error) throw new Error(error.message);
+    },
+    async enqueueStudyReminders() {
+      const { data, error } = await admin.rpc("enqueue_study_reminders");
+      if (error) throw new Error(error.message);
+      return Number(data);
     },
     now: () => Date.now(),
   };
@@ -319,6 +326,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] forecast sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.enqueueStudyReminders();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] study reminder sweep failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

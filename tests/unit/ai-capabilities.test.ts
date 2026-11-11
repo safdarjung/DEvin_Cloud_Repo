@@ -113,7 +113,9 @@ describe("capabilityState — role off", () => {
   });
 
   it("a page task the role has today stays on while its chat is off", () => {
-    expect(capabilityState(ctxFor("exam_controller"), "exam_controller", "report_remark")).toEqual({ on: true, locked: null });
+    const chatOff = ctxFor("teacher", { aiRoles: { teacher: { enabled: false } } });
+    expect(roleAiConfig(chatOff, "teacher").enabled).toBe(false);
+    expect(capabilityState(chatOff, "teacher", "report_remark")).toEqual({ on: true, locked: null });
     expect(capabilityState(ctxFor("student"), "student", "practice_quiz")).toEqual({ on: true, locked: null });
   });
 

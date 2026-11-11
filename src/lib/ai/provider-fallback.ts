@@ -4,9 +4,10 @@ import "server-only";
 // the caller routed locally (role cloud switch off, keyless install, the
 // local plan) never reaches this file, and a provider without a key is
 // never tried. `ai_policy` still governs only Anthropic (DBT-157).
-import { APICallError, RetryError, wrapLanguageModel, type LanguageModel, type LanguageModelMiddleware } from "ai";
+import { APICallError, RetryError, wrapLanguageModel, type JSONSchema7, type LanguageModel, type LanguageModelMiddleware } from "ai";
 import { fail, type ErrorCode } from "@/lib/actions/result";
 import * as providers from "@/lib/ai/providers";
+import { TOKEN_CEILING } from "@/lib/ai/tool-budget";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 
 export type AiErrorKind = "busy" | "too_large" | "not_configured" | "unavailable";
@@ -60,6 +61,23 @@ export function cloudProviderPlan({ mode, preferred, keys }: CloudPlanInput): { 
   return keys[other] ? { primary: other, fallback: null } : null;
 }
 
+/**
+ * A one-shot structured call (runStructured): the first keyed provider whose
+ * per-request ceiling (TOKEN_CEILING, the same one chat uses) holds the whole
+ * request, Groq first; the other keyed one that also fits gets the one retry.
+ * "too_large" when a key exists but nothing fits: the caller says so instead
+ * of trimming the user's own text. null when no Groq/Gemini key is set.
+ */
+export function structuredCloudPlan(
+  keys: CloudPlanInput["keys"],
+  requestTokens: number,
+): { primary: AgentProvider; fallback: AgentProvider | null } | "too_large" | null {
+  const keyed = (["groq", "gemini"] as const).filter((p) => keys[p]);
+  if (keyed.length === 0) return null;
+  const fits = keyed.filter((p) => requestTokens <= TOKEN_CEILING[p]);
+  return fits.length === 0 ? "too_large" : { primary: fits[0], fallback: fits[1] ?? null };
+}
+
 export function configuredCloudKeys(): CloudPlanInput["keys"] {
   return { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY) };
 }
@@ -90,6 +108,37 @@ export function streamErrorText(error: unknown): string {
 }
 
 type WrappedModel = ReturnType<typeof wrapLanguageModel>;
+
+// Structured-output schema keywords a provider refuses. Zod still validates the
+// output strictly after generation, so dropping a bound here never loosens what
+// is accepted. Gemini answers 400 INVALID_ARGUMENT to nested arrays bounded by
+// maxItems (the website page draft schema, 2026-11-11); Groq takes everything
+// with strictJsonSchema off.
+const UNSUPPORTED_SCHEMA_KEYS: Record<AgentProvider, readonly string[]> = { groq: [], gemini: ["maxItems"] };
+
+export function sanitizeSchemaFor(provider: AgentProvider, schema: JSONSchema7): JSONSchema7 {
+  const drop = UNSUPPORTED_SCHEMA_KEYS[provider];
+  // `properties` maps user field names: walk the values, never filter the names.
+  const walk = (node: unknown, isPropertyMap = false): unknown => {
+    if (Array.isArray(node)) return node.map((child) => walk(child));
+    if (node === null || typeof node !== "object") return node;
+    return Object.fromEntries(
+      Object.entries(node)
+        .filter(([key]) => isPropertyMap || !drop.includes(key))
+        .map(([key, value]) => [key, walk(value, !isPropertyMap && key === "properties")]),
+    );
+  };
+  return drop.length === 0 ? schema : (walk(schema) as JSONSchema7);
+}
+
+function schemaRules(provider: AgentProvider): LanguageModelMiddleware {
+  return {
+    transformParams: async ({ params }) =>
+      params.responseFormat?.type === "json" && params.responseFormat.schema
+        ? { ...params, responseFormat: { ...params.responseFormat, schema: sanitizeSchemaFor(provider, params.responseFormat.schema) } }
+        : params,
+  };
+}
 
 // Looked up per call, so the provider modules stay lazy (C-62) and test mocks need only what a test uses.
 const FACTORY: Record<AgentProvider, { id: () => string; get: () => Promise<LanguageModel> }> = {
@@ -122,7 +171,7 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
     if (!fallback) return null;
     const next = await FACTORY[fallback].get();
     if (typeof next === "string") return null;
-    fallbackModel ??= wrapLanguageModel({ model: next, middleware: {} });
+    fallbackModel ??= wrapLanguageModel({ model: next, middleware: schemaRules(fallback) });
     return fallbackModel;
   };
   // Sticky per request: once the primary is out of tokens/busy, later steps go straight to the fallback.
@@ -162,5 +211,5 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
       }
     },
   };
-  return { model: wrapLanguageModel({ model: base, middleware }), modelsUsed: () => (used.length ? [...used] : [FACTORY[primary].id()]) };
+  return { model: wrapLanguageModel({ model: base, middleware: [schemaRules(primary), middleware] }), modelsUsed: () => (used.length ? [...used] : [FACTORY[primary].id()]) };
 }

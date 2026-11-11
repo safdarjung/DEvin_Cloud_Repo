@@ -7,7 +7,7 @@ import { listMyChildren } from "@/modules/people/queries";
 import { enabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { OrbView, type OrbChat } from "@/modules/ai/components/orb/OrbView";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
-import { orbIconKey } from "@/modules/ai/components/orb/orb-icons";
+import { buildOrbGroups } from "@/modules/ai/components/orb/orb-groups";
 import { starterPromptsFor } from "@/modules/ai/page-starters";
 
 export const metadata: Metadata = { title: "Orb" };
@@ -24,10 +24,9 @@ export default async function OrbPage({
   const ctx = await getTenantContext(slug);
   const role = ctx.membership.role;
 
-  // Icons go across as keys; lucide components are not serialisable.
-  const apps = navItemsFor(ctx.permissions, ctx.institution.settings, ctx.institution.is_demo, role)
+  const appHrefs = navItemsFor(ctx.permissions, ctx.institution.settings, ctx.institution.is_demo, role)
     .filter((item) => item.href !== "/orb")
-    .map((item) => ({ href: `/${slug}${item.href}`, label: item.label, icon: orbIconKey(item.icon), group: item.group }));
+    .map((item) => `/${slug}${item.href}`);
 
   // Same endpoint choice as the existing pages: /ai (teacher), study (student), assistant (everyone else).
   // Student: gated like portal/study/page.tsx (ai.study + role switch). Others like the assistant pages.
@@ -46,8 +45,8 @@ export default async function OrbPage({
     }
   }
 
-  // Every enabled capability: chat ones send a starter prompt, page tasks link to their page.
-  const chips = orbChips(enabledCapabilities(ctx), { slug, appHrefs: apps.map((a) => a.href), chatOn: chat !== null });
+  // Every enabled capability, sorted into sections: chat ones send a prompt, page tasks link to their page.
+  const groups = buildOrbGroups(orbChips(enabledCapabilities(ctx), { slug, appHrefs, chatOn: chat !== null }), role, chat !== null);
 
   // `from` is untrusted: only an in-app absolute path (not "//host") is used, minus the school prefix.
   const prefix = `/${slug}`;
@@ -58,5 +57,5 @@ export default async function OrbPage({
   // `q` comes from the Ask AI launcher: a plain question OrbView sends once; the chat endpoint still authorises everything.
   const initialQuery = typeof q === "string" ? q.trim().slice(0, 500) : undefined;
 
-  return <OrbView institutionSlug={slug} role={role} apps={apps} chat={chat} chips={chips} starters={starters} initialQuery={initialQuery} />;
+  return <OrbView institutionSlug={slug} role={role} chat={chat} groups={groups} starters={starters} initialQuery={initialQuery} />;
 }

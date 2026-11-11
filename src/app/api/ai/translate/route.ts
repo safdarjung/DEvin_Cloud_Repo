@@ -25,6 +25,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "translate",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: TranslateGenerationSchema,
       instructions: TRANSLATE_INSTRUCTIONS,
       prompt: buildTranslatePrompt({ text: input.text, languageName: LANGUAGE_NAMES[input.language] }),

@@ -113,10 +113,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (Array.isArray(facts.data) && facts.data.length === 0) return json(rules([]));
 
   const { prompt, dataText } = buildLabExplainPrompt(input.kind, facts.data);
-  // No agentCloud: the institution's ai_policy decides (local_only never reaches a cloud provider).
   const generated = await runStructured({
     ctx,
     feature: "lab_explain",
+    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
     schema: LabExplainGenerationSchema,
     instructions: LAB_EXPLAIN_INSTRUCTIONS,
     prompt,

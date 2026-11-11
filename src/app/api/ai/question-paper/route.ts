@@ -81,6 +81,7 @@ export const POST = aiTaskRoute<QuestionPaperRequest, QuestionPaperResponse>({
     const generated = await runStructured({
       ctx,
       feature: "question_paper_draft",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: QuestionPaperGenerationSchema,
       instructions: QUESTION_PAPER_INSTRUCTIONS,
       prompt: buildQuestionPaperPrompt({

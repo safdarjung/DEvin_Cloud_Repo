@@ -1290,4 +1290,39 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "admin", "teacher"],
     write: [],
   },
+  // 0138 — study studio. Material: owner only (student private, teacher own);
+  // teacher material shared to taught sections (enrolled students read) and
+  // read by M. Per-student rows: student + linked guardian read, M read, a
+  // teacher reads only rows on their own shared material for taught students.
+  // Scoping proved in tests/db/study-studio.test.ts.
+  study_materials: {
+    classes: ["O", "T"],
+    read: ["owner", "principal", "admin", "teacher", "student"],
+    write: ["teacher", "student"],
+  },
+  study_material_sections: {
+    classes: ["T"],
+    read: ["owner", "principal", "admin", "teacher", "student"],
+    write: ["teacher"],
+  },
+  study_deck_progress: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["student"],
+  },
+  study_quiz_attempts: {
+    classes: ["S+G", "T", "O"],
+    read: ["owner", "principal", "admin", "teacher", "student", "guardian"],
+    write: ["student"],
+  },
+  study_plans: {
+    classes: ["S+G", "O"],
+    read: ["student", "guardian"],
+    write: ["student"],
+  },
+  study_sessions: {
+    classes: ["S+G", "O"],
+    read: ["owner", "principal", "admin", "student", "guardian"],
+    write: ["student"],
+  },
 };

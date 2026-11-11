@@ -178,6 +178,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     feature: "quiz_generation",
     agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
     schema: QuizGenerationSchema,
+    strictSchema: QuizContentSchema,
     instructions: QUIZ_GENERATION_INSTRUCTIONS,
     prompt,
     maxOutputTokens: MAX_OUTPUT_TOKENS,

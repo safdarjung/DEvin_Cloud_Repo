@@ -16,6 +16,7 @@ import { getCurrentTermId, getMyStudent, listMyChildren } from "@/modules/people
 import { upcomingExamsForStudent } from "@/modules/exams/queries";
 import { libraryMyLoans } from "@/modules/library/queries";
 import { daysBetween, istDay } from "@/modules/people/portal-dates";
+import { activeStudyPlan, deckSummaries } from "@/modules/study/queries";
 
 type Source = () => Promise<Nudge[]>;
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
@@ -165,10 +166,46 @@ function childSource(ctx: TenantContext, child: { id: string; firstName: string 
   };
 }
 
+// Study studio (student only): flashcards due, today's plan items, and an exam within 14 days with no plan.
+function studySource(ctx: TenantContext, studentId: string): Source {
+  return async () => {
+    const base = `/${ctx.institution.slug}/portal/study/studio`;
+    const today = istDay(new Date());
+    const [decks, plan] = await Promise.all([deckSummaries(ctx, studentId), activeStudyPlan(ctx, studentId)]);
+    const out: Nudge[] = [];
+    const due = decks.reduce((n, d) => n + d.due, 0);
+    if (due > 0) {
+      out.push({
+        id: `study-due:${today}`, kind: "suggestion", text: `${plural(due, "flashcard")} due today. A short drill keeps them fresh.`,
+        href: `${base}?tab=cards`, ask: "How should I review my flashcards that are due today?",
+      });
+    }
+    const todays = plan?.items.filter((i) => i.day === today && !i.done) ?? [];
+    if (plan && todays.length) {
+      out.push({
+        id: `study-plan:${plan.id}:${today}`, kind: "suggestion",
+        text: `Today's plan: ${todays[0]!.label} (${todays[0]!.minutes} min)${todays.length > 1 ? ` and ${todays.length - 1} more` : ""}.`,
+        href: `${base}?tab=plan`, ask: `Help me study ${todays[0]!.label} for ${todays[0]!.minutes} minutes.`,
+      });
+    }
+    if (!plan && isModuleEnabled(ctx, "exams") && hasPermission(ctx, "exam.result.read")) {
+      const next = (await upcomingExamsForStudent(ctx, studentId, 14))[0];
+      if (next) {
+        out.push({
+          id: `study-exam:${next.paperId}`, kind: "suggestion", text: `${next.subjectName} exam on ${istDay(next.scheduledAt)}. Build a study plan?`,
+          href: `${base}?tab=plan`, ask: `Help me plan revision for my ${next.subjectName} exam.`,
+        });
+      }
+    }
+    return out;
+  };
+}
+
 async function portalSourceList(ctx: TenantContext): Promise<Source[]> {
   if (ctx.membership.role === "student") {
     const me = await getMyStudent(ctx);
-    return me ? [childSource(ctx, me, false)] : [];
+    const study = hasPermission(ctx, "ai.study") && isModuleEnabled(ctx, "ai_student");
+    return me ? [childSource(ctx, me, false), ...(study ? [studySource(ctx, me.id)] : [])] : [];
   }
   const kids = (await listMyChildren(ctx)).slice(0, 3);
   return kids.map((k) => childSource(ctx, k, true));

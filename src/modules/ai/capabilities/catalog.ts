@@ -211,6 +211,9 @@ export const CAPABILITY_KEYS = [
   "website_theme_draft",
   // AI workflow drafter (api/ai/workflow-draft)
   "workflow_draft",
+  // Study studio (api/ai/study-generate, study-check, study-teacher-generate)
+  "study_studio",
+  "teacher_study_studio",
 ] as const;
 
 export type CapabilityKey = (typeof CAPABILITY_KEYS)[number];
@@ -593,16 +596,17 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     data: "aggregate",
     defaultOn: ["owner", "principal", "admin", "teacher"],
   },
+  // The gateway also needs ai.generate, which exam_controller lacks: it stays out of the ceiling.
   report_remark: {
     key: "report_remark",
     label: "Report remark drafting",
     description: "Draft a report-card remark from a student's exam result.",
     kind: "task",
-    roles: ["owner", "principal", "exam_controller", "teacher"],
+    roles: ["owner", "principal", "teacher"],
     permission: "exam.marks.enter",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["owner", "principal", "exam_controller", "teacher"],
+    defaultOn: ["owner", "principal", "teacher"],
   },
   // Route checks ai.generate AND admissions.enquiry.read (both) — teacher
   // holds ai.generate but not admissions.enquiry.read, so it is excluded.
@@ -617,19 +621,19 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     data: "personal",
     defaultOn: ["owner", "principal", "admin", "admissions"],
   },
-  // Route checks only attendance.read + module (no role/ai.generate check) —
-  // student/guardian hold attendance.read for their OWN record but this is
-  // a staff briefing widget, so the ceiling excludes them regardless.
+  // Route checks attendance.read + module; the gateway adds ai.generate, so
+  // exam_controller (no ai.generate) stays out. Student/guardian hold
+  // attendance.read for their OWN record but this is a staff briefing widget.
   attendance_insight: {
     key: "attendance_insight",
     label: "Attendance insight",
     description: "AI-generated attendance insight briefing.",
     kind: "task",
-    roles: ["owner", "principal", "admin", "exam_controller", "teacher"],
+    roles: ["owner", "principal", "admin", "teacher"],
     permission: "attendance.read",
     module: "ai_briefings",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "exam_controller", "teacher"],
+    defaultOn: ["owner", "principal", "admin", "teacher"],
   },
   // Route checks insight.read AND ai.generate (both) — accountant/exam_controller
   // hold insight.read but not ai.generate, so they are excluded.
@@ -1205,5 +1209,28 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     module: "workflows",
     data: "aggregate",
     defaultOn: ["owner", "principal"],
+  },
+  // Prompts carry the source text only (unit outline, shared resource, pasted notes; short answers for the check).
+  study_studio: {
+    key: "study_studio",
+    label: "Study studio",
+    description: "Make summaries, flashcards and practice quizzes from your units or notes, with AI-checked short answers. Practice only.",
+    kind: "task",
+    roles: ["student"],
+    permission: "ai.study",
+    module: "ai_student",
+    data: "own",
+    defaultOn: ["student"],
+  },
+  teacher_study_studio: {
+    key: "teacher_study_studio",
+    label: "Study material builder",
+    description: "Draft summaries, flashcard decks or quizzes from a unit, lesson plan or your notes. You review, edit and share them with your sections.",
+    kind: "task",
+    roles: ["teacher"],
+    permission: "ai.generate",
+    module: "ai_teacher",
+    data: "aggregate",
+    defaultOn: ["teacher"],
   },
 };

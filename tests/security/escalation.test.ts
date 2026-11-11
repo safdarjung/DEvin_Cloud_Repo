@@ -281,6 +281,34 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
       answers: [0],
     }),
   },
+  "study.material.save": {
+    permission: "ai.study",
+    input: () => ({ format: "quick_summary", title: "Probe", sourceKind: "paste", content: { summary: "Probe.", keyPoints: ["a"] } }),
+  },
+  "study.material.delete": { permission: "ai.study", input: () => ({ materialId: U() }) },
+  "study.deck.review": { permission: "ai.study", input: () => ({ materialId: U(), cardId: "c1", grade: "knew" }) },
+  "study.quiz.submit": {
+    permission: "ai.study",
+    input: () => ({
+      title: "Probe quiz",
+      difficulty: "easy",
+      questions: [{ type: "true_false", stem: "Probe?", answer: true, explanation: "" }],
+      answers: [true],
+      aiChecks: [],
+      durationSeconds: 60,
+    }),
+  },
+  "study.plan.save": {
+    permission: "ai.study",
+    input: () => ({ title: "Probe plan", targetDate: "2099-01-31", minutesPerDay: 30, topics: [{ key: "t1", label: "Probe", subjectId: null, unitId: null, weak: true }] }),
+  },
+  "study.plan.toggleItem": { permission: "ai.study", input: () => ({ planId: U(), index: 0, done: true }) },
+  "study.session.log": { permission: "ai.study", input: () => ({ activity: "reading", minutes: 10 }) },
+  "study.teacher.material.save": {
+    permission: "resource.manage",
+    input: () => ({ format: "quick_summary", title: "Probe", sourceKind: "paste", content: { summary: "Probe.", keyPoints: ["a"] }, sectionIds: [U()] }),
+  },
+  "study.teacher.material.delete": { permission: "resource.manage", input: () => ({ materialId: U() }) },
   "people.student.update": { permission: "student.write", input: () => ({ studentId: U(), firstName: "Probe" }) },
   "people.guardian.update": { permission: "student.write", input: () => ({ guardianId: U(), fullName: "Probe" }) },
   "people.guardian.link": {

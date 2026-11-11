@@ -45,6 +45,7 @@ export const POST = aiTaskRoute({
       const generated = await runStructured({
         ctx,
         feature: "import_mapping",
+        agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
         schema: ImportMappingGenerationSchema,
         instructions: IMPORT_MAPPING_INSTRUCTIONS,
         prompt: buildImportMappingPrompt(input.entityType, leftovers, free),

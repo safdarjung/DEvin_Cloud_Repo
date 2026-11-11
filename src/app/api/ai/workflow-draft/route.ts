@@ -38,6 +38,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "workflow_draft",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: workflowDraftGenerationSchema(options),
       instructions: WORKFLOW_DRAFT_INSTRUCTIONS,
       prompt: buildWorkflowDraftPrompt({ description: input.description, sections: options.sections, agents, currentDraft: input.currentDraft }),

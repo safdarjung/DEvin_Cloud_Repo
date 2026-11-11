@@ -28,6 +28,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "website_page_draft",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: WebsiteDraftGenerationSchema,
       instructions: WEBSITE_DRAFT_INSTRUCTIONS,
       prompt: buildWebsiteDraftPrompt({

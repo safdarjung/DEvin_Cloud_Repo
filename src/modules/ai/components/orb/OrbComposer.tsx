@@ -1,11 +1,8 @@
 "use client";
 
-// Chips (page starters, then every enabled capability) and the one-line input
-// with mic and send/stop. Chips send a concrete starter prompt or open the page
-// that runs a task.
-import Link from "next/link";
-import { ArrowUp, ArrowUpRight, Bot, CornerDownRight, MessageSquare, Mic, Sparkles, Square } from "lucide-react";
-import type { OrbChip, OrbChipKind } from "./orb-chips";
+// Page starters (from the page you were on) and the one-line input with mic and
+// send/stop. Section prompts and AI tools live in OrbGroups.
+import { ArrowUp, Bot, CornerDownRight, Mic, Square } from "lucide-react";
 
 export interface OrbVoiceUi {
   supported: boolean;
@@ -21,7 +18,6 @@ interface Props {
   input: string;
   busy: boolean;
   starters?: string[];
-  chips: OrbChip[];
   voice: OrbVoiceUi;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInput: (v: string) => void;
@@ -29,33 +25,12 @@ interface Props {
   onStop: () => void;
 }
 
-const KIND_ICON = { ask: MessageSquare, create: Sparkles, open: ArrowUpRight } as const;
-const KIND_LABEL: Record<OrbChipKind, string> = { ask: "Ask", create: "Create", open: "Open" };
 const CHIP =
-  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground shadow-xs transition-colors hover:border-foreground/30 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex min-h-11 shrink-0 py-1 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground shadow-xs transition-colors hover:border-foreground/30 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
 const ROW =
   "flex items-center gap-1.5 overflow-x-auto py-0.5 pl-3 pr-6 [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-24px),transparent)]";
 
-function ChipButton({ chip, busy, onSend }: { chip: OrbChip; busy: boolean; onSend: (t: string) => void }) {
-  const Icon = KIND_ICON[chip.kind];
-  if (chip.kind === "open" && chip.href) {
-    return (
-      <Link href={chip.href} className={CHIP} title={`Opens the page that runs ${chip.label}`}>
-        {chip.label}
-        <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-      </Link>
-    );
-  }
-  return (
-    <button type="button" disabled={busy} onClick={() => chip.prompt && onSend(chip.prompt)} className={CHIP} title={chip.prompt}>
-      <Icon className="size-3.5 text-muted-foreground" aria-hidden />
-      {chip.label}
-    </button>
-  );
-}
-
-export function OrbComposer({ chatOn, input, busy, starters, chips, voice, inputRef, onInput, onSend, onStop }: Props) {
-  const kinds = (["ask", "create", "open"] as const).filter((k) => chips.some((c) => c.kind === k));
+export function OrbComposer({ chatOn, input, busy, starters, voice, inputRef, onInput, onSend, onStop }: Props) {
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
       {chatOn && starters && starters.length > 0 && (
@@ -68,18 +43,6 @@ export function OrbComposer({ chatOn, input, busy, starters, chips, voice, input
             <button key={s} type="button" disabled={busy} onClick={() => onSend(s)} className={`${CHIP} border-foreground/20 bg-accent`}>
               {s}
             </button>
-          ))}
-        </div>
-      )}
-      {kinds.length > 0 && (
-        <div className={ROW} role="group" aria-label="AI capabilities">
-          {kinds.map((k, gi) => (
-            <div key={k} className="flex shrink-0 items-center gap-1.5">
-              <span className={`shrink-0 pr-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground ${gi > 0 ? "border-l border-border pl-2.5" : ""}`}>
-                {KIND_LABEL[k]}
-              </span>
-              {chips.filter((c) => c.kind === k).map((c) => <ChipButton key={c.key} chip={c} busy={busy} onSend={onSend} />)}
-            </div>
           ))}
         </div>
       )}

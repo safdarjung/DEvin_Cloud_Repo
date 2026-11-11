@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { NoObjectGeneratedError } from "ai";
+import { APICallError, NoObjectGeneratedError } from "ai";
 import { permissionsFor, type Role } from "@/lib/auth/permissions";
 import type { TenantContext } from "@/lib/auth/types";
 
@@ -152,6 +152,68 @@ describe("runStructured", () => {
     const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
     expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
     expect(providers.getGeminiModel).not.toHaveBeenCalled();
+  });
+
+  it("agentCloud with the role's cloud switch off (D50) keeps the policy plan: local, no cloud provider built", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    process.env.GEMINI_API_KEY = "test-key";
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const base = fakeCtx("local_only");
+    const ctx = { ...base, institution: { ...base.institution, settings: { ai_roles: { teacher: { cloud: false } } } } };
+    const result = await runStructured({ ctx, ...baseInput, agentCloud: true });
+    expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
+    expect(providers.getGroqModel).not.toHaveBeenCalled();
+    expect(providers.getGeminiModel).not.toHaveBeenCalled();
+  });
+
+  it("agentCloud: a request over Groq's per-request ceiling goes to Gemini; one over every ceiling is refused unsent", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    process.env.GEMINI_API_KEY = "test-key";
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const big = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, prompt: "x".repeat(20_000), maxOutputTokens: 4096, agentCloud: true });
+    expect(big).toMatchObject({ ok: true, data: { provider: "cloud", model: "gemini-flash-lite-latest" } });
+    expect(providers.getGroqModel).not.toHaveBeenCalled();
+
+    const huge = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, prompt: "x".repeat(100_000), agentCloud: true });
+    expect(huge).toMatchObject({ ok: false, error: { code: "validation_failed" } });
+    expect(generateTextMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("agentCloud: a busy provider maps to rate_limited with a plain message, not a policy name", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    generateTextMock.mockRejectedValueOnce(
+      new APICallError({ message: "rate limit", url: "https://x", requestBodyValues: {}, statusCode: 429, responseBody: '{"error":{"code":"rate_limit_exceeded"}}' }),
+    );
+    const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
+    expect(result).toEqual({ ok: false, error: { code: "rate_limited", message: "The AI service is busy right now. Please try again in a minute." } });
+  });
+
+  it("agentCloud: Groq's server-side json_validate_failed gets the one repair retry", async () => {
+    process.env.GROQ_API_KEY = "test-key";
+    generateTextMock
+      .mockRejectedValueOnce(
+        new APICallError({ message: "Failed to generate JSON", url: "https://x", requestBodyValues: {}, statusCode: 400, responseBody: '{"error":{"code":"json_validate_failed"}}' }),
+      )
+      .mockResolvedValueOnce(usageResult());
+    const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, agentCloud: true });
+    expect(generateTextMock).toHaveBeenCalledTimes(2);
+    expect(generateTextMock.mock.calls[1][0].instructions).toContain("Your previous response was invalid");
+    expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "openai/gpt-oss-120b" } });
+  });
+
+  it("strictSchema: an answer breaking a rule the provider schema cannot carry is repaired once, naming the rule", async () => {
+    const strictSchema = z.object({ title: z.string() }).refine((v) => v.title !== "dup", { message: "Title must be new.", path: ["title"] });
+    const answer = (title: string) => ({ ...usageResult(), output: { title }, response: {}, finishReason: "stop" });
+    generateTextMock.mockResolvedValueOnce(answer("dup")).mockResolvedValueOnce(answer("Fresh quiz"));
+    const repaired = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, strictSchema });
+    expect(repaired).toMatchObject({ ok: true, data: { data: { title: "Fresh quiz" } } });
+    expect(generateTextMock.mock.calls[1][0].instructions).toContain("title: Title must be new.");
+
+    generateTextMock.mockResolvedValueOnce(answer("dup")).mockResolvedValueOnce(answer("dup"));
+    const failed = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, strictSchema });
+    expect(failed).toMatchObject({ ok: false, error: { code: "ai_invalid_output" } });
+    expect(generateTextMock).toHaveBeenCalledTimes(4);
   });
 
   it("a caller that does not opt in stays local on local_only even with cloud keys set (C-62)", async () => {

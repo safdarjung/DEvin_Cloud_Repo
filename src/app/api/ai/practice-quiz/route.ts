@@ -165,6 +165,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
       permission: "ai.study",
       schema: PracticeGenerationSchema,
+      strictSchema: QuizContentSchema,
       instructions: PRACTICE_QUIZ_INSTRUCTIONS,
       prompt,
       maxOutputTokens: MAX_OUTPUT_TOKENS,

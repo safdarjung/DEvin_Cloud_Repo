@@ -54,6 +54,7 @@ import { run as runMessaging } from "./sections/messaging.ts";
 import { run as runExamExtras } from "./sections/exam-extras.ts";
 import { run as runQuestionBank } from "./sections/question-bank.ts";
 import { run as runStudentStudy } from "./sections/student-study.ts";
+import { run as runStudyStudio } from "./sections/study-studio.ts";
 import { run as runFinanceExtras } from "./sections/finance-extras.ts";
 import { run as runDataOps } from "./sections/data-ops.ts";
 import { run as runPeopleHistory } from "./sections/people-history.ts";
@@ -136,6 +137,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "exam-extras", run: runExamExtras },
   { name: "question-bank", run: runQuestionBank },
   { name: "student-study", run: runStudentStudy },
+  // 0138: needs academics units, people enrolments and core demo logins (student.one, teacher.x-a); no rng draws.
+  { name: "study-studio", run: runStudyStudio },
   { name: "finance-extras", run: runFinanceExtras },
   { name: "data-ops", run: runDataOps },
   { name: "people-history", run: runPeopleHistory },

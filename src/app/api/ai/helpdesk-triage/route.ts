@@ -69,6 +69,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "helpdesk_triage",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: HelpdeskTriageGenerationSchema,
       instructions: HELPDESK_TRIAGE_INSTRUCTIONS,
       prompt,

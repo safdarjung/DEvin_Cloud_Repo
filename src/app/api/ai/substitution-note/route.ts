@@ -71,6 +71,7 @@ export const POST = aiTaskRoute({
     const generated = await runStructured({
       ctx,
       feature: "substitution_note",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06); redacted on the cloud path
       schema: SubstitutionNoteGenerationSchema,
       instructions: SUBSTITUTION_NOTE_INSTRUCTIONS,
       prompt,
