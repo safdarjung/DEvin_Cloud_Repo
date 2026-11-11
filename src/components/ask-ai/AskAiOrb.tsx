@@ -81,7 +81,14 @@ export function AskAiOrb({ idle, accent, glow, excite }: { idle: boolean; accent
   }, [reduced, idle, scope, animateWiggle]);
 
   return (
-    <span className="absolute inset-0 grid place-items-center overflow-hidden rounded-full" style={{ background: `linear-gradient(145deg, ${accent[0]}, ${accent[1]})` }}>
+    // The same glass ball as the App Orb, in CSS: bright toward the light, a darker limb, a rim of the bright stop.
+    <span
+      className="absolute inset-0 grid place-items-center overflow-hidden rounded-full"
+      style={{
+        background: `radial-gradient(circle at 34% 28%, ${accent[1]}, ${accent[0]} 72%)`,
+        boxShadow: `inset 0 0 10px 0 ${accent[1]}, inset -5px -7px 12px -4px rgb(0 0 0 / 0.45)`,
+      }}
+    >
       <motion.span ref={scope} className="block size-[78%]" animate={reduced ? undefined : { scale: [1, 1.05, 1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
         <motion.span className="block size-full" style={{ rotate: angle }}>
           <motion.svg
@@ -97,6 +104,7 @@ export function AskAiOrb({ idle, accent, glow, excite }: { idle: boolean; accent
           </motion.svg>
         </motion.span>
       </motion.span>
+      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_24%,rgb(255_255_255/0.7),transparent_30%)]" />
     </span>
   );
 }

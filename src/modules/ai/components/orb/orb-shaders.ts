@@ -1,5 +1,7 @@
-// GLSL for the App Orb core: one draw call of dust points on a sphere. AI state
-// (ripple, contraction, swirl, jitter, scatter) and mic level move the surface.
+// GLSL for the App Orb core, two draw calls: a glass ball with a slow aurora inside
+// it, and dust points on a sphere round it (plus a few motes in orbit further out).
+// AI state (ripple, contraction, swirl, jitter, scatter), the mic level, a one-shot
+// ring of light and the pointer move the surface.
 
 // 3D simplex noise: Ashima Arts / Stefan Gustavson (MIT), webgl-noise.
 const SIMPLEX = /* glsl */ `
@@ -48,8 +50,19 @@ float snoise(vec3 v) {
 }
 `;
 
+// Two far-apart hues (a teal role, a pink mode) meet in grey when mixed: the colour is lifted back where they are most mixed.
+const BLEND = /* glsl */ `
+vec3 blend(vec3 a, vec3 b, float k) {
+  vec3 c = mix(a, b, k);
+  float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  return max(vec3(0.0), mix(vec3(l), c, 1.0 + 3.2 * k * (1.0 - k)));
+}
+`;
+
 export const DOTS_VERTEX = /* glsl */ `
 attribute float aSeed;
+// 0: dust on the surface · 1: a mote in orbit outside it.
+attribute float aShell;
 uniform mat3 uRot;
 uniform float uTime;
 uniform float uClock;
@@ -65,6 +78,12 @@ uniform float uIntro;
 uniform float uPx;
 // A hovered section: view-space direction (xyz) and strength (w); the dust around it brightens.
 uniform vec4 uHot;
+// The pointer over the orb: view-space direction (xyz) and strength (w); nearby dust lifts toward it.
+uniform vec4 uPtr;
+// A ring of light crossing the sphere: its angle from the front pole (x) and strength (y).
+uniform vec2 uShock;
+// Accumulated orbit angle of the motes (faster while thinking).
+uniform float uOrbit;
 varying float vAlpha;
 varying float vBright;
 varying float vMix;
@@ -72,7 +91,10 @@ ${SIMPLEX}
 vec3 hash3(float s) { return fract(sin(vec3(s * 127.1, s * 311.7, s * 74.7)) * 43758.5453); }
 
 void main() {
-  vec3 p = position;
+  // Motes turn about the vertical axis at their own pace.
+  float oa = aShell * uOrbit * (0.35 + 0.9 * aSeed);
+  float oc = cos(oa), os = sin(oa);
+  vec3 p = vec3(position.x * oc + position.z * os, position.y, -position.x * os + position.z * oc);
   float radial = 1.0 + 0.02 * sin(uClock * 1.3);
   // Thinking: a twist about the vertical axis.
   float tw = uSwirl * (0.55 * sin(uClock * 1.3 + p.y * 2.6) + p.y * 0.8);
@@ -85,7 +107,11 @@ void main() {
   float a = acos(clamp(r.z, -1.0, 1.0));
   radial += uRipple * 0.07 * sin(a * 9.0 - uRipplePhase) * exp(-a * 0.6);
   radial += uLevel * 0.1;
+  float shock = uShock.y * exp(-pow((a - uShock.x) * 3.5, 2.0));
+  float near = uPtr.w * smoothstep(0.72, 1.0, dot(r, uPtr.xyz)) * (1.0 - aShell);
+  radial += shock * 0.09 + near * 0.05;
   radial *= 1.0 - uContract * 0.14;
+  radial += aShell * (0.26 + 0.24 * aSeed + 0.03 * sin(uClock * 0.7 + aSeed * 30.0));
   // Typing: a light jitter band sweeping up and down.
   float bd = (r.y - 0.7 * sin(uClock * 0.9)) * 5.0;
   float band = exp(-bd * bd);
@@ -101,11 +127,13 @@ void main() {
 
   float zf = clamp(r.z * 0.5 + 0.5, 0.0, 1.0);
   float hot = uHot.w * smoothstep(0.8, 1.0, dot(r, uHot.xyz));
-  vAlpha = (mix(0.08, 0.6, pow(zf, 1.5)) + hot * 0.35) * min(1.0, (t + 1.0) * 2.5);
-  vBright = 0.75 + 0.35 * n1 + hot * 0.8;
+  // Each dot twinkles at its own pace.
+  float twinkle = 0.78 + 0.22 * sin(uClock * (1.2 + aSeed * 3.0) + aSeed * 40.0);
+  vAlpha = (mix(0.08, 0.6, pow(zf, 1.5)) + hot * 0.35 + near * 0.18 + shock * 0.5) * mix(1.0, 0.7, aShell) * min(1.0, (t + 1.0) * 2.5);
+  vBright = (0.75 + 0.35 * n1 + hot * 0.8 + near * 0.3 + shock * 0.9) * twinkle;
   vMix = clamp(0.5 + 0.35 * r.y + 0.4 * n1 + hot * 0.5, 0.0, 1.0);
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
-  gl_PointSize = uPx * mix(0.55, 1.15, zf) * (1.0 + hot * 0.7) * (7.5 / -mv.z);
+  gl_PointSize = uPx * mix(0.55, 1.15, zf) * (1.0 + hot * 0.7 + near * 0.2 + shock * 0.6) * mix(1.0, 0.8, aShell) * (7.5 / -mv.z);
   gl_Position = projectionMatrix * mv;
 }
 `;
@@ -120,11 +148,71 @@ uniform float uFill;
 varying float vAlpha;
 varying float vBright;
 varying float vMix;
+${BLEND}
 void main() {
   float d = length(gl_PointCoord * 2.0 - 1.0);
   if (d > 1.0) discard;
-  vec3 col = mix(mix(uColorA, uColorB, vMix) * mix(1.0, vBright, 0.6), uErrColor, uErr * 0.8);
+  vec3 col = mix(blend(uColorA, uColorB, vMix) * mix(1.0, vBright, 0.6), uErrColor, uErr * 0.8);
   float alpha = smoothstep(1.0, 0.5, d) * vAlpha * uFill * (0.7 + 0.5 * uGlow) * vBright;
+  gl_FragColor = vec4(col, alpha);
+  #include <colorspace_fragment>
+}
+`;
+
+export const GLASS_VERTEX = /* glsl */ `
+varying vec3 vN;
+void main() {
+  vN = normalize(normalMatrix * normal);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+`;
+
+// The ball itself: deeper in the middle, a bright rim (fresnel), a slow aurora that
+// turns with the dust, and a highlight from a light that follows the pointer.
+export const GLASS_FRAGMENT = /* glsl */ `
+uniform mat3 uRot;
+uniform float uTime;
+uniform float uGlow;
+uniform float uErr;
+uniform float uSwirl;
+uniform float uLevel;
+uniform float uIntro;
+// Opacity of the middle of the ball (the rim is always solid).
+uniform float uCore;
+uniform vec3 uGlassA;
+uniform vec3 uGlassB;
+uniform vec3 uErrColor;
+uniform vec3 uLight;
+uniform vec4 uHot;
+uniform vec2 uShock;
+varying vec3 vN;
+${SIMPLEX}
+${BLEND}
+void main() {
+  vec3 N = normalize(vN);
+  float ndv = clamp(N.z, 0.0, 1.0);
+  float fres = pow(1.0 - ndv, 2.2);
+  // The same turn as the dust, undone: the aurora rides the sphere.
+  vec3 q = N * uRot;
+  float t = uTime * 0.5;
+  float n1 = snoise(q * 1.25 + vec3(0.0, t, 0.0));
+  float n2 = snoise(q * 2.6 + vec3(n1 * 0.8, -t * 1.3, t));
+  float band = smoothstep(-0.3, 0.65, n1 * 0.7 + n2 * 0.3 + q.y * 0.35);
+  vec3 col = blend(uGlassA, uGlassB, band) * mix(0.66, 1.0, fres);
+  // Thinking: bright veins gather inside.
+  col += uGlassB * uSwirl * 0.35 * smoothstep(0.35, 0.9, abs(n2));
+  col += uGlassB * fres * (0.4 + 0.8 * uGlow + 0.6 * uLevel);
+  vec3 L = normalize(uLight);
+  vec3 H = normalize(L + vec3(0.0, 0.0, 1.0));
+  col *= mix(0.74, 1.1, 0.5 + 0.5 * dot(N, L));
+  float nh = max(dot(N, H), 0.0);
+  col += vec3(pow(nh, 90.0) * 1.1 + pow(nh, 10.0) * 0.24);
+  float a = acos(clamp(N.z, -1.0, 1.0));
+  col += uGlassB * uShock.y * exp(-pow((a - uShock.x) * 3.5, 2.0)) * 0.8;
+  col += uGlassB * uHot.w * smoothstep(0.8, 1.0, dot(N, uHot.xyz)) * 0.35;
+  col = mix(col, uErrColor * (0.55 + 0.6 * nh), uErr * 0.75);
+  // The limb is feathered so the edge never looks cut out.
+  float alpha = mix(uCore, 1.0, fres) * smoothstep(0.0, 0.16, ndv) * clamp(uIntro * 1.4, 0.0, 1.0);
   gl_FragColor = vec4(col, alpha);
   #include <colorspace_fragment>
 }

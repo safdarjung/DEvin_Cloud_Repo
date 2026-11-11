@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   coastDistance, easeOutBack, fibonacciSphere, flickDelta, frontAngle, frontIndex, idleEase, micLevel, nearestAngle, nodeLook, nodePoints,
-  nudgeAway, orbState, ringIsFull, rotateYX, scatterEnvelope, snapAngle, springStep, stepIndex, typingPulse, waveFor,
+  nudgeAway, orbState, pointerDir, ringIsFull, rotateYX, scatterEnvelope, shockAt, snapAngle, springStep, stepIndex, typingPulse, waveFor,
 } from "@/modules/ai/components/orb/orb-layout";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
@@ -322,5 +322,36 @@ describe("orbChips", () => {
     expect(orbChips(["attendance_overview"], { slug: "demo", appHrefs: apps, chatOn: false })).toEqual([]);
     const kinds = orbChips(["quiz_generator", "lesson_plan_draft", "attendance_overview"], { slug: "demo", appHrefs: apps, chatOn: true }).map((c) => c.kind);
     expect(kinds).toEqual(["ask", "create", "open"]);
+  });
+});
+
+describe("shockAt", () => {
+  it("is silent before it starts and long after", () => {
+    expect(shockAt(-0.5).strength).toBe(0);
+    expect(shockAt(3).strength).toBeLessThan(0.02);
+  });
+
+  it("starts at the front pole at full strength and crosses the whole sphere while fading", () => {
+    expect(shockAt(0)).toEqual({ front: 0, strength: 1 });
+    const mid = shockAt(0.5);
+    expect(mid.front).toBeGreaterThan(0);
+    expect(mid.strength).toBeLessThan(1);
+    expect(shockAt(1.2).front).toBeGreaterThanOrEqual(Math.PI);
+    expect(shockAt(1.2).strength).toBeGreaterThan(0.05);
+  });
+});
+
+describe("pointerDir", () => {
+  it("maps the middle of the orb to the front pole", () => {
+    expect(pointerDir(0, 0)).toEqual([0, 0, 1]);
+  });
+
+  it("returns a unit vector on the front hemisphere, also for a pointer outside the orb", () => {
+    for (const [x, y] of [[0.3, -0.4], [1, 0], [3, 4], [-0.7, 0.7]]) {
+      const d = pointerDir(x, y);
+      expect(len(d)).toBeCloseTo(1, 6);
+      expect(d[2]).toBeGreaterThanOrEqual(0);
+    }
+    expect(pointerDir(3, 4)[0]).toBeCloseTo(0.6, 6);
   });
 });

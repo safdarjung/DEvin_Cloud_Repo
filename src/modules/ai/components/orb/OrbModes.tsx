@@ -1,10 +1,11 @@
 "use client";
 
 // Mode switcher under the orb: a real tablist (arrow keys, Home/End and 1-6 move and
-// select; roving tabindex) with a sliding pill, each mode's colour dot and count,
-// the active mode's one-line hint, and a dismissible first-visit explanation.
+// select; roving tabindex) with a sliding pill that glows in the mode's colour, each
+// mode's icon and count, the active mode's one-line hint, and a dismissible
+// first-visit explanation.
 import { motion } from "motion/react";
-import { X } from "lucide-react";
+import { GraduationCap, MessageCircleQuestion, PenLine, Presentation, SlidersHorizontal, X, Zap } from "lucide-react";
 import { modeInfo, type OrbMode } from "./orb-modes";
 
 interface Props {
@@ -21,6 +22,9 @@ interface Props {
 }
 
 const SPRING = { type: "spring", stiffness: 480, damping: 34 } as const;
+const ICONS: Record<OrbMode, React.ComponentType<{ className?: string; style?: React.CSSProperties; "aria-hidden"?: boolean }>> = {
+  ask: MessageCircleQuestion, do: Zap, create: PenLine, teach: Presentation, learn: GraduationCap, manage: SlidersHorizontal,
+};
 
 /** Tab index for a key on the tablist, or null when the key is not ours. */
 export function tabKeyTarget(key: string, at: number, n: number): number | null {
@@ -56,6 +60,7 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
         {modes.map((m, i) => {
           const on = m === current;
           const count = counts[m] ?? 0;
+          const Icon = ICONS[m];
           return (
             <button
               key={m}
@@ -71,9 +76,17 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
                 on ? "text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground"
               }`}
             >
-              {on && <motion.span layoutId={`${idBase}-pill`} className="absolute inset-0 rounded-full bg-foreground" transition={reduced ? { duration: 0 } : SPRING} />}
+              {on && (
+                <motion.span
+                  layoutId={`${idBase}-pill`}
+                  className="absolute inset-0 rounded-full bg-foreground"
+                  // The pill carries the mode's colour as a glow under it (the text keeps the monochrome contrast).
+                  style={{ boxShadow: `0 8px 22px -8px ${hueFor(m)}, 0 0 0 1px color-mix(in oklab, ${hueFor(m)} 55%, transparent)` }}
+                  transition={reduced ? { duration: 0 } : SPRING}
+                />
+              )}
               <span className="relative flex items-center gap-1.5">
-                <span className="size-2 rounded-full" style={{ background: hueFor(m) }} aria-hidden />
+                <Icon className="size-3.5 transition-colors" style={on ? undefined : { color: hueFor(m) }} aria-hidden />
                 {modeInfo(m).label}
                 {count > 0 && (
                   <span className="hidden text-xs tabular-nums opacity-75 sm:inline">
@@ -86,11 +99,19 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
           );
         })}
       </div>
-      <p className="px-4 text-center text-xs text-muted-foreground">{modeInfo(current).hint}</p>
+      <motion.p
+        key={current}
+        className="px-4 text-center text-xs text-muted-foreground"
+        initial={reduced ? false : { opacity: 0, y: 4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+      >
+        {modeInfo(current).hint}
+      </motion.p>
       {showIntro && modes.length > 1 && (
         <div role="note" className="flex max-w-3xl items-start gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-sm">
           <p className="flex-1 leading-relaxed">
-            Ask answers questions; the other modes prepare cards you approve. Tabs or keys 1–{modes.length} switch modes; drag the orb to browse.
+            Ask answers questions; the other modes prepare cards you approve. Tabs or keys 1–{modes.length} switch modes, / starts a message; drag the orb to browse.
           </p>
           <button
             type="button"

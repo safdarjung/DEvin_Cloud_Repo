@@ -3,8 +3,11 @@
 // Page starters (from the page you were on) and the one-line input with mic and
 // send/stop. Typing "/" lists the orb's commands (a combobox: arrows, Enter/Tab to
 // pick, Esc to hide); next to the mic sit the voice language and the "Read answers
-// aloud" switch. Section prompts and AI tools live in OrbGroups.
-import { useId, useState } from "react";
+// aloud" switch. While it listens, bars follow the mic; while the box is empty, ready
+// questions take turns as its placeholder. Section prompts and AI tools live in
+// OrbGroups.
+import { useEffect, useId, useRef, useState } from "react";
+import { useAnimationFrame } from "motion/react";
 import { ArrowUp, Bot, CornerDownRight, Mic, Square, Volume2 } from "lucide-react";
 import { ORB_COMMANDS } from "@/modules/ai/explain/commands";
 import { VOICE_LANGS, type VoiceLang } from "./useVoice";
@@ -31,6 +34,11 @@ interface Props {
   input: string;
   busy: boolean;
   starters?: string[];
+  /** Ready questions shown in turn as the placeholder. */
+  hints: readonly string[];
+  /** Live mic loudness (0..1), read every frame while listening. */
+  level: React.RefObject<{ level: number }>;
+  reduced: boolean;
   voice: OrbVoiceUi;
   speech: OrbReadAloudUi;
   inputRef: React.RefObject<HTMLInputElement | null>;
@@ -45,8 +53,42 @@ const ROW =
   "flex items-center gap-1.5 overflow-x-auto py-0.5 pl-3 pr-6 [scrollbar-width:none] [mask-image:linear-gradient(to_right,transparent,black_12px,black_calc(100%-24px),transparent)]";
 const VOICE_NOTE = "Your browser's speech service turns your voice into text (Chrome: Google, Edge: Microsoft, Safari: Apple).";
 
-export function OrbComposer({ chatOn, input, busy, starters, voice, speech, inputRef, onInput, onSend, onStop }: Props) {
+const HINT_MS = 4500;
+const BARS = [0.55, 1, 0.7, 0.9, 0.5];
+const PLACEHOLDER = "Ask anything, or type / for commands";
+
+/** Five bars that follow the mic: proof that the orb hears you. */
+function MicBars({ level }: { level: React.RefObject<{ level: number }> }) {
+  const root = useRef<HTMLSpanElement>(null);
+  useAnimationFrame((t) => {
+    const v = level.current.level;
+    root.current?.childNodes.forEach((n, i) => {
+      // Each bar has its own share of the level and a small ripple, so they do not move as one.
+      const h = 0.18 + 0.82 * Math.min(1, v * BARS[i] * (1 + 0.35 * Math.sin(t / 90 + i * 1.7)));
+      (n as HTMLElement).style.transform = `scaleY(${h.toFixed(3)})`;
+    });
+  });
+  return (
+    <span ref={root} aria-hidden className="flex h-5 shrink-0 items-center gap-[3px] pl-2">
+      {BARS.map((_, i) => (
+        <span key={i} className="h-full w-[3px] origin-center rounded-full bg-destructive" style={{ transform: "scaleY(0.18)" }} />
+      ))}
+    </span>
+  );
+}
+
+export function OrbComposer({ chatOn, input, busy, starters, hints, level, reduced, voice, speech, inputRef, onInput, onSend, onStop }: Props) {
   const listId = useId();
+  // The placeholder: the standing line first, then one ready question at a time.
+  const [turn, setTurn] = useState(0);
+  const idleBox = input === "" && !voice.listening && !busy;
+  useEffect(() => {
+    if (!idleBox || hints.length === 0 || reduced) return;
+    const t = setInterval(() => setTurn((n) => n + 1), HINT_MS);
+    return () => clearInterval(t);
+  }, [idleBox, hints.length, reduced]);
+  const hint = turn % (hints.length + 1);
+  const placeholder = voice.listening ? "Listening…" : hint === 0 ? PLACEHOLDER : `Try “${hints[hint - 1]}”`;
   const [cursor, setCursor] = useState(0);
   // The input value at which Esc hid the list (typing on shows it again).
   const [hiddenAt, setHiddenAt] = useState<string | null>(null);
@@ -116,7 +158,8 @@ export function OrbComposer({ chatOn, input, busy, starters, voice, speech, inpu
               e.preventDefault();
               onSend(input);
             }}
-            className="flex items-center gap-1 rounded-full border border-border bg-card p-1.5 shadow-[0_16px_40px_-20px_rgb(0_0_0/0.35)] transition-[border-color,box-shadow] focus-within:border-foreground/40 focus-within:ring-4 focus-within:ring-ring/10"
+            // Focused, the box glows in the orb's colour (--orb-b from OrbView).
+            className="flex items-center gap-1 rounded-full border border-border bg-card p-1.5 shadow-[0_16px_40px_-20px_rgb(0_0_0/0.35)] transition-[border-color,box-shadow] duration-200 focus-within:border-foreground/40 focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--orb-b,transparent)_26%,transparent),0_18px_44px_-18px_var(--orb-b,rgb(0_0_0/0.35))]"
           >
             <button
               type="button"
@@ -159,6 +202,7 @@ export function OrbComposer({ chatOn, input, busy, starters, voice, speech, inpu
                 <Volume2 className="size-[18px]" aria-hidden />
               </button>
             )}
+            {voice.listening && !reduced && <MicBars level={level} />}
             <input
               ref={inputRef}
               value={input}
@@ -172,18 +216,24 @@ export function OrbComposer({ chatOn, input, busy, starters, voice, speech, inpu
               aria-controls={listOpen ? listId : undefined}
               aria-autocomplete="list"
               aria-activedescendant={listOpen ? `${listId}-${hits[at].name}` : undefined}
-              placeholder={voice.listening ? "Listening…" : "Ask anything, or type / for commands"}
+              placeholder={placeholder}
               readOnly={busy || voice.listening}
               aria-label="Message"
-              className="h-10 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground sm:h-9"
+              className="peer h-10 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground sm:h-9"
             />
+            {input === "" && !busy && !voice.listening && (
+              // The shortcut that jumps here from anywhere on the page (keyboards only).
+              <kbd aria-hidden className="mr-1 hidden h-6 shrink-0 place-items-center rounded-md border border-border bg-muted px-1.5 font-mono text-[11px] text-muted-foreground peer-focus:hidden pointer-fine:grid">
+                /
+              </kbd>
+            )}
             {busy ? (
               <button type="button" onClick={onStop} aria-label="Stop answering" className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9">
                 <Square className="size-3.5 fill-current" aria-hidden />
               </button>
             ) : (
-              <button type="submit" disabled={!input.trim() || voice.listening} aria-label="Send" className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30 sm:size-9">
-                <ArrowUp className="size-[18px]" aria-hidden />
+              <button type="submit" disabled={!input.trim() || voice.listening} aria-label="Send" className="group grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-[opacity,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-90 disabled:opacity-30 motion-reduce:transition-none sm:size-9">
+                <ArrowUp className="size-[18px] transition-transform duration-150 ease-out group-enabled:group-hover:-translate-y-0.5 motion-reduce:transition-none" aria-hidden />
               </button>
             )}
           </form>

@@ -59,6 +59,8 @@ interface Props {
   initialTask?: { action: string; mode: OrbMode };
   /** Roles that may manage AI settings get a link from empty modes. */
   controlCentreHref?: string;
+  /** The person's first name, for the greeting over the orb. */
+  firstName?: string;
 }
 
 const noSubscribe = () => () => {};
@@ -136,10 +138,19 @@ const EXPIRY_TICK_MS = 30_000;
 const ALL_MODES = MODES.map((m) => m.id);
 /** Fewer groups than this in a mode: their features ride the sphere instead. */
 const FEATURE_CHIPS_BELOW = 4;
+/** Without WebGL or with reduced motion the chips lie flat on the orb's front: more than this would spill over its edge, so they go in the row instead. */
+const FLAT_MAX = 6;
 const AUDIENCE: Partial<Record<Role, "student" | "teacher" | "parent">> = { student: "student", teacher: "teacher", guardian: "parent" };
 const explainError = (msg: string | undefined) => msg?.trim() || "That didn't work. Try again in a moment.";
+/** Ready questions that take turns as the message box's placeholder. */
+const HINTS_MAX = 5;
+/** The browser's clock, so the server renders a plain "Hello" and the client the time of day. */
+const dayPart = () => {
+  const h = new Date().getHours();
+  return h < 5 ? "Hello" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+};
 
-export function OrbView({ institutionSlug, role, chat, features, starters, initialQuery, initialMode, initialTask, controlCentreHref }: Props) {
+export function OrbView({ institutionSlug, role, chat, features, starters, initialQuery, initialMode, initialTask, controlCentreHref, firstName }: Props) {
   const idBase = useId();
   const panelId = `${idBase}-panel`;
   const [input, setInput] = useState("");
@@ -161,7 +172,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const use3d = useSyncExternalStore(noSubscribe, canRender3d, () => false);
   const reduced = useSyncExternalStore(subscribeReduced, () => window.matchMedia(REDUCED).matches, () => false);
   const dark = useTheme().resolvedTheme === "dark";
-  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, hot: [0, 0, 1, 0] });
+  const hello = useSyncExternalStore(noSubscribe, dayPart, () => "Hello");
+  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, hot: [0, 0, 1, 0], shock: 0, ptr: [0, 0, 0] });
   const inputRef = useRef<HTMLInputElement>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
@@ -259,6 +271,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const cmd = taskHint ? null : parseOrbCommand(t);
     if (cmd) return void runCommand(t, cmd);
     if (error) clearError();
+    signals.current.shock = 1;
     // The server narrows its task signatures by mode (and to one task with a hint); it re-checks everything.
     void sendMessage({ text: t }, { body: taskHint ? { mode, taskHint } : { mode } });
     writeLocal(`${store}.recent`, JSON.stringify(pushRecent(parseList(readLocal(`${store}.recent`, "[]")), t)));
@@ -298,6 +311,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     writeLocal(`${store}.mode`, m);
     setUrl({ mode: m });
     signals.current.pulse = 1;
+    signals.current.shock = 1;
   }
   function stepMode(delta: number) {
     if (visibleModes.length < 2) return;
@@ -305,9 +319,9 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   }
 
   // Stable handlers for the memoised groups; they call the latest render's functions.
-  const latest = useRef({ startTask, send, edit, stepMode, changeMode, visibleModes });
+  const latest = useRef({ startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat) });
   useEffect(() => {
-    latest.current = { startTask, send, edit, stepMode, changeMode, visibleModes };
+    latest.current = { startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat) };
   });
   const onRun = useCallback((f: OrbFeature) => {
     if (f.kind === "task" && f.task) void latest.current.startTask(f.task, f.label);
@@ -329,6 +343,15 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const len = Math.hypot(dx, dy) || 1;
     setLean({ x: (dx / len) * LEAN_PX, y: (dy / len) * LEAN_PX, hue });
   }, []);
+  // The ball's highlight and the dust under the mouse follow it; leaving keeps the last spot while it fades.
+  const onPointer = useCallback((x: number, y: number, over: boolean) => {
+    const ptr = signals.current.ptr;
+    if (over) {
+      ptr[0] = x;
+      ptr[1] = y;
+    }
+    ptr[2] = over ? 1 : 0;
+  }, []);
   const swipe = useModeSwipe(onSwipe);
   const msgCount = useRef(0);
   useEffect(() => {
@@ -336,6 +359,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   }, [messages.length]);
   const onResolved = useCallback<NonNullable<TaskCardProps["onResolved"]>>((r) => {
     if (r.status !== "approved") return;
+    signals.current.shock = 1;
     setDone(true);
     timers.current.push(setTimeout(() => setDone(false), DONE_MS));
   }, []);
@@ -360,12 +384,17 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
-  // 1-6 switch modes from anywhere that is not a text field or an open dialog (the tablist handles its own keys).
+  // 1-6 switch modes and "/" jumps to the message box (starting a command), from anywhere that is not a text field or an open dialog (the tablist handles its own keys).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !/^[1-6]$/.test(e.key)) return;
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !/^[1-6/]$/.test(e.key)) return;
       const t = e.target instanceof HTMLElement ? e.target : null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.closest('[role="dialog"]'))) return;
+      if (e.key === "/") {
+        if (!latest.current.chatOn) return;
+        e.preventDefault();
+        return latest.current.edit(latest.current.input || "/");
+      }
       const m = latest.current.visibleModes[Number(e.key) - 1];
       if (!m) return;
       e.preventDefault();
@@ -386,6 +415,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     if (text) speech.speak(text);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when an answer finishes and reads that render's messages
   }, [busy]);
+
+  // The orb speaks: every piece of the answer that arrives nudges the dust, like a keystroke does.
+  useEffect(() => {
+    if (status === "streaming") signals.current.pulse = typingPulse(signals.current.pulse);
+  }, [messages, status]);
 
   // Screen readers hear thinking and the arrival of an answer (the transcript has its own live region for the text).
   const wasBusy = useRef(false);
@@ -448,8 +482,9 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const hasTalk = (Boolean(chat) && messages.length > 0) || localCards.length > 0 || explains.length > 0;
   const showTranscript = hasTalk && (open || Boolean(error));
   // The groups ride the orb unless it is small (a conversation open, or a screen too small for tappable chips): then a row under it.
-  const onSphere = !showTranscript && roomy && groups.length > 0;
+  const onSphere = !showTranscript && roomy && groups.length > 0 && ((use3d && !reduced) || groups.length <= FLAT_MAX);
   const home = ROLE_HOME[role];
+  const hints = useMemo(() => (chat ? features.flatMap((f) => (f.kind === "ask" && f.mode === "ask" && f.prompt ? [f.prompt] : [])).slice(0, HINTS_MAX) : []), [chat, features]);
   const groupsEl = groups.length > 0 && (
     <OrbGroups
       mode={mode}
@@ -499,7 +534,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             >
               {home.title}
             </span>
-            <span className="mt-1 block text-lg font-semibold tracking-tight sm:text-xl">{home.greeting}</span>
+            <span className="mt-1 block text-xl font-semibold tracking-tight sm:text-2xl">
+              {hello}
+              {firstName ? `, ${firstName}` : ""}
+            </span>
+            <span className="mt-0.5 block text-sm text-muted-foreground">{home.greeting}</span>
           </p>
         )}
         <OrbBody
@@ -517,6 +556,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           nodeKey={onSphere ? `${mode}:${groups.map((g) => `${g.id}${g.features.length}`).join(",")}` : ""}
           onRoomy={setRoomy}
           onTap={() => inputRef.current?.focus()}
+          onPointer={onPointer}
           showStatus={Boolean(chat) || pending.length > 0}
         >
           {onSphere && groupsEl}
@@ -603,7 +643,10 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
       </section>
 
       {/* Above the phone bottom nav (fixed, lg:hidden), so the message box is always in view. */}
-      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex min-w-0 flex-col gap-2 self-start rounded-3xl bg-background/90 pb-1 backdrop-blur lg:bottom-2 lg:col-start-1 lg:row-start-3">
+      <div
+        style={{ "--orb-a": accent[0], "--orb-b": accent[1] } as React.CSSProperties}
+        className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex min-w-0 flex-col gap-2 self-start rounded-3xl bg-background/90 pb-1 backdrop-blur lg:bottom-2 lg:col-start-1 lg:row-start-3"
+      >
         <OrbTray
           items={pending.map((p) => ({ id: p.proposalId, title: p.view.title }))}
           failure={failure}
@@ -622,6 +665,9 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           input={input}
           busy={busy}
           starters={starters}
+          hints={hints}
+          level={signals}
+          reduced={reduced}
           voice={{ ...voice, start: () => (speech.stop(), voice.start()) }}
           speech={speech}
           inputRef={inputRef}

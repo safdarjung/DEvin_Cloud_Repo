@@ -14,8 +14,8 @@
 // Each state reads without colour (icon + text in the pill), a badge counts cards
 // waiting, and phones get tiny haptics.
 import dynamic from "next/dynamic";
-import { useEffect, useRef } from "react";
-import { animate, cancelFrame, frame, motion, useMotionValue, useSpring, type FrameData } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, animate, cancelFrame, frame, motion, useMotionValue, useSpring, type FrameData } from "motion/react";
 import { Check, FilePlus2, Inbox, Loader2, MessageSquareText, Mic, Sparkles, TriangleAlert } from "lucide-react";
 import type { OrbSignals } from "./OrbCore";
 import {
@@ -53,6 +53,8 @@ interface Props {
   onRoomy: (roomy: boolean) => void;
   /** A tap on the bare orb (no sections on it). */
   onTap: () => void;
+  /** The mouse over the orb, in the ball's own -1..1 square (y up); `over` false when it leaves (x, y are then ignored). */
+  onPointer: (x: number, y: number, over: boolean) => void;
   showStatus: boolean;
   /** The sections (OrbGroups, sphere layout). */
   children?: React.ReactNode;
@@ -79,6 +81,8 @@ const SLOP_PX = { mouse: 6, touch: 12 };
 const STALE_MS = 80;
 /** Section radius as a share of the stage's side: the sphere's radius. */
 const NODE_RADIUS = 0.37;
+/** The glass ball's radius as a share of half the stage (OrbCore draws it; the fallback disc has the same inset). */
+const BALL_SHARE = 0.76;
 /** Below this diameter (px) sections could not be tapped reliably. */
 const MIN_NODE_SPHERE_PX = 220;
 const AUTO_SPIN = 0.12;
@@ -129,21 +133,45 @@ export function buzz(reduced: boolean, pattern: number | number[]) {
   }
 }
 
-/** Half of a faint, tilted orbit ring round the sphere: the far half sits behind it, the near half in front. Role colour from the stage's CSS variables. */
-function Orbit({ near }: { near: boolean }) {
+const ORBIT_S = 16;
+/** The whole ring, far half first: the satellite's track. */
+const ORBIT_TRACK = "M 0 50 A 50 12 0 0 1 100 50 A 50 12 0 0 1 0 50";
+
+/**
+ * Half of a faint, tilted orbit ring round the sphere: the far half sits behind it, the near half in front.
+ * `moving`: a small satellite rides the ring, drawn by whichever half it is on. Role colour from the stage's CSS variables.
+ */
+function Orbit({ near, moving }: { near: boolean; moving: boolean }) {
   return (
     <svg aria-hidden viewBox="0 0 100 100" className="pointer-events-none absolute left-[-9%] top-[-9%] size-[118%] overflow-visible">
-      <path
-        d={`M 0 50 A 50 12 0 0 ${near ? 0 : 1} 100 50`}
-        transform="rotate(-9 50 50)"
-        fill="none"
-        className="stroke-(--orb-a) dark:stroke-(--orb-b)"
-        strokeOpacity={near ? 0.45 : 0.22}
-        strokeWidth={near ? 1.25 : 1}
-        vectorEffect="non-scaling-stroke"
-      />
+      <g transform="rotate(-9 50 50)">
+        <path
+          d={`M 0 50 A 50 12 0 0 ${near ? 0 : 1} 100 50`}
+          fill="none"
+          className="stroke-(--orb-a) dark:stroke-(--orb-b)"
+          strokeOpacity={near ? 0.45 : 0.22}
+          strokeWidth={near ? 1.25 : 1}
+          vectorEffect="non-scaling-stroke"
+        />
+        {moving && (
+          <circle r={near ? 1.1 : 0.8} className="fill-(--orb-a) dark:fill-(--orb-b)" style={{ filter: "drop-shadow(0 0 3px var(--orb-b))" }}>
+            <animateMotion dur={`${ORBIT_S}s`} repeatCount="indefinite" path={ORBIT_TRACK} />
+            <animate attributeName="opacity" dur={`${ORBIT_S}s`} repeatCount="indefinite" calcMode="discrete" values={near ? "0;1" : "0.7;0"} keyTimes="0;0.5" />
+          </circle>
+        )}
+      </g>
     </svg>
   );
+}
+
+/** Whole seconds since it mounted: how long the orb has been thinking and answering. */
+function Elapsed() {
+  const [s, setS] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setS((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return s >= 3 ? <span className="tabular-nums text-muted-foreground"> · {s}s</span> : null;
 }
 
 const nodeOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>("[data-node]") : null);
@@ -465,11 +493,14 @@ export function OrbBody(p: Props) {
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    // Mouse over the bare orb (no sections on it): it leans toward the pointer.
-    if (e.pointerType !== "mouse" || reduced || keyRef.current || spin.current.dragging) return;
+    if (e.pointerType !== "mouse" || reduced) return;
     const r = e.currentTarget.getBoundingClientRect();
     const nx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
     const ny = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+    // The ball's highlight and the dust under the pointer follow it (in the ball's own square, y up).
+    p.onPointer(nx / BALL_SHARE, -ny / BALL_SHARE, true);
+    // Mouse over the bare orb (no sections on it): it leans toward the pointer.
+    if (keyRef.current || spin.current.dragging) return;
     hover.current = { x: Math.max(-1, Math.min(1, nx)) * LEAN_PX, y: Math.max(-1, Math.min(1, ny)) * LEAN_PX };
     settle();
   }
@@ -490,6 +521,7 @@ export function OrbBody(p: Props) {
   const ui = STATE_UI[state];
   const coreColor = state === "error" ? [ORB_ERROR, ORB_ERROR] : accent;
   const breathing = !reduced && (state === "idle" || state === "typing" || state === "waiting");
+  const working = state === "submitted" || state === "streaming";
   // Theme-dependent colours go through CSS (dark:), not `dark`, so the server HTML matches on hydration.
   const roleVars = { "--orb-a": accent[0], "--orb-b": accent[1] } as React.CSSProperties;
 
@@ -513,6 +545,7 @@ export function OrbBody(p: Props) {
           const sp = spin.current;
           sp.hover = false;
           if (!sp.focus) sp.hot = -1;
+          p.onPointer(0, 0, false);
           hover.current = null;
           if (!sp.dragging) settle();
         }}
@@ -541,7 +574,28 @@ export function OrbBody(p: Props) {
           className="pointer-events-none absolute -inset-[24%] rounded-full opacity-60 max-sm:-inset-[2%] dark:opacity-100"
           style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--orb-a) 42%, transparent), transparent)" }}
         />
-        <Orbit near={false} />
+        {/* A faint field of dots behind everything, fading out before the stage's edge. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-[16%] text-(--orb-a) opacity-25 max-sm:-inset-[2%] dark:text-(--orb-b) dark:opacity-20"
+          style={{
+            backgroundImage: "radial-gradient(currentColor 1px, transparent 1.5px)",
+            backgroundSize: "22px 22px",
+            maskImage: "radial-gradient(closest-side, black 40%, transparent 100%)",
+          }}
+        />
+        {/* The glow swells while the orb listens, thinks and answers. */}
+        {!reduced && (
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute -inset-[10%] rounded-full max-sm:-inset-[2%]"
+            style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--orb-b) 46%, transparent), transparent)" }}
+            initial={false}
+            animate={working || state === "listening" || state === "proposing" ? { opacity: [0.35, 0.9, 0.35], scale: [0.96, 1.04, 0.96] } : { opacity: 0, scale: 1 }}
+            transition={working || state === "listening" || state === "proposing" ? { duration: state === "submitted" ? 1.3 : 2.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.4 }}
+          />
+        )}
+        <Orbit near={false} moving={!reduced} />
         {/* Contact shadow: the sphere sits on something. */}
         <div aria-hidden className="pointer-events-none absolute inset-x-[24%] bottom-[2%] h-[7%] rounded-[50%] bg-black/25 blur-xl dark:bg-black/70" />
         <motion.div className="absolute inset-0" style={{ x: shake }}>
@@ -573,7 +627,8 @@ export function OrbBody(p: Props) {
                 className="absolute inset-[12%] overflow-hidden rounded-full transition-[background] duration-500"
                 style={{
                   background: `radial-gradient(circle at 35% 30%, ${coreColor[1]}, ${coreColor[0]} 70%)`,
-                  opacity: showCanvas ? (dark ? 0.5 : 0.42) : 0.9,
+                  // With WebGL the glass ball is drawn by OrbCore: this disc only lends its glow.
+                  opacity: showCanvas ? 0 : 0.9,
                   boxShadow: `0 0 40px -8px ${coreColor[1]}`,
                 }}
               >
@@ -585,8 +640,8 @@ export function OrbBody(p: Props) {
                   />
                 )}
               </div>
-              {/* Volume: an off-centre highlight, a darker limb toward the terminator and a soft inner glow. */}
-              <div
+              {/* Volume: an off-centre highlight, a darker limb toward the terminator and a soft inner glow (the glass shader does this itself). */}
+              {!showCanvas && <div
                 aria-hidden
                 className="pointer-events-none absolute inset-[12%] rounded-full opacity-100 dark:opacity-75"
                 style={{
@@ -594,9 +649,10 @@ export function OrbBody(p: Props) {
                     "radial-gradient(circle at 33% 27%, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 32%), radial-gradient(circle at 40% 36%, transparent 46%, rgb(12 8 32 / 0.26) 84%, rgb(8 4 24 / 0.5) 100%)",
                   boxShadow: "inset 0 0 40px -6px color-mix(in oklab, var(--orb-b) 75%, transparent), inset -16px -22px 44px -12px rgb(0 0 0 / 0.3)",
                 }}
-              />
+              />}
               {showCanvas && (
-                <div className="absolute -inset-[6%]">
+                // Wider than the stage (room for the motes), so it takes no pointer events: the tabs under the orb stay clickable.
+                <div className="pointer-events-none absolute -inset-[20%]">
                   <OrbCore state={state} dark={dark} accent={accent} signals={signals} />
                 </div>
               )}
@@ -626,17 +682,60 @@ export function OrbBody(p: Props) {
             )}
           </motion.div>
         </motion.div>
-        <Orbit near />
+        <Orbit near moving={!reduced} />
+        <AnimatePresence>
+          {state === "submitted" && !reduced && (
+            // Thinking: an arc of light runs round the ball.
+            <motion.div key="arc" aria-hidden className="pointer-events-none absolute inset-[7%] text-(--orb-a) dark:text-(--orb-b)" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+              <motion.div
+                className="size-full rounded-full"
+                style={{
+                  background: "conic-gradient(from 0deg, transparent 0 50%, currentColor 97%, transparent)",
+                  maskImage: "radial-gradient(closest-side, transparent calc(100% - 4.5px), black calc(100% - 4px))",
+                }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
+              />
+            </motion.div>
+          )}
+          {state === "listening" && !reduced &&
+            [0, 0.9].map((delay) => (
+              // Listening: rings travel outward like sound.
+              <motion.span
+                key={`sonar${delay}`}
+                aria-hidden
+                className="pointer-events-none absolute inset-[10%] rounded-full border border-(--orb-a) dark:border-(--orb-b)"
+                initial={{ opacity: 0, scale: 1 }}
+                animate={{ opacity: [0.7, 0], scale: [1, 1.38] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.8, delay, repeat: Infinity, ease: "easeOut" }}
+              />
+            ))}
+        </AnimatePresence>
         {p.children}
       </div>
       {p.showStatus && (
-        <p className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs font-medium">
-          <ui.Icon
-            className={`size-3.5 ${state === "error" ? "text-destructive" : ""} ${state === "submitted" && !reduced ? "animate-spin" : ""}`}
-            aria-hidden
-          />
-          {ui.label}
-          {state === "waiting" && waiting > 0 ? ` (${waiting})` : ""}
+        <p className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-medium shadow-xs backdrop-blur" style={roleVars}>
+          <span className="relative grid size-2 place-items-center" aria-hidden>
+            {(working || state === "listening") && !reduced && <span className="absolute inset-0 animate-ping rounded-full bg-(--orb-a) dark:bg-(--orb-b)" />}
+            <span className={`relative size-2 rounded-full ${state === "error" ? "bg-destructive" : "bg-(--orb-a) dark:bg-(--orb-b)"}`} />
+          </span>
+          {/* Keyed by its text: a new state slides in. */}
+          <motion.span
+            key={ui.label}
+            className="flex items-center gap-1.5"
+            initial={reduced ? false : { opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <ui.Icon
+              className={`size-3.5 ${state === "error" ? "text-destructive" : ""} ${state === "submitted" && !reduced ? "animate-spin" : ""}`}
+              aria-hidden
+            />
+            {ui.label}
+            {state === "waiting" && waiting > 0 ? ` (${waiting})` : ""}
+          </motion.span>
+          {working && <Elapsed />}
         </p>
       )}
     </div>

@@ -81,6 +81,26 @@ export function scatterEnvelope(t: number): number {
 
 export const waveFor = (state: OrbState): Wave => WAVES[state];
 
+const SHOCK_SPEED = 3;
+const SHOCK_FADE = 2.2;
+
+/**
+ * A ring of light crossing the sphere t seconds after a send, a mode change or an approval:
+ * `front` is its angle from the front pole (radians, past π it has left by the back) and
+ * `strength` fades from 1; nothing before t = 0.
+ */
+export function shockAt(t: number): { front: number; strength: number } {
+  if (t < 0) return { front: 0, strength: 0 };
+  return { front: t * SHOCK_SPEED, strength: Math.exp(-t * SHOCK_FADE) };
+}
+
+/** The point of the sphere's front under the pointer: x, y in the orb's own -1..1 square (y up), pulled onto the rim when outside it. */
+export function pointerDir(x: number, y: number): Vec3 {
+  const l = Math.hypot(x, y);
+  if (l >= 1) return [x / l, y / l, 0];
+  return [x, y, Math.sqrt(1 - l * l)];
+}
+
 /** Rotate a vector about Y by `ry`, then about X by `rx`. */
 export function rotateYX(v: Vec3, ry: number, rx: number): Vec3 {
   const cy = Math.cos(ry), sy = Math.sin(ry);

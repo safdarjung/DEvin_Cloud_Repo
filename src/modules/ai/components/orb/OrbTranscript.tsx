@@ -4,11 +4,13 @@
 // approves; the AI never writes), draft cards, provider badge (rule 7), and a clear
 // error. Task cards come only from a tool OUTPUT of kind "task_proposal" (never the
 // tool-call input); one answer's cards share a stack, and cards opened from a feature
-// click sit in the timeline where they were opened.
+// click sit in the timeline where they were opened. The view follows new text only
+// while the reader is at the bottom; scrolled up, a "Latest" button brings them back.
 import Link from "next/link";
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { motion } from "motion/react";
 import { isToolUIPart, type UIMessage } from "ai";
-import { ChevronDown, RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowDown, Check, ChevronDown, Copy, RefreshCw, RotateCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
@@ -104,6 +106,32 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
   );
 }
 
+/** Copies an answer; the tick shows for a moment (nothing shows if the browser refuses). */
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <button
+      type="button"
+      onClick={() => void navigator.clipboard?.writeText(text).then(() => setCopied(true), () => {})}
+      aria-label={copied ? "Copied" : "Copy this answer"}
+      title={copied ? "Copied" : "Copy"}
+      className="grid size-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:size-11"
+    >
+      {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+    </button>
+  );
+}
+
+/** New entries rise into place (transform and opacity only; nothing under reduced motion, which the CSS query handles). */
+const RISE = "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300";
+/** Within this many px of the bottom the view keeps following new text. */
+const STICK_PX = 72;
+
 type CardHandlers = Pick<TaskCardProps, "onResolved" | "onStart">;
 
 /** The jump target for the "Waiting for you" tray: `[data-proposals~="<id>"]`. */
@@ -150,17 +178,21 @@ function ToolPart({ part, institutionSlug }: { part: Part; institutionSlug: stri
   return <ActionDraftCard institutionSlug={institutionSlug} action={parsed.action} input={parsed.input} summary={parsed.summary} />;
 }
 
-function Message({ message, institutionSlug, streaming, handlers }: { message: OrbMessage; institutionSlug: string; streaming: boolean; handlers: CardHandlers }) {
+function Message({ message, institutionSlug, streaming, handlers, onAgain }: {
+  message: OrbMessage; institutionSlug: string; streaming: boolean; handlers: CardHandlers;
+  /** The newest answer only: ask the same question again. */
+  onAgain?: () => void;
+}) {
   const text = plainChatText(message.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
   const tools = message.parts.filter((p) => isToolUIPart(p));
   if (!text && tools.length === 0) return null;
   if (message.role === "user") {
-    return <p className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground">{text}</p>;
+    return <p className={`ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground ${RISE}`}>{text}</p>;
   }
   const provider = message.metadata?.provider;
   const sources = [...new Set((message.metadata?.sources ?? []).map((s) => sourceLabel(s.query)))];
   return (
-    <div className="min-w-0 max-w-full space-y-2">
+    <div className={`min-w-0 max-w-full space-y-2 ${RISE}`}>
       {tools.map((part, i) => <ToolPart key={i} part={part} institutionSlug={institutionSlug} />)}
       <Cards proposals={proposalsIn(message.parts)} institutionSlug={institutionSlug} handlers={handlers} />
       {text && (
@@ -171,9 +203,22 @@ function Message({ message, institutionSlug, streaming, handlers }: { message: O
       )}
       {sources.length > 0 && <p className="text-xs text-muted-foreground">Records used: {sources.join(" · ")}</p>}
       {(provider || (text && !streaming)) && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
           {provider && <ProviderBadge provider={provider} />}
           {text && !streaming && <SpeakButton text={text} />}
+          {text && !streaming && <CopyButton text={text} />}
+          {/* Not for an answer that brought cards: asking again would make them twice. */}
+          {onAgain && text && !streaming && proposalsIn(message.parts).length === 0 && (
+            <button
+              type="button"
+              onClick={onAgain}
+              aria-label="Answer this again"
+              title="Answer again"
+              className="grid size-7 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:size-11"
+            >
+              <RefreshCw className="size-3.5" aria-hidden />
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -206,17 +251,49 @@ export function OrbTranscript({
   const answerShown = last?.role === "assistant" && last.parts.some((p) => (p.type === "text" && p.text) || isToolUIPart(p));
   const thinking = status === "submitted" || (status === "streaming" && !answerShown);
   const label = error ? "Error" : thinking ? "Thinking…" : status === "streaming" ? "Answering…" : "Ready";
+  const busyNow = status === "submitted" || status === "streaming";
 
-  // Keep the newest text in view while it streams.
+  // Keep the newest text in view while it streams, unless the reader scrolled up to read.
+  const stick = useRef(true);
+  const [away, setAway] = useState(false);
   useEffect(() => {
     const el = scroller.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && stick.current) el.scrollTop = el.scrollHeight;
   }, [messages, localCards, explains, status, error]);
+  // Their own message always brings the view back down.
+  const sent = messages.filter((m) => m.role === "user").length + explains.length;
+  useEffect(() => {
+    stick.current = true;
+    const el = scroller.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [sent]);
+  function onScroll() {
+    const el = scroller.current;
+    if (!el) return;
+    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < STICK_PX;
+    setAway(!stick.current);
+  }
+  function toLatest() {
+    const el = scroller.current;
+    if (!el) return;
+    stick.current = true;
+    setAway(false);
+    el.scrollTo({ top: el.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
 
   return (
-    <section aria-label="Conversation" className="flex size-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)] backdrop-blur">
+    <section aria-label="Conversation" className="relative flex size-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)] backdrop-blur">
+      {/* A hairline in the orb's colour: it runs while the orb works. */}
+      <span
+        aria-hidden
+        className={`absolute inset-x-0 top-0 h-0.5 ${busyNow ? "motion-safe:animate-pulse" : ""}`}
+        style={{ background: `linear-gradient(90deg, transparent, ${error ? "var(--destructive)" : accent}, transparent)`, opacity: busyNow || error ? 1 : 0.5 }}
+      />
       <header className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <span className="size-2 rounded-full" style={{ background: error ? "var(--destructive)" : accent }} aria-hidden />
+        <span className="relative grid size-2 place-items-center" aria-hidden>
+          {busyNow && <span className="absolute inset-0 rounded-full motion-safe:animate-ping" style={{ background: accent }} />}
+          <span className="relative size-2 rounded-full" style={{ background: error ? "var(--destructive)" : accent }} />
+        </span>
         <h2 className="text-sm font-semibold">Conversation</h2>
         <span className="text-xs text-muted-foreground">{label}</span>
         <div className="ml-auto flex items-center gap-0.5">
@@ -228,21 +305,35 @@ export function OrbTranscript({
           </Button>
         </div>
       </header>
-      <div ref={scroller} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 text-sm" aria-live="polite">
+      <div ref={scroller} onScroll={onScroll} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-3 text-sm" aria-live="polite">
         {localAt(0).map((p) => (
           <Cards key={p.proposalId} proposals={[p]} institutionSlug={institutionSlug} handlers={handlers} />
         ))}
         {explainsAt(0)}
         {messages.map((m, i) => (
           <Fragment key={m.id}>
-            <Message message={m} institutionSlug={institutionSlug} streaming={status === "streaming" && m === last} handlers={handlers} />
+            <Message
+              message={m}
+              institutionSlug={institutionSlug}
+              streaming={status === "streaming" && m === last}
+              handlers={handlers}
+              onAgain={m === last && m.role === "assistant" && status === "ready" && !error ? onRetry : undefined}
+            />
             {localAt(i + 1).map((p) => (
               <Cards key={p.proposalId} proposals={[p]} institutionSlug={institutionSlug} handlers={handlers} />
             ))}
             {explainsAt(i + 1)}
           </Fragment>
         ))}
-        {thinking && <Dots label="Thinking" />}
+        {thinking && (
+          <p className={`flex items-center gap-2 text-muted-foreground ${RISE}`}>
+            <span className="relative grid size-3 place-items-center" aria-hidden>
+              <span className="absolute inset-0 rounded-full motion-safe:animate-ping" style={{ background: accent, opacity: 0.6 }} />
+              <span className="relative size-2 rounded-full" style={{ background: accent }} />
+            </span>
+            Thinking…
+          </p>
+        )}
         {error && (
           <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3">
             <p className="flex items-center gap-1.5 font-medium text-destructive">
@@ -257,6 +348,19 @@ export function OrbTranscript({
           </div>
         )}
       </div>
+      {away && (
+        <motion.button
+          type="button"
+          onClick={toLatest}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+          className="absolute bottom-3 left-1/2 inline-flex min-h-9 -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium shadow-md hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11"
+        >
+          <ArrowDown className="size-3.5" aria-hidden />
+          Latest
+        </motion.button>
+      )}
     </section>
   );
 }

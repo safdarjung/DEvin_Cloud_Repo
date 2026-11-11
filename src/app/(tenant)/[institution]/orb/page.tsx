@@ -76,8 +76,15 @@ export default async function OrbPage({
       initialMode={query.mode}
       initialTask={query.task}
       controlCentreHref={controlCentreHref}
+      firstName={firstNameOf(ctx.user.profile.fullName)}
     />
   );
+}
+
+/** A first name to greet by; nothing for a label that is not a name (the demo's "VI-A Class Teacher"). */
+function firstNameOf(fullName: string | null): string | undefined {
+  const first = fullName?.trim().split(/\s+/)[0] ?? "";
+  return /^\p{L}[\p{L}'’]*$/u.test(first) ? first : undefined;
 }
 
 /** The orb still renders (Ask and Create) if the task list cannot be built. */

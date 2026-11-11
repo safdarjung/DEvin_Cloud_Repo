@@ -502,7 +502,7 @@ export function FeatureSearch({ features, hasDraft, busy, starting, reduced, onR
     e.preventDefault();
   }
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <div className="mx-auto w-full max-w-md">
       <label className="relative block">
         <span className="sr-only">Search everything the orb can do</span>
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
@@ -517,7 +517,7 @@ export function FeatureSearch({ features, hasDraft, busy, starting, reduced, onR
           onChange={(e) => { setQuery(e.target.value); setCursor(0); }}
           onKeyDown={onKeyDown}
           placeholder="Search all modes, e.g. fees, attendance, leave"
-          className={`h-11 w-full rounded-full border border-border bg-card pl-9 pr-4 text-sm placeholder:text-muted-foreground ${FOCUS}`}
+          className={`h-11 w-full rounded-full border border-transparent bg-muted/70 pl-9 pr-4 text-sm transition-colors placeholder:text-muted-foreground hover:bg-muted focus-visible:border-border focus-visible:bg-card ${FOCUS}`}
         />
       </label>
       <p role="status" className="sr-only">{searching ? `${hits.length} ${hits.length === 1 ? "match" : "matches"} found` : ""}</p>
