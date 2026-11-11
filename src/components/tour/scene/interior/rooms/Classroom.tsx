@@ -127,7 +127,7 @@ export function Classroom() {
         <RBox size={[3.6, 1.7, 0.1]} radius={0.06} color={C.wood} />
         <mesh position={[0, 0, 0.056]}>
           <planeGeometry args={[3.36, 1.46]} />
-          <meshStandardMaterial map={chalkboard()} roughness={0.95} />
+          <meshToonMaterial map={chalkboard()} />
         </mesh>
         <RBox size={[0.16, 0.06, 0.09]} radius={0.02} m={mat("#e8e2d2", { surface: "fabric" })} position={[-1.1, -0.8, 0.1]} />
         <RBox size={[3.2, 0.06, 0.16]} radius={0.02} color={C.woodDark} position={[0, -0.86, 0.08]} />

@@ -12,6 +12,7 @@ import { CorridorWalkers } from "./characters/Crowd";
 import { Birds, Butterflies, DustMotes, PaperPlane } from "./exterior/Critters";
 import { Exterior } from "./exterior/Grounds";
 import { Finale } from "./exterior/Finale";
+import { Ink } from "./Ink";
 import { Interior } from "./interior/Corridor";
 import { CORRIDOR_FROM, FRONT_UNTIL, GARDEN_FROM, roomZone } from "./interior/Rooms";
 import { LiteContext, ProgressContext, Zone, pickTier } from "./kit";
@@ -32,7 +33,7 @@ interface Props {
   onReady?: () => void;
 }
 
-/** The whole school in one canvas: PBR materials under ACES tone mapping. `low` tier drops shadow maps and extras. */
+/** The whole school in one canvas: cel-shaded materials, and on the high tier an ink-line pass. `low` tier drops shadow maps, ink and extras. */
 export default function TourCanvas({ progress, lite = false, onReady }: Props) {
   const low = useMemo(() => pickTier(lite) === "low", [lite]);
   useEffect(() => disposeTextures, []);
@@ -42,7 +43,7 @@ export default function TourCanvas({ progress, lite = false, onReady }: Props) {
       dpr={lite ? [1, 1.25] : [1, 1.75]}
       shadows={low ? false : "percentage"}
       camera={{ fov: 50, near: 0.1, far: 160, position: [0, 3, 21] }}
-      gl={{ antialias: !lite, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.05 }}
+      gl={{ antialias: !lite, powerPreference: "high-performance", toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 1 }}
     >
       <ProgressContext value={progress}>
         <LiteContext value={low}>
@@ -67,6 +68,7 @@ export default function TourCanvas({ progress, lite = false, onReady }: Props) {
           </Zone>
           {!low && (
             <>
+              <Ink />
               <Butterflies around={[[-5, 1.6, GATE_Z - 3], [5.5, 2, GATE_Z - 5], [-3, 1.5, FINALE_Z + 2], [3.5, 1.8, FINALE_Z + 1]]} />
               <Birds y={15} z={-30} speed={1.4} />
               <Birds y={18} z={-70} speed={1} phase={40} />

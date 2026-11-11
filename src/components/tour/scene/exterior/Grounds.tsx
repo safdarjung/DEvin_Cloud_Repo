@@ -272,7 +272,7 @@ function Flag({ accents }: { accents: readonly string[] }) {
     });
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
-    return new THREE.MeshStandardMaterial({ map, side: THREE.DoubleSide, roughness: 0.8 });
+    return new THREE.MeshToonMaterial({ map, side: THREE.DoubleSide });
   }, [accents]);
   const amp = useRef(spring(1));
 

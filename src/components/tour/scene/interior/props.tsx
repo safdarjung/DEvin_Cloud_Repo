@@ -147,7 +147,7 @@ export function Certificate({ position, rotationY = 0, accent = C.blue, w = 0.5 
       <RBox size={[w + 0.07, h + 0.07, 0.035]} radius={0.012} color={C.woodDark} />
       <mesh position={[0, 0, 0.019]}>
         <planeGeometry args={[w, h]} />
-        <meshStandardMaterial map={certificate(accent)} roughness={0.35} />
+        <meshToonMaterial map={certificate(accent)} />
       </mesh>
     </group>
   );

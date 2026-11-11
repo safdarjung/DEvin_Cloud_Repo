@@ -162,7 +162,7 @@ export function GrassTufts() {
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
   }, [count]);
 
-  return <instancedMesh ref={ref} args={[geo, mat("#ffffff", { rough: 0.9 }), count]} receiveShadow frustumCulled={false} />;
+  return <instancedMesh ref={ref} args={[geo, mat("#ffffff", { ink: false }), count]} receiveShadow frustumCulled={false} />;
 }
 
 export const TREE_TINTS = [C.green, C.grassDark, "#7fb043"] as const;

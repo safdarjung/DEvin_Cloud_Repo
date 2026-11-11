@@ -64,32 +64,51 @@ export const C = {
   steel: "#9aa3ad",
 } as const;
 
-/* ---------- materials (PBR, shared by key) ---------- */
+/* ---------- materials (cel-shaded, shared by key) ---------- */
 
 export interface Finish {
+  /** Kept so call sites read as before; cel shading has no roughness. */
   rough?: number;
+  /** Metals get a brighter lit band (a painted highlight) instead of reflections. */
   metal?: number;
   surface?: SurfaceKind;
+  /** false: the ink pass draws no lines on or around this (grass blades would turn into scribble). */
+  ink?: boolean;
 }
-const materials = new Map<string, THREE.MeshStandardMaterial>();
+const materials = new Map<string, THREE.MeshToonMaterial>();
 const WOODS: readonly string[] = [C.wood, C.woodDark];
 
-/** One standard material per colour + finish. Wood colours pick up a grain automatically. */
-export function mat(color: string, { rough, metal = 0, surface: kind = WOODS.includes(color) ? "grain" : undefined }: Finish = {}): THREE.MeshStandardMaterial {
-  const key = `${color}|${rough}|${metal}|${kind}`;
+/**
+ * The anime light ramp, indexed by the half-Lambert term (0 = facing away, 1 = facing the light): flat shadow,
+ * a narrow half-tone, flat light. Hard steps, so NearestFilter.
+ */
+function ramp(bands: readonly number[]): THREE.DataTexture {
+  const t = new THREE.DataTexture(Uint8Array.from(bands, (b) => Math.round(b * 255)), bands.length, 1, THREE.RedFormat);
+  t.minFilter = t.magFilter = THREE.NearestFilter;
+  t.needsUpdate = true;
+  return t;
+}
+let cel: THREE.DataTexture | undefined;
+let shine: THREE.DataTexture | undefined;
+// The light band starts a little past the terminator: surfaces at a grazing angle to the sun stay in the shadow
+// tone, which is also where a shadow map would otherwise show as stripes.
+const celRamp = () => (cel ??= ramp([0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 1, 1, 1, 1, 1, 1]));
+const shineRamp = () => (shine ??= ramp([0, 0, 0, 0, 0, 0, 0, 0, 0, 0.45, 0.9, 0.9, 0.9, 1.15, 1.5, 1.5]));
+
+/** Ink mask: the ink pass reads alpha, and an opaque material is free to write 0 there. */
+function skipInk(shader: { fragmentShader: string }) {
+  shader.fragmentShader = shader.fragmentShader.replace("#include <opaque_fragment>", "#include <opaque_fragment>\n\tgl_FragColor.a = 0.0;");
+}
+
+/** One toon material per colour + finish. Wood colours pick up a grain automatically. */
+export function mat(color: string, { metal = 0, surface: kind = WOODS.includes(color) ? "grain" : undefined, ink = true }: Finish = {}): THREE.MeshToonMaterial {
+  const key = `${color}|${metal}|${kind}|${ink}`;
   let m = materials.get(key);
   if (m) return m;
-  m = new THREE.MeshStandardMaterial({ color, roughness: rough ?? (kind ? 0.85 : 0.68), metalness: metal });
-  if (kind) {
-    const s = surface(kind);
-    m.map = s.map;
-    m.bumpMap = s.bumpMap;
-    m.bumpScale = kind === "grain" || kind === "fabric" ? 0.6 : 1.6;
-    if (s.roughnessMap) {
-      m.roughnessMap = s.roughnessMap;
-      m.roughness = 1;
-    }
-  }
+  m = new THREE.MeshToonMaterial({ color, gradientMap: metal > 0.5 ? shineRamp() : celRamp() });
+  // Plaster stays a flat wash: its speckle reads as dirt once the shading is flat.
+  if (kind && kind !== "plaster") m.map = surface(kind).map;
+  if (!ink) m.onBeforeCompile = skipInk;
   materials.set(key, m);
   return m;
 }
