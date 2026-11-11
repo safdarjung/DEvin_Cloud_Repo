@@ -53,7 +53,7 @@ export type EntityType =
   | "inventory.item" | "canteen.item" | "compliance.item" | "schoolLabs.lab" | "schoolLabs.booking"
   | "calendar.event" | "ptm.event" | "ptm.slot" | "ptm.booking" | "ptm.survey" | "staffLeave" | "studentLeave"
   | "helpdesk.ticket" | "facilities.maintenanceRequest" | "facilities.asset" | "facilities.room"
-  | "duty.assignment" | "duty.swap" | "safety.alert" | "visitors.visit" | "visitors.pickupPerson"
+  | "duty.assignment" | "duty.swap" | "duty.type" | "safety.alert" | "visitors.visit" | "visitors.pickupPerson" | "visitors.gatePass"
   | "forms.form" | "diary.entry" | "assignment" | "assignment.submission" | "lessonPlan" | "question" | "resource" | "study.material" | "textbook"
   | "announcement" | "messaging.thread" | "messaging.counterpart" | "insight" | "behaviour.incident" | "achievement"
   | "website.page" | "website.notice" | "website.version"

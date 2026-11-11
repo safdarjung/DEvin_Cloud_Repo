@@ -14,12 +14,15 @@ import { CAPABILITIES } from "@/modules/ai/capabilities/catalog";
 
 const groqModel = { current: null as MockLanguageModelV4 | null };
 const geminiModel = { current: null as MockLanguageModelV4 | null };
+const zaiModel = { current: null as MockLanguageModelV4 | null };
 
 vi.mock("@/lib/ai/providers", () => ({
   groqModelId: () => "openai/gpt-oss-120b",
   geminiModelId: () => "gemini-flash-lite-latest",
+  zaiModelId: () => "glm-4.7-flash",
   getGroqModel: vi.fn(async () => groqModel.current),
   getGeminiModel: vi.fn(async () => geminiModel.current),
+  getZaiModel: vi.fn(async () => zaiModel.current),
 }));
 
 const { cloudModelWithFallback, sanitizeSchemaFor, structuredCloudPlan } = await import("@/lib/ai/provider-fallback");
@@ -27,13 +30,29 @@ const { cloudModelWithFallback, sanitizeSchemaFor, structuredCloudPlan } = await
 afterEach(() => {
   groqModel.current = null;
   geminiModel.current = null;
+  zaiModel.current = null;
 });
 
 describe("structuredCloudPlan", () => {
-  const both = { groq: true, gemini: true };
+  const both = { groq: true, gemini: true, zai: false };
+  const all = { groq: true, gemini: true, zai: true };
 
-  it("no Groq/Gemini key: no cloud plan (the caller keeps the policy plan)", () => {
-    expect(structuredCloudPlan({ groq: false, gemini: false }, 100)).toBeNull();
+  it("no cloud key: no cloud plan (the caller keeps the policy plan)", () => {
+    expect(structuredCloudPlan({ groq: false, gemini: false, zai: false }, 100)).toBeNull();
+  });
+
+  it("a Z.ai key makes Z.ai first, with Groq as the retry when the request fits Groq's ceiling", () => {
+    expect(structuredCloudPlan(all, 5_500)).toEqual({ primary: "zai", fallback: "groq", last: "gemini" });
+  });
+
+  it("Z.ai first, Gemini the retry when the request is above Groq's ceiling (never Groq)", () => {
+    expect(structuredCloudPlan(all, 5_501)).toEqual({ primary: "zai", fallback: "gemini" });
+    expect(structuredCloudPlan({ groq: true, gemini: false, zai: true }, 5_501)).toEqual({ primary: "zai", fallback: null });
+  });
+
+  it("only a Z.ai key: Z.ai, no retry; too big for it: too_large", () => {
+    expect(structuredCloudPlan({ groq: false, gemini: false, zai: true }, 100)).toEqual({ primary: "zai", fallback: null });
+    expect(structuredCloudPlan(all, 24_001)).toBe("too_large");
   });
 
   it("a request that fits Groq runs there with Gemini as its retry", () => {
@@ -45,12 +64,12 @@ describe("structuredCloudPlan", () => {
   });
 
   it("too big for every keyed provider: too_large, never a silently trimmed prompt", () => {
-    expect(structuredCloudPlan({ groq: true, gemini: false }, 6_000)).toBe("too_large");
+    expect(structuredCloudPlan({ groq: true, gemini: false, zai: false }, 6_000)).toBe("too_large");
     expect(structuredCloudPlan(both, 24_001)).toBe("too_large");
   });
 
   it("only a Gemini key: Gemini, no retry", () => {
-    expect(structuredCloudPlan({ groq: false, gemini: true }, 100)).toEqual({ primary: "gemini", fallback: null });
+    expect(structuredCloudPlan({ groq: false, gemini: true, zai: false }, 100)).toEqual({ primary: "gemini", fallback: null });
   });
 });
 
@@ -120,6 +139,38 @@ describe("schema on the wire (cloudModelWithFallback)", () => {
     expect(result.output).toEqual({ items: ["a"] });
     expect(cloud.modelsUsed()).toEqual(["gemini-flash-lite-latest"]);
     expect(JSON.stringify(gemini.sent())).not.toContain("maxItems");
+  });
+
+  it("Z.ai gets JSON-object mode with the schema in its system prompt (it ignores json_schema); Zod still validates", async () => {
+    const zai = capturing();
+    zaiModel.current = zai.model;
+    const cloud = await cloudModelWithFallback("zai", null);
+    const result = await generateText({ model: cloud.model, system: "Be brief.", prompt: "x", output: Output.object({ schema: Schema }) });
+    expect(result.output).toEqual({ items: ["a"] });
+    const call = zai.model.doGenerateCalls[0];
+    expect(call?.responseFormat).toEqual({ type: "json" });
+    expect(call?.prompt.filter((m) => m.role === "system")).toHaveLength(1);
+    const system = call?.prompt[0];
+    expect(system?.role).toBe("system");
+    expect(String(system?.content)).toMatch(/^Be brief\.[\s\S]*"maxItems":3/);
+    expect(cloud.modelsUsed()).toEqual(["glm-4.7-flash"]);
+  });
+
+  it("a busy Z.ai hands Groq the schema as a schema, not Z.ai's prompt-text form", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    zaiModel.current = new MockLanguageModelV4({
+      doGenerate: async () => {
+        throw new APICallError({ message: "busy", url: "https://x", requestBodyValues: {}, statusCode: 429 });
+      },
+    });
+    const groq = capturing();
+    groqModel.current = groq.model;
+    const cloud = await cloudModelWithFallback("zai", "groq");
+    const result = await generateText({ model: cloud.model, prompt: "x", output: Output.object({ schema: Schema }), maxRetries: 0 });
+    expect(result.output).toEqual({ items: ["a"] });
+    expect(cloud.modelsUsed()).toEqual(["openai/gpt-oss-120b"]);
+    expect(JSON.stringify(groq.sent())).toContain('"maxItems":3');
+    expect(groq.model.doGenerateCalls[0]?.prompt.some((m) => m.role === "system")).toBe(false);
   });
 
   it("Groq receives the schema as written", async () => {

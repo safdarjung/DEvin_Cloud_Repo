@@ -13,6 +13,15 @@ const BULK = "destructive or bulk structural";
 const UI_STATE = "UI state";
 const OWN_ANSWERS = "the person's own answers (integrity)";
 const RULE6_LATER = "rule 6: slice 2";
+const RULE6 = "rule 6: human-only (slice 2)";
+const DESTRUCTIVE = "destructive: delete, remove and void stay page actions";
+const SETTINGS = "settings and toggles stay on their pages (design §7)";
+const AUTOMATION = "automation definitions stay in their builders";
+const STUDY_SAVES = "the study studio's own saves";
+const OWN_CONSENT = "the person's own consent";
+// An upsert whose "/id" is "context" is create-only: the id is never taken from the model or the card,
+// so the card can never overwrite an existing record with fields the person did not see.
+const CREATE_ONLY = { "/id": "context" } as const;
 
 /** Design §8 first slice, in the design's order. */
 export const FIRST_SLICE: readonly string[] = [
@@ -116,6 +125,90 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "ptm.booking.cancel": t("Cancel a PTM booking", { href: "/portal/meetings" }),
   "clubs.leave": t("Leave a club"),
 
+  // ── staff daily work (teacher and every staff role that holds the permission) ──
+  // facilities has no orb group in MODULE_GROUP; its requests live on the operations board, like maintenance.assign.
+  "maintenance.request": t("Report a maintenance issue", { groupId: "operations", href: "/fabric/operations" }),
+  "maintenance.close": t("Close a maintenance request", { groupId: "operations", href: "/fabric/operations" }),
+  "people.staffAttendance.checkIn": t("Check in for today", { groupId: "people" }),
+  "helpdesk.message.add": t("Add a message to a helpdesk ticket"),
+  "questionBank.archive": t("Archive or restore a question", { entities: { "/id": "question" } }),
+  "clubs.event.signUp": t("Sign up for a club event", { undo: "clubs.event.cancelSignup", href: "/portal/clubs" }),
+  "clubs.event.cancelSignup": t("Cancel a club event sign-up", { href: "/portal/clubs" }),
+  // Families acknowledge; staff hold the permission but have nothing to acknowledge.
+  "diary.acknowledge": t("Acknowledge a diary entry", { defaultOn: ["student", "guardian"], href: "/portal/updates" }),
+
+  // ── front office and admin ──
+  // Off for the admissions role: the only grade picker is gated on finance.read, which it lacks. Turn on once a grade query it can read exists.
+  "admissions.enquiry.convert": t("Turn an enquiry into an application", { defaultOn: ["owner", "principal", "admin"] }),
+  "transport.assign": t("Assign a student to a bus stop", { groupId: "operations", undo: "transport.unassign" }),
+  "transport.unassign": t("Take a student off school transport", { groupId: "operations" }),
+  "transport.route.upsert": t("Add a bus route", { mode: "manage", groupId: "operations", entities: CREATE_ONLY }),
+  "transport.vehicle.upsert": t("Add a school vehicle", { mode: "manage", groupId: "operations", entities: CREATE_ONLY }),
+  "library.book.upsert": t("Add a book to the library catalogue", { entities: CREATE_ONLY }),
+  "inventory.item.create": t("Add a stock item"),
+  "inventory.item.update": t("Edit a stock item", { entities: { "/id": "inventory.item" } }),
+  "inventory.movement.record": t("Record a stock movement"),
+  "clubs.create": t("Start a new club"),
+  "clubs.update": t("Edit a club", { entities: { "/id": "clubs.club" } }),
+  // Drops every sign-up of the event: a checked card.
+  "clubs.event.cancel": t("Cancel a club event", { risk: "human_approved", entities: { "/id": "clubs.event" } }),
+  "clubs.house.create": t("Add a house", { mode: "manage" }),
+  "clubs.house.assign": t("Put a student in a house", { undo: "clubs.house.unassign" }),
+  "clubs.house.unassign": t("Take a student out of their house"),
+  // The renewal document is uploaded on the compliance page, not attached from the card.
+  "compliance.item.renew": t("Record a compliance renewal", { entities: { "/documentId": "context" } }),
+  "form.close": t("Close a form"),
+  "ptm.event.publish": t("Publish a PTM event"),
+  "survey.close": t("Close a survey"),
+  "website.page.create": t("Create a website page"),
+  "website.event.upsert": t("Add a website event", { entities: CREATE_ONLY }),
+  "hostel.room.create": t("Add a hostel room"),
+  "hostel.room.update": t("Edit a hostel room", { entities: { "/id": "hostel.room" } }),
+  "schoolLabs.lab.create": t("Add a lab", { mode: "manage" }),
+  "schoolLabs.lab.update": t("Edit a lab", { mode: "manage", entities: { "/id": "schoolLabs.lab" } }),
+  "schoolLabs.equipment.create": t("Add lab equipment"),
+  "people.student.update": t("Update a student's details"),
+  "people.department.upsert": t("Add a department", { entities: CREATE_ONLY }),
+  "academics.grade.upsert": t("Add a grade", { entities: CREATE_ONLY }),
+  // The class teacher reads and marks the section's roster (access): the person picks them.
+  "academics.section.upsert": t("Add a class section", { family: "access", humanOnly: ["/classTeacherId"], entities: CREATE_ONLY }),
+  "academics.subject.upsert": t("Add a subject", { entities: CREATE_ONLY }),
+  "curriculum.unit.upsert": t("Add a curriculum unit", { mode: "manage", groupId: "teaching", entities: CREATE_ONLY }),
+  // Switching the current year moves the whole school: the person sets it.
+  "core.academicYear.upsert": t("Add an academic year", { humanOnly: ["/isCurrent"], entities: CREATE_ONLY }),
+  "core.term.upsert": t("Add a term", { entities: CREATE_ONLY }),
+  "insight.action": t("Record an action on an insight"),
+  "insight.review": t("Mark an insight as reviewed"),
+  "achievement.verify": t("Verify a student achievement"),
+  "duty.type.create": t("Add a duty type"),
+  "duty.type.update": t("Edit a duty type", { entities: { "/id": "duty.type" } }),
+  // Releases or holds a child at the gate: always a checked card, never batched.
+  // Whether a child may leave is a welfare decision: the person picks the status, never the model.
+  "visitors.gatePass.setStatus": t("Approve or reject a gate pass", { risk: "human_approved", family: "welfare", humanOnly: ["/status"], entities: { "/id": "visitors.gatePass" } }),
+
+  // ── accountant set-up (no money moves; every amount is typed by the person) ──
+  "expenses.category.create": t("Add an expense category"),
+  "expenses.category.update": t("Edit an expense category", { entities: { "/id": "expenses.category" } }),
+  "expenses.budget.set": t("Set an expense budget", { family: "money", humanOnly: ["/amount"] }),
+  "canteen.item.create": t("Add a canteen item", { family: "money", humanOnly: ["/pricePaise"] }),
+  "canteen.item.update": t("Edit a canteen item", { family: "money", humanOnly: ["/pricePaise"], entities: { "/id": "canteen.item" } }),
+  "scholarships.rule.save": t("Add a scholarship rule", { family: "money", humanOnly: ["/percent", "/amountPaise"], entities: CREATE_ONLY }),
+  "scholarships.rule.setActive": t("Turn a scholarship rule on or off", { entities: { "/id": "scholarships.rule" } }),
+  // A request only; scholarships.award.decide (the money decision) stays excluded.
+  "scholarships.award.request": t("Request a scholarship for a student"),
+  "feePlans.lateFeeRule.upsert": t("Set a late-fee rule", { groupId: "finance", family: "money", humanOnly: ["/amount", "/cap"] }),
+  "finance.structure.upsert": t("Add a fee structure", { family: "money", humanOnly: ["/components/*/amount"], entities: CREATE_ONLY }),
+  "finance.structure.assign": t("Assign a fee structure to a student", { family: "money", humanOnly: ["/concessions/*/percent", "/concessions/*/amount"] }),
+
+  // ── exam controller ──
+  "exam.create": t("Create an exam"),
+  "exam.marks_entry.open": t("Open marks entry for an exam"),
+  "exam.marks_entry.close": t("Close marks entry for an exam"),
+  "exam.marks_entry.reopen": t("Reopen marks entry for an exam"),
+  "exam.recheck.review": t("Start reviewing a recheck request"),
+  // Maximum and pass marks are typed by the person (rule 6).
+  "exam.papers.create": t("Add papers to an exam", { family: "marks", humanOnly: ["/papers/*/maxMarks", "/papers/*/passMarks"] }),
+
   // ── excluded (design §2) ──
   "core.module.set": x(OWN_CONTROLS),
   "core.feature.set": x(OWN_CONTROLS),
@@ -176,6 +269,60 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "safety.alert.preview": x(RULE6_LATER),
   "safety.headcount.mark": x(RULE6_LATER),
   "scholarships.award.decide": x(RULE6_LATER),
+  // Access: enrolling creates the student and their fees; a guardian link opens the child's records; teaching assignments decide what a teacher reads and marks.
+  "admissions.enrol": x(RULE6),
+  "people.guardian.link": x(RULE6),
+  "academics.subjectAssignment.set": x(RULE6),
+  // Money owed by families: invoices and instalments; voiding an expense.
+  "finance.invoice.generateBulk": x(RULE6),
+  "finance.invoice.generateStudent": x(RULE6),
+  "finance.invoice.generateTerm": x(RULE6),
+  "feePlans.instalments.set": x(RULE6),
+  "expenses.void": x(RULE6),
+  // Marks: verifying an exam signs off its marks.
+  "exam.verify": x(RULE6),
+  // Welfare and discipline: conduct on certificates, house points, hostel places, who may collect a child.
+  "certificate.issue": x(RULE6),
+  "clubs.house.awardPoints": x(RULE6),
+  "hostel.vacate": x(RULE6),
+  "visitors.pickup.add": x(RULE6),
+  "visitors.pickup.remove": x(RULE6),
+
+  // ── destructive, settings, automation and the study studio's own saves ──
+  "achievement.void": x(DESTRUCTIVE),
+  "calendar.event.delete": x(DESTRUCTIVE),
+  "compliance.item.delete": x(DESTRUCTIVE),
+  "curriculum.lessonPlan.delete": x(DESTRUCTIVE),
+  "curriculum.material.delete": x(DESTRUCTIVE),
+  "document.delete": x(DESTRUCTIVE),
+  "fabric.simulator.delete": x(DESTRUCTIVE),
+  "ptm.slot.remove": x(DESTRUCTIVE),
+  "resource.delete": x(DESTRUCTIVE),
+  "study.material.delete": x(DESTRUCTIVE),
+  "study.teacher.material.delete": x(DESTRUCTIVE),
+  "textbook.file.remove": x(DESTRUCTIVE),
+  "textbook.remove": x(DESTRUCTIVE),
+  "examSeating.generate": x(BULK),
+  "core.setup.saveBranding": x(SETTINGS),
+  "notification.preferences.set": x(SETTINGS),
+  "report.schedule.setStatus": x(SETTINGS),
+  "website.live_set": x(SETTINGS),
+  "website.theme.save": x(SETTINGS),
+  "report.schedule.save": x(AUTOMATION),
+  "workflow.save": x(AUTOMATION),
+  "resource.attachFile": x("upload and download plumbing"),
+  "study.plan.toggleItem": x(UI_STATE),
+  "study.fileConsent.give": x(OWN_CONSENT),
+  "study.teacher.fileConsent.give": x(OWN_CONSENT),
+  "study.material.save": x(STUDY_SAVES),
+  "study.material.saveVariant": x(STUDY_SAVES),
+  "study.mock.save": x(STUDY_SAVES),
+  "study.scope.logTime": x(STUDY_SAVES),
+  "study.scope.open": x(STUDY_SAVES),
+  "study.scope.saveMessages": x(STUDY_SAVES),
+  "study.teacher.material.save": x(STUDY_SAVES),
+  "study.teacher.material.saveVariant": x(STUDY_SAVES),
+  "study.teacher.worksheet.save": x(STUDY_SAVES),
 };
 
 /** Whole name families the design excludes; new actions in them are excluded without a row. */
@@ -198,38 +345,15 @@ export function catalogRow(name: string): TaskRow | undefined {
 
 /** Registered actions not yet classified. Frozen: it may only shrink; a new action must get a row. */
 export const UNCLASSIFIED: readonly string[] = Object.freeze([
-  "academics.grade.upsert", "academics.section.upsert", "academics.subject.upsert", "academics.subjectAssignment.set",
-  "achievement.verify", "achievement.void", "admissions.enquiry.convert", "admissions.enrol", "alumni.profile.update",
-  "attendance.correct", "calendar.event.delete", "canteen.item.create", "canteen.item.update", "certificate.issue", "clubs.create",
-  "clubs.event.cancel", "clubs.event.cancelSignup", "clubs.event.signUp", "clubs.house.assign", "clubs.house.awardPoints",
-  "clubs.house.create", "clubs.house.unassign", "clubs.update", "compliance.item.delete", "compliance.item.renew",
-  "compliance.item.update", "core.academicYear.upsert", "core.setup.saveBranding", "core.term.upsert", "curriculum.lessonPlan.delete",
-  "curriculum.markCovered", "curriculum.material.attach", "curriculum.material.delete", "curriculum.material.review",
-  "curriculum.material.suggest", "curriculum.unit.upsert", "diary.acknowledge", "document.delete", "duty.assignment.set",
-  "duty.type.create", "duty.type.update", "exam.create", "exam.marks_entry.close", "exam.marks_entry.open", "exam.marks_entry.reopen",
-  "exam.paper.schedule", "exam.paper.setUnits", "exam.papers.create", "exam.recheck.request", "exam.recheck.review", "exam.verify",
-  "examSeating.generate", "expenses.budget.set", "expenses.category.create", "expenses.category.update", "expenses.void",
-  "fabric.simulator.create", "fabric.simulator.decide", "fabric.simulator.delete", "fabric.simulator.update", "facilities.asset.upsert",
-  "feePlans.instalments.set", "feePlans.lateFeeRule.upsert", "finance.invoice.generateBulk", "finance.invoice.generateStudent",
-  "finance.invoice.generateTerm", "finance.reminders.sendSelected", "finance.structure.assign", "finance.structure.upsert", "form.close",
-  "form.update", "helpdesk.message.add", "hostel.rollCall.save", "hostel.room.create", "hostel.room.update", "hostel.vacate",
-  "insight.action", "insight.review", "inventory.item.create", "inventory.item.update", "inventory.movement.record", "library.book.upsert",
-  "library.copies.add", "library.copy.setStatus", "maintenance.close", "maintenance.request", "mastery.intervention.update",
-  "notification.preferences.set", "people.department.upsert", "people.guardian.link", "people.guardian.update", "people.staff.upsert",
-  "people.staffAttendance.checkIn", "people.staffAttendance.mark", "people.student.update", "ptm.event.publish", "ptm.slot.remove",
-  "questionBank.archive", "questionBank.update", "report.schedule.save", "report.schedule.setStatus", "resource.attachFile",
-  "resource.create", "resource.delete", "resource.publish", "scholarships.award.request", "scholarships.rule.save",
-  "scholarships.rule.setActive", "schoolLabs.equipment.create", "schoolLabs.equipment.update", "schoolLabs.experiment.complete",
-  "schoolLabs.experiment.log", "schoolLabs.incident.record", "schoolLabs.lab.create", "schoolLabs.lab.update", "studio.request.propose",
-  "studio.request.submit", "study.fileConsent.give", "study.material.delete", "study.material.save", "study.material.saveVariant",
-  "study.mock.save", "study.plan.toggleItem", "study.question.answer", "study.question.ask", "study.scope.logTime", "study.scope.open",
-  "study.scope.saveMessages", "study.session.log", "study.teacher.assign", "study.teacher.fileConsent.give",
-  "study.teacher.material.delete", "study.teacher.material.save", "study.teacher.material.saveVariant", "study.teacher.worksheet.save",
-  "survey.close", "survey.create", "textbook.add", "textbook.chapterTitles.set", "textbook.file.remove", "textbook.link.set",
-  "textbook.remove", "textbook.suggestNcert", "textbook.unitChapter.set", "timetable.change.apply", "timetable.change.rollback",
-  "timetable.period.upsert", "timetable.publish", "timetable.room.upsert", "timetable.rules.set", "timetable.saveDraft",
-  "timetable.snapshot.create", "timetable.snapshot.restore", "timetable.version.create", "transport.assign", "transport.route.upsert",
-  "transport.stop.upsert", "transport.unassign", "transport.vehicle.upsert", "visitors.gatePass.setStatus", "visitors.pickup.add",
-  "visitors.pickup.remove", "website.event.upsert", "website.live_set", "website.page.create", "website.page.publish",
-  "website.page.save_version", "website.theme.save", "workflow.save",
+  "alumni.profile.update", "attendance.correct", "compliance.item.update", "curriculum.markCovered", "curriculum.material.attach",
+  "curriculum.material.review", "curriculum.material.suggest", "duty.assignment.set", "exam.paper.schedule", "exam.paper.setUnits",
+  "exam.recheck.request", "fabric.simulator.create", "fabric.simulator.decide", "fabric.simulator.update", "facilities.asset.upsert",
+  "finance.reminders.sendSelected", "form.update", "hostel.rollCall.save", "library.copies.add", "library.copy.setStatus",
+  "mastery.intervention.update", "people.guardian.update", "people.staff.upsert", "people.staffAttendance.mark", "questionBank.update",
+  "resource.create", "resource.publish", "schoolLabs.equipment.update", "schoolLabs.experiment.complete", "schoolLabs.experiment.log",
+  "schoolLabs.incident.record", "studio.request.propose", "studio.request.submit", "study.question.answer", "study.question.ask",
+  "study.session.log", "study.teacher.assign", "survey.create", "textbook.add", "textbook.chapterTitles.set", "textbook.link.set",
+  "textbook.suggestNcert", "textbook.unitChapter.set", "timetable.change.apply", "timetable.change.rollback", "timetable.period.upsert",
+  "timetable.publish", "timetable.room.upsert", "timetable.rules.set", "timetable.saveDraft", "timetable.snapshot.create",
+  "timetable.snapshot.restore", "timetable.version.create", "transport.stop.upsert", "website.page.publish", "website.page.save_version",
 ]);

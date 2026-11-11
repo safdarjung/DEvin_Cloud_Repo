@@ -18,6 +18,7 @@ const aiSettingsForMock = vi.fn(() => ({
 }));
 const getGeminiModelMock = vi.fn(async () => "gemini-model-handle");
 const getGroqModelMock = vi.fn(async () => "groq-model-handle");
+const getZaiModelMock = vi.fn(async () => "zai-model-handle");
 const streamTextMock = vi.fn();
 
 vi.mock("@/lib/ai/usage", () => ({
@@ -32,6 +33,8 @@ vi.mock("@/lib/ai/providers", () => ({
   geminiModelId: () => "gemini-flash-lite-latest",
   getGroqModel: getGroqModelMock,
   groqModelId: () => "openai/gpt-oss-120b",
+  getZaiModel: getZaiModelMock,
+  zaiModelId: () => "glm-4.7-flash",
 }));
 vi.mock("ai", async () => {
   const actual = await vi.importActual<typeof import("ai")>("ai");
@@ -69,6 +72,8 @@ afterEach(() => {
   acquireConcurrencySlotMock.mockReturnValue(true);
   getGeminiModelMock.mockResolvedValue("gemini-model-handle");
   getGroqModelMock.mockResolvedValue("groq-model-handle");
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
 });
 
 describe("streamCloudAgent", () => {
@@ -144,5 +149,45 @@ describe("streamCloudAgent", () => {
         expect.objectContaining({ ok: false, inputTokens: 7, outputTokens: 3, errorCode: "ai_unavailable", redactions: 2 }),
       ),
     );
+  });
+
+  describe("with a Z.ai key", () => {
+    function streamed() {
+      streamTextMock.mockReturnValueOnce({ totalUsage: Promise.resolve({ inputTokens: 1, outputTokens: 1 }), toUIMessageStreamResponse: () => new Response("") });
+      return vi.spyOn(console, "info").mockImplementation(() => {});
+    }
+    const budgetLog = (spy: ReturnType<typeof streamed>) => spy.mock.calls.find(([tag]) => tag === "[ai-budget]")?.[1];
+
+    function keys(groq: boolean, gemini: boolean) {
+      vi.stubEnv("ZAI_API_KEY", "test-key");
+      vi.stubEnv("GROQ_API_KEY", groq ? "test-key" : "");
+      vi.stubEnv("GEMINI_API_KEY", gemini ? "test-key" : "");
+    }
+
+    it("Z.ai answers first whatever the routing pick, with Groq as the retry for a request that fits Groq", async () => {
+      keys(true, true);
+      const info = streamed();
+      const result = await streamCloudAgent(baseInput({ provider: "gemini" }));
+      expect(result).toMatchObject({ ok: true, modelId: "glm-4.7-flash" });
+      expect(streamTextMock).toHaveBeenCalledWith(expect.objectContaining({ model: "zai-model-handle" }));
+      expect(budgetLog(info)).toMatchObject({ provider: "zai", fallback: "groq" });
+      await vi.waitFor(() => expect(logUsageMock).toHaveBeenCalledWith(expect.objectContaining({ ok: true, model: "glm-4.7-flash" })));
+    });
+
+    it("a request above Groq's ceiling is budgeted to Z.ai's own ceiling and gets Gemini as the retry, never Groq", async () => {
+      keys(true, true);
+      const info = streamed();
+      const result = await streamCloudAgent(baseInput({ system: "s".repeat(30_000) }));
+      // 30,000 chars = 7,500 tokens: above Groq's 5,500, sent whole under Z.ai's 24,000.
+      expect(result.ok && result.estimatedTokens).toBeGreaterThanOrEqual(7_500);
+      expect(budgetLog(info)).toMatchObject({ provider: "zai", fallback: "gemini" });
+    });
+
+    it("too big for Groq and no Gemini key: Z.ai alone, no retry", async () => {
+      keys(true, false);
+      const info = streamed();
+      await streamCloudAgent(baseInput({ system: "s".repeat(30_000) }));
+      expect(budgetLog(info)).toMatchObject({ provider: "zai", fallback: null });
+    });
   });
 });

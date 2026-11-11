@@ -15,6 +15,8 @@ const CLOUD_PRICES: Record<string, ModelPrice> = {
   "claude-haiku-4-5": { inputUsdPerMTok: 1, outputUsdPerMTok: 5 },
   "claude-sonnet-5-5": { inputUsdPerMTok: 2, outputUsdPerMTok: 10 },
   "claude-haiku-5-5": { inputUsdPerMTok: 0.1, outputUsdPerMTok: 0.5 },
+  // Z.ai's cheap paid tier (ZAI_MODEL); the default glm-4.7-flash is free, so $0 like Gemini below.
+  "glm-5.3-flash": { inputUsdPerMTok: 0.15, outputUsdPerMTok: 0.5 },
   // Fix round 1 (security review, LOW-2): `gemini-flash-lite-latest` (the
   // teacher agent, D28) is deliberately left out of this table, not
   // forgotten — `estimateCost` falls through its "unknown model id" branch

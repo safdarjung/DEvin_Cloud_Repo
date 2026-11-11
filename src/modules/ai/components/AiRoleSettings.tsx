@@ -45,7 +45,7 @@ export interface RoleTabData {
 }
 
 const CLOUD_WARNING =
-  "When on, this role's AI may use Groq or Gemini. Phone numbers, emails and ID numbers are masked first.";
+  "When on, this role's AI may use Z.ai, Groq or Gemini. Phone numbers, emails and ID numbers are masked first.";
 
 export function AiRoleSettings({ institutionSlug, roles }: { institutionSlug: string; roles: RoleTabData[] }) {
   if (roles.length === 0) return null;

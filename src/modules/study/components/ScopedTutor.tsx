@@ -169,7 +169,7 @@ export function ScopedTutor({
         </ul>
       </details>
       <p role="note" className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
-        {aiMode === "cloud" ? "AI tutor on the school's cloud AI (Groq or Google Gemini)." : "AI tutor on the school's own server."} It has not read NCERT books: it works from your
+        {aiMode === "cloud" ? "AI tutor on the school's cloud AI (Z.ai, Groq or Google Gemini)." : "AI tutor on the school's own server."} It has not read NCERT books: it works from your
         chapters&apos; and units&apos; outlines, unless you paste text or it reads a file you picked. AI can be wrong. Practice only.
       </p>
 

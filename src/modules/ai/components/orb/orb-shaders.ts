@@ -63,6 +63,8 @@ uniform float uJitter;
 uniform float uScatter;
 uniform float uIntro;
 uniform float uPx;
+// A hovered section: view-space direction (xyz) and strength (w); the dust around it brightens.
+uniform vec4 uHot;
 varying float vAlpha;
 varying float vBright;
 varying float vMix;
@@ -98,11 +100,12 @@ void main() {
   pos = mix((hash3(aSeed + 0.37) - 0.5) * vec3(7.0, 5.0, 4.0), pos, e);
 
   float zf = clamp(r.z * 0.5 + 0.5, 0.0, 1.0);
-  vAlpha = mix(0.08, 0.6, pow(zf, 1.5)) * min(1.0, (t + 1.0) * 2.5);
-  vBright = 0.75 + 0.35 * n1;
-  vMix = clamp(0.5 + 0.35 * r.y + 0.4 * n1, 0.0, 1.0);
+  float hot = uHot.w * smoothstep(0.8, 1.0, dot(r, uHot.xyz));
+  vAlpha = (mix(0.08, 0.6, pow(zf, 1.5)) + hot * 0.35) * min(1.0, (t + 1.0) * 2.5);
+  vBright = 0.75 + 0.35 * n1 + hot * 0.8;
+  vMix = clamp(0.5 + 0.35 * r.y + 0.4 * n1 + hot * 0.5, 0.0, 1.0);
   vec4 mv = modelViewMatrix * vec4(pos, 1.0);
-  gl_PointSize = uPx * mix(0.55, 1.15, zf) * (7.5 / -mv.z);
+  gl_PointSize = uPx * mix(0.55, 1.15, zf) * (1.0 + hot * 0.7) * (7.5 / -mv.z);
   gl_Position = projectionMatrix * mv;
 }
 `;

@@ -25,6 +25,8 @@ loadDotEnvLocal();
 delete process.env.RESEND_API_KEY;
 // X05-T2: tests never send real WhatsApp messages — stub it back in per test.
 delete process.env.MSG91_AUTH_KEY;
+// Z.ai answers first whenever its key is set: tests never call it — stub it back in per test.
+delete process.env.ZAI_API_KEY;
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],

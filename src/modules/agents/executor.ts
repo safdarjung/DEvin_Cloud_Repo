@@ -163,9 +163,9 @@ export async function executeAgentRun(
   let log: AgentLogEntry[];
   try {
     const { tools, registryNameOf } = await buildAgentTools(ctx, slug, sink, nonce, custom);
-    // Owner cloud exception (D28, extended to agents 2026-11-07): with a Groq/Gemini key the run goes
+    // Owner cloud exception (D28, extended to agents 2026-11-07): with a Z.ai/Groq/Gemini key the run goes
     // to the cloud like the teacher agent — task text redacted; local Ollama only on a keyless install.
-    const cloud = Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+    const cloud = Boolean(process.env.ZAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
     const redactedTask = cloud ? redact(task) : { text: task, count: 0 };
     const config = custom?.instructions ?? "";
     const redactedConfig = cloud && config ? redact(config) : { text: config, count: 0 };

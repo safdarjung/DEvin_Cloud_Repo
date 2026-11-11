@@ -16,19 +16,24 @@ import Link from "next/link";
 import type { Role } from "@/lib/auth/permissions";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { startProposal } from "@/modules/ai/components/task-card/api";
+import { runAnatomy, runInfographic } from "@/modules/ai/components/explain/api";
+import { useSpeechOutput } from "@/modules/ai/components/voice/useSpeechOutput";
+import { plainChatText } from "@/modules/ai/chat-text";
+import { parseOrbCommand } from "@/modules/ai/explain/commands";
+import type { ExplainDepth } from "@/modules/ai/explain/schemas";
 import { useResolutions } from "@/modules/ai/components/task-card/store";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
 import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 import { OrbBody, buzz, type Lean } from "./OrbBody";
 import { OrbComposer } from "./OrbComposer";
 import type { OrbSignals } from "./OrbCore";
-import { OrbGroups } from "./OrbGroups";
+import { FeatureSearch, OrbGroups, useModeSwipe } from "./OrbGroups";
 import { OrbModes, tabId } from "./OrbModes";
-import { OrbTranscript, proposalsIn, type LocalCard, type OrbMessage } from "./OrbTranscript";
+import { OrbTranscript, proposalsIn, type ExplainEntry, type LocalCard, type OrbMessage } from "./OrbTranscript";
 import { CardFlight, OrbTray, type Flight, type StartFailure } from "./OrbTray";
 import { orbState, stepIndex, typingPulse } from "./orb-layout";
-import { MODES, groupsFor, modesOf, pickMode, pushRecent, type OrbFeature, type OrbMode } from "./orb-modes";
-import { orbAccent } from "./orb-theme";
+import { MODES, explainFeatures, groupsFor, modesOf, pickMode, pushRecent, type OrbFeature, type OrbMode } from "./orb-modes";
+import { ROLE_HOME, orbAccent } from "./orb-theme";
 import { useVoice } from "./useVoice";
 
 export interface OrbChat {
@@ -129,6 +134,10 @@ const ERROR_FLASH_MS = 1800;
 const DONE_MS = 1400;
 const EXPIRY_TICK_MS = 30_000;
 const ALL_MODES = MODES.map((m) => m.id);
+/** Fewer groups than this in a mode: their features ride the sphere instead. */
+const FEATURE_CHIPS_BELOW = 4;
+const AUDIENCE: Partial<Record<Role, "student" | "teacher" | "parent">> = { student: "student", teacher: "teacher", guardian: "parent" };
+const explainError = (msg: string | undefined) => msg?.trim() || "That didn't work. Try again in a moment.";
 
 export function OrbView({ institutionSlug, role, chat, features, starters, initialQuery, initialMode, initialTask, controlCentreHref }: Props) {
   const idBase = useId();
@@ -146,10 +155,13 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const [done, setDone] = useState(false);
   const [typingTick, setTypingTick] = useState(0);
   const [now, setNow] = useState(() => Date.now());
+  const [roomy, setRoomy] = useState(true);
+  const [explains, setExplains] = useState<ExplainEntry[]>([]);
+  const speech = useSpeechOutput();
   const use3d = useSyncExternalStore(noSubscribe, canRender3d, () => false);
   const reduced = useSyncExternalStore(subscribeReduced, () => window.matchMedia(REDUCED).matches, () => false);
   const dark = useTheme().resolvedTheme === "dark";
-  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0 });
+  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, hot: [0, 0, 1, 0] });
   const inputRef = useRef<HTMLInputElement>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
@@ -166,11 +178,13 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     () => [
       ...(chat ? recentKey.split("\n").filter(Boolean).map((t): OrbFeature => ({ key: `recent:${t}`, label: t, prompt: t, mode: "ask", groupId: "recent", kind: "ask" })) : []),
       ...features,
+      ...(chat ? explainFeatures(role, modesOf(features)) : []),
     ],
-    [chat, recentKey, features],
+    [chat, recentKey, features, role],
   );
   const available = useMemo(() => modesOf(searchable), [searchable]);
-  const mode = picked ?? pickMode(available, { stored: storedMode });
+  // First visit opens the role's own mode (when it has features there); afterwards the remembered one.
+  const mode = picked ?? pickMode(available, { stored: storedMode || ROLE_HOME[role].mode });
   // A mode asked for by URL but empty for this person still gets its tab, to show why it is empty.
   const visibleModes = useMemo(() => ALL_MODES.filter((m) => available.includes(m) || m === mode), [available, mode]);
   const groups = useMemo(() => groupsFor(searchable, mode), [searchable, mode]);
@@ -191,9 +205,59 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   };
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
+  const explaining = explains.some((x) => x.pending || x.busy);
+  const patchExplain = (id: string, p: Partial<ExplainEntry>) => setExplains((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
+  const audience = AUDIENCE[role] ?? "staff";
+
+  /** /anatomy, /teardown, /infographic: the explain routes, not chat; the result is its own transcript entry. */
+  async function runCommand(line: string, cmd: NonNullable<ReturnType<typeof parseOrbCommand>>) {
+    if (explaining) return;
+    setInput("");
+    setOpen(true);
+    const id = `${Date.now()}-${explains.length}`;
+    const mode = cmd.command === "teardown" ? "teardown" : "anatomy";
+    const entry: ExplainEntry = { id, at: messages.length, line, subject: cmd.arg, mode, pending: Boolean(cmd.arg) };
+    if (!cmd.arg) return setExplains((xs) => [...xs, { ...entry, error: `Say what to explain after the command, e.g. /${cmd.command} human heart.` }]);
+    setExplains((xs) => [...xs, entry]);
+    if (cmd.command === "infographic") {
+      const res = await runInfographic({ institutionSlug, topic: cmd.arg, audience });
+      if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, poster: res.data });
+    }
+    const res = await runAnatomy({ institutionSlug, subject: cmd.arg, mode, depth: "standard" });
+    if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+    if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+    patchExplain(id, { pending: false, anatomy: res.data });
+    if (speech.readAloud) speech.speak(`${res.data.anatomy.title}. ${res.data.anatomy.summary}`);
+  }
+
+  async function changeDepth(id: string, depth: ExplainDepth) {
+    const x = explains.find((e) => e.id === id);
+    if (!x?.anatomy || explaining) return;
+    patchExplain(id, { busy: true, error: undefined });
+    const res = await runAnatomy({ institutionSlug, subject: x.subject, mode: x.mode, depth, language: x.anatomy.language });
+    if (!res.ok) return patchExplain(id, { busy: false, error: explainError(res.error.message) });
+    if (res.data.refused) return patchExplain(id, { busy: false, error: explainError(res.data.reason) });
+    patchExplain(id, { busy: false, anatomy: res.data });
+  }
+
+  async function makePoster(id: string) {
+    const a = explains.find((e) => e.id === id)?.anatomy;
+    if (!a || explaining) return;
+    patchExplain(id, { busy: true, error: undefined });
+    const res = await runInfographic({ institutionSlug, topic: a.anatomy.title, audience, language: a.language, fromAnatomy: a.anatomy });
+    if (!res.ok) return patchExplain(id, { busy: false, error: explainError(res.error.message) });
+    if (res.data.refused) return patchExplain(id, { busy: false, error: explainError(res.data.reason) });
+    patchExplain(id, { busy: false, poster: res.data });
+  }
+
   function send(text: string, taskHint?: string) {
     const t = text.trim();
     if (!chat || !t || busy) return;
+    speech.stop();
+    const cmd = taskHint ? null : parseOrbCommand(t);
+    if (cmd) return void runCommand(t, cmd);
     if (error) clearError();
     // The server narrows its task signatures by mode (and to one task with a hint); it re-checks everything.
     void sendMessage({ text: t }, { body: taskHint ? { mode, taskHint } : { mode } });
@@ -247,6 +311,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   });
   const onRun = useCallback((f: OrbFeature) => {
     if (f.kind === "task" && f.task) void latest.current.startTask(f.task, f.label);
+    // An "Explain & create" feature only fills the message box with its command.
+    else if (f.prompt && parseOrbCommand(f.prompt)?.arg === "") latest.current.edit(f.prompt);
     else if (f.prompt) latest.current.send(f.prompt);
   }, []);
   const onEdit = useCallback((t: string) => latest.current.edit(t), []);
@@ -254,16 +320,16 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const onActive = useCallback((el: HTMLElement | null, hue: string) => {
     const orb = orbRef.current?.getBoundingClientRect();
     if (!el || !orb) return setLean(null);
+    signals.current.pulse = typingPulse(signals.current.pulse);
+    // A group on the sphere is part of the orb: it pulses and its dust lights up (OrbBody), no lean.
+    if (el.closest("[data-orb-stage]")) return setLean(null);
     const r = el.getBoundingClientRect();
     const dx = r.left + r.width / 2 - (orb.left + orb.width / 2);
     const dy = r.top + r.height / 2 - (orb.top + orb.height / 2);
     const len = Math.hypot(dx, dy) || 1;
-    signals.current.pulse = typingPulse(signals.current.pulse);
     setLean({ x: (dx / len) * LEAN_PX, y: (dy / len) * LEAN_PX, hue });
   }, []);
-  const onTurn = useCallback((v: number) => {
-    signals.current.spin = v;
-  }, []);
+  const swipe = useModeSwipe(onSwipe);
   const msgCount = useRef(0);
   useEffect(() => {
     msgCount.current = messages.length;
@@ -308,6 +374,18 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
+
+  // Read answers aloud: an answer that just finished speaks when the switch is on.
+  const answering = useRef(false);
+  useEffect(() => {
+    const finished = answering.current && !busy;
+    answering.current = busy;
+    if (!finished || error || !speech.readAloud) return;
+    const last = messages.at(-1);
+    const text = last?.role === "assistant" ? plainChatText(last.parts.map((p) => (p.type === "text" ? p.text : "")).join("")) : "";
+    if (text) speech.speak(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when an answer finishes and reads that render's messages
+  }, [busy]);
 
   // Screen readers hear thinking and the arrival of an answer (the transcript has its own live region for the text).
   const wasBusy = useRef(false);
@@ -358,7 +436,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
 
   const voice = useVoice({ onText: setInput, onDone: send, level: signals });
   const state = orbState({
-    status,
+    // A slash command in flight shows as thinking.
+    status: explaining ? "submitted" : status,
     typing: input.trim().length > 0,
     error: Boolean(error) || errFlash,
     listening: voice.listening,
@@ -366,8 +445,28 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     done,
     waiting: pending.length > 0,
   });
-  const hasTalk = (Boolean(chat) && messages.length > 0) || localCards.length > 0;
+  const hasTalk = (Boolean(chat) && messages.length > 0) || localCards.length > 0 || explains.length > 0;
   const showTranscript = hasTalk && (open || Boolean(error));
+  // The groups ride the orb unless it is small (a conversation open, or a screen too small for tappable chips): then a row under it.
+  const onSphere = !showTranscript && roomy && groups.length > 0;
+  const home = ROLE_HOME[role];
+  const groupsEl = groups.length > 0 && (
+    <OrbGroups
+      mode={mode}
+      groups={groups}
+      layout={onSphere ? "sphere" : "row"}
+      spin={use3d && !reduced}
+      hasDraft={input.trim().length > 0}
+      busy={busy}
+      starting={starting}
+      reduced={reduced}
+      direction={direction}
+      onRun={onRun}
+      onEdit={onEdit}
+      onActive={onActive}
+      featureChips={groups.length < FEATURE_CHIPS_BELOW}
+    />
+  );
 
   function jumpTo(id: string) {
     setOpen(true);
@@ -387,11 +486,22 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
 
   return (
     // The tall transcript spans all three rows on lg: only the last row may grow, so the orb, groups and composer stay evenly spaced.
-    <div className={`mx-auto grid w-full max-w-6xl gap-4 lg:grid-cols-[minmax(0,1fr)] lg:grid-rows-[auto_auto_1fr] ${showTranscript ? "lg:grid-cols-[minmax(0,1fr)_23rem]" : ""}`}>
+    <div className={`mx-auto grid w-full max-w-6xl gap-4 lg:grid-cols-[minmax(0,1fr)] lg:grid-rows-[auto_auto_1fr] ${showTranscript ? (explains.length > 0 ? "lg:grid-cols-[minmax(0,1fr)_minmax(23rem,36rem)]" : "lg:grid-cols-[minmax(0,1fr)_23rem]") : ""}`}>
       <h1 className="sr-only">App Orb</h1>
       <p ref={liveRef} role="status" aria-live="polite" className="sr-only" />
 
       <section aria-label="Orb" className="flex flex-col items-center gap-3 lg:col-start-1 lg:row-start-1">
+        {!showTranscript && (
+          <p className="text-balance px-4 text-center">
+            <span
+              className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--orb-a) dark:text-(--orb-b)"
+              style={{ "--orb-a": accent[0], "--orb-b": accent[1] } as React.CSSProperties}
+            >
+              {home.title}
+            </span>
+            <span className="mt-1 block text-lg font-semibold tracking-tight sm:text-xl">{home.greeting}</span>
+          </p>
+        )}
         <OrbBody
           state={state}
           accent={accent}
@@ -399,18 +509,18 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           reduced={reduced}
           use3d={use3d}
           signals={signals}
-          compact={hasTalk}
+          compact={showTranscript}
           waiting={pending.length}
           lean={lean}
-          modeIndex={Math.max(0, visibleModes.indexOf(mode))}
-          modeCount={visibleModes.length}
           typingTick={typingTick}
           orbRef={orbRef}
-          onFlick={stepMode}
-          onTurn={onTurn}
+          nodeKey={onSphere ? `${mode}:${groups.map((g) => `${g.id}${g.features.length}`).join(",")}` : ""}
+          onRoomy={setRoomy}
           onTap={() => inputRef.current?.focus()}
           showStatus={Boolean(chat) || pending.length > 0}
-        />
+        >
+          {onSphere && groupsEl}
+        </OrbBody>
         <OrbModes
           modes={visibleModes}
           current={mode}
@@ -430,7 +540,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <MessagesSquare className="size-3.5" aria-hidden />
-            Show conversation ({messages.length + localCards.length})
+            Show conversation ({messages.length + localCards.length + explains.length})
           </button>
         )}
       </section>
@@ -441,6 +551,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             institutionSlug={institutionSlug}
             messages={messages}
             localCards={localCards}
+            explains={explains}
+            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id) }}
             status={status}
             error={error ? chatErrorMessage(error) : null}
             accent={accent[1]}
@@ -454,6 +566,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
               clearError();
               setMessages([]);
               setLocalCards([]);
+              setExplains([]);
             }}
             onCollapse={() => setOpen(false)}
             onResolved={onResolved}
@@ -467,25 +580,16 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
         id={panelId}
         aria-labelledby={visibleModes.length ? tabId(idBase, mode) : undefined}
         aria-label={visibleModes.length ? undefined : "What you can do"}
+        {...swipe}
         className="min-w-0 lg:col-start-1 lg:row-start-2"
       >
         {visibleModes.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground">No AI sections are available for your role yet.</p>
         ) : groups.length > 0 ? (
-          <OrbGroups
-            mode={mode}
-            groups={groups}
-            searchable={searchable}
-            hasDraft={input.trim().length > 0}
-            busy={busy}
-            starting={starting}
-            reduced={reduced}
-            direction={direction}
-            onRun={onRun}
-            onEdit={onEdit}
-            onActive={onActive}
-            onSwipe={onSwipe}
-          />
+          <div className="space-y-3">
+            <FeatureSearch features={searchable} hasDraft={input.trim().length > 0} busy={busy} starting={starting} reduced={reduced} onRun={onRun} />
+            {!onSphere && groupsEl}
+          </div>
         ) : (
           <div className="mx-auto max-w-md rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm">
             <p>{emptyText}</p>
@@ -518,9 +622,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           input={input}
           busy={busy}
           starters={starters}
-          voice={voice}
+          voice={{ ...voice, start: () => (speech.stop(), voice.start()) }}
+          speech={speech}
           inputRef={inputRef}
           onInput={(v) => {
+            if (speech.speaking) speech.stop();
             setInput(v);
             signals.current.pulse = typingPulse(signals.current.pulse);
             setTypingTick((n) => n + 1);

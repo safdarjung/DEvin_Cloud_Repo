@@ -9,12 +9,15 @@ import { chatErrorMessage } from "@/modules/ai/chat-error";
 
 const groqModel = { current: null as MockLanguageModelV4 | null };
 const geminiModel = { current: null as MockLanguageModelV4 | null };
+const zaiModel = { current: null as MockLanguageModelV4 | null };
 
 vi.mock("@/lib/ai/providers", () => ({
   groqModelId: () => "openai/gpt-oss-120b",
   geminiModelId: () => "gemini-flash-lite-latest",
+  zaiModelId: () => "glm-4.7-flash",
   getGroqModel: vi.fn(async () => groqModel.current),
   getGeminiModel: vi.fn(async () => geminiModel.current),
+  getZaiModel: vi.fn(async () => zaiModel.current),
 }));
 
 const { classifyAiError, cloudModelWithFallback, cloudProviderPlan, shouldFallback, streamErrorText, userFacingAiError } = await import(
@@ -26,6 +29,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   groqModel.current = null;
   geminiModel.current = null;
+  zaiModel.current = null;
 });
 
 const SECRET = "org_01secret Limit 8000, Requested 12945";
@@ -66,14 +70,21 @@ describe("classifyAiError / shouldFallback", () => {
 });
 
 describe("cloudProviderPlan (fallback decision table)", () => {
-  const both = { groq: true, gemini: true };
+  const both = { groq: true, gemini: true, zai: false };
+  const all = { groq: true, gemini: true, zai: true };
   it.each([
     ["local mode never names a cloud provider, keys or not", { mode: "local", preferred: "groq", keys: both }, null],
     ["groq first, gemini as the one retry", { mode: "cloud", preferred: "groq", keys: both }, { primary: "groq", fallback: "gemini" }],
     ["gemini first, groq as the one retry", { mode: "cloud", preferred: "gemini", keys: both }, { primary: "gemini", fallback: "groq" }],
-    ["missing fallback key: no fallback", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false } }, { primary: "groq", fallback: null }],
-    ["missing preferred key: the other provider answers, no fallback", { mode: "cloud", preferred: "groq", keys: { groq: false, gemini: true } }, { primary: "gemini", fallback: null }],
-    ["no keys: no cloud", { mode: "cloud", preferred: "gemini", keys: { groq: false, gemini: false } }, null],
+    ["missing fallback key: no fallback", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false, zai: false } }, { primary: "groq", fallback: null }],
+    ["missing preferred key: the other provider answers, no fallback", { mode: "cloud", preferred: "groq", keys: { groq: false, gemini: true, zai: false } }, { primary: "gemini", fallback: null }],
+    ["no keys: no cloud", { mode: "cloud", preferred: "gemini", keys: { groq: false, gemini: false, zai: false } }, null],
+    ["local mode never names a cloud provider, Z.ai key or not", { mode: "local", preferred: "groq", keys: all, requestTokens: 100 }, null],
+    ["zai keyed: zai first, groq the retry when it fits groq's ceiling, gemini the last resort", { mode: "cloud", preferred: "gemini", keys: all, requestTokens: 5_500 }, { primary: "zai", fallback: "groq", last: "gemini" }],
+    ["zai keyed: a request above groq's ceiling gets gemini as the retry", { mode: "cloud", preferred: "groq", keys: all, requestTokens: 5_501 }, { primary: "zai", fallback: "gemini" }],
+    ["zai keyed, request size unknown: never groq", { mode: "cloud", preferred: "groq", keys: all }, { primary: "zai", fallback: "gemini" }],
+    ["zai keyed, only groq as backup and the request too big for it: no retry", { mode: "cloud", preferred: "groq", keys: { groq: true, gemini: false, zai: true }, requestTokens: 6_000 }, { primary: "zai", fallback: null }],
+    ["only a zai key: zai, no retry", { mode: "cloud", preferred: "groq", keys: { groq: false, gemini: false, zai: true }, requestTokens: 100 }, { primary: "zai", fallback: null }],
   ] as const)("%s", (_name, input, expected) => {
     expect(cloudProviderPlan(input)).toEqual(expected);
   });
@@ -125,7 +136,7 @@ function failing(error: unknown): MockLanguageModelV4 {
   });
 }
 
-async function answer(primary: "groq" | "gemini", fallback: "groq" | "gemini" | null) {
+async function answer(primary: "groq" | "gemini" | "zai", fallback: "groq" | "gemini" | null) {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   const cloud = await cloudModelWithFallback(primary, fallback);
   const result = streamText({ model: cloud.model, prompt: "hi", maxRetries: 0, onError: () => {} });
@@ -147,6 +158,18 @@ describe("cloudModelWithFallback", () => {
     groqModel.current = answering("from groq");
     expect(await answer("groq", "gemini")).toEqual({ text: "from groq", used: ["openai/gpt-oss-120b"] });
     expect(providers.getGeminiModel).not.toHaveBeenCalled();
+  });
+
+  it("a Z.ai 429 (no balance, or the free model overloaded) is answered by Groq and logged as Groq", async () => {
+    zaiModel.current = failing(apiError(429, '{"error":{"code":"1113","message":"Insufficient balance"}}'));
+    groqModel.current = answering("from groq");
+    expect(await answer("zai", "groq")).toEqual({ text: "from groq", used: ["openai/gpt-oss-120b"] });
+  });
+
+  it("a healthy Z.ai answers and is logged with its model id", async () => {
+    zaiModel.current = answering("from zai");
+    expect(await answer("zai", "groq")).toEqual({ text: "from zai", used: ["glm-4.7-flash"] });
+    expect(providers.getGroqModel).not.toHaveBeenCalled();
   });
 
   it("no fallback configured: the error stands", async () => {
@@ -184,6 +207,39 @@ describe("chat text helpers (what the chat UIs render)", async () => {
     expect(lastHasText([{ role: "assistant", parts: [{ type: "text", text: "A" }] }])).toBe(true);
   });
 });
+
+describe("cloudModelWithFallback with a last resort", () => {
+  it("Z.ai busy and Groq out of quota: Gemini answers and is the model logged", async () => {
+    zaiModel.current = failing(apiError(429));
+    groqModel.current = failing(apiError(429));
+    geminiModel.current = answering("from gemini");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const cloud = await cloudModelWithFallback("zai", "groq", "gemini");
+    const result = streamText({ model: cloud.model, prompt: "hi", maxRetries: 0, onError: () => {} });
+    expect(await result.text).toBe("from gemini");
+    expect(cloud.modelsUsed()).toEqual(["gemini-flash-lite-latest"]);
+    expect(warn.mock.calls.map((c) => (c[1] as { from: string; to: string }).from + ">" + (c[1] as { to: string }).to)).toEqual(["zai>groq", "groq>gemini"]);
+  });
+
+  it("an error that is not size or rate on the fallback stops the chain", async () => {
+    zaiModel.current = failing(apiError(429));
+    groqModel.current = failing(apiError(401));
+    geminiModel.current = answering("from gemini");
+    const { text } = await answerChain();
+    expect(text).toBe("<error>");
+  });
+});
+
+async function answerChain() {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const cloud = await cloudModelWithFallback("zai", "groq", "gemini");
+  const result = streamText({ model: cloud.model, prompt: "hi", maxRetries: 0, onError: () => {} });
+  const text = await result.text.then(
+    (t) => t,
+    () => "<error>",
+  );
+  return { text };
+}
 
 describe("cloudModelWithFallback across steps", () => {
   it("after one fallback, later steps of the same request go straight to the fallback", async () => {

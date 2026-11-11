@@ -358,6 +358,13 @@ Full text: `docs/planning/fabric/07-master-plan-v1-v2.md` §2. Summary:
 - **Consequence:** Remotion needs a company licence for teams above 3 people; owner to confirm before the swap.
 - **Revisit:** at the swap to `/`.
 
+### D53 — Z.ai (GLM) is the first cloud provider; Groq is the backup (2026-11-11, owner decision)
+
+- **Decision:** when `ZAI_API_KEY` is set, chat and structured AI calls go to Z.ai first (default model `glm-4.7-flash`, override `ZAI_MODEL`). The single retry goes to Groq when the request fits Groq's 5,500-token ceiling, otherwise to Gemini. With no Z.ai key the D28/D29 behaviour is unchanged. File and photo reading stays Gemini-only.
+- **Why:** owner asked for Z.ai's cheaper model in place of Groq. The account had no paid balance on 2026-11-11, so the default is the free model; the paid cheap model is `glm-5.3-flash`.
+- **Limits:** Z.ai ignores `json_schema`, so structured calls use JSON-object mode with the schema in the prompt and Zod validation after. The free model answers 429 "overloaded" under load and was seen to fail one quiz with invalid output. `tool_choice` supports only `auto`.
+- **Gates unchanged:** same role cloud switch, redaction and lazy import as Groq/Gemini (rule 6). UI honesty labels name Z.ai, Groq and Gemini. New dependency: `@ai-sdk/openai-compatible` 3.0.80 (official OpenAI-compatible provider).
+
 ## 2. Phase 0 verified facts and installed versions
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.

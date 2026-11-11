@@ -28,4 +28,19 @@ const MODE_ACCENTS: Record<Exclude<OrbMode, "ask">, readonly [string, string]> =
   manage: ["#334155", "#A5B4FC"],
 };
 
-export const orbAccent = (role: Role, mode: OrbMode): readonly [string, string] => (mode === "ask" ? ROLE_ACCENTS[role] : MODE_ACCENTS[mode]);
+/** The role always keeps the deep stop (its glow, ring and dust base); a mode other than Ask brings its bright stop. */
+export const orbAccent = (role: Role, mode: OrbMode): readonly [string, string] =>
+  mode === "ask" ? ROLE_ACCENTS[role] : [ROLE_ACCENTS[role][0], MODE_ACCENTS[mode][1]];
+
+/** Each role's own name and line over the orb, and the mode it opens on (when the person has features there). */
+export const ROLE_HOME: Record<Role, { title: string; greeting: string; mode: OrbMode }> = {
+  owner: { title: "Owner", greeting: "Your school at a glance: people, money and approvals", mode: "do" },
+  principal: { title: "Principal", greeting: "Your school at a glance: people, money and approvals", mode: "do" },
+  admin: { title: "School admin", greeting: "Set-up, records and the day's paperwork", mode: "manage" },
+  admissions: { title: "Admissions", greeting: "Enquiries, applications and new families", mode: "do" },
+  accountant: { title: "Accounts", greeting: "Fees, payments and the school's books", mode: "do" },
+  exam_controller: { title: "Exam cell", greeting: "Exams, marks and results", mode: "do" },
+  teacher: { title: "Teacher", greeting: "Your classes, attendance and lesson tools", mode: "teach" },
+  student: { title: "Student", greeting: "Your study, homework and timetable", mode: "learn" },
+  guardian: { title: "Parent", greeting: "Your child's fees, attendance and progress", mode: "ask" },
+};

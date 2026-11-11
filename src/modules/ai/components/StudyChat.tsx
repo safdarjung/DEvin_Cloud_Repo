@@ -277,7 +277,7 @@ export function StudyChat({ institutionSlug, skills, notebookEnabled, initialMes
               local model through a tunnel (04-architecture.md topology B),
               so only "sent there" is actually guaranteed. */}
           {aiMode === "cloud"
-            ? "AI help from Google Gemini or Groq (cloud). What you type is sent to that provider. Don't share personal details."
+            ? "AI help from Z.ai, Google Gemini or Groq (cloud). What you type is sent to that provider. Don't share personal details."
             : "Local AI on your school's server. What you type is sent there. Don't share personal details."}{" "}
           AI can be wrong; check your textbook or teacher.
           </p>

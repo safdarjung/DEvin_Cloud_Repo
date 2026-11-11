@@ -25,6 +25,8 @@ vi.mock("@/lib/ai/providers", () => ({
   geminiModelId: vi.fn(() => "gemini-flash-lite-latest"),
   getGroqModel: vi.fn(async () => "groq-model-handle"),
   groqModelId: vi.fn(() => "openai/gpt-oss-120b"),
+  getZaiModel: vi.fn(async () => "zai-model-handle"),
+  zaiModelId: vi.fn(() => "glm-4.7-flash"),
 }));
 
 vi.mock("@/lib/ai/usage", () => ({
@@ -130,6 +132,23 @@ describe("runStructured", () => {
     expect(providers.getLocalModel).not.toHaveBeenCalled();
   });
 
+  it("agentCloud + ZAI_API_KEY: Z.ai answers first, Groq's options ride along for its retry, usage names the GLM model", async () => {
+    process.env.ZAI_API_KEY = "test-key";
+    process.env.GROQ_API_KEY = "test-key";
+    process.env.GEMINI_API_KEY = "test-key";
+    generateTextMock.mockResolvedValueOnce(usageResult());
+    const result = await runStructured({ ctx: fakeCtx("local_only"), ...baseInput, maxOutputTokens: 500, agentCloud: true });
+    expect(result).toMatchObject({ ok: true, data: { provider: "cloud", model: "glm-4.7-flash" } });
+    expect(generateTextMock.mock.calls[0][0]).toMatchObject({
+      model: "zai-model-handle",
+      maxOutputTokens: 1024,
+      providerOptions: { groq: { reasoningEffort: "low", strictJsonSchema: false } },
+    });
+    expect(usage.logUsage).toHaveBeenCalledWith(expect.objectContaining({ ok: true, provider: "cloud", model: "glm-4.7-flash" }));
+    expect(providers.getGroqModel).not.toHaveBeenCalled();
+    expect(providers.getLocalModel).not.toHaveBeenCalled();
+  });
+
   it("agentCloud + only GEMINI_API_KEY: a local_only school runs on Gemini, redacted, never local or Anthropic", async () => {
     process.env.GEMINI_API_KEY = "test-key";
     generateTextMock.mockResolvedValueOnce(usageResult());
@@ -157,6 +176,7 @@ describe("runStructured", () => {
   it("agentCloud with the role's cloud switch off (D50) keeps the policy plan: local, no cloud provider built", async () => {
     process.env.GROQ_API_KEY = "test-key";
     process.env.GEMINI_API_KEY = "test-key";
+    process.env.ZAI_API_KEY = "test-key";
     generateTextMock.mockResolvedValueOnce(usageResult());
     const base = fakeCtx("local_only");
     const ctx = { ...base, institution: { ...base.institution, settings: { ai_roles: { teacher: { cloud: false } } } } };
@@ -164,6 +184,7 @@ describe("runStructured", () => {
     expect(result).toMatchObject({ ok: true, data: { provider: "local" } });
     expect(providers.getGroqModel).not.toHaveBeenCalled();
     expect(providers.getGeminiModel).not.toHaveBeenCalled();
+    expect(providers.getZaiModel).not.toHaveBeenCalled();
   });
 
   it("agentCloud: a request over Groq's per-request ceiling goes to Gemini; one over every ceiling is refused unsent", async () => {

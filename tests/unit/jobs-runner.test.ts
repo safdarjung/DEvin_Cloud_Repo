@@ -45,6 +45,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     enqueueDueLateFees: vi.fn(async () => 0),
     enqueueMasteryCompute: vi.fn(async () => 0),
     enqueueStudyReminders: vi.fn(async () => 0),
+    purgeAiProposals: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -516,6 +517,26 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
 
     await expect(ports.enqueueDueInsights()).resolves.toBe(3);
     expect(rpc).toHaveBeenCalledWith("enqueue_insight_detection");
+  });
+
+  it("purgeAiProposals calls the purge_ai_proposals RPC and returns the deleted count", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: 3, error: null } });
+    const ports = createRunnerPorts(admin);
+
+    await expect(ports.purgeAiProposals()).resolves.toBe(3);
+    expect(rpc).toHaveBeenCalledWith("purge_ai_proposals");
+  });
+
+  it("a failing orb card purge does not stop the run", async () => {
+    const purgeAiProposals = vi.fn(async () => {
+      throw new Error("purge boom");
+    });
+    const claimJob = vi.fn(async () => null);
+    const ports = fakePorts({ purgeAiProposals, claimJob });
+
+    await expect(runOnceCore({ workerId: "w" }, ports)).resolves.toBeDefined();
+    expect(purgeAiProposals).toHaveBeenCalledTimes(1);
+    expect(claimJob).toHaveBeenCalled();
   });
 
   it("enqueueDueForecasts calls the enqueue_due_forecasts RPC", async () => {

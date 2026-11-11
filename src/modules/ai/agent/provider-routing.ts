@@ -10,7 +10,8 @@
 const LENGTH_THRESHOLD = 220;
 const MULTI_PART_PATTERN = /\band also\b|\bas well as\b|\bcompare\b|\bboth\b/i;
 
-export type AgentProvider = "groq" | "gemini";
+// "zai" is never a routing pick: with its key it answers first (cloudProviderPlan).
+export type AgentProvider = "groq" | "gemini" | "zai";
 
 export function pickAgentProvider(latestUserText: string | undefined): AgentProvider {
   const text = latestUserText?.trim();

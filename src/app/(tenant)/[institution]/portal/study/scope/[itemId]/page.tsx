@@ -31,7 +31,7 @@ export default async function StudyScopeSessionPage({ params }: { params: Promis
         title={session.title}
         scopeLines={context.lines}
         initialMessages={session.messages as UIMessage[]}
-        aiMode={process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY ? "cloud" : "local"}
+        aiMode={process.env.ZAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY ? "cloud" : "local"}
       />
     </>
   );

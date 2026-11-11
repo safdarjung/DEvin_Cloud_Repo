@@ -27,6 +27,37 @@ function recognitionCtor(): RecognitionCtor | null {
 
 const noSubscribe = () => () => {};
 const NOTE_KEY = "coolskool.orb.voice-note-seen";
+const LANG_KEY = "coolskool.orb.voice-lang";
+
+export type VoiceLang = "en-IN" | "hi-IN";
+export const VOICE_LANGS: readonly { id: VoiceLang; short: string }[] = [
+  { id: "en-IN", short: "EN" },
+  { id: "hi-IN", short: "हिन्दी" },
+];
+export const VOICE_UNSUPPORTED = "Voice input isn't supported in this browser; try Chrome or Edge.";
+export const VOICE_INSECURE = "Voice input needs a secure page: open the orb over https.";
+
+// The voice language is a per-device preference; every read/write is guarded.
+const langListeners = new Set<() => void>();
+const subscribeLang = (cb: () => void) => {
+  langListeners.add(cb);
+  return () => void langListeners.delete(cb);
+};
+function readLang(): VoiceLang {
+  try {
+    return window.localStorage.getItem(LANG_KEY) === "hi-IN" ? "hi-IN" : "en-IN";
+  } catch {
+    return "en-IN";
+  }
+}
+function writeLang(v: VoiceLang) {
+  try {
+    window.localStorage.setItem(LANG_KEY, v);
+  } catch {
+    /* storage blocked: the choice lasts for this page only */
+  }
+  langListeners.forEach((f) => f());
+}
 
 const VOICE_ERRORS: Record<string, string> = {
   "not-allowed": "Microphone access is blocked. Allow it in your browser to talk to the orb.",
@@ -50,7 +81,11 @@ function readNoteSeen(): boolean {
  */
 export function useVoice(opts: { onText: (t: string) => void; onDone: (t: string) => void; level: React.RefObject<{ level: number }> }) {
   const supported = useSyncExternalStore(noSubscribe, () => recognitionCtor() !== null, () => false);
+  const lang = useSyncExternalStore(subscribeLang, readLang, () => "en-IN" as VoiceLang);
   const [listening, setListening] = useState(false);
+  /** The person still wants the mic on (cleared by stop()); a silence that ends recognition restarts it once. */
+  const wanted = useRef(false);
+  const restarted = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [showNote, setShowNote] = useState(false);
   const rec = useRef<Recognition | null>(null);
@@ -95,25 +130,30 @@ export function useVoice(opts: { onText: (t: string) => void; onDone: (t: string
     }
   }
 
-  function start() {
-    const Ctor = recognitionCtor();
-    if (!Ctor || rec.current) return;
+  /** One recognition session; `base` is what earlier sessions heard (kept across the silence restart). */
+  function listen(Ctor: RecognitionCtor, base: string): boolean {
     const r = new Ctor();
-    r.lang = document.documentElement.lang || navigator.language || "en-IN";
+    r.lang = lang;
     r.continuous = true;
     r.interimResults = true;
-    text.current = "";
     r.onresult = (e) => {
       let t = "";
       for (let i = 0; i < e.results.length; i++) t += e.results[i][0]?.transcript ?? "";
-      text.current = t.trim();
+      text.current = `${base} ${t}`.trim();
       cbs.current.onText(text.current);
     };
     r.onerror = (e) => {
+      if (e.error === "no-speech" && wanted.current && !restarted.current) return; // the restart below handles a first silence
       if (e.error !== "aborted") setError(VOICE_ERRORS[e.error] ?? "Voice input stopped unexpectedly.");
     };
     r.onend = () => {
       rec.current = null;
+      // The browser ends recognition after a silence even in continuous mode: carry on once if the mic is still on.
+      if (wanted.current && !restarted.current) {
+        restarted.current = true;
+        if (listen(Ctor, text.current)) return;
+      }
+      wanted.current = false;
       stopAudio();
       setListening(false);
       setShowNote(false);
@@ -125,13 +165,28 @@ export function useVoice(opts: { onText: (t: string) => void; onDone: (t: string
       if (text.current) cbs.current.onDone(text.current);
     };
     rec.current = r;
+    try {
+      r.start();
+      return true;
+    } catch {
+      rec.current = null;
+      return false;
+    }
+  }
+
+  function start() {
+    if (rec.current) return;
+    const Ctor = recognitionCtor();
+    if (!window.isSecureContext) return setError(VOICE_INSECURE);
+    if (!Ctor) return setError(VOICE_UNSUPPORTED);
+    text.current = "";
+    wanted.current = true;
+    restarted.current = false;
     setError(null);
     setShowNote(!readNoteSeen());
     setListening(true);
-    try {
-      r.start();
-    } catch {
-      rec.current = null;
+    if (!listen(Ctor, "")) {
+      wanted.current = false;
       setListening(false);
       setError("Voice input could not start.");
       return;
@@ -140,6 +195,7 @@ export function useVoice(opts: { onText: (t: string) => void; onDone: (t: string
   }
 
   function stop() {
+    wanted.current = false;
     rec.current?.stop();
   }
 
@@ -157,5 +213,5 @@ export function useVoice(opts: { onText: (t: string) => void; onDone: (t: string
     [],
   );
 
-  return { supported, listening, error, showNote, start, stop, clearError: () => setError(null) };
+  return { supported, listening, error, showNote, start, stop, lang, setLang: writeLang, clearError: () => setError(null) };
 }

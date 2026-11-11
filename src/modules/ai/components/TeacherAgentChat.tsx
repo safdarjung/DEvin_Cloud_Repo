@@ -218,9 +218,9 @@ export function TeacherAgentChat({ institutionSlug, aiPolicy, teachableSections 
           <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
           <p>
           {/* D29 — each message is routed to one of two cloud providers
-              (Google Gemini or Groq); this banner must stay accurate for
+              (Z.ai, Google Gemini or Groq); this banner must stay accurate for
               either, so it names both rather than claiming one. */}
-          Google Gemini or Groq (cloud) — this assistant sends what you type, plus the data it looks up
+          Z.ai, Google Gemini or Groq (cloud) — this assistant sends what you type, plus the data it looks up
           (students, curriculum, attendance, exam results), to one of these providers. It only drafts
           quizzes and remarks; you decide what to save.
           </p>

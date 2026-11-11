@@ -88,9 +88,9 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
       </div>
       <p className="px-4 text-center text-xs text-muted-foreground">{modeInfo(current).hint}</p>
       {showIntro && modes.length > 1 && (
-        <div role="note" className="flex max-w-xl items-start gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-sm">
+        <div role="note" className="flex max-w-3xl items-start gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-sm">
           <p className="flex-1 leading-relaxed">
-            Modes sort what the orb can do: Ask answers questions and the others prepare work you approve on a card; switch with these tabs, keys 1–{modes.length}, or a flick of the orb.
+            Ask answers questions; the other modes prepare cards you approve. Tabs or keys 1–{modes.length} switch modes; drag the orb to browse.
           </p>
           <button
             type="button"

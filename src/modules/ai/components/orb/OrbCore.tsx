@@ -11,16 +11,17 @@
 import { useEffect, useMemo, useRef } from "react";
 import { Canvas, advance, useFrame, useThree } from "@react-three/fiber";
 import { cancelFrame, frame, type FrameData } from "motion/react";
-import { BufferAttribute, BufferGeometry, Color, Matrix3, Matrix4, ShaderMaterial } from "three";
+import { BufferAttribute, BufferGeometry, Color, Matrix3, Matrix4, ShaderMaterial, Vector4 } from "three";
 import { fibonacciSphere, scatterEnvelope, waveFor, type OrbState } from "./orb-layout";
 import { DOTS_FRAGMENT, DOTS_VERTEX } from "./orb-shaders";
 import { ORB_ERROR } from "./orb-theme";
 
-/** Live inputs written outside React: mic loudness (0..1), a keystroke/hover pulse and the drag/flick turn (radians). */
+/** Live inputs written outside React: mic loudness (0..1), a keystroke/hover pulse, the sphere's spin (radians, OrbBody) and the hovered section (view-space x, y, z and 0..1 strength). */
 export interface OrbSignals {
   level: number;
   pulse: number;
   spin: number;
+  hot: [number, number, number, number];
 }
 
 const CAMERA_Z = 7.5;
@@ -28,7 +29,7 @@ const FOV = 45;
 const DOTS = 700;
 const RADIUS_SHARE = 0.4;
 const AUTO_SPIN = 0.12;
-const ENTRANCE_S = 1.6;
+const ENTRANCE_S = 1.1;
 const DOT_PX = 2.4;
 const MAX_DPR = 1.5;
 
@@ -61,7 +62,7 @@ function Dust({ state, dark, accent, signals }: Props) {
     () => ({
       uRot: { value: new Matrix3() }, uTime: { value: 0 }, uClock: { value: 0 }, uAmp: { value: 0.035 }, uRipple: { value: 0 },
       uRipplePhase: { value: 0 }, uLevel: { value: 0 }, uContract: { value: 0 }, uSwirl: { value: 0 }, uJitter: { value: 0 },
-      uScatter: { value: 0 }, uIntro: { value: 0 }, uPx: { value: 1 }, uGlow: { value: 0.35 }, uErr: { value: 0 }, uFill: { value: 1 },
+      uScatter: { value: 0 }, uIntro: { value: 0 }, uPx: { value: 1 }, uGlow: { value: 0.35 }, uErr: { value: 0 }, uFill: { value: 1 }, uHot: { value: new Vector4(0, 0, 1, 0) },
       uColorA: { value: new Color() }, uColorB: { value: new Color() }, uErrColor: { value: new Color(ORB_ERROR) },
     }),
     [],
@@ -111,6 +112,7 @@ function Dust({ state, dark, accent, signals }: Props) {
     u.uColorB.value.lerp(target.b, Math.min(1, dt * 4));
     lo.ry += dt * AUTO_SPIN * wave.spin;
     u.uRot.value.setFromMatrix4(m4[0].makeRotationX(0.3).multiply(m4[1].makeRotationY(lo.ry + sig.spin)));
+    u.uHot.value.set(sig.hot[0], sig.hot[1], sig.hot[2], sig.hot[3]);
     u.uPx.value = DOT_PX * dpr * Math.min(1.3, Math.max(0.6, (RADIUS_SHARE * Math.min(size.width, size.height)) / 90));
   });
 

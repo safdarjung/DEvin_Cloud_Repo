@@ -15,7 +15,11 @@ import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 import TaskStack from "@/modules/ai/components/task-card/TaskStack";
 import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
+import { AnatomyCard, type AnatomyResult } from "@/modules/ai/components/explain/AnatomyCard";
+import { InfographicCard, type InfographicResult } from "@/modules/ai/components/explain/InfographicCard";
+import { SpeakButton } from "@/modules/ai/components/voice/SpeakButton";
 import { navigateLink, plainChatText, readToolLabel, sourceLabel } from "@/modules/ai/chat-text";
+import type { ExplainDepth, ExplainMode } from "@/modules/ai/explain/schemas";
 import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 
 export type OrbMessage = UIMessage<{ provider?: "local" | "cloud"; sources?: Array<{ query: string }> }>;
@@ -41,6 +45,63 @@ export function proposalsIn(parts: readonly Part[]): TaskProposalOutput[] {
 export interface LocalCard {
   proposal: TaskProposalOutput;
   at: number;
+}
+
+/** A slash command's run (/anatomy, /teardown, /infographic): its own entry, shown after the first `at` messages. */
+export interface ExplainEntry {
+  id: string;
+  at: number;
+  /** What the person typed, e.g. "/anatomy human heart". */
+  line: string;
+  subject: string;
+  mode: ExplainMode;
+  pending: boolean;
+  anatomy?: AnatomyResult;
+  poster?: InfographicResult;
+  /** A depth change or a poster is being made. */
+  busy?: boolean;
+  /** The envelope's message (or the refusal reason): never blank. */
+  error?: string;
+}
+
+export interface ExplainHandlers {
+  onDepth: (id: string, depth: ExplainDepth) => void;
+  onPoster: (id: string) => void;
+}
+
+function Dots({ label }: { label: string }) {
+  return (
+    <p className="flex items-center gap-1 text-muted-foreground" aria-label={label}>
+      {[0, 150, 300].map((d) => (
+        <span key={d} className="size-1.5 animate-bounce rounded-full bg-current" style={{ animationDelay: `${d}ms` }} aria-hidden />
+      ))}
+    </p>
+  );
+}
+
+function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }) {
+  return (
+    <div className="space-y-2">
+      <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground">{e.line}</p>
+      {e.pending && <Dots label="Working on it" />}
+      {e.anatomy && (
+        <AnatomyCard
+          result={e.anatomy}
+          busy={e.busy}
+          onDepthChange={(d) => handlers.onDepth(e.id, d)}
+          onMakeInfographic={e.poster ? undefined : () => handlers.onPoster(e.id)}
+        />
+      )}
+      {e.busy && <Dots label="Working on it" />}
+      {e.poster && <InfographicCard result={e.poster} variant="poster" />}
+      {e.error && (
+        <p role="alert" className="flex items-start gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-destructive">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {e.error}
+        </p>
+      )}
+    </div>
+  );
 }
 
 type CardHandlers = Pick<TaskCardProps, "onResolved" | "onStart">;
@@ -109,7 +170,12 @@ function Message({ message, institutionSlug, streaming, handlers }: { message: O
         </p>
       )}
       {sources.length > 0 && <p className="text-xs text-muted-foreground">Records used: {sources.join(" · ")}</p>}
-      {provider && <ProviderBadge provider={provider} />}
+      {(provider || (text && !streaming)) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {provider && <ProviderBadge provider={provider} />}
+          {text && !streaming && <SpeakButton text={text} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -118,6 +184,8 @@ interface Props extends CardHandlers {
   institutionSlug: string;
   messages: OrbMessage[];
   localCards: readonly LocalCard[];
+  explains: readonly ExplainEntry[];
+  explainHandlers: ExplainHandlers;
   status: string;
   error: string | null;
   accent: string;
@@ -128,10 +196,11 @@ interface Props extends CardHandlers {
 }
 
 export function OrbTranscript({
-  institutionSlug, messages, localCards, status, error, accent, onRetry, onDismissError, onNewChat, onCollapse, onResolved, onStart,
+  institutionSlug, messages, localCards, explains, explainHandlers, status, error, accent, onRetry, onDismissError, onNewChat, onCollapse, onResolved, onStart,
 }: Props) {
   const handlers: CardHandlers = { onResolved, onStart };
   const localAt = (n: number) => localCards.filter((c) => c.at === n).map((c) => c.proposal);
+  const explainsAt = (n: number) => explains.filter((x) => x.at === n).map((x) => <Explain key={x.id} e={x} handlers={explainHandlers} />);
   const scroller = useRef<HTMLDivElement>(null);
   const last = messages.at(-1);
   const answerShown = last?.role === "assistant" && last.parts.some((p) => (p.type === "text" && p.text) || isToolUIPart(p));
@@ -142,7 +211,7 @@ export function OrbTranscript({
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [messages, localCards, status, error]);
+  }, [messages, localCards, explains, status, error]);
 
   return (
     <section aria-label="Conversation" className="flex size-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border bg-card/95 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.35)] backdrop-blur">
@@ -163,21 +232,17 @@ export function OrbTranscript({
         {localAt(0).map((p) => (
           <Cards key={p.proposalId} proposals={[p]} institutionSlug={institutionSlug} handlers={handlers} />
         ))}
+        {explainsAt(0)}
         {messages.map((m, i) => (
           <Fragment key={m.id}>
             <Message message={m} institutionSlug={institutionSlug} streaming={status === "streaming" && m === last} handlers={handlers} />
             {localAt(i + 1).map((p) => (
               <Cards key={p.proposalId} proposals={[p]} institutionSlug={institutionSlug} handlers={handlers} />
             ))}
+            {explainsAt(i + 1)}
           </Fragment>
         ))}
-        {thinking && (
-          <p className="flex items-center gap-1 text-muted-foreground" aria-label="Thinking">
-            {[0, 150, 300].map((d) => (
-              <span key={d} className="size-1.5 animate-bounce rounded-full bg-current" style={{ animationDelay: `${d}ms` }} aria-hidden />
-            ))}
-          </p>
-        )}
+        {thinking && <Dots label="Thinking" />}
         {error && (
           <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3">
             <p className="flex items-center gap-1.5 font-medium text-destructive">

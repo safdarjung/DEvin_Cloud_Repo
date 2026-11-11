@@ -248,7 +248,7 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
 /**
  * Return the queries available to a provider, keyed by registry name.
  * - `"local"` gets every query (aggregate + personal)
- * - `"groq"` and `"gemini"` get only the aggregate queries
+ * - `"groq"`, `"gemini"` and `"zai"` (every cloud provider) get only the aggregate queries
  *
  * Keys keep the registry's dotted name (`.` → `_` happens in `toolNameFor`,
  * M22's tool builder — not here).

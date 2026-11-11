@@ -75,10 +75,26 @@ const sectionHue = (id: OrbGroupId | "recent") => (id === "recent" ? RECENT_HUE 
 const GROUP_ORDER: readonly (OrbGroupId | "recent")[] = ["recent", ...(Object.keys(SECTIONS) as OrbGroupId[])];
 
 /** What a click does, said before the click. */
-export function featureEffect(f: Pick<OrbFeature, "kind" | "mode">, hasDraft: boolean): string {
+export function featureEffect(f: Pick<OrbFeature, "kind" | "mode"> & { prompt?: string }, hasDraft: boolean): string {
   if (f.kind === "open") return "Opens page";
   if (f.kind === "task") return hasDraft ? "Sends your message for this task" : "Opens a card to approve";
+  if (f.prompt?.endsWith(" ") && f.prompt.startsWith("/")) return "Fills the message box";
   return f.mode === "ask" ? "Asks now" : "Starts a draft";
+}
+
+/** "Explain & create": slash commands offered as features (Learn for students, Teach / Create for staff); a click fills the message box. */
+export function explainFeatures(role: string, have: readonly OrbMode[]): OrbFeature[] {
+  if (role === "guardian") return [];
+  const student = role === "student";
+  const modes = (student ? ["learn"] : ["teach", "create"]).filter((m): m is OrbMode => have.includes(m as OrbMode));
+  const items = [
+    { name: "anatomy", label: "Anatomy: name the parts" },
+    { name: "teardown", label: "Teardown: how it works" },
+    { name: "infographic", label: "Make an infographic" },
+  ];
+  return modes.flatMap((mode) =>
+    items.map((it): OrbFeature => ({ key: `explain:${mode}:${it.name}`, label: it.label, mode, groupId: student ? "study" : "teaching", kind: "ask", prompt: `/${it.name} ` })),
+  );
 }
 
 /** The sections that have something in `mode`, in display order (Recent first). */

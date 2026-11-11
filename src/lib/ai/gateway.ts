@@ -12,6 +12,7 @@ import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseCo
 import * as providers from "@/lib/ai/providers";
 import { streamCloudAgent, type StreamExtras } from "@/lib/ai/cloud-stream";
 import {
+  agentModelId,
   classifyAiError,
   cloudModelWithFallback,
   configuredCloudKeys,
@@ -41,9 +42,10 @@ export interface RunStructuredInput<T> {
   permission?: Permission;
   /**
    * Owner cloud exception (D28, extended 2026-11-06 — 12-decision-log.md): with
-   * `GROQ_API_KEY` (else `GEMINI_API_KEY`) set, run on that provider regardless of
-   * `ai_policy` (Gemini also takes a request too big for Groq's ceiling, and is
-   * Groq's retry on a size/rate error); the prompt is still redacted. Only for prompts without student-personal data; callers opt in
+   * `ZAI_API_KEY` (else `GROQ_API_KEY`, else `GEMINI_API_KEY`) set, run on that provider
+   * regardless of `ai_policy` (structuredCloudPlan: Gemini also takes a request too big
+   * for Groq's ceiling; the next keyed provider that fits gets the one retry on a
+   * size/rate error); the prompt is still redacted. Only for prompts without student-personal data; callers opt in
    * one by one, every other caller keeps the policy plan (C-62). D50: a role whose
    * cloud switch is off keeps the policy plan too.
    */
@@ -110,8 +112,9 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
         cloudEnabled: process.env.AI_CLOUD_ENABLED === "true",
         hasCloudKey: Boolean(process.env.ANTHROPIC_API_KEY),
       });
-  const modelIdFor = (step: ProviderStep): string =>
-    agentModel === "groq" ? providers.groqModelId() : agentModel === "gemini" ? providers.geminiModelId() : stepModelId(step);
+  const modelIdFor = (step: ProviderStep): string => (agentModel ? agentModelId(agentModel) : stepModelId(step));
+  // Groq's settings ride along whenever Groq may answer, as primary or as the retry; other providers ignore them.
+  const groqInPlan = agentModel === "groq" || cloudPlan?.fallback === "groq";
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;
   try {
@@ -171,10 +174,10 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
       const effectiveInstructions = forStep(instructions);
 
       // Cloud provider module is imported here, inside this branch only (C-62).
-      // D28 path: one retry on the other Groq/Gemini provider (with a key) on a size/rate/overload error.
+      // D28 path: one retry on the next keyed cloud provider (structuredCloudPlan) on a size/rate/overload error.
       const agentCloudModel =
         step === "cloud" && agentModel
-          ? await cloudModelWithFallback(agentModel, cloudPlan?.fallback ?? null)
+          ? await cloudModelWithFallback(agentModel, cloudPlan?.fallback ?? null, cloudPlan?.last ?? null)
           : null;
       const model =
         step === "local" ? providers.getLocalModel() : agentCloudModel ? agentCloudModel.model : await providers.getCloudModel("quality");
@@ -189,8 +192,8 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
           // gpt-oss on Groq is a reasoning model: reasoning tokens count against the cap and a
           // truncated JSON comes back as an API error, so keep reasoning low and the cap >= 1024.
           // Strict mode rejects any schema with optional/defaulted keys; Zod still validates the output.
-          maxOutputTokens: agentModel === "groq" && maxOutputTokens ? Math.max(maxOutputTokens, 1024) : maxOutputTokens,
-          providerOptions: agentModel === "groq" ? { groq: { reasoningEffort: "low", strictJsonSchema: false } } : undefined,
+          maxOutputTokens: groqInPlan && maxOutputTokens ? Math.max(maxOutputTokens, 1024) : maxOutputTokens,
+          providerOptions: groqInPlan ? { groq: { reasoningEffort: "low", strictJsonSchema: false } } : undefined,
         });
         const strict = strictSchema?.safeParse(answer.output);
         if (strict && !strict.success) {

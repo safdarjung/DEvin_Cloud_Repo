@@ -4,7 +4,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 // Orb task bridge (migration 0143): ai_proposals RLS, the guard trigger, expiry,
 // and two real flows through the registry without a model: library.loan.issue,
-// and attendance.mark followed by attendance.submit waiting on it (design §3).
+// and attendance.mark followed by attendance.submit waiting on it (design §3);
+// then one round trip per module for tasks classified after the first slice.
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
@@ -13,7 +14,7 @@ import { approveProposal, startProposal } from "@/modules/ai/tasks/proposals.act
 import { buildTaskTools } from "@/modules/ai/tasks/task-tools";
 import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 import { buildContext, callAs, closeActionsHelper } from "../helpers/actions";
-import { closeFactoriesHelper, createAcademicYear, createClassSection, createEnrolment, createGrade } from "../helpers/factories";
+import { closeFactoriesHelper, createAcademicYear, createClassSection, createEnrolment, createGrade, createTerm } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
 import { setActingClient } from "../helpers/server-client-mock";
 
@@ -275,5 +276,106 @@ describe("real flows through the registry, no model", () => {
     expect(otherTask).toMatchObject({ ok: false, error: { code: "validation_failed" } });
     const [still] = await sql`select status from public.ai_proposals where id = ${next.proposalId}`;
     expect(still?.status).toBe("pending");
+  });
+});
+
+describe("newly classified tasks: start → approve as the owning role, refused for a role without the permission", () => {
+  type Role = Parameters<typeof callAs>[1];
+
+  beforeAll(async () => {
+    // AI is off by default for these roles (capabilities/resolve.ts DEFAULT_ENABLED_ROLES).
+    const on = { enabled: true };
+    await sql`
+      update public.institutions
+      set settings = settings || jsonb_build_object('ai_roles', coalesce(settings->'ai_roles', '{}'::jsonb)
+        || ${sql.json({ accountant: on, exam_controller: on, guardian: on })}::jsonb)
+      where id = ${inst.institutionId}
+    `;
+  });
+
+  async function roundTrip(role: Role, action: string, values: Record<string, unknown>) {
+    const started = await callAs(inst, role, startProposal, { action, values });
+    expect(started.ok, JSON.stringify(started)).toBe(true);
+    const card = (started as { data: TaskProposalOutput }).data;
+    const approved = await callAs(inst, role, approveProposal, { proposalId: card.proposalId, values: card.view.values });
+    expect(approved, JSON.stringify(approved)).toMatchObject({ ok: true, data: { status: "approved" } });
+    return { card, result: (approved as { data: { undo?: { action: string; values?: Record<string, unknown> } } }).data };
+  }
+
+  /** Refused at start (taskState permission lock) and at approve (re-checked on a stored card). */
+  async function refused(role: Role, action: string, values: Record<string, unknown>) {
+    expect(await callAs(inst, role, startProposal, { action, values })).toMatchObject({ ok: false, error: { code: "forbidden" } });
+    const id = await rawProposal(inst.users[role].id, { action });
+    expect(await callAs(inst, role, approveProposal, { proposalId: id, values })).toMatchObject({ ok: false, error: { code: "forbidden" } });
+  }
+
+  it("maintenance.request (teacher): the request is raised; a guardian is refused", async () => {
+    const values = { issue: "Ceiling fan in 8B does not turn on", location: "Room 8B", priority: "high" };
+    await roundTrip("teacher", "maintenance.request", values);
+    const rows = await sql`select location, priority, status from public.maintenance_requests where institution_id = ${inst.institutionId} and issue = ${values.issue}`;
+    expect(rows).toEqual([{ location: "Room 8B", priority: "high", status: "open" }]);
+    await refused("guardian", "maintenance.request", values);
+  });
+
+  it("people.staffAttendance.checkIn (teacher): today's row is written for the teacher's own staff record; a guardian is refused", async () => {
+    await roundTrip("teacher", "people.staffAttendance.checkIn", {});
+    const [teacher] = await sql`select staff_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'`;
+    const rows = await sql`select status from public.staff_attendance where institution_id = ${inst.institutionId} and staff_id = ${teacher!.staff_id}`;
+    expect(rows).toHaveLength(1);
+    await refused("guardian", "people.staffAttendance.checkIn", {});
+  });
+
+  it("inventory.item.create (accountant): the stock item exists; a teacher is refused", async () => {
+    const values = { name: "Whiteboard marker (blue)", unit: "box", reorderLevel: 5 };
+    await roundTrip("accountant", "inventory.item.create", values);
+    const rows = await sql`select unit, reorder_level from public.inventory_items where institution_id = ${inst.institutionId} and name = ${values.name}`;
+    expect(rows).toEqual([{ unit: "box", reorder_level: 5 }]);
+    await refused("teacher", "inventory.item.create", values);
+  });
+
+  it("transport.assign (admin): stop and student resolved by name, the assignment is written, unassign is offered; a teacher is refused", async () => {
+    const studentId = await insertStudent("Tara", "Busrider");
+    const [route] = await sql`insert into public.transport_routes (institution_id, name) values (${inst.institutionId}, 'Route Orb') returning id`;
+    const [stop] = await sql`
+      insert into public.transport_stops (institution_id, route_id, seq, name, pickup_time, map_x, map_y)
+      values (${inst.institutionId}, ${route!.id}, 1, 'Gate Four Orb', '07:30', 10, 20) returning id`;
+
+    const { card, result } = await roundTrip("admin", "transport.assign", { studentId: "Tara Busrider", stopId: "Gate Four Orb" });
+    expect(card.view.values).toEqual({ studentId, stopId: stop!.id });
+    expect(card.view.resolved["/stopId"]).toMatchObject({ label: "Gate Four Orb", hint: expect.stringContaining("Route Orb") });
+    const rows = await sql`select route_id, stop_id from public.transport_assignments where institution_id = ${inst.institutionId} and student_id = ${studentId}`;
+    expect(rows).toEqual([{ route_id: route!.id, stop_id: stop!.id }]);
+    expect(result.undo).toEqual({ action: "transport.unassign", label: "Take a student off school transport", values: { studentId } });
+    await refused("teacher", "transport.assign", { studentId, stopId: stop!.id });
+  });
+
+  it("exam.create (exam controller): the exam is created in the current year's term; a teacher is refused", async () => {
+    let [year] = await sql`select id from public.academic_years where institution_id = ${inst.institutionId} and is_current`;
+    year ??= { id: await createAcademicYear(inst.institutionId, { name: "2029-30" }) };
+    const termId = await createTerm(inst.institutionId, year.id as string, { name: "Orb Term", sequence: 9 });
+    const values = { termId, name: "Orb Unit Test 1", type: "unit_test" };
+    const { card } = await roundTrip("exam_controller", "exam.create", values);
+    expect(card.view.resolved["/termId"]?.label).toBe("Orb Term");
+    const rows = await sql`select term_id, type, academic_year_id from public.exams where institution_id = ${inst.institutionId} and name = ${values.name}`;
+    expect(rows).toEqual([{ term_id: termId, type: "unit_test", academic_year_id: year.id }]);
+    await refused("teacher", "exam.create", values);
+  });
+
+  it("clubs.event.signUp (guardian): the event is resolved by title, the child is pinned, cancel is offered; an admin is refused", async () => {
+    const child = await insertStudent("Kiran", "Clubwala");
+    const [guardian] = await sql`select guardian_id from public.memberships where institution_id = ${inst.institutionId} and role = 'guardian'`;
+    await sql`insert into public.guardian_students (institution_id, guardian_id, student_id, relationship) values (${inst.institutionId}, ${guardian!.guardian_id}, ${child}, 'mother')`;
+    const [club] = await sql`insert into public.clubs (institution_id, name) values (${inst.institutionId}, 'Orb Astronomy Club') returning id`;
+    const [event] = await sql`
+      insert into public.club_events (institution_id, club_id, title, starts_at)
+      values (${inst.institutionId}, ${club!.id}, 'Orb Star Night', now() + interval '7 days') returning id`;
+
+    // The model's studentId is ignored: a guardian's card is pinned to their own child.
+    const { card, result } = await roundTrip("guardian", "clubs.event.signUp", { eventId: "Orb Star Night", studentId: crypto.randomUUID() });
+    expect(card.view.values).toEqual({ eventId: event!.id, studentId: child });
+    const rows = await sql`select signed_up_by from public.club_event_signups where event_id = ${event!.id} and student_id = ${child}`;
+    expect(rows).toEqual([{ signed_up_by: inst.users.guardian.id }]);
+    expect(result.undo).toMatchObject({ action: "clubs.event.cancelSignup", values: { eventId: event!.id, studentId: child } });
+    await refused("admin", "clubs.event.signUp", { eventId: event!.id, studentId: child });
   });
 });

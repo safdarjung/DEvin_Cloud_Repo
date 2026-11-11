@@ -68,6 +68,8 @@ export interface RunnerPorts {
   enqueueDueForecasts(): Promise<void>;
   /** 0138: enqueues the daily `notify.study_reminders` job per institution (`public.enqueue_study_reminders`). */
   enqueueStudyReminders(): Promise<number>;
+  /** 0143: deletes orb approval cards past the 30-day retention (`public.purge_ai_proposals`). */
+  purgeAiProposals(): Promise<number>;
   now(): number;
 }
 
@@ -192,6 +194,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
     },
     async enqueueStudyReminders() {
       const { data, error } = await admin.rpc("enqueue_study_reminders");
+      if (error) throw new Error(error.message);
+      return Number(data);
+    },
+    async purgeAiProposals() {
+      const { data, error } = await admin.rpc("purge_ai_proposals");
       if (error) throw new Error(error.message);
       return Number(data);
     },
@@ -335,6 +342,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] study reminder sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.purgeAiProposals();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] orb card purge failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

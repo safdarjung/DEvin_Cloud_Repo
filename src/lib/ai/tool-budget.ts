@@ -15,11 +15,12 @@ export const CHARS_PER_TOKEN = 4;
  * - groq: free tier allows 8,000 tokens per minute and counts max_tokens
  *   (1,024) in each request, so 5,500 leaves room for both.
  * - gemini: free-tier TPM is far larger; 24,000 keeps latency sane.
+ * - zai: same reasoning as gemini.
  * - local: Ollama's default context is 4,096 tokens and silently drops the
  *   start of a longer prompt (the system rules) — shortcut: assumes the
  *   default num_ctx; raise this if the school runs Ollama with a larger one.
  */
-export const TOKEN_CEILING = { groq: 5_500, gemini: 24_000, local: 3_500 } as const;
+export const TOKEN_CEILING = { groq: 5_500, gemini: 24_000, zai: 24_000, local: 3_500 } as const;
 export type BudgetProvider = keyof typeof TOKEN_CEILING;
 
 /** Room kept free on the first step for one tool result (agents/tools.ts MAX_TOOL_RESULT_CHARS) plus the call. */

@@ -15,8 +15,8 @@ import type { ErrorCode } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { acquireConcurrencySlot, aiSettingsFor, checkLimits, logUsage, releaseConcurrencySlot } from "@/lib/ai/usage";
 import { estimateCost } from "@/lib/ai/pricing";
-import { geminiModelId, groqModelId } from "@/lib/ai/providers";
 import {
+  agentModelId,
   classifyAiError,
   cloudModelWithFallback,
   configuredCloudKeys,
@@ -24,7 +24,7 @@ import {
   streamErrorText,
   type CloudModel,
 } from "@/lib/ai/provider-fallback";
-import { ceilingFor, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
+import { RESULT_RESERVE_TOKENS, TOKEN_CEILING, ceilingFor, planToolBudget, type ToolBudgetHints } from "@/lib/ai/tool-budget";
 import type { AgentProvider } from "@/modules/ai/agent/provider-routing";
 
 // Matches the quiz/remark routes' own output cap, scaled down: these
@@ -59,20 +59,22 @@ export type CloudAgentResult<TOOLS extends ToolSet> =
   | ({ ok: true; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> } & StreamExtras)
   | { ok: false; error: { code: ErrorCode; message: string } };
 
-function agentModelId(provider: AgentProvider): string {
-  return provider === "groq" ? groqModelId() : geminiModelId();
-}
-
 export async function streamCloudAgent<TOOLS extends ToolSet>(
   input: CloudAgentInput<TOOLS>,
 ): Promise<CloudAgentResult<TOOLS>> {
   const { ctx, feature, system, tools, abortSignal, notConfiguredMessage } = input;
   const redactionsAt = (): number => (typeof input.redactions === "function" ? input.redactions() : input.redactions ?? 0);
   const agentRunId = input.agentRunId ?? null;
+  const budgetAt = (ceiling: number) =>
+    planToolBudget({ texts: [], ...input.budget, system, messages: input.messages, tools, ceiling });
+  const keys = configuredCloudKeys();
+  // Z.ai is budgeted to its own ceiling first; that size picks its one retry (Groq only when it fits).
+  const zaiTokens = keys.zai ? budgetAt(TOKEN_CEILING.zai).estimatedTokens + RESULT_RESERVE_TOKENS : undefined;
   // Only providers with a key: the routing pick yields to the other when its key is missing.
-  const providers = cloudProviderPlan({ mode: "cloud", preferred: input.provider, keys: configuredCloudKeys() });
+  const providers = cloudProviderPlan({ mode: "cloud", preferred: input.provider, keys, requestTokens: zaiTokens });
   const provider = providers?.primary ?? input.provider;
   const fallback = providers?.fallback ?? null;
+  const last = providers?.last ?? null;
   const modelId = agentModelId(provider);
 
   let limits: Awaited<ReturnType<typeof checkLimits>>;
@@ -125,7 +127,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   let cloud: CloudModel;
   try {
     if (!providers) throw new Error("no cloud provider key configured");
-    cloud = await cloudModelWithFallback(provider, fallback);
+    cloud = await cloudModelWithFallback(provider, fallback, last);
   } catch {
     releaseConcurrencySlot(concurrencyId, "cloud");
     await logUsage({
@@ -152,14 +154,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   const accumulatedUsage = { inputTokens: 0, outputTokens: 0 };
 
   // Budget against the smaller of the two ceilings: a step may land on the fallback.
-  const plan = planToolBudget({
-    texts: [],
-    ...input.budget,
-    system,
-    messages: input.messages,
-    tools,
-    ceiling: ceilingFor(fallback ? [provider, fallback] : [provider]),
-  });
+  const plan = budgetAt(ceilingFor(fallback ? [provider, fallback] : [provider]));
   const logContext = { feature, provider, fallback, estimatedTokens: plan.estimatedTokens };
   console.info("[ai-budget]", { ...logContext, tools: plan.activeTools.length, groups: plan.groups.slice(0, 6) });
   const usedModel = () => cloud.modelsUsed().join("+");

@@ -11,21 +11,36 @@ import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listSectionSubjects, listCurriculumUnits, listTeachableSections, listTeacherAssignments } from "@/modules/academics/assignments.queries";
+import { listAchievements } from "@/modules/achievements/queries";
 import { listEnquiriesByStage } from "@/modules/admissions/queries";
 import { getTodaySectionsForTeacher } from "@/modules/attendance/queries";
-import { clubsList } from "@/modules/clubs/queries";
-import { listSectionOptions, listSubjectOptions, listTermOptions as examTermOptions } from "@/modules/exams/queries";
+import { canteenItems } from "@/modules/canteen/queries";
+import { clubEventsList, clubsList, housesLeaderboard } from "@/modules/clubs/queries";
+import { complianceItems } from "@/modules/compliance/queries";
+import { diaryForStudent } from "@/modules/diary/queries";
+import { dutyTypes } from "@/modules/duties/queries";
+import { listExams, listRecheckQueue, listSectionOptions, listSubjectOptions, listTermOptions as examTermOptions } from "@/modules/exams/queries";
 import { expenseCategories } from "@/modules/expenses/queries";
-import { listAcademicYears, listGradeOptions, listTermOptions as financeTermOptions } from "@/modules/finance/queries";
+import { facilitiesAssets, facilitiesMaintenanceRequests } from "@/modules/facilities/queries";
+import { listAcademicYears, listFeeStructures, listGradeOptions, listTermOptions as financeTermOptions } from "@/modules/finance/queries";
 import { formList } from "@/modules/forms/queries";
 import { listTickets } from "@/modules/helpdesk/queries";
+import { hostelRooms } from "@/modules/hostel/queries";
 import { listInsights } from "@/modules/insights/queries";
 import { ListInsightsSchema } from "@/modules/insights/schemas";
+import { inventoryStock } from "@/modules/inventory/queries";
+import { libraryCatalog } from "@/modules/library/queries";
 import { leaveRequests } from "@/modules/people/hr.queries";
-import { getStudentProfile, listStudents, searchStaff } from "@/modules/people/queries";
+import { getStudentProfile, listMyChildren, listStudents, searchStaff } from "@/modules/people/queries";
 import { ptmEvents } from "@/modules/ptm/queries";
+import { surveyList } from "@/modules/ptm/survey.queries";
+import { listQuestions } from "@/modules/question-bank/queries";
+import { QuestionListSchema } from "@/modules/question-bank/schemas";
+import { concessionRules } from "@/modules/scholarships/queries";
 import { schoolLabs } from "@/modules/school-labs/queries";
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
+import { transportRoutes, transportVehicles } from "@/modules/transport/queries";
+import { visitorsGatePasses } from "@/modules/visitors/queries";
 import type { EntityOption, EntityType } from "./types";
 
 export const MAX_OPTIONS = 20;
@@ -49,6 +64,15 @@ async function sectionGrade(ctx: TenantContext, classSectionId: string | undefin
   if (!classSectionId) return undefined;
   return (await listTeachableSections(ctx)).find((s) => s.id === classSectionId)?.gradeId;
 }
+
+/** A guardian's children or a student's own record (the card's pinned studentId narrows it); staff get none. */
+async function ownStudentIds(ctx: TenantContext, scope: EntityScope): Promise<string[]> {
+  if (scope.studentId) return [scope.studentId];
+  if (ctx.membership.role === "student") return ctx.membership.studentId ? [ctx.membership.studentId] : [];
+  return ctx.membership.role === "guardian" ? (await listMyChildren(ctx)).map((c) => c.id) : [];
+}
+
+const short = (text: string, max = 80): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
 const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
   student: [
@@ -130,6 +154,8 @@ const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
   "clubs.club": [{ query: "clubs.list", list: async (ctx) => (await clubsList(ctx)).map((c) => opt(c.id, c.name, c.patronName)) }],
   "helpdesk.ticket": [
     { query: "helpdesk.tickets", list: async (ctx) => (await listTickets(ctx, {})).rows.map((t) => opt(t.id, t.subject, `${t.raisedByName}, ${t.status}`)) },
+    // Teachers, students and guardians: their own tickets (same reader, RLS narrows it).
+    { query: "helpdesk.myTickets", list: async (ctx) => (await listTickets(ctx, {})).rows.map((t) => opt(t.id, t.subject, t.status)) },
   ],
   "admissions.enquiry": [
     {
@@ -149,6 +175,81 @@ const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
   "forms.form": [{ query: "form.list", list: async (ctx) => (await formList(ctx)).map((f) => opt(f.id, f.title, f.status)) }],
   assignment: [
     { query: "academics.listTeacherAssignments", list: async (ctx) => (await listTeacherAssignments(ctx)).map((a) => opt(a.id, a.title, a.status)) },
+  ],
+  exam: [{ query: "exams.listExams", list: async (ctx) => (await listExams(ctx)).map((e) => opt(e.id, e.name, `${e.termName}, ${e.status}`)) }],
+  "exam.recheck": [
+    { query: "exams.listRecheckQueue", list: async (ctx) => (await listRecheckQueue(ctx)).map((r) => opt(r.id, `${r.studentName}: recheck`, r.status)) },
+  ],
+  "facilities.asset": [
+    { query: "facilities.assets", list: async (ctx) => (await facilitiesAssets(ctx)).map((a) => opt(a.id, a.name, a.room ?? a.location ?? a.category)) },
+  ],
+  "facilities.maintenanceRequest": [
+    {
+      query: "facilities.maintenanceRequests",
+      list: async (ctx) =>
+        (await facilitiesMaintenanceRequests(ctx)).filter((r) => r.status !== "done").map((r) => opt(r.id, short(r.issue), `${r.asset}, ${r.status}`)),
+    },
+  ],
+  "inventory.item": [
+    { query: "inventory.stock", list: async (ctx) => (await inventoryStock(ctx)).map((i) => opt(i.itemId, i.name, `${i.onHand} ${i.unit} in stock`)) },
+  ],
+  // shortcut: the catalogue's first 100 books; search narrows those only. Upgrade by passing `q` when schools pass 100 titles.
+  "library.book": [{ query: "library.catalog", list: async (ctx) => (await libraryCatalog(ctx, { limit: 100 })).map((b) => opt(b.id, b.title, b.author)) }],
+  "transport.route": [{ query: "transport.routes", list: async (ctx) => (await transportRoutes(ctx)).map((r) => opt(r.id, r.name, `${r.stops.length} stops`)) }],
+  "transport.stop": [
+    {
+      query: "transport.routes",
+      list: async (ctx) => (await transportRoutes(ctx)).flatMap((r) => r.stops.map((s) => opt(s.id, s.name, `${r.name}, ${s.eta}`))),
+    },
+  ],
+  "transport.vehicle": [{ query: "transport.vehicles", list: async (ctx) => (await transportVehicles(ctx)).map((v) => opt(v.id, v.registrationNo, v.driverName)) }],
+  "hostel.room": [{ query: "hostel.rooms", list: async (ctx) => (await hostelRooms(ctx)).map((r) => opt(r.id, `${r.block} ${r.roomNo}`, `${r.occupied} of ${r.capacity} beds`)) }],
+  "clubs.event": [
+    { query: "clubs.events", list: async (ctx) => (await clubEventsList(ctx)).map((e) => opt(e.id, e.title, `${e.clubName}, ${e.startsAt.slice(0, 10)}`)) },
+  ],
+  "clubs.house": [{ query: "clubs.houseLeaderboard", list: async (ctx) => (await housesLeaderboard(ctx)).map((h) => opt(h.id, h.name)) }],
+  "compliance.item": [{ query: "compliance.items", list: async (ctx) => (await complianceItems(ctx)).map((c) => opt(c.id, c.title, `due ${c.dueOn}`)) }],
+  "canteen.item": [
+    { query: "canteen.items", list: async (ctx) => (await canteenItems(ctx, { includeInactive: true })).map((i) => opt(i.id, i.name, i.isActive ? null : "inactive")) },
+  ],
+  "duty.type": [{ query: "duties.types", list: async (ctx) => (await dutyTypes(ctx)).map((d) => opt(d.id, d.name, d.isActive ? null : "inactive")) }],
+  question: [
+    {
+      query: "questionBank.list",
+      list: async (ctx) =>
+        (await listQuestions(ctx, QuestionListSchema.parse({ pageSize: 100 }))).items.map((q) => opt(q.id, short(q.body), `${q.gradeCode} ${q.subjectName}`)),
+    },
+  ],
+  "ptm.survey": [{ query: "survey.list", list: async (ctx) => (await surveyList(ctx)).map((s) => opt(s.id, s.title, s.status)) }],
+  "scholarships.rule": [
+    { query: "scholarships.rules", list: async (ctx) => (await concessionRules(ctx, { includeInactive: true })).map((r) => opt(r.id, r.name, r.isActive ? null : "inactive")) },
+  ],
+  "finance.feeStructure": [{ query: "finance.listFeeStructures", list: async (ctx) => (await listFeeStructures(ctx)).map((f) => opt(f.id, f.name)) }],
+  "visitors.gatePass": [
+    {
+      query: "visitors.gatePasses",
+      list: async (ctx) => (await visitorsGatePasses(ctx, {})).map((g) => opt(g.id, `${g.studentName}: gate pass`, `${g.collectorName}, ${g.status}`)),
+    },
+  ],
+  achievement: [
+    {
+      query: "achievements.list",
+      list: async (ctx) =>
+        (await listAchievements(ctx)).rows.filter((a) => !a.voidedAt).map((a) => opt(a.id, `${a.studentName}: ${a.title}`, a.verified ? "verified" : "not verified")),
+    },
+  ],
+  // Families acknowledge entries of their own child's section; staff have no list here (null: no source serves them).
+  "diary.entry": [
+    {
+      query: "diary.forStudent",
+      list: async (ctx, _s, scope) => {
+        const ids = await ownStudentIds(ctx, scope);
+        if (!ids.length) return null;
+        // Siblings in one section share entries: one option each.
+        const rows = new Map((await Promise.all(ids.map((id) => diaryForStudent(ctx, id)))).flat().map((e) => [e.id, e]));
+        return [...rows.values()].map((e) => opt(e.id, short(`${e.subject?.name ?? "Diary"}: ${e.body}`), `${e.entryDate}${e.acknowledged ? ", acknowledged" : ""}`));
+      },
+    },
   ],
 };
 

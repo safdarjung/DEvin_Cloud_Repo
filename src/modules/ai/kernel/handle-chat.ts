@@ -328,7 +328,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
     return apiResponse(fail("validation_failed", "No readable text in this message."));
   }
 
-  const cloudConfigured = Boolean(process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
+  const cloudConfigured = Boolean(process.env.ZAI_API_KEY || process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY);
   const mode: "local" | "cloud" = roleConfig.cloud && cloudConfigured ? "cloud" : "local";
   const provider = mode === "cloud" ? pickAgentProvider(latestUserText(input.messages)) : undefined;
 

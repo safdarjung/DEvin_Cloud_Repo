@@ -1,6 +1,6 @@
 import "server-only";
 // Cloud provider fallback + honest error mapping (gateway layer). Only ever
-// moves between the two D28/D29 cloud providers (Groq, Gemini): a request
+// moves between the D28/D29 cloud providers (Z.ai, Groq, Gemini): a request
 // the caller routed locally (role cloud switch off, keyless install, the
 // local plan) never reaches this file, and a provider without a key is
 // never tried. `ai_policy` still governs only Anthropic (DBT-157).
@@ -46,16 +46,32 @@ export interface CloudPlanInput {
   mode: "local" | "cloud";
   /** The routing pick (pickAgentProvider). */
   preferred: AgentProvider;
-  keys: { groq: boolean; gemini: boolean };
+  keys: { groq: boolean; gemini: boolean; zai: boolean };
+  /** Estimated whole request; picks Z.ai's one retry. Omitted: treated as too big for Groq. */
+  requestTokens?: number;
+}
+
+/** `last` is a second retry after `fallback`; absent or null means none. */
+export interface CloudPlan {
+  primary: AgentProvider;
+  fallback: AgentProvider | null;
+  last?: AgentProvider | null;
 }
 
 /**
  * Which cloud provider answers and which one (if any) gets the one retry.
- * Only providers with a key are ever named; the preferred one yields to the
- * other when its own key is missing.
+ * Only providers with a key are ever named. With a Z.ai key Z.ai answers
+ * whatever the pick, and its retry is Groq only when the request fits Groq's
+ * ceiling, else Gemini. Otherwise the preferred one yields to the other when
+ * its own key is missing.
  */
-export function cloudProviderPlan({ mode, preferred, keys }: CloudPlanInput): { primary: AgentProvider; fallback: AgentProvider | null } | null {
+export function cloudProviderPlan({ mode, preferred, keys, requestTokens = Infinity }: CloudPlanInput): CloudPlan | null {
   if (mode !== "cloud") return null;
+  if (keys.zai) {
+    const viaGroq = keys.groq && requestTokens <= TOKEN_CEILING.groq;
+    // Gemini is the last resort after Groq: Groq's daily cap runs out (2026-11-11).
+    return { primary: "zai", fallback: viaGroq ? "groq" : keys.gemini ? "gemini" : null, ...(viaGroq && keys.gemini ? { last: "gemini" as const } : {}) };
+  }
   const other: AgentProvider = preferred === "groq" ? "gemini" : "groq";
   if (keys[preferred]) return { primary: preferred, fallback: keys[other] ? other : null };
   return keys[other] ? { primary: other, fallback: null } : null;
@@ -64,22 +80,22 @@ export function cloudProviderPlan({ mode, preferred, keys }: CloudPlanInput): { 
 /**
  * A one-shot structured call (runStructured): the first keyed provider whose
  * per-request ceiling (TOKEN_CEILING, the same one chat uses) holds the whole
- * request, Groq first; the other keyed one that also fits gets the one retry.
- * "too_large" when a key exists but nothing fits: the caller says so instead
- * of trimming the user's own text. null when no Groq/Gemini key is set.
+ * request, in order Z.ai, Groq, Gemini; the next keyed one that also fits gets
+ * the one retry. "too_large" when a key exists but nothing fits: the caller
+ * says so instead of trimming the user's own text. null when no cloud key is set.
  */
 export function structuredCloudPlan(
   keys: CloudPlanInput["keys"],
   requestTokens: number,
-): { primary: AgentProvider; fallback: AgentProvider | null } | "too_large" | null {
-  const keyed = (["groq", "gemini"] as const).filter((p) => keys[p]);
+): CloudPlan | "too_large" | null {
+  const keyed = (["zai", "groq", "gemini"] as const).filter((p) => keys[p]);
   if (keyed.length === 0) return null;
   const fits = keyed.filter((p) => requestTokens <= TOKEN_CEILING[p]);
-  return fits.length === 0 ? "too_large" : { primary: fits[0], fallback: fits[1] ?? null };
+  return fits.length === 0 ? "too_large" : { primary: fits[0], fallback: fits[1] ?? null, ...(fits[2] ? { last: fits[2] } : {}) };
 }
 
 export function configuredCloudKeys(): CloudPlanInput["keys"] {
-  return { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY) };
+  return { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY), zai: Boolean(process.env.ZAI_API_KEY) };
 }
 
 const USER_MESSAGE: Record<AiErrorKind, { code: ErrorCode; message: string }> = {
@@ -113,8 +129,8 @@ type WrappedModel = ReturnType<typeof wrapLanguageModel>;
 // output strictly after generation, so dropping a bound here never loosens what
 // is accepted. Gemini answers 400 INVALID_ARGUMENT to nested arrays bounded by
 // maxItems (the website page draft schema, 2026-11-11); Groq takes everything
-// with strictJsonSchema off.
-const UNSUPPORTED_SCHEMA_KEYS: Record<AgentProvider, readonly string[]> = { groq: [], gemini: ["maxItems"] };
+// with strictJsonSchema off. Z.ai gets the schema as prompt text (schemaRules), never as a schema.
+const UNSUPPORTED_SCHEMA_KEYS: Record<AgentProvider, readonly string[]> = { groq: [], gemini: ["maxItems"], zai: [] };
 
 export function sanitizeSchemaFor(provider: AgentProvider, schema: JSONSchema7): JSONSchema7 {
   const drop = UNSUPPORTED_SCHEMA_KEYS[provider];
@@ -131,12 +147,23 @@ export function sanitizeSchemaFor(provider: AgentProvider, schema: JSONSchema7):
   return drop.length === 0 ? schema : (walk(schema) as JSONSchema7);
 }
 
+// Z.ai silently ignores json_schema (answers fenced markdown with extra keys), so it
+// gets JSON-object mode with the schema in its system prompt; Zod validates after.
+type ModelPrompt = Parameters<NonNullable<LanguageModelMiddleware["transformParams"]>>[0]["params"]["prompt"];
+
+function schemaInPrompt(prompt: ModelPrompt, schema: JSONSchema7): ModelPrompt {
+  const note = `JSON schema:\n${JSON.stringify(schema)}\nYou MUST answer with a JSON object that matches the JSON schema above.`;
+  const [first, ...rest] = prompt;
+  return first?.role === "system" ? [{ ...first, content: `${first.content}\n\n${note}` }, ...rest] : [{ role: "system", content: note }, ...prompt];
+}
+
 function schemaRules(provider: AgentProvider): LanguageModelMiddleware {
   return {
-    transformParams: async ({ params }) =>
-      params.responseFormat?.type === "json" && params.responseFormat.schema
-        ? { ...params, responseFormat: { ...params.responseFormat, schema: sanitizeSchemaFor(provider, params.responseFormat.schema) } }
-        : params,
+    transformParams: async ({ params }) => {
+      if (params.responseFormat?.type !== "json" || !params.responseFormat.schema) return params;
+      if (provider === "zai") return { ...params, prompt: schemaInPrompt(params.prompt, params.responseFormat.schema), responseFormat: { type: "json" } };
+      return { ...params, responseFormat: { ...params.responseFormat, schema: sanitizeSchemaFor(provider, params.responseFormat.schema) } };
+    },
   };
 }
 
@@ -144,7 +171,12 @@ function schemaRules(provider: AgentProvider): LanguageModelMiddleware {
 const FACTORY: Record<AgentProvider, { id: () => string; get: () => Promise<LanguageModel> }> = {
   groq: { id: () => providers.groqModelId(), get: () => providers.getGroqModel() },
   gemini: { id: () => providers.geminiModelId(), get: () => providers.getGeminiModel() },
+  zai: { id: () => providers.zaiModelId(), get: () => providers.getZaiModel() },
 };
+
+export function agentModelId(provider: AgentProvider): string {
+  return FACTORY[provider].id();
+}
 
 export interface CloudModel {
   model: LanguageModel;
@@ -158,7 +190,7 @@ export interface CloudModel {
  * with the same (already redacted) prompt and tools. Throws when the
  * primary's key is missing, like `getGroqModel`/`getGeminiModel`.
  */
-export async function cloudModelWithFallback(primary: AgentProvider, fallback: AgentProvider | null): Promise<CloudModel> {
+export async function cloudModelWithFallback(primary: AgentProvider, fallback: AgentProvider | null, last: AgentProvider | null = null): Promise<CloudModel> {
   const used: string[] = [];
   const note = (id: string) => {
     if (!used.includes(id)) used.push(id);
@@ -166,50 +198,58 @@ export async function cloudModelWithFallback(primary: AgentProvider, fallback: A
   const base = await FACTORY[primary].get();
   // A bare model id string resolves through the SDK's global provider: nothing to wrap.
   if (typeof base === "string") return { model: base, modelsUsed: () => [FACTORY[primary].id()] };
-  let fallbackModel: WrappedModel | null = null;
-  const getFallback = async () => {
-    if (!fallback) return null;
-    const next = await FACTORY[fallback].get();
-    if (typeof next === "string") return null;
-    fallbackModel ??= wrapLanguageModel({ model: next, middleware: schemaRules(fallback) });
-    return fallbackModel;
+  // The retries in order: the plan's fallback, then its last resort (D53: Z.ai, then Groq, then Gemini).
+  const chain = [fallback, last].filter((p): p is AgentProvider => p !== null);
+  const models = new Map<AgentProvider, WrappedModel | null>();
+  const modelFor = async (provider: AgentProvider): Promise<WrappedModel | null> => {
+    if (!models.has(provider)) {
+      const next = await FACTORY[provider].get().catch(() => null);
+      models.set(provider, next === null || typeof next === "string" ? null : wrapLanguageModel({ model: next, middleware: schemaRules(provider) }));
+    }
+    return models.get(provider) ?? null;
   };
-  // Sticky per request: once the primary is out of tokens/busy, later steps go straight to the fallback.
-  let switched = false;
-  const onFallback = async <T>(call: (m: WrappedModel) => PromiseLike<T>, model: WrappedModel): Promise<T> => {
-    const result = await call(model);
-    note(FACTORY[fallback as AgentProvider].id());
-    return result;
-  };
-  const retry = async <T>(err: unknown, call: (m: WrappedModel) => PromiseLike<T>): Promise<T> => {
-    const model = shouldFallback(err) ? await getFallback().catch(() => null) : null;
-    if (!model || !fallback) throw err;
-    const info = classifyAiError(err);
-    console.warn("[ai-fallback] retrying on the other provider", { from: primary, to: fallback, status: info.status, kind: info.kind });
-    switched = true;
-    return onFallback(call, model);
+  // Sticky per request: once a provider is out of tokens/busy, later steps start at the one that answered. -1 is the primary.
+  let at = -1;
+  const run = async <T>(first: () => PromiseLike<T>, call: (m: WrappedModel) => PromiseLike<T>): Promise<T> => {
+    let err: unknown;
+    let failed = false;
+    let from = primary;
+    if (at < 0) {
+      try {
+        const result = await first();
+        note(FACTORY[primary].id());
+        return result;
+      } catch (e) {
+        err = e;
+        failed = true;
+      }
+    }
+    for (let i = Math.max(at, 0); i < chain.length; i++) {
+      const provider = chain[i];
+      if (failed && !shouldFallback(err)) throw err;
+      const model = await modelFor(provider);
+      if (!model) continue;
+      if (failed) {
+        const info = classifyAiError(err);
+        console.warn("[ai-fallback] retrying on the other provider", { from, to: provider, status: info.status, kind: info.kind });
+      }
+      at = i;
+      try {
+        const result = await call(model);
+        note(FACTORY[provider].id());
+        return result;
+      } catch (e) {
+        err = e;
+        failed = true;
+        from = provider;
+      }
+    }
+    throw err;
   };
   const middleware: LanguageModelMiddleware = {
-    wrapGenerate: async ({ doGenerate, params }) => {
-      if (switched && fallbackModel) return onFallback((m) => m.doGenerate(params), fallbackModel);
-      try {
-        const result = await doGenerate();
-        note(FACTORY[primary].id());
-        return result;
-      } catch (err) {
-        return retry(err, (m) => m.doGenerate(params));
-      }
-    },
-    wrapStream: async ({ doStream, params }) => {
-      if (switched && fallbackModel) return onFallback((m) => m.doStream(params), fallbackModel);
-      try {
-        const result = await doStream();
-        note(FACTORY[primary].id());
-        return result;
-      } catch (err) {
-        return retry(err, (m) => m.doStream(params));
-      }
-    },
+    wrapGenerate: ({ doGenerate, params }) => run(doGenerate, (m) => m.doGenerate(params)),
+    wrapStream: ({ doStream, params }) => run(doStream, (m) => m.doStream(params)),
   };
-  return { model: wrapLanguageModel({ model: base, middleware: [schemaRules(primary), middleware] }), modelsUsed: () => (used.length ? [...used] : [FACTORY[primary].id()]) };
+  // Fallback outermost: a retry gets the caller's params, not the primary's provider-shaped ones.
+  return { model: wrapLanguageModel({ model: base, middleware: [middleware, schemaRules(primary)] }), modelsUsed: () => (used.length ? [...used] : [FACTORY[primary].id()]) };
 }

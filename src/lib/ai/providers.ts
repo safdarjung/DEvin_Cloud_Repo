@@ -85,6 +85,36 @@ export async function getGroqModel(): Promise<LanguageModel> {
   return groq(groqModelId());
 }
 
+// Owner decision 2026-11-11: Z.ai (GLM) answers first whenever ZAI_API_KEY is
+// set; Groq/Gemini become its one retry (provider-fallback.ts). The free
+// `glm-4.7-flash` is the default; `glm-5.3-flash` is the cheap paid tier.
+export function zaiModelId(): string {
+  return process.env.ZAI_MODEL ?? "glm-4.7-flash";
+}
+
+/** Same contract as `getGroqModel`: lazy import (C-62 shape), throws if
+ * `ZAI_API_KEY` is unset — the caller maps that to `ai_unavailable`. */
+export async function getZaiModel(): Promise<LanguageModel> {
+  const apiKey = process.env.ZAI_API_KEY;
+  if (!apiKey) {
+    throw new Error("ZAI_API_KEY is not configured.");
+  }
+  const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
+  const modelId = zaiModelId();
+  // GLM thinks unless told not to (slow, burns tokens); glm-5.3* cannot turn it off, only down.
+  const thinking = modelId.startsWith("glm-5.3") ? { reasoning_effort: "low" } : { thinking: { type: "disabled" } };
+  const zai = createOpenAICompatible({
+    name: "zai",
+    baseURL: "https://api.z.ai/api/paas/v4",
+    apiKey,
+    includeUsage: true,
+    // Z.ai silently ignores json_schema: JSON-object mode, schema in the prompt (provider-fallback.ts).
+    supportsStructuredOutputs: false,
+    transformRequestBody: (body) => ({ ...body, ...thinking }),
+  });
+  return zai(modelId);
+}
+
 /**
  * The ONLY place `@ai-sdk/anthropic` is imported — lazily and dynamically,
  * so the module is never loaded into the process when the plan never
