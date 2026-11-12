@@ -199,8 +199,28 @@ function FieldRow({ field, ctx, concrete }: { field: TaskFieldView; ctx: FieldsC
       control = <p id={id} className="rounded-md border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">{value === undefined ? "Not shown here." : JSON.stringify(value)}</p>;
       break;
     default:
-      // text, natural_key, and an array of plain scalars typed as text
-      control = <Input {...common} className="h-11" maxLength={field.maxLength} value={str(value)} onChange={(e) => set(e.target.value)} autoComplete="off" />;
+      // text, natural_key, and an array of plain scalars typed as text; suggestions: pick one or type your own.
+      control = field.suggestions?.length ? (
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label={`${field.label}: choose one`}>
+            {field.suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                disabled={ctx.disabled}
+                aria-pressed={str(value) === s}
+                onClick={() => set(s)}
+                className={`min-h-9 rounded-full border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 ${str(value) === s ? "border-primary bg-primary/10" : "hover:bg-accent"}`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <Input {...common} className="h-11" maxLength={field.maxLength} value={str(value)} onChange={(e) => set(e.target.value)} autoComplete="off" placeholder="Or type your own" />
+        </div>
+      ) : (
+        <Input {...common} className="h-11" maxLength={field.maxLength} value={str(value)} onChange={(e) => set(e.target.value)} autoComplete="off" />
+      );
   }
 
   return (

@@ -157,6 +157,8 @@ export interface TaskFieldView {
   options?: readonly string[];
   /** Kind "enum": a display label per option, same order (attendance status codes "P" → "Present"). */
   optionLabels?: readonly string[];
+  /** Text kinds: values to pick from while still allowing anything else (e.g. inventory units). */
+  suggestions?: readonly string[];
   /** Text kinds: character limit. */
   maxLength?: number;
   min?: number;

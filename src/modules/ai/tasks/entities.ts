@@ -32,15 +32,16 @@ import { inventoryStock } from "@/modules/inventory/queries";
 import { libraryCatalog } from "@/modules/library/queries";
 import { leaveRequests } from "@/modules/people/hr.queries";
 import { getStudentProfile, listMyChildren, listStudents, searchStaff } from "@/modules/people/queries";
-import { ptmEvents } from "@/modules/ptm/queries";
+import { ptmEvents, ptmForStudent } from "@/modules/ptm/queries";
 import { surveyList } from "@/modules/ptm/survey.queries";
 import { listQuestions } from "@/modules/question-bank/queries";
 import { QuestionListSchema } from "@/modules/question-bank/schemas";
 import { concessionRules } from "@/modules/scholarships/queries";
-import { schoolLabs } from "@/modules/school-labs/queries";
+import { schoolLabBookingOptions, schoolLabs } from "@/modules/school-labs/queries";
 import { studentLeaveRequests } from "@/modules/student-leave/queries";
 import { transportRoutes, transportVehicles } from "@/modules/transport/queries";
-import { visitorsGatePasses } from "@/modules/visitors/queries";
+import { timetableCoverNeeded, timetableSubstitutions } from "@/modules/timetable/substitution.queries";
+import { visitorsGatePasses, visitorsList, visitorsPickupList } from "@/modules/visitors/queries";
 import type { EntityOption, EntityType } from "./types";
 
 export const MAX_OPTIONS = 20;
@@ -73,6 +74,22 @@ async function ownStudentIds(ctx: TenantContext, scope: EntityScope): Promise<st
 }
 
 const short = (text: string, max = 80): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+const hhmm = (time: string): string => time.slice(0, 5);
+
+/** A guardian's bookable PTM slots across their children (or the pinned child), one row per slot. */
+async function ptmSlotRows(ctx: TenantContext, scope: EntityScope) {
+  const ids = await ownStudentIds(ctx, scope);
+  if (!ids.length) return null;
+  const rows = (await Promise.all(ids.map((id) => ptmForStudent(ctx, id)))).flat();
+  return [...new Map(rows.map((r) => [r.slotId, r])).values()];
+}
+
+const ptmSlotLabel = (r: { eventDate: string; startsAt: string; teacherName: string }): string => `${r.teacherName}, ${r.eventDate} ${hhmm(r.startsAt)}`;
+
+/** Guardians and pickup persons cleared to collect the pinned student; no student, no list. */
+const pickupOptions = (kind: "guardian" | "pickup") => async (ctx: TenantContext, _s: string | undefined, scope: EntityScope) =>
+  scope.studentId ? (await visitorsPickupList(ctx, scope.studentId)).filter((p) => p.kind === kind).map((p) => opt(p.id, p.fullName, p.relation)) : null;
 
 const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
   student: [
@@ -225,6 +242,44 @@ const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
     { query: "scholarships.rules", list: async (ctx) => (await concessionRules(ctx, { includeInactive: true })).map((r) => opt(r.id, r.name, r.isActive ? null : "inactive")) },
   ],
   "finance.feeStructure": [{ query: "finance.listFeeStructures", list: async (ctx) => (await listFeeStructures(ctx)).map((f) => opt(f.id, f.name)) }],
+  // Slots that need cover today (timetable.manage); the substitution is assigned to one of these.
+  "timetable.slot": [
+    {
+      query: "timetable.coverNeeded",
+      list: async (ctx) =>
+        (await timetableCoverNeeded(ctx)).filter((c) => !c.substitution).map((c) => opt(c.slotId, `${c.section.name} · ${c.period.name} (${hhmm(c.period.startsAt)})`, `${c.teacher.name} on ${c.reason}`)),
+    },
+  ],
+  "timetable.substitution": [
+    {
+      query: "timetable.substitutions",
+      list: async (ctx) =>
+        (await timetableSubstitutions(ctx)).map((s) => opt(s.id, `${s.section.name} · ${s.period.name} (${hhmm(s.period.startsAt)})`, `${s.substituteTeacher.name} for ${s.originalTeacher.name}`)),
+    },
+  ],
+  "ptm.slot": [
+    {
+      query: "ptm.forStudent",
+      list: async (ctx, _s, scope) => (await ptmSlotRows(ctx, scope))?.filter((r) => r.state === "open").map((r) => opt(r.slotId, `${ptmSlotLabel(r)} · free`, r.eventTitle)) ?? null,
+    },
+  ],
+  "ptm.booking": [
+    {
+      query: "ptm.forStudent",
+      list: async (ctx, _s, scope) =>
+        (await ptmSlotRows(ctx, scope))?.flatMap((r) => (r.state === "mine" && r.bookingId ? [opt(r.bookingId, `${ptmSlotLabel(r)} · booked`, r.eventTitle)] : [])) ?? null,
+    },
+  ],
+  // Gated by the labs read query; the booking reader itself narrows teachers to their own bookings.
+  "schoolLabs.booking": [{ query: "schoolLabs.labs", list: async (ctx) => (await schoolLabBookingOptions(ctx)).map((b) => opt(b.id, b.label)) }],
+  "visitors.visit": [
+    {
+      query: "visitors.list",
+      list: async (ctx) => (await visitorsList(ctx, { onSite: true })).map((v) => opt(v.id, v.fullName, `${v.purpose}, in at ${new Date(v.checkedInAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Kolkata" })}`)),
+    },
+  ],
+  guardian: [{ query: "visitors.pickupList", list: pickupOptions("guardian") }],
+  "visitors.pickupPerson": [{ query: "visitors.pickupList", list: pickupOptions("pickup") }],
   "visitors.gatePass": [
     {
       query: "visitors.gatePasses",

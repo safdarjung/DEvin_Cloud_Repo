@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NAV_ITEMS } from "@/lib/nav";
 import { hasPermission } from "@/lib/auth/require";
 import { listMyChildren } from "@/modules/people/queries";
+import { choicePatches } from "./choices";
 import { actionJsonSchema, deriveFieldKind, schemaFields, type JsonSchemaNode, type SchemaField } from "./derive";
 import { findEntity, searchEntities, SEARCHABLE_ENTITIES } from "./entities";
 import { EXPANDERS, relativeDate } from "./expanders";
@@ -264,7 +265,7 @@ export async function createProposal(ctx: TenantContext, input: CreateProposalIn
     ...(task.family ? { family: task.family } : {}),
     ...(task.renderer ? { renderer: task.renderer } : {}),
     // An upsert's optional "/id" is only for editing an existing record; on a new one it is noise.
-    fields: patchFields(buildFields(task, schema), expander?.fields?.(ctx) ?? {}).filter((f) => f.path !== "/id" || f.required || finalValues.id !== undefined),
+    fields: patchFields(patchFields(buildFields(task, schema), expander?.fields?.(ctx) ?? {}), choicePatches(ctx, input.action)).filter((f) => f.path !== "/id" || f.required || finalValues.id !== undefined),
     ...(task.requireOneOf ? { requireOneOf: task.requireOneOf } : {}),
     values: finalValues,
     resolved: resolution.resolved,
