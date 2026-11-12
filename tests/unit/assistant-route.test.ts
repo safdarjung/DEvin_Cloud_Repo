@@ -189,14 +189,15 @@ describe("POST /api/ai/agent/assistant", () => {
     expect(createTaskToolMock).not.toHaveBeenCalled();
   });
 
-  it("cloud mode drops a non-aggregate (personal) staff query from the tool catalog", async () => {
+  it("cloud mode keeps personal staff queries in the tool catalog (owner decision 2026-11-12)", async () => {
     process.env.GROQ_API_KEY = "test-key";
     getTenantContextMock.mockResolvedValueOnce(assistantCtx());
     enabledCapabilitiesMock.mockReturnValueOnce(["people_overview"]); // personal queries plus one aggregate (enrolment counts)
     streamChatMock.mockResolvedValueOnce(okStream());
     await POST(request(validBody()));
     const catalog = buildReadToolsMock.mock.calls[0][1] as Record<string, string>;
-    expect(Object.keys(catalog)).toEqual(["people.enrolmentCounts"]);
+    expect(Object.keys(catalog)).toContain("people.enrolmentCounts");
+    expect(Object.keys(catalog).length).toBeGreaterThan(1);
   });
 
   it("builds finish metadata from the provider and the source log", async () => {

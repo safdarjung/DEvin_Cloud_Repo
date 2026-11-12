@@ -8,10 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { librarySettings } from "./schemas";
+import { escapeIlike } from "@/lib/list-search";
 
-function escapeIlike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
 
 function quoteOrValue(value: string): string {
   return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;

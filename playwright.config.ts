@@ -33,6 +33,8 @@ export default defineConfig({
   // duplicates, resource contention). 1 worker trades speed for determinism.
   workers: 1,
   reporter: "list",
+  // Dev-mode pages compile on first hit (5-10s); the 5s default makes cold assertions flaky.
+  expect: { timeout: 15_000 },
   use: {
     // T-044 hosted checkpoint: PLAYWRIGHT_BASE_URL=<vercel url> skips the local server.
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",

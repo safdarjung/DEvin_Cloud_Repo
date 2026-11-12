@@ -9,10 +9,11 @@ const PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026";
 const SLUG = "st-josephs-demo";
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -114,6 +115,7 @@ test.describe("J-07: guardian portal", () => {
   });
 
   test("all five tabs render without console errors on 390x844 (AC5)", async ({ page }) => {
+    test.slow(); // six portal pages, each waited to network idle
     await page.setViewportSize({ width: 390, height: 844 });
     const errors: string[] = [];
     page.on("console", (msg) => {

@@ -62,7 +62,7 @@ export interface OrbTaskInput {
 }
 
 /**
- * Ask: each section's chat prompts, topped up to four from vetted page starters (never above six).
+ * Ask: each section's chat prompts (all of them), topped up to four from vetted page starters.
  * Create: drafting tools (a page link, or a prompt that starts the draft in chat).
  * Tasks: one feature each in the task's own mode and section.
  * `chatOn` false: nothing can be sent, so only page links and tasks remain.
@@ -81,12 +81,13 @@ export function buildOrbFeatures(chips: readonly OrbChip[], tasks: readonly OrbT
   const asks = (Object.keys(SECTIONS) as OrbGroupId[]).flatMap((id) => {
     const list = prompts.get(id);
     if (!list) return [];
+    // Every capability keeps its prompt; only the page-starter top-up is capped.
     const shown = [...new Set(list)];
     for (const extra of chatOn ? extraPrompts(SECTIONS[id].pages, role) : []) {
-      if (shown.length >= MIN_PROMPTS) break;
+      if (shown.length >= MIN_PROMPTS || shown.length >= MAX_PROMPTS) break;
       if (!shown.includes(extra)) shown.push(extra);
     }
-    return shown.slice(0, MAX_PROMPTS).map((text): OrbFeature => ({ key: `ask:${id}:${text}`, label: text, mode: "ask", groupId: id, kind: "ask", prompt: text }));
+    return shown.map((text): OrbFeature => ({ key: `ask:${id}:${text}`, label: text, mode: "ask", groupId: id, kind: "ask", prompt: text }));
   });
   const taskFeatures = tasks.map((t): OrbFeature => ({ key: `task:${t.action}`, label: t.label, mode: t.mode, groupId: t.groupId, kind: "task", task: t.action }));
   return [...asks, ...tools, ...taskFeatures];

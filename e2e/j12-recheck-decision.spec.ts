@@ -17,15 +17,17 @@ function serviceClient() {
 }
 
 async function loginAs(page: Page, email: string, password = PASSWORD) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
 test.describe("J-12: controller reviews and decides a recheck request", () => {
   test("examcontroller starts review, approves with new marks; the report card and queue reflect the decision", async ({ page }) => {
+    test.slow(); // multi-role journey with dev-mode page compiles
     const admin = serviceClient();
     const { data: institution } = await admin.from("institutions").select("id").eq("slug", SLUG).single();
     if (!institution) throw new Error("seeded demo institution not found");
@@ -128,7 +130,7 @@ test.describe("J-12: controller reviews and decides a recheck request", () => {
     await page.waitForURL(new RegExp(`/exams/${examId}$`));
 
     await page.getByRole("button", { name: "Open marks entry" }).click();
-    await expect(page.getByText("marks_entry", { exact: true })).toBeVisible();
+    await expect(page.getByText("Marks entry", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: new RegExp(`J12-${suffix}`) }).click();
     await page.waitForURL(/\/papers\/[0-9a-f-]+$/);
     const paperUrl = page.url();
@@ -140,27 +142,34 @@ test.describe("J-12: controller reviews and decides a recheck request", () => {
 
     await page.goto(`/${SLUG}/exams/${examId}`);
     await page.getByRole("button", { name: "Close marks entry" }).click();
-    await expect(page.getByText("verification", { exact: true })).toBeVisible();
+    await expect(page.getByText("Verification", { exact: true }).first()).toBeVisible();
     await page.getByRole("link", { name: "Publish / View results" }).click();
     await page.waitForURL(new RegExp(`/exams/${examId}/results$`));
     await page.getByRole("button", { name: "Publish results" }).click();
     await page.getByRole("button", { name: "Confirm publish" }).click();
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("button", { name: "Confirm publish" })).toBeHidden({ timeout: 20_000 });
 
-    const { data: result } = await admin
-      .from("results")
-      .select("id")
-      .eq("institution_id", institution.id)
-      .eq("exam_id", examId)
-      .eq("student_id", student.id)
-      .single();
-    if (!result) throw new Error("fixture result was not published");
+    // The dialog closing does not mean the publish finished; wait for the row.
+    let resultId = "";
+    await expect
+      .poll(async () => {
+        const { data } = await admin
+          .from("results")
+          .select("id")
+          .eq("institution_id", institution.id)
+          .eq("exam_id", examId)
+          .eq("student_id", student.id)
+          .maybeSingle();
+        resultId = data?.id ?? "";
+        return resultId;
+      }, { timeout: 30_000 })
+      .not.toBe("");
 
     const { data: request } = await admin
       .from("recheck_requests")
       .insert({
         institution_id: institution.id,
-        result_id: result.id,
+        result_id: resultId,
         exam_paper_id: paperId,
         requested_by: guardianAuth.user.id,
         reason: "The marking on this paper looks miscounted, please recheck.",
@@ -186,7 +195,7 @@ test.describe("J-12: controller reviews and decides a recheck request", () => {
     await page.getByRole("radio", { name: "Approve" }).check();
     await page.getByLabel(/New marks/).fill("75");
     await page.getByRole("button", { name: "Confirm approve" }).click();
-    await expect(page.getByText("This request has already been decided.")).toBeVisible();
+    await expect(page.getByText("Already decided", { exact: true })).toBeVisible();
 
     // 3. the report card reflects the correction.
     await page.goto(`/${SLUG}/exams/${examId}/results`);

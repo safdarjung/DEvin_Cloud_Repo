@@ -28,6 +28,8 @@ test.describe("auth (J-00 subset)", () => {
   test("visiting a tenant path unauthenticated redirects to /login?next=<path>", async ({
     page,
   }) => {
+    // With demo login hints on, /login auto-signs visitors in by design; the redirect-with-next contract only holds when hints are off.
+    test.skip(process.env.NEXT_PUBLIC_DEMO_LOGIN_HINTS === "true", "demo auto-login is on");
     await page.goto("/st-josephs-demo/dashboard");
     const url = new URL(page.url());
     expect(url.pathname).toBe("/login");
@@ -35,7 +37,7 @@ test.describe("auth (J-00 subset)", () => {
   });
 
   test("an absolute-URL next is ignored (no off-site redirect)", async ({ page, baseURL }) => {
-    await page.goto("/login?next=https://evil.example");
+    await page.goto("/login?switch=1&next=https://evil.example");
     await page.getByLabel("Email").fill(TEST_EMAIL);
     await page.getByLabel("Password").fill(TEST_PASSWORD);
     await page.getByRole("button", { name: /sign in/i }).click();
@@ -46,7 +48,7 @@ test.describe("auth (J-00 subset)", () => {
   });
 
   test("wrong password shows a generic error", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/login?switch=1");
     await page.getByLabel("Email").fill(TEST_EMAIL);
     await page.getByLabel("Password").fill("wrong-password");
     await page.getByRole("button", { name: /sign in/i }).click();
@@ -57,7 +59,7 @@ test.describe("auth (J-00 subset)", () => {
     page,
     context,
   }) => {
-    await page.goto("/login");
+    await page.goto("/login?switch=1");
     await page.getByLabel("Email").fill(TEST_EMAIL);
     await page.getByLabel("Password").fill(TEST_PASSWORD);
     await page.getByRole("button", { name: /sign in/i }).click();

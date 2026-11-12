@@ -22,10 +22,11 @@ let principalId: string;
 let guardianId: string;
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 

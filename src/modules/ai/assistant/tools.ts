@@ -14,7 +14,7 @@ import { navItemsFor } from "@/lib/nav";
 import { uuid } from "@/lib/schemas/common";
 import { RecordInsightActionSchema } from "@/modules/insights/schemas";
 import { buildReadTools } from "@/modules/agents/tools";
-import { createSourceLog, queriesFor, type AssistantProvider, type SourceLog } from "./catalog";
+import { createSourceLog, queriesFor, type SourceLog } from "./catalog";
 
 const TASK_ACTION = "insight.action";
 
@@ -73,11 +73,10 @@ export async function createTaskTool(ctx: TenantContext) {
 
 export async function buildAssistantTools(
   ctx: TenantContext,
-  provider: AssistantProvider,
   nonce: string,
 ): Promise<{ tools: ToolSet; sources: SourceLog }> {
   const sources = createSourceLog();
-  const { tools: readTools } = await buildReadTools(ctx, queriesFor(provider), nonce, sources.add);
+  const { tools: readTools } = await buildReadTools(ctx, queriesFor(), nonce, sources.add);
   const tools: ToolSet = { ...readTools };
   const navigate = navigateTool(ctx);
   if (navigate) tools.navigate = navigate;

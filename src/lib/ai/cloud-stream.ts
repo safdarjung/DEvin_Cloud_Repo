@@ -59,6 +59,8 @@ export type CloudAgentResult<TOOLS extends ToolSet> =
   | ({ ok: true; modelId: string; stream: ReturnType<typeof streamText<TOOLS>> } & StreamExtras)
   | { ok: false; error: { code: ErrorCode; message: string } };
 
+const CLOUD_MAX_STEPS = 6;
+
 export async function streamCloudAgent<TOOLS extends ToolSet>(
   input: CloudAgentInput<TOOLS>,
 ): Promise<CloudAgentResult<TOOLS>> {
@@ -66,7 +68,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
   const redactionsAt = (): number => (typeof input.redactions === "function" ? input.redactions() : input.redactions ?? 0);
   const agentRunId = input.agentRunId ?? null;
   const budgetAt = (ceiling: number) =>
-    planToolBudget({ texts: [], ...input.budget, system, messages: input.messages, tools, ceiling });
+    planToolBudget({ texts: [], ...input.budget, system, messages: input.messages, tools, ceiling, maxSteps: CLOUD_MAX_STEPS });
   const keys = configuredCloudKeys();
   // Budgeted to the first provider's ceiling; that size decides whether Groq may be a backup (only when it fits).
   const requestTokens = budgetAt(TOKEN_CEILING.gemini).estimatedTokens + RESULT_RESERVE_TOKENS;
@@ -168,7 +170,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
     prepareStep: plan.prepareStep,
     // The SDK default logs the whole provider error, request body included.
     onError: ({ error }) => console.error("[ai-stream] provider error", { ...logContext, ...classifyAiError(error) }),
-    stopWhen: stepCountIs(6),
+    stopWhen: stepCountIs(CLOUD_MAX_STEPS),
     // Fix round 1 (security review, MED, carried over): `stepCountIs(6)`
     // bounds the number of steps, not the cost of any one of them —
     // Gemini defaults to ~65k output tokens/step, and an unbounded step

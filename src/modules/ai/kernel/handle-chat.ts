@@ -133,6 +133,9 @@ function bindStudentId(tools: ToolSet, studentId: string): ToolSet {
   const bound: Record<string, unknown> = {};
   for (const [name, toolDef] of Object.entries(tools)) {
     const execute = (toolDef as { execute?: (input: unknown, ...rest: unknown[]) => unknown }).execute;
+    // Registry tools describe their input as plain JSON Schema: one that declares a studentId gets it even when the model sent none.
+    const declared = (toolDef as { inputSchema?: { jsonSchema?: { properties?: Record<string, unknown> } } }).inputSchema?.jsonSchema?.properties;
+    const takesId = declared !== undefined && "studentId" in declared;
     bound[name] =
       typeof execute === "function"
         ? {
@@ -140,8 +143,8 @@ function bindStudentId(tools: ToolSet, studentId: string): ToolSet {
             // Pin only tools that take a student id: strict action schemas
             // without one (messaging.send) would reject an added key.
             execute: (input: unknown, ...rest: unknown[]) => {
-              const fields = input as Record<string, unknown>;
-              return execute("studentId" in fields ? { ...fields, studentId } : fields, ...rest);
+              const fields = (input ?? {}) as Record<string, unknown>;
+              return execute(takesId || "studentId" in fields ? { ...fields, studentId } : fields, ...rest);
             },
           }
         : toolDef;
@@ -149,15 +152,8 @@ function bindStudentId(tools: ToolSet, studentId: string): ToolSet {
   return bound as ToolSet;
 }
 
-// Data rule on cloud (ai-roles tasks.md "Shared model"): a staff read-group
-// query goes to a cloud provider only when ASSISTANT_QUERIES marks it
-// aggregate (today's `queriesFor` behavior); a guardian's own-child query
-// (`cap.data === "own"`) is allowed regardless — it is one person's own
-// record, the same rule that lets the student/guardian "own" capabilities
-// through elsewhere.
-function queryAllowedOnCloud(name: string, cap: { data: string }): boolean {
-  return cap.data === "own" || ASSISTANT_QUERIES[name]?.aggregate === true;
-}
+// Owner decision 2026-11-12: cloud providers get every enabled query, not only
+// aggregate ones (redaction of phones, emails and 12-digit ids still applies).
 
 // Tool budget: in-app links ride on every request; a picked tool that
 // requires one of these ids brings the tool that looks it up (a fees
@@ -186,7 +182,6 @@ function recentUserTexts(messages: UIMessage[]): string[] {
 export interface ChatToolsetInput {
   personaRole: Role;
   capabilities: readonly CapabilityKey[];
-  mode: "local" | "cloud";
   nonce: string;
   onSource?: (query: string, params: unknown) => void;
   /** Guardian only: every tool's studentId is pinned to this verified child. */
@@ -202,20 +197,21 @@ export interface ChatToolsetInput {
  * full-registry budget test; permission/module gates are the builders' own.
  */
 export async function buildChatToolset(ctx: TenantContext, input: ChatToolsetInput): Promise<{ tools: ToolSet; groups: ToolGroup[] }> {
-  const { personaRole, capabilities, mode, nonce, onSource, childId } = input;
+  const { personaRole, capabilities, nonce, onSource, childId } = input;
   const queryCatalog: Record<string, string> = {};
   for (const key of capabilities) {
     const cap = CAPABILITIES[key];
     if (!cap.queries) continue;
     for (const name of cap.queries) {
-      if (mode === "cloud" && !queryAllowedOnCloud(name, cap)) continue;
       queryCatalog[name] = ASSISTANT_QUERIES[name]?.description ?? cap.description;
     }
   }
   const { tools: readTools } = await buildReadTools(ctx, queryCatalog, nonce, onSource);
   const draftTools = await buildDraftTools(ctx, capabilities.map((key) => CAPABILITIES[key]));
   let tools: ToolSet = { ...readTools, ...draftTools };
-  if (childId) tools = bindStudentId(tools, childId);
+  // A student's own records: the model never knows the student's id (seen: it sent none, or a zero uuid, and got nothing back).
+  const ownId = childId ?? (personaRole === "student" && ctx.membership.role === "student" ? ctx.membership.studentId : null);
+  if (ownId) tools = bindStudentId(tools, ownId);
 
   const toolNames = new Set(capabilities.flatMap((key) => CAPABILITIES[key].tools ?? []));
   if (toolNames.has("navigate")) {
@@ -377,7 +373,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
 
   const nonce = crypto.randomUUID();
   const sources = createSourceLog();
-  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, mode, nonce, onSource: sources.add, childId, texts: recentUserTexts(strippedMessages) });
+  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, nonce, onSource: sources.add, childId, texts: recentUserTexts(strippedMessages) });
 
   // 0140: a student's chosen study scope adds server-built context and one small tool group.
   let scoped: ScopedExtras | null = null;
@@ -425,6 +421,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
   const outgoing = mode === "cloud" ? redactMessageText(strippedMessages) : { messages: strippedMessages, redactions: 0 };
   const modelMessages = await convertToModelMessages(outgoing.messages);
 
+  const maxSteps = personaRole === "student" ? 3 : 6;
   const result = await streamChat({
     ctx,
     feature: isPreview ? "ai_preview" : featureFor(role),
@@ -435,13 +432,13 @@ export async function handleAiChat(request: Request): Promise<Response> {
     system,
     messages: modelMessages,
     tools: tasks ? withTaskTools(chatTools, tasks) : chatTools,
-    stopWhen: stepCountIs(personaRole === "student" ? 3 : 6),
+    stopWhen: stepCountIs(maxSteps),
     maxOutputTokens: 1024,
     concurrencyKey: personaRole === "student" ? `${ctx.institution.id}:student` : undefined,
     abortSignal: request.signal,
     redactions: outgoing.redactions + scopedRedactions,
     notConfiguredMessage: "The AI chat assistant is not configured. Contact your administrator.",
-    budget: { groups: chatGroups, core: [...CORE_TOOLS, ...(scoped?.core ?? []), ...taskToolNames], idProviders: ID_PROVIDERS, texts: recentUserTexts(strippedMessages) },
+    budget: { groups: chatGroups, core: [...CORE_TOOLS, ...(scoped?.core ?? []), ...taskToolNames], idProviders: ID_PROVIDERS, texts: recentUserTexts(strippedMessages), maxSteps },
   });
 
   if (!result.ok) {

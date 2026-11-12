@@ -1,6 +1,6 @@
 // Achievements (features-18 #20) — Zod schemas. Relative + .ts imports: seed-script safe.
 import { z } from "zod";
-import { uuid, isoDate } from "../../lib/schemas/common.ts";
+import { uuid, notFutureDate } from "../../lib/schemas/common.ts";
 
 export const ACHIEVEMENT_CATEGORIES = ["academic", "sports", "arts", "leadership", "service", "other"] as const;
 export const ACHIEVEMENT_LEVELS = ["school", "district", "state", "national", "international"] as const;
@@ -13,7 +13,7 @@ export const AchievementRecordSchema = z
     category: z.enum(ACHIEVEMENT_CATEGORIES),
     level: z.enum(ACHIEVEMENT_LEVELS),
     position: z.string().trim().min(1).max(60).optional(),
-    eventDate: isoDate,
+    eventDate: notFutureDate,
     description: z.string().trim().min(1).max(1000).optional(),
   })
   .strict();

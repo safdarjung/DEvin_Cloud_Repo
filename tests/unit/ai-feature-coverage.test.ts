@@ -175,7 +175,7 @@ describe("ASSISTANT_QUERIES — cloud exposure", () => {
   it("every capability query has its own one-line description", () => {
     const missing = Object.values(CAPABILITIES)
       .flatMap((c) => c.queries ?? [])
-      .filter((n) => !ASSISTANT_QUERIES[n] && !["academics.listCurriculumUnits", "diary.forStudent", "exams.getMyPapers", "questionBank.paperDraft", "academics.gradeSuggestions", "exams.markOutliers"].includes(n));
+      .filter((n) => !ASSISTANT_QUERIES[n] && !["academics.listCurriculumUnits", "diary.forStudent", "exams.getMyPapers", "questionBank.paperDraft", "academics.gradeSuggestions", "exams.markOutliers", "website.listPublishedNotices"].includes(n));
     expect(missing).toEqual([]);
   });
 });

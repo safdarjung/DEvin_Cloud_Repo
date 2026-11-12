@@ -23,6 +23,9 @@ vi.mock("@/modules/people/queries", async () => ({
   listMyChildren: () => listMyChildrenMock(),
 }));
 
+vi.mock("@/modules/ai/agent/student-tools", () => ({ studentTools: async () => ({}) }));
+vi.mock("@/modules/ai/student-preferences", () => ({ getStudentPreferences: async () => undefined }));
+
 const { handleAiChat } = await import("@/modules/ai/kernel/handle-chat");
 const { getRegisteredQueries } = await import("@/lib/actions/define-query");
 await import("@/app/api/v1/query/all-queries");
@@ -88,6 +91,50 @@ describe("guardian AI — own child only", () => {
     }
 
     await tools.achievements_portfolio!.execute({ studentId: CHILD_B }, { toolCallId: "c1", messages: [] });
+    expect(seen).toEqual([{ studentId: CHILD_A }]);
+  });
+});
+
+describe("own-record tools need no id from the model", () => {
+  function studentCtx(): TenantContext {
+    const ctx = guardianCtx();
+    return {
+      ...ctx,
+      institution: { ...ctx.institution, settings: { modules: allModulesOn(), ai_roles: { student: { enabled: true } } } },
+      membership: { role: "student", staffId: null, guardianId: null, studentId: CHILD_A },
+      permissions: new Set(permissionsFor("student")),
+    };
+  }
+
+  async function toolsFor(ctx: TenantContext, body: Request, query: string, seen: unknown[]) {
+    getTenantContextMock.mockResolvedValue(ctx);
+    streamChatMock.mockResolvedValue({ ok: false, error: { code: "ai_unavailable", message: "stop" } });
+    const registry = getRegisteredQueries() as Map<string, unknown>;
+    const realGet = Map.prototype.get;
+    vi.spyOn(registry, "get").mockImplementation(function (this: Map<string, unknown>, key: string) {
+      return key === query ? async (_slug: string, input: unknown) => (seen.push(input), { ok: true, data: [] }) : realGet.call(this, key);
+    });
+    await handleAiChat(body);
+    return streamChatMock.mock.calls[0]![0].tools as Record<string, { execute: (i: unknown, o: unknown) => Promise<unknown> }>;
+  }
+
+  it("a student's weak-area tool runs on their own record when the model sends no id or a made-up one", async () => {
+    const seen: unknown[] = [];
+    const req = new Request("http://localhost/api/ai/agent/student", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ institutionSlug: "demo", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Make a one-week study plan for my weakest units." }] }] }),
+    });
+    const tools = await toolsFor(studentCtx(), req, "mastery.gapsForStudent", seen);
+    await tools.mastery_gapsForStudent!.execute({}, { toolCallId: "c1", messages: [] });
+    await tools.mastery_gapsForStudent!.execute({ studentId: "00000000-0000-0000-0000-000000000000" }, { toolCallId: "c2", messages: [] });
+    expect(seen).toEqual([{ studentId: CHILD_A }, { studentId: CHILD_A }]);
+  });
+
+  it("a guardian's child tool called with no id gets the verified child", async () => {
+    const seen: unknown[] = [];
+    const tools = await toolsFor(guardianCtx(), chat(CHILD_A), "achievements.portfolio", seen);
+    await tools.achievements_portfolio!.execute({}, { toolCallId: "c1", messages: [] });
     expect(seen).toEqual([{ studentId: CHILD_A }]);
   });
 });

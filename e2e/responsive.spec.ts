@@ -10,18 +10,21 @@ const VIEWPORTS = [
   { name: "desktop", width: 1280, height: 800 },
 ] as const;
 
-async function assertNoHorizontalScrollAndNav(page: Page, hasNav: boolean): Promise<void> {
+async function assertNoHorizontalScrollAndNav(page: Page, hasNav: boolean | string): Promise<void> {
   await page.waitForLoadState("networkidle");
   const hasHorizontalScroll = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   expect(hasHorizontalScroll).toBe(false);
-  if (hasNav) await expect(page.locator("nav").first()).toBeVisible();
+  if (!hasNav) return;
+  // Tenant shell: sidebar from lg up, bottom tab bar below it. A string overrides (public site header nav).
+  const name = typeof hasNav === "string" ? hasNav : (page.viewportSize()?.width ?? 1280) < 1024 ? "Quick navigation" : "Primary";
+  await expect(page.getByRole("navigation", { name })).toBeVisible();
 }
 
-const PAGES: { name: string; hasNav: boolean; goto: (page: Page) => Promise<void> }[] = [
+const PAGES: { name: string; hasNav: boolean | string; goto: (page: Page) => Promise<void> }[] = [
   // The pre-auth login form has no app nav — only the other four pages do.
-  { name: "login", hasNav: false, goto: async (page) => { await page.goto("/login"); } },
+  { name: "login", hasNav: false, goto: async (page) => { await page.goto("/login?switch=1"); } },
   {
     name: "dashboard",
     hasNav: true,
@@ -46,7 +49,7 @@ const PAGES: { name: string; hasNav: boolean; goto: (page: Page) => Promise<void
       await page.goto(`/${SLUG}/portal`);
     },
   },
-  { name: "public-home", hasNav: true, goto: async (page) => { await page.goto(`/s/${SLUG}`); } },
+  { name: "public-home", hasNav: "Main", goto: async (page) => { await page.goto(`/s/${SLUG}`); } },
 ];
 
 test.describe("Responsive smoke (390x844 and 1280x800)", () => {

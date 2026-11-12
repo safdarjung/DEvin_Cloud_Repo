@@ -318,6 +318,16 @@ export const upsertAcademicYear = defineAction({
     const supabase = await createClient();
 
     if (isCurrent) {
+      if (id) {
+        const { data: owned, error: ownError } = await supabase
+          .from("academic_years")
+          .select("id")
+          .eq("id", id)
+          .eq("institution_id", ctx.institution.id)
+          .maybeSingle();
+        if (ownError) throwMapped(ownError);
+        if (!owned) throw new AppError("not_found", "Academic year not found.");
+      }
       // The partial unique index (academic_years_one_current_idx) allows only
       // one current year per institution — clear the old one first so this
       // insert/update doesn't collide with it.

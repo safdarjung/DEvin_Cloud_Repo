@@ -2,7 +2,7 @@
 // Columns exactly as 0004: departments.name; staff.{employee_no, full_name,
 // designation, department_id, phone, email, status, is_teaching}.
 import { z } from "zod";
-import { phoneIN, shortText, uuid } from "@/lib/schemas/common";
+import { notFutureDate, phoneIN, shortText, uuid } from "@/lib/schemas/common";
 
 export const DepartmentUpsertSchema = z
   .object({
@@ -33,7 +33,7 @@ export const StudentUpdateSchema = z
     studentId: uuid,
     firstName: shortText.optional(),
     lastName: shortText.nullable().optional(),
-    dob: z.string().date().optional(),
+    dob: notFutureDate.optional(),
     gender: z.enum(["male", "female", "other"]).optional(),
     admissionNo: z.string().trim().min(1).max(40).optional(),
   })

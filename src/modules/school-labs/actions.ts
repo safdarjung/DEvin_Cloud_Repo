@@ -38,7 +38,7 @@ export const createLab = defineAction({
     const supabase = await createClient();
     const { data, error } = await supabase.from("school_labs").insert({ institution_id: ctx.institution.id, name, kind, capacity }).select("id").single();
     if (error) throwMapped(error);
-    await audit(ctx, { action: "schoolLabs.lab.create", entityType: "school_labs", entityId: data.id });
+    await audit(ctx, { action: "school_labs.lab.create", entityType: "school_labs", entityId: data.id });
     return { id: data.id as string };
   },
 });
@@ -53,7 +53,7 @@ export const updateLab = defineAction({
     const { data, error } = await supabase.from("school_labs").update({ name, kind, capacity, is_active: isActive }).eq("id", id).eq("institution_id", ctx.institution.id).select("id").maybeSingle();
     if (error) throwMapped(error);
     if (!data) throw new AppError("not_found", "Lab not found.");
-    await audit(ctx, { action: "schoolLabs.lab.update", entityType: "school_labs", entityId: id });
+    await audit(ctx, { action: "school_labs.lab.update", entityType: "school_labs", entityId: id });
     return { id };
   },
 });
@@ -71,7 +71,7 @@ export const createEquipment = defineAction({
       .select("id")
       .single();
     if (error) throwMapped(error);
-    await audit(ctx, { action: "schoolLabs.equipment.create", entityType: "school_lab_equipment", entityId: data.id });
+    await audit(ctx, { action: "school_labs.equipment.create", entityType: "school_lab_equipment", entityId: data.id });
     return { id: data.id as string };
   },
 });
@@ -92,7 +92,7 @@ export const updateEquipment = defineAction({
       .maybeSingle();
     if (error) throwMapped(error);
     if (!data) throw new AppError("not_found", "Equipment not found.");
-    await audit(ctx, { action: "schoolLabs.equipment.update", entityType: "school_lab_equipment", entityId: id });
+    await audit(ctx, { action: "school_labs.equipment.update", entityType: "school_lab_equipment", entityId: id });
     return { id };
   },
 });
@@ -146,7 +146,7 @@ export const logExperiment = defineAction({
       .select("id")
       .single();
     if (error) throwMapped(error);
-    await audit(ctx, { action: "schoolLabs.experiment.log", entityType: "school_lab_experiments", entityId: data.id });
+    await audit(ctx, { action: "school_labs.experiment.log", entityType: "school_lab_experiments", entityId: data.id });
     return { id: data.id as string };
   },
 });
@@ -161,7 +161,7 @@ export const completeExperiment = defineAction({
     const { data, error } = await supabase.from("school_lab_experiments").update({ completed }).eq("id", id).eq("institution_id", ctx.institution.id).select("id").maybeSingle();
     if (error) throwMapped(error);
     if (!data) throw new AppError("not_found", "Experiment not found.");
-    await audit(ctx, { action: "schoolLabs.experiment.complete", entityType: "school_lab_experiments", entityId: id });
+    await audit(ctx, { action: "school_labs.experiment.complete", entityType: "school_lab_experiments", entityId: id });
     return { id };
   },
 });
@@ -180,7 +180,7 @@ export const recordIncident = defineAction({
       .select("id")
       .single();
     if (error) throwMapped(error);
-    await audit(ctx, { action: "schoolLabs.incident.record", entityType: "school_lab_incidents", entityId: data.id });
+    await audit(ctx, { action: "school_labs.incident.record", entityType: "school_lab_incidents", entityId: data.id });
     return { id: data.id as string };
   },
 });

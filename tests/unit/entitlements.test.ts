@@ -25,8 +25,8 @@ describe("isFeatureEnabled", () => {
     expect(isFeatureEnabled(ctxWithSettings({ features: { student_ai_study: false }, modules: { ai_teacher: true } }), "teacher_ai_agent")).toBe(true);
   });
 
-  it("falls back to the catalog default (false) when settings has no features map at all", () => {
-    expect(isFeatureEnabled(ctxWithSettings({ modules: { ai_student: true } }), "student_ai_study")).toBe(false);
+  it("falls back to the catalog default (true) when settings has no features map at all", () => {
+    expect(isFeatureEnabled(ctxWithSettings({ modules: { ai_student: true } }), "student_ai_study")).toBe(true);
   });
 
   it("D33: a sub-feature is disabled while its parent is off, even if stored true", () => {
@@ -39,9 +39,9 @@ describe("isFeatureEnabled", () => {
     expect(isFeatureEnabled(ctx, "teacher_ai_visuals")).toBe(true);
   });
 
-  it("D33: every key defaults off except teacher_ai_agent", () => {
-    for (const [key, entry] of Object.entries(FEATURE_CATALOG)) {
-      expect(entry.default).toBe(key === "teacher_ai_agent");
+  it("every AI feature key defaults on (owner decision 2026-11-12, replaces D33's default-off)", () => {
+    for (const entry of Object.values(FEATURE_CATALOG)) {
+      expect(entry.default).toBe(true);
     }
   });
 

@@ -15,7 +15,7 @@ import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
 import { QuizContentSchema, QuizGenerationSchema, QuizRequestSchema, type QuizContent } from "@/modules/ai/quiz.schemas";
-import { buildQuizPrompt, QUIZ_GENERATION_INSTRUCTIONS } from "@/modules/ai/prompts/quiz";
+import { buildQuizPrompt, generateWithMetaRetry, isMetaQuestion, QUIZ_GENERATION_INSTRUCTIONS, quizStems } from "@/modules/ai/prompts/quiz";
 import { canGenerateQuizForUnit } from "@/modules/ai/quiz-scope";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 
@@ -173,16 +173,19 @@ export async function POST(request: Request): Promise<NextResponse> {
     questionCount: input.questionCount,
   });
 
-  const result = await runStructured({
-    ctx,
-    feature: "quiz_generation",
-    agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
-    schema: QuizGenerationSchema,
-    strictSchema: QuizContentSchema,
-    instructions: QUIZ_GENERATION_INSTRUCTIONS,
-    prompt,
-    maxOutputTokens: MAX_OUTPUT_TOKENS,
-  });
+  const generate = (text: string) =>
+    runStructured({
+      ctx,
+      feature: "quiz_generation",
+      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
+      schema: QuizGenerationSchema,
+      strictSchema: QuizContentSchema,
+      instructions: QUIZ_GENERATION_INSTRUCTIONS,
+      prompt: text,
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+    });
+  // One retry when the model quizzed the unit itself ("Which grade is this curriculum for?").
+  const result = await generateWithMetaRetry(generate, prompt, (r) => (r.ok ? quizStems(r.data.data) : []));
 
   if (!result.ok) {
     return json(result);
@@ -200,9 +203,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
+  const questions = strict.data.questions.filter((q) => !isMetaQuestion(q.stem));
+  if (questions.length === 0) {
+    return json(fail("ai_invalid_output", "AI wrote questions about the unit instead of the subject. Please try again."));
+  }
+
   return json(
     ok({
-      content: strict.data,
+      content: { ...strict.data, questions },
       provider: result.data.provider,
       model: result.data.model,
       fallback: result.data.fallback,

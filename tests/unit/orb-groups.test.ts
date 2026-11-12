@@ -43,6 +43,13 @@ describe("buildOrbFeatures (Ask and Create from capabilities)", () => {
     expect(new Set(prompts).size).toBe(prompts.length);
   });
 
+  it("every enabled capability keeps its own dot: a busy section is not cut to six (owner: operations overviews were missing)", () => {
+    const keys: CapabilityKey[] = ["hostel_overview", "canteen_overview", "inventory_overview", "helpdesk_overview", "forms_overview", "alumni_overview", "labs_overview", "library_overview", "visitors_overview", "workflows_overview"];
+    const chips = chipsFor(keys);
+    const prompts = new Set(buildOrbFeatures(chips, [], "principal").map((f) => f.prompt));
+    expect(chips.filter((c) => !prompts.has(c.prompt)).map((c) => c.key)).toEqual([]);
+  });
+
   it("student-only capabilities land in Study; every catalog capability lands in some section", () => {
     expect(groupIdFor("hints_first")).toBe("study");
     expect(groupIdFor("exam_prep")).toBe("study");

@@ -49,9 +49,9 @@ describe("roleAiConfig", () => {
     }
   });
 
-  it("defaults accountant/exam_controller/guardian to disabled", () => {
+  it("defaults accountant/exam_controller/guardian to enabled (owner decision 2026-11-12)", () => {
     for (const role of ["accountant", "exam_controller", "guardian"] as const) {
-      expect(roleAiConfig(ctxFor(role), role).enabled).toBe(false);
+      expect(roleAiConfig(ctxFor(role), role).enabled).toBe(true);
     }
   });
 
@@ -61,8 +61,8 @@ describe("roleAiConfig", () => {
   });
 
   it("student falls back to the legacy student_ai_study flag when nothing is stored", () => {
-    expect(roleAiConfig(ctxFor("student"), "student").enabled).toBe(false); // legacy default false
-    expect(roleAiConfig(ctxFor("student", { features: { student_ai_study: true } }), "student").enabled).toBe(true);
+    expect(roleAiConfig(ctxFor("student"), "student").enabled).toBe(true); // legacy default true since 2026-11-12
+    expect(roleAiConfig(ctxFor("student", { features: { student_ai_study: false } }), "student").enabled).toBe(false);
   });
 
   it("an explicit stored value wins over the legacy flag", () => {
@@ -107,7 +107,7 @@ describe("capabilityState — module gate", () => {
 
 describe("capabilityState — role off", () => {
   it("the role's chat switch being off locks its chat tools \"role_off\"", () => {
-    const ctx = ctxFor("exam_controller");
+    const ctx = ctxFor("exam_controller", { aiRoles: { exam_controller: { enabled: false } } });
     expect(roleAiConfig(ctx, "exam_controller").enabled).toBe(false);
     expect(capabilityState(ctx, "exam_controller", "exam_overview")).toEqual({ on: false, locked: "role_off" });
   });
@@ -126,8 +126,8 @@ describe("capabilityState — role off", () => {
 });
 
 describe("capabilityState — legacy fallback and defaults", () => {
-  it("study_visuals falls back to the legacy student_ai_visuals flag (default off)", () => {
-    const studentOn = ctxFor("student", { features: { student_ai_study: true } });
+  it("study_visuals follows the legacy student_ai_visuals flag (default on, an explicit false turns it off)", () => {
+    const studentOn = ctxFor("student", { features: { student_ai_study: true, student_ai_visuals: false } });
     expect(capabilityState(studentOn, "student", "study_visuals")).toEqual({ on: false, locked: null });
 
     const withVisuals = ctxFor("student", { features: { student_ai_study: true, student_ai_visuals: true } });
@@ -168,8 +168,8 @@ describe("enabledCapabilities / isAiCapabilityEnabled", () => {
     expect(isAiCapabilityEnabled(ctx, "find_student")).toBe(false); // role ceiling
   });
 
-  it("an accountant with AI off has nothing enabled", () => {
-    expect(enabledCapabilities(ctxFor("accountant"))).toEqual([]);
+  it("an accountant with AI chat off has no chat tools enabled", () => {
+    expect(enabledCapabilities(ctxFor("accountant", { aiRoles: { accountant: { enabled: false } } })).filter((k) => CAPABILITIES[k].kind === "chat_tool")).toEqual([]);
   });
 
   it("an accountant with AI on gets finance reads but never another role's own-data or teacher tools", () => {
@@ -262,27 +262,16 @@ describe("P3 capabilities — queries and drafts", () => {
     }
   });
 
-  it("no capability is on by default for a role outside its ceiling", () => {
-    for (const cap of Object.values(CAPABILITIES)) {
-      for (const role of cap.defaultOn) {
-        expect(cap.roles).toContain(role);
+  // Owner decision 2026-11-12: every AI feature a role may use is on by default for that role.
+  it("with nothing stored, every capability is on for each role its ceiling and permissions allow", () => {
+    for (const key of CAPABILITY_KEYS) {
+      const cap = CAPABILITIES[key];
+      for (const role of cap.roles) {
+        const state = capabilityState(ctxFor(role), role, key);
+        if (state.locked === "permission") continue;
+        expect(state, `${key} for ${role}`).toEqual({ on: true, locked: null });
       }
     }
-  });
-
-  it("lesson_plan_draft is on by default for teacher", () => {
-    const cap = CAPABILITIES.lesson_plan_draft;
-    expect(cap.defaultOn).toContain("teacher");
-  });
-
-  it("study_language is on by default for student", () => {
-    const cap = CAPABILITIES.study_language;
-    expect(cap.defaultOn).toContain("student");
-  });
-
-  it("explain_report_card is on by default for guardian", () => {
-    const cap = CAPABILITIES.explain_report_card;
-    expect(cap.defaultOn).toContain("guardian");
   });
 });
 
@@ -291,7 +280,6 @@ describe("P3 capabilities — queries and drafts", () => {
 describe("widened per-role defaults", () => {
   const ROLES: Role[] = ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"];
   // every capability a role is allowed to hold, except the two gated by their own legacy entitlement flags
-  const LEGACY_GATED = ["study_visuals", "study_notebook"];
 
   it("a role's default-on set equals every capability its ceiling, permission and module allow (chat on, all modules on)", () => {
     for (const role of ROLES) {
@@ -301,7 +289,7 @@ describe("widened per-role defaults", () => {
       });
       const expected = CAPABILITY_KEYS.filter((k) => {
         const cap = CAPABILITIES[k];
-        return cap.roles.includes(role) && permissionsFor(role).includes(cap.permission) && !LEGACY_GATED.includes(k);
+        return cap.roles.includes(role) && permissionsFor(role).includes(cap.permission);
       });
       expect([...enabledCapabilities(ctx, role)].sort()).toEqual([...expected].sort());
     }
@@ -334,7 +322,7 @@ describe("widened per-role defaults", () => {
     }
   });
 
-  it("demo seed settings turn on teacher, student and guardian chat; a default institution keeps guardian and student off", () => {
+  it("demo seed settings turn on teacher, student and guardian chat; a default institution has them on too", () => {
     const demo = demoInstitutionSettings();
     const demoCtx = (role: Role) => ({ ...ctxFor(role), institution: { ...ctxFor(role).institution, settings: demo as never } });
     for (const role of ["teacher", "student", "guardian"] as const) {
@@ -342,7 +330,7 @@ describe("widened per-role defaults", () => {
       expect(enabledCapabilities(demoCtx(role), role).length).toBeGreaterThan(0);
     }
     expect(enabledCapabilities(demoCtx("student"), "student")).toEqual(expect.arrayContaining(["study_visuals", "study_notebook"]));
-    expect(roleAiConfig(ctxFor("guardian"), "guardian").enabled).toBe(false);
-    expect(roleAiConfig(ctxFor("student"), "student").enabled).toBe(false);
+    expect(roleAiConfig(ctxFor("guardian"), "guardian").enabled).toBe(true);
+    expect(roleAiConfig(ctxFor("student"), "student").enabled).toBe(true);
   });
 });

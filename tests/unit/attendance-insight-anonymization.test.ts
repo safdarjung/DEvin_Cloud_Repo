@@ -20,6 +20,7 @@ const FIXTURE: AttendanceStudentPattern[] = [
     presentCount: 18,
     absentCount: 2,
     lateCount: 0,
+    halfDayCount: 0,
     recentAbsentDayOffsets: [0, 2, 4],
   },
   {
@@ -28,6 +29,7 @@ const FIXTURE: AttendanceStudentPattern[] = [
     presentCount: 20,
     absentCount: 0,
     lateCount: 1,
+    halfDayCount: 0,
     recentAbsentDayOffsets: [],
   },
   {
@@ -36,6 +38,7 @@ const FIXTURE: AttendanceStudentPattern[] = [
     presentCount: 15,
     absentCount: 5,
     lateCount: 2,
+    halfDayCount: 0,
     recentAbsentDayOffsets: [1, 3],
   },
 ];

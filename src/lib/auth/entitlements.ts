@@ -21,17 +21,17 @@ interface FeatureCatalogEntry {
   label: string;
 }
 
-// D33 — every key here defaults to `false` except `teacher_ai_agent`
-// (D30's own promise, kept exactly: existing customers keep what they had).
+// D33 defaulted these off; owner decision 2026-11-12 turns every AI feature on
+// by default. A school can still switch any one off (stored false wins).
 export const FEATURE_CATALOG: Record<FeatureKey, FeatureCatalogEntry> = {
   teacher_ai_agent: { default: true, module: "ai_teacher", label: "Agent" },
-  teacher_ai_visuals: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Visuals" },
-  teacher_ai_class_insights: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Class Insights" },
-  teacher_ai_lesson_plans: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Lesson Plans" },
-  teacher_ai_parent_messages: { default: false, parent: "teacher_ai_agent", module: "ai_teacher", label: "Parent Messages" },
-  student_ai_study: { default: false, module: "ai_student", label: "Study" },
-  student_ai_visuals: { default: false, parent: "student_ai_study", module: "ai_student", label: "Visuals" },
-  student_ai_notebook: { default: false, parent: "student_ai_study", module: "ai_student", label: "Notebook" },
+  teacher_ai_visuals: { default: true, parent: "teacher_ai_agent", module: "ai_teacher", label: "Visuals" },
+  teacher_ai_class_insights: { default: true, parent: "teacher_ai_agent", module: "ai_teacher", label: "Class Insights" },
+  teacher_ai_lesson_plans: { default: true, parent: "teacher_ai_agent", module: "ai_teacher", label: "Lesson Plans" },
+  teacher_ai_parent_messages: { default: true, parent: "teacher_ai_agent", module: "ai_teacher", label: "Parent Messages" },
+  student_ai_study: { default: true, module: "ai_student", label: "Study" },
+  student_ai_visuals: { default: true, parent: "student_ai_study", module: "ai_student", label: "Visuals" },
+  student_ai_notebook: { default: true, parent: "student_ai_study", module: "ai_student", label: "Notebook" },
 };
 
 export function isFeatureEnabled(ctx: TenantContext, key: FeatureKey): boolean {

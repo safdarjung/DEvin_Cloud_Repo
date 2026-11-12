@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { createClient } from "@supabase/supabase-js";
 import { test, type Page } from "@playwright/test";
 
 // T-041 — shared E2E helpers (08 §4/§7). Existing journey specs (j01-j07,
@@ -26,11 +27,23 @@ export const DEMO_ROLES = {
 export type DemoRole = keyof typeof DEMO_ROLES;
 
 export async function loginAs(page: Page, role: DemoRole): Promise<void> {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(DEMO_ROLES[role]);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
+}
+
+/** The public enquiry form allows 5 submissions per source IP per hour; a full suite run exceeds that, so clear the hash on recent rows before submitting. */
+export async function resetEnquiryRateLimit(): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  // Rewrites enquiry rows to dodge the per-IP limit: local Supabase only, never hosted.
+  if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/.test(url)) return;
+  const admin = createClient(url, process.env.SUPABASE_SECRET_KEY!);
+  const since = new Date(Date.now() - 61 * 60_000).toISOString();
+  const { error } = await admin.from("enquiries").update({ source_ip_hash: null }).gte("created_at", since);
+  if (error) throw new Error(`resetEnquiryRateLimit: ${error.message}`);
 }
 
 /** Hits the `/api/jobs/run` helper (CRON_SECRET-guarded) instead of waiting on cron — 06 §W5/W7 side effects (notifications, result-publish jobs) are processed by the job runner, not inline in the action. */

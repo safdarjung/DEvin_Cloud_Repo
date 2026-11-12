@@ -10,10 +10,11 @@ const PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026";
 const SLUG = "st-josephs-demo";
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -21,6 +22,7 @@ test.describe("J-09: exam setup, marks entry, verification", () => {
   test("examcontroller creates PT2-X (X-A Mathematics); teacher.x-a enters marks; verification lists missing then clean", async ({
     page,
   }) => {
+    test.slow(); // 41 per-keystroke re-renders of the 42-row grid in dev mode
     // 1. examcontroller creates the exam and one paper (X-A, Mathematics).
     await loginAs(page, "examcontroller@demo.coolskool.test");
     await page.goto(`/${SLUG}/exams/new`);
@@ -38,9 +40,9 @@ test.describe("J-09: exam setup, marks entry, verification", () => {
     await page.getByRole("button", { name: /Create 1 paper/ }).click();
     await page.waitForURL(new RegExp(`/exams/${examId}$`));
 
-    await expect(page.getByText("draft", { exact: true })).toBeVisible();
+    await expect(page.getByText("Draft", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Open marks entry" }).click();
-    await expect(page.getByText("marks_entry", { exact: true })).toBeVisible();
+    await expect(page.getByText("Marks entry", { exact: true })).toBeVisible();
 
     await page.getByRole("link", { name: /X-A · Mathematics/ }).click();
     await page.waitForURL(/\/papers\/[0-9a-f-]+$/);

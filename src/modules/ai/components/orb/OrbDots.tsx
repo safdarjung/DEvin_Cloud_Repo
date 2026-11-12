@@ -186,7 +186,7 @@ export function OrbLegend({ groups, pinned, onPin, onPeek }: {
     <div
       role="group"
       aria-label="Sections on the orb: choose one to light up its dots"
-      className="mx-auto flex w-fit max-w-full items-center gap-1.5 overflow-x-auto px-1 py-0.5 [scrollbar-width:none] xl:absolute xl:left-0 xl:top-1/2 xl:max-h-full xl:-translate-y-1/2 xl:flex-col xl:items-stretch xl:overflow-y-auto"
+      className="relative mx-auto flex w-fit max-w-full items-center gap-1.5 overflow-x-auto px-1 py-0.5 [scrollbar-width:none] xl:absolute xl:left-0 xl:top-1/2 xl:max-h-full xl:-translate-y-1/2 xl:flex-col xl:items-stretch xl:overflow-y-auto"
     >
       {groups.map((g) => {
         const Icon = GROUP_ICONS[g.id];

@@ -447,6 +447,11 @@ describe("GET+POST /api/v1/query/[name] (M02-T8, RLS still the filter)", () => {
         "safety.alerts": {},
         "safety.alertSummary": { alertId: UUID },
         "safety.pendingAcknowledgements": { alertId: UUID },
+        "attendance.todayBySection": {},
+        "exams.sectionScoreBands": {},
+        "finance.defaulterCounts": {},
+        "people.enrolmentCounts": {},
+        "website.listPublishedNotices": {},
       };
 
       const names = [...getRegisteredQueries().keys()];

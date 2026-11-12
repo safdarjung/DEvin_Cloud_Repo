@@ -53,7 +53,7 @@ export const MODE_DEFAULT: Readonly<Record<OrbMode, boolean>> = { ask: true, do:
 const roleOf = (s: CcSettings, role: Role): AiRoleConfig => s.ai_roles[role] ?? {};
 export const modeOn = (s: CcSettings, role: Role, mode: OrbMode): boolean => roleOf(s, role).modes?.[mode] ?? MODE_DEFAULT[mode];
 export const groupOn = (s: CcSettings, role: Role, group: OrbGroupId): boolean => roleOf(s, role).groups?.[group] ?? true;
-export const taskDefault = (a: CcTask, role: Role): boolean => a.defaultOn?.includes(role) ?? !a.rule6;
+export const taskDefault = (a: CcTask, role: Role): boolean => a.defaultOn?.includes(role) ?? true;
 export const taskOn = (s: CcSettings, role: Role, a: CcTask): boolean => roleOf(s, role).tasks?.[a.action] ?? taskDefault(a, role);
 export const capabilityOn = (s: CcSettings, role: Role, c: CcCapability): boolean => roleOf(s, role).capabilities?.[c.key] ?? c.defaultOn.includes(role);
 export const roleChatOn = (m: CcModel, s: CcSettings, role: Role): boolean => roleOf(s, role).enabled ?? m.roleEnabledDefault[role];

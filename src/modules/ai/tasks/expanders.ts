@@ -36,10 +36,13 @@ export function relativeDate(ctx: TenantContext, raw: unknown): unknown {
   return new Date(Date.parse(`${todayInInstitutionTimezone(ctx)}T00:00:00Z`) + offset * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** A register date: YYYY-MM-DD or a relative day; anything else is today. */
+/** A register date: a real YYYY-MM-DD or a relative day; anything else (e.g. "2026-02-30") is today. */
 function intentDate(ctx: TenantContext, raw: unknown): string {
   const date = relativeDate(ctx, raw);
-  return typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : todayInInstitutionTimezone(ctx);
+  // Date.parse rolls "02-30" over to March and gives NaN for month 13: both are rejected here.
+  const ms = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) ? Date.parse(`${date}T00:00:00Z`) : NaN;
+  const real = !Number.isNaN(ms) && new Date(ms).toISOString().slice(0, 10) === date;
+  return real ? date : todayInInstitutionTimezone(ctx);
 }
 
 /** A configured status code from "present", "Absent", "L", … ; undefined when nothing matches. */

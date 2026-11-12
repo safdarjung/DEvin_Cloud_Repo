@@ -1,6 +1,6 @@
 // Behaviour (features-18 #4) — Zod schemas. Relative + .ts imports: seed-script safe.
 import { z } from "zod";
-import { uuid, isoDate } from "../../lib/schemas/common.ts";
+import { uuid, isoDate, notFutureDate } from "../../lib/schemas/common.ts";
 
 export const BEHAVIOUR_SEVERITIES = ["low", "medium", "high"] as const;
 /** Suggested categories for the form; the DB stores free text (1-40 chars). */
@@ -14,7 +14,7 @@ export const IncidentLogSchema = z
     /** Signed: merit +, demerit -. Always summed, never stored as a total. */
     points: z.number().int().min(-100).max(100),
     note: z.string().trim().max(500).optional(),
-    occurredOn: isoDate.optional(),
+    occurredOn: notFutureDate.optional(),
   })
   .strict();
 export type IncidentLogInput = z.infer<typeof IncidentLogSchema>;

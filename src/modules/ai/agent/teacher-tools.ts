@@ -25,15 +25,12 @@ import { buildQuizPrompt, QUIZ_GENERATION_INSTRUCTIONS } from "@/modules/ai/prom
 import { RemarkGenerationSchema } from "@/modules/ai/remark.schemas";
 import { buildRemarkPrompt, REMARK_GENERATION_INSTRUCTIONS } from "@/modules/ai/prompts/remark";
 import { runStructured } from "@/lib/ai/gateway";
+import { escapeIlike } from "@/lib/list-search";
 
 // Matches the quiz/remark routes' own cap (T-036: unbounded output pinned
 // the local model's GPU for 7+ minutes during bisection).
 const MAX_OUTPUT_TOKENS = 2048;
 
-/** ILIKE treats `%`/`_` as wildcards — escape them (same as people/queries.ts's private helper). */
-function escapeIlike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
 
 // Fix round 1 (security review, LOW-3): a raw DB/network error must never
 // reach the model as a thrown exception — it kills the stream, and this
@@ -124,8 +121,16 @@ async function listMyUnitsImpl(
     .limit(400);
   if (error) throw error;
   const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-  const g = filter.grade?.trim().replace(/^(class|grade|std)\s*/i, "").replace(/(st|nd|rd|th)$/i, "").toUpperCase();
-  const gradeCode = g && /^\d+$/.test(g) ? ROMAN[Number(g)] : g;
+  const WORDS = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE"];
+  // "8A", "8 A", "VIII-A", "eight a": the section letter is dropped; a Roman one needs a separator ("XI" is not "X" + "I").
+  const g = filter.grade
+    ?.trim()
+    .toUpperCase()
+    .replace(/^(CLASS|GRADE|STD)\s*/, "")
+    .replace(/^(\d{1,2}(?:ST|ND|RD|TH)?)\s*-?\s*[A-Z]$/, "$1")
+    .replace(/^([A-Z]+)[\s-]+[A-Z]$/, "$1")
+    .replace(/(ST|ND|RD|TH)$/, "");
+  const gradeCode = g && /^\d+$/.test(g) ? ROMAN[Number(g)] : g && WORDS.indexOf(g) > 0 ? ROMAN[WORDS.indexOf(g)] : g;
   const subject = filter.subject?.trim().toLowerCase();
   return (data ?? [])
     .filter((row) => scope === "all" || scope.has(`${row.grade_id}:${row.subject_id}`))
@@ -146,13 +151,15 @@ export async function teacherTools(ctx: TenantContext) {
 
   return {
     findStudent: tool({
-      description: "Find a student taught by this teacher, by name or admission number. Returns up to 5 matches.",
-      inputSchema: z.object({ query: z.string().trim().min(1).max(200) }),
+      description:
+        "Find a student taught by this teacher, by name or admission number. Returns up to 5 matches. " +
+        "When the person gave no name (\"a student I teach\"), call it with no query: it returns up to 12 of their students; list them as numbered choices to pick from instead of asking them to type a name.",
+      inputSchema: z.object({ query: z.string().trim().max(200).optional() }),
       execute: async ({ query }) => {
         try {
-          const page = await listStudents(ctx, query, 1);
+          const page = await listStudents(ctx, query || undefined, 1);
           if (page.students.length === 0) return "No matching student found in your sections.";
-          return page.students.slice(0, 5).map((s) => ({
+          return page.students.slice(0, query ? 5 : 12).map((s) => ({
             id: s.id,
             name: [s.firstName, s.lastName].filter(Boolean).join(" "),
             grade: s.gradeName,
@@ -217,6 +224,7 @@ export async function teacherTools(ctx: TenantContext) {
             presentCount: row.presentCount,
             absentCount: row.absentCount,
             lateCount: row.lateCount,
+            halfDayCount: row.halfDayCount,
             recentAbsentDayOffsets: row.recentAbsentDayOffsets,
           };
         } catch (err) {

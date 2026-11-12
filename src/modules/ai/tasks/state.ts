@@ -78,10 +78,12 @@ export function taskSummary(action: string): TaskSummary | undefined {
   };
 }
 
-/** Default for one task: the row's `defaultOn` roles, else on unless it is a rule-6 task (design §9.4: rule-6 off). */
+/**
+ * Default for one task: the row's `defaultOn` roles, else on. Owner decision 2026-11-12 turned rule-6
+ * family tasks on too: they only ever open an approval card, and their humanOnly fields stay for the person.
+ */
 function defaultTaskOn(task: TaskSummary, role: Role): boolean {
-  if (task.defaultOn) return task.defaultOn.includes(role);
-  return task.family === undefined;
+  return task.defaultOn?.includes(role) ?? true;
 }
 
 // Sparse per-role overrides (control centre, packet C). Parsed defensively here so a

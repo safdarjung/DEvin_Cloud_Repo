@@ -31,4 +31,18 @@ describe("InstitutionSettingsSchema", () => {
 
     expect(() => InstitutionSettingsSchema.parse(broken)).toThrow();
   });
+
+  it("rejects AI limits above their caps, so an admin cannot lift spending limits without bound", () => {
+    for (const [key, value] of [
+      ["daily_token_quota", 10_000_001],
+      ["student_daily_token_quota", 10_000_001],
+      ["per_user_per_minute", 601],
+      ["max_concurrent_local", 65],
+      ["max_concurrent_cloud", 65],
+    ] as const) {
+      const broken = structuredClone(DEFAULT_INSTITUTION_SETTINGS);
+      broken.ai[key] = value;
+      expect(() => InstitutionSettingsSchema.parse(broken), key).toThrow();
+    }
+  });
 });

@@ -40,7 +40,8 @@ export const ROLE_HOME: Record<Role, { title: string; greeting: string; mode: Or
   admissions: { title: "Admissions", greeting: "Enquiries, applications and new families", mode: "do" },
   accountant: { title: "Accounts", greeting: "Fees, payments and the school's books", mode: "do" },
   exam_controller: { title: "Exam cell", greeting: "Exams, marks and results", mode: "do" },
-  teacher: { title: "Teacher", greeting: "Your classes, attendance and lesson tools", mode: "teach" },
+  // Ask, not Teach: Teach holds only a few class tasks, so the first view looked empty (owner, 2026-11-12).
+  teacher: { title: "Teacher", greeting: "Your classes, attendance and lesson tools", mode: "ask" },
   student: { title: "Student", greeting: "Your study, homework and timetable", mode: "learn" },
   guardian: { title: "Parent", greeting: "Your child's fees, attendance and progress", mode: "ask" },
 };

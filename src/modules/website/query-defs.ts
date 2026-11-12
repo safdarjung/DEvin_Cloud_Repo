@@ -5,7 +5,7 @@
 import { defineQuery } from "@/lib/actions/define-query";
 import { uuid } from "@/lib/schemas/common";
 import { z } from "zod";
-import { getPageWithVersions, getVersion, getWebsite, listEvents, listNotices, listPages } from "./queries";
+import { getPageWithVersions, getVersion, getWebsite, listEvents, listNotices, listPages, listPublicNotices } from "./queries";
 
 const noInput = z.object({}).strict();
 
@@ -28,6 +28,15 @@ export const getVersionQuery = defineQuery({
 });
 
 export const listNoticesQuery = defineQuery({ name: "website.listNotices", schema: noInput, module: "website", permission: "website.edit", handler: (_input, ctx) => listNotices(ctx) });
+
+// The portal's "School announcements": public, live, unexpired notices only (never drafts or staff-only), readable by any member with notification.read.
+export const listPublishedNoticesQuery = defineQuery({
+  name: "website.listPublishedNotices",
+  schema: noInput,
+  module: "website",
+  permission: "notification.read",
+  handler: (_input, ctx) => listPublicNotices(ctx.institution.id, 20),
+});
 
 export const listEventsQuery = defineQuery({ name: "website.listEvents", schema: noInput, module: "website", permission: "website.edit", handler: (_input, ctx) => listEvents(ctx) });
 

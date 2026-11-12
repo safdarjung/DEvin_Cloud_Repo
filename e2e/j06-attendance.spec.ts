@@ -27,10 +27,11 @@ const PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026";
 const SLUG = "st-josephs-demo";
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -70,7 +71,7 @@ test.describe("J-06: attendance marking and submission", () => {
     await page.goto(`${new URL(href!, page.url()).pathname}${new URL(href!, page.url()).search}`);
     // Status is 200, not 404: the tenant loading.tsx Suspense boundary commits the status before notFound() (DBT-83).
     // The guard itself works: the not-found body renders and no register UI reaches the page.
-    await expect(page.getByText("This page could not be found")).toBeVisible();
+    await expect(page.getByText("Page not found")).toBeVisible();
     await expect(page.getByRole("button", { name: /submit/i })).toHaveCount(0);
   });
 

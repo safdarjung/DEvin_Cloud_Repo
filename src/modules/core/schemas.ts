@@ -162,15 +162,16 @@ export const InstitutionSettingsSchema = z
       .strict(),
     ai: z
       .object({
-        daily_token_quota: z.number().int().positive(),
-        per_user_per_minute: z.number().int().positive(),
-        max_concurrent_local: z.number().int().positive(),
-        max_concurrent_cloud: z.number().int().positive(),
+        // Upper caps stop an admin (or anyone on a demo admin login) lifting AI spend without bound.
+        daily_token_quota: z.number().int().positive().max(10_000_000),
+        per_user_per_minute: z.number().int().positive().max(600),
+        max_concurrent_local: z.number().int().positive().max(64),
+        max_concurrent_cloud: z.number().int().positive().max(64),
         // GU-08 security review (H1) — without this, one student chatting
         // can exhaust the whole institution's `daily_token_quota` and
         // lock teachers out of local AI for the rest of the day (the
         // concurrency slot is shared too; see usage.ts's student-only key).
-        student_daily_token_quota: z.number().int().positive(),
+        student_daily_token_quota: z.number().int().positive().max(10_000_000),
       })
       .strict(),
     communication: z
@@ -485,5 +486,8 @@ export const DashboardLayoutSchema = z
     hidden: z.array(widgetId).max(DASHBOARD_WIDGET_IDS.length + MORE_CARD_IDS.length),
     order: z.array(widgetId).max(DASHBOARD_WIDGET_IDS.length + MORE_CARD_IDS.length),
   })
-  .strict();
+  .strict()
+  .refine((l) => new Set(l.hidden).size === l.hidden.length && new Set(l.order).size === l.order.length, {
+    message: "Each widget may appear at most once per list.",
+  });
 export type DashboardLayoutInput = z.infer<typeof DashboardLayoutSchema>;

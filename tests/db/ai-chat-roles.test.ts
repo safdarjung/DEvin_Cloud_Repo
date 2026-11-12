@@ -158,17 +158,16 @@ async function linkGuardianToChild(inst: TestInstitution, studentId: string): Pr
   `;
 }
 
-// Guardian's AI chat is off by default (resolve.ts's `DEFAULT_ENABLED_ROLES`
-// covers only owner/principal/admin/admissions) — these acceptance cases
-// are about the studentId/child-scoping gate specifically, so the role's
-// own chat switch is turned on first.
-async function enableRoleChat(institutionId: string, role: string): Promise<void> {
+// Every role's AI chat is on by default since 2026-11-12; these acceptance
+// cases still switch it on explicitly so they stay about the child-scoping gate.
+async function setRoleChat(institutionId: string, role: string, enabled: boolean): Promise<void> {
   await sql`
     update public.institutions
-    set settings = settings || jsonb_build_object('ai_roles', jsonb_build_object(${role}::text, jsonb_build_object('enabled', true)))
+    set settings = settings || jsonb_build_object('ai_roles', jsonb_build_object(${role}::text, jsonb_build_object('enabled', ${enabled}::boolean)))
     where id = ${institutionId}
   `;
 }
+const enableRoleChat = (institutionId: string, role: string): Promise<void> => setRoleChat(institutionId, role, true);
 
 async function enableChatCapability(institutionId: string, role: string, capability: boolean): Promise<void> {
   await sql`
@@ -278,9 +277,10 @@ describe("handleAiChat — role/guardian acceptance (ai-roles T4)", () => {
     }
   }, 30_000);
 
-  it("role disabled (accountant, off by default): ai_unavailable, no model call, no usage row", async () => {
+  it("role disabled (accountant chat switched off): ai_unavailable, no model call, no usage row", async () => {
     const inst: TestInstitution = await createTestInstitution("ai-chat-roles-disabled");
     try {
+      await setRoleChat(inst.institutionId, "accountant", false);
       setActingClient(inst.clientAs("accountant") as unknown as SupabaseClient<Database>);
       scriptModel(textStep("should never run"));
 

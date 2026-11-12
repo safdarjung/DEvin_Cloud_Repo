@@ -22,4 +22,14 @@ describe("sanitizeNextPath (open-redirect guard)", () => {
   it("falls back to / for a path that doesn't start with a slash", () => {
     expect(sanitizeNextPath("evil.example")).toBe("/");
   });
+
+  it("rejects backslash and control-character tricks that browsers resolve off-site", () => {
+    expect(sanitizeNextPath("/\\evil.example/phish")).toBe("/");
+    expect(sanitizeNextPath("/\t/evil.example")).toBe("/");
+    expect(sanitizeNextPath("/\n/evil.example")).toBe("/");
+  });
+
+  it("keeps a same-origin path whose query holds a URL", () => {
+    expect(sanitizeNextPath("/demo/files?src=https://x.example")).toBe("/demo/files?src=https://x.example");
+  });
 });

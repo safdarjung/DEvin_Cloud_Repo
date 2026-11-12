@@ -119,7 +119,7 @@ describe("T-016 named student attendance (05 §8.1)", () => {
 
 describe("T-016 no notification jobs from historical seed data (lead ruling 2)", () => {
   it("zero notify.attendance_absence jobs exist", async () => {
-    const [row] = await sql`select count(*)::int as n from public.jobs where type = 'notify.attendance_absence'`;
+    const [row] = await sql`select count(*)::int as n from public.jobs where type = 'notify.attendance_absence' and institution_id = ${institutionId}`;
     expect(row.n).toBe(0);
   });
 });

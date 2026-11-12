@@ -45,7 +45,7 @@ export function buildCcModel(ctx: TenantContext): CcModel {
     return {
       key, label: cap.label, description: cap.description, kind: cap.kind, groupId: groupIdFor(key), module: cap.module,
       roles: cap.roles.filter((r) => hasPermission(r, cap.permission)),
-      defaultOn: ROLES.filter((r) => legacy ?? cap.defaultOn.includes(r)),
+      defaultOn: ROLES.filter((r) => legacy ?? cap.roles.includes(r)),
     };
   });
 

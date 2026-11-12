@@ -20,7 +20,7 @@ import {
 import { attendanceTodayBySection } from "./command.queries";
 import { AppError } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
-import { termIdOrCurrent } from "@/modules/people/queries";
+import { getStudentProfile, termIdOrCurrent, WHOLE_SCHOOL_ROLES } from "@/modules/people/queries";
 
 /** No termId: the current term (an unknown term used to answer "0% attendance"). */
 async function requireTerm(ctx: TenantContext, termId?: string): Promise<string> {
@@ -59,7 +59,13 @@ export const getStudentAttendanceSummaryQuery = defineQuery({
   module: "attendance",
   schema: z.object({ studentId: uuid, termId: uuid.optional() }).strict(),
   permission: "attendance.read",
-  handler: async (input, ctx) => getStudentAttendanceSummary(ctx, input.studentId, await requireTerm(ctx, input.termId)),
+  handler: async (input, ctx) => {
+    // RLS hides another class's records, which read as "0%": a student the caller cannot see is not_found.
+    if (!(await getStudentProfile(ctx, input.studentId))) throw new AppError("not_found", "Student not found.");
+    const summary = await getStudentAttendanceSummary(ctx, input.studentId, await requireTerm(ctx, input.termId));
+    // No marked days is "none yet", not 0%.
+    return { ...summary, percentage: summary.totalInDenominator > 0 ? summary.percentage : null };
+  },
 });
 
 // permission: attendance.read — module default; no direct page caller
@@ -69,7 +75,16 @@ export const attendanceTodaySummaryQuery = defineQuery({
   module: "attendance",
   schema: z.object({}).strict(),
   permission: "attendance.read",
-  handler: (_input, ctx) => attendanceTodaySummary(ctx),
+  handler: async (_input, ctx) => {
+    const summary = await attendanceTodaySummary(ctx);
+    return {
+      ...summary,
+      // Nothing marked yet is "none", not 0%.
+      percentage: summary.studentsMarked > 0 ? summary.percentage : null,
+      // RLS narrows a teacher to their own classes: say so, as todayBySection does.
+      scope: WHOLE_SCHOOL_ROLES.includes(ctx.membership.role) ? "whole school" : "only your own classes. Other classes are hidden from you, not zero. Say that.",
+    };
+  },
 });
 
 // Today, class by class (whole students per status) and the classes not marked yet. RLS limits the

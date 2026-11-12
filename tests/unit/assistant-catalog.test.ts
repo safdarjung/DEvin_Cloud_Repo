@@ -159,32 +159,13 @@ describe("assistant catalog", () => {
   });
 
   describe("queriesFor", () => {
-    it("returns all 115 queries for local provider", () => {
-      const local = queriesFor("local");
-      expect(Object.keys(local)).toHaveLength(115);
-    });
-
-    it("returns only aggregate queries for cloud providers", () => {
-      const groq = queriesFor("groq");
-      const gemini = queriesFor("gemini");
-
-      // Cloud providers should only have aggregate queries (49)
-      expect(Object.keys(groq)).toHaveLength(49);
-      expect(Object.keys(gemini)).toHaveLength(49);
-
-      // Verify they don't have personal queries
-      expect(groq).not.toHaveProperty("finance.listDefaulters");
-      expect(groq).not.toHaveProperty("people.listStudents");
-      expect(gemini).not.toHaveProperty("finance.listDefaulters");
-      expect(gemini).not.toHaveProperty("people.listStudents");
-
-      // Verify they have aggregate queries
-      expect(groq).toHaveProperty("attendance.sectionsBelowThreshold");
-      expect(gemini).toHaveProperty("attendance.sectionsBelowThreshold");
+    it("returns all 115 queries for every provider (owner decision 2026-11-12)", () => {
+      expect(Object.keys(queriesFor())).toHaveLength(115);
+      expect(queriesFor()).toHaveProperty("people.listStudents");
     });
 
     it("returns descriptions keyed by the registry's dotted name", () => {
-      const local = queriesFor("local");
+      const local = queriesFor();
       Object.keys(local).forEach((key) => {
         expect(key).toMatch(/\./);
       });

@@ -22,7 +22,13 @@ function fakeSupabase(tables: TableData) {
         ilike() {
           return builder;
         },
+        or() {
+          return builder;
+        },
         limit() {
+          return builder;
+        },
+        order() {
           return builder;
         },
         async maybeSingle() {
@@ -93,6 +99,28 @@ describe("studentTools", () => {
     it("is returned without showStudyBlocks when visuals are disabled", async () => {
       const tools = await studentTools(baseCtx(), { visualsEnabled: false });
       expect(tools).not.toHaveProperty("showStudyBlocks");
+    });
+  });
+
+  describe("listMyStudyItems", () => {
+    const opts = { toolCallId: "1", messages: [], context: {} };
+
+    it("returns the caller's saved notebook items", async () => {
+      const row = { id: "i1", kind: "notes", title: "Photosynthesis", folder: null, pinned: false, updated_at: "2026-11-01T00:00:00Z" };
+      vi.mocked(serverClient.createClient).mockResolvedValueOnce(fakeSupabase({})).mockResolvedValueOnce(fakeSupabase({ study_items: [row] }));
+      const tools = await studentTools(baseCtx(), { visualsEnabled: false });
+      const result = (await tools.listMyStudyItems.execute!({}, opts)) as Array<{ title: string }>;
+      expect(result.map((r) => r.title)).toEqual(["Photosynthesis"]);
+    });
+
+    it("says so when the notebook is empty", async () => {
+      const tools = await studentTools(baseCtx(), { visualsEnabled: false });
+      expect(await tools.listMyStudyItems.execute!({}, opts)).toBe("Nothing saved in the study notebook yet.");
+    });
+
+    it("is wired to the study_notebook capability", async () => {
+      const { CAPABILITIES } = await import("@/modules/ai/capabilities/catalog");
+      expect(CAPABILITIES.study_notebook.tools).toContain("listMyStudyItems");
     });
   });
 

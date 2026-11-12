@@ -135,10 +135,20 @@ export const cancelClubEvent = defineAction({
       .update({ status: "cancelled" })
       .eq("id", id)
       .eq("institution_id", ctx.institution.id)
+      .neq("status", "cancelled")
       .select("id")
       .maybeSingle();
     if (error) throwMapped(error);
-    if (!data) throw new AppError("not_found", "Event not found.");
+    if (!data) {
+      const { data: existing, error: lookupError } = await supabase
+        .from("club_events")
+        .select("id")
+        .eq("id", id)
+        .eq("institution_id", ctx.institution.id)
+        .maybeSingle();
+      if (lookupError) throwMapped(lookupError);
+      throw existing ? new AppError("invalid_state", "Event is already cancelled.") : new AppError("not_found", "Event not found.");
+    }
     await audit(ctx, { action: "club.event.cancelled", entityType: "club_events", entityId: data.id });
     return { id: data.id as string };
   },

@@ -114,6 +114,15 @@ describe("teacherTools", () => {
       expect(result).toEqual([{ id: "s1", name: "Aarav Sharma", grade: "V", section: "A" }]);
     });
 
+    it("with no name returns up to 12 of the teacher's own students to choose from", async () => {
+      const students = Array.from({ length: 15 }, (_, i) => ({ id: `s${i}`, admissionNo: `A${i}`, firstName: `Kid${i}`, lastName: null, status: "active", gradeName: "V", sectionName: "A" }));
+      listStudentsMock.mockResolvedValueOnce({ students, total: 15, page: 1, pageSize: 50 });
+      const tools = await teacherTools(baseCtx());
+      const result = (await tools.findStudent.execute!({}, { toolCallId: "1", messages: [], context: {} })) as unknown[];
+      expect(result).toHaveLength(12);
+      expect(listStudentsMock).toHaveBeenLastCalledWith(expect.anything(), undefined, 1);
+    });
+
     // Fix round 1 (security review, LOW-3): a raw DB/network error must
     // degrade to a generic string, never a thrown exception reaching Gemini.
     it("returns a generic error string, never throws, when the underlying query fails", async () => {

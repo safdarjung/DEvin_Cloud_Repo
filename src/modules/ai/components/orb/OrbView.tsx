@@ -731,6 +731,12 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
       <p ref={liveRef} role="status" aria-live="polite" className="sr-only" />
 
       <section aria-label="Orb" className="relative flex flex-col items-center gap-3 lg:col-start-1 lg:row-start-1">
+        {/* Icon only, top-right under the profile menu: inside the composer it widened the sticky strip over the chips. */}
+        {chat && !showTranscript && (
+          <div className="absolute right-1 top-0 z-10">
+            <OrbHistory compact institutionSlug={institutionSlug} onOpenChat={openChat} />
+          </div>
+        )}
         {!showTranscript && (
           <p className="text-balance px-4 text-center">
             <span
@@ -871,11 +877,6 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           }}
           onDismissFailure={() => setFailure(null)}
         />
-        {chat && !showTranscript && (
-          <div className="mb-1.5 flex justify-end">
-            <OrbHistory institutionSlug={institutionSlug} onOpenChat={openChat} />
-          </div>
-        )}
         <FileBar
           file={file}
           busy={explaining}

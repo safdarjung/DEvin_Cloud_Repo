@@ -167,6 +167,17 @@ describe("planToolBudget recovery (more_tools)", () => {
     expect(step?.activeTools).toEqual(expect.arrayContaining(["fees", "terms"]));
   });
 
+  it("the last allowed step may not call tools, so a turn always ends in text", async () => {
+    const small = { a: fakeTool("a"), b: fakeTool("b") };
+    const plan = planToolBudget({ system: "s", messages: [{ role: "user", content: "x" }], tools: small, texts: ["x"], ceiling: 5_500, maxSteps: 3 });
+    const at = (stepNumber: number) => plan.prepareStep({ messages: [{ role: "user", content: "x" }], steps: [], stepNumber } as never);
+    expect((await at(1))?.toolChoice).toBeUndefined();
+    expect((await at(2))?.toolChoice).toBe("none");
+    // Without a step limit nothing changes (agent runs that set their own stop rule).
+    const open = planToolBudget({ system: "s", messages: [{ role: "user", content: "x" }], tools: small, texts: ["x"], ceiling: 5_500 });
+    expect((await open.prepareStep({ messages: [], steps: [], stepNumber: 9 } as never))?.toolChoice).toBeUndefined();
+  });
+
   it("sends a small tool set whole, without the meta-tool (agent runs)", () => {
     const small = { a: fakeTool("a"), b: fakeTool("b") };
     const plan = planToolBudget({ system: "s", messages: [{ role: "user", content: "x" }], tools: small, texts: ["x"], ceiling: 5_500 });
@@ -200,7 +211,7 @@ async function realPlan(role: Role, mode: "cloud" | "local", question: string) {
   const ctx = ctxFor(role);
   const capabilities = enabledCapabilities(ctx, role).filter((k) => CAPABILITIES[k].kind === "chat_tool");
   const childId = role === "guardian" ? CHILD : undefined;
-  const { tools, groups } = await buildChatToolset(ctx, { personaRole: role, capabilities, mode, nonce: "n0nce", childId });
+  const { tools, groups } = await buildChatToolset(ctx, { personaRole: role, capabilities, nonce: "n0nce", childId });
   const system = systemPromptFor({ role, nonce: "n0nce", mode, capabilities, instructions: "", childId });
   const ceiling = mode === "cloud" ? TOKEN_CEILING.groq : TOKEN_CEILING.local;
   const messages: ModelMessage[] = [{ role: "user", content: question }];

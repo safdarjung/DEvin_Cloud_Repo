@@ -89,6 +89,20 @@ export const upsertSection = defineAction({
       ...(capacity !== undefined ? { capacity } : {}),
       ...(classTeacherId !== undefined ? { class_teacher_id: classTeacherId } : {}),
     };
+    if (id && capacity !== undefined) {
+      const { count, error: countError } = await supabase
+        .from("enrolments")
+        .select("id", { count: "exact", head: true })
+        .eq("institution_id", ctx.institution.id)
+        .eq("class_section_id", id)
+        .eq("status", "active");
+      if (countError) throwMapped(countError);
+      if ((count ?? 0) > capacity) {
+        throw new AppError("conflict", `Capacity cannot be below the ${count} active enrolments.`, {
+          capacity: ["Below current enrolment."],
+        });
+      }
+    }
     const query = id
       ? supabase.from("class_sections").update(row).eq("id", id).eq("institution_id", ctx.institution.id)
       : supabase.from("class_sections").insert(row);

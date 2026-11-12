@@ -2,6 +2,7 @@ import "server-only";
 // T-015 — attendance module reads (06 §W5). Always the signed-in user's RLS
 // client (CLAUDE.md), with the same class-teacher narrowing as actions.ts
 // for "which sections can I mark" (listing scope should match write scope).
+import { AppError } from "@/lib/actions/result";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
@@ -218,17 +219,8 @@ export async function getStudentAttendanceSummary(
     .eq("institution_id", ctx.institution.id)
     .maybeSingle();
   if (termError) throw termError;
-
-  if (!term) {
-    return {
-      studentId,
-      termId,
-      percentage: 0,
-      presentWeighted: 0,
-      totalInDenominator: 0,
-      thresholds: settings.thresholds,
-    };
-  }
+  // Another school's or a made-up term answered "0% attendance".
+  if (!term) throw new AppError("not_found", "Term not found.");
 
   const { data: records, error: recordsError } = await supabase
     .from("attendance_records")
@@ -474,6 +466,8 @@ export interface AttendanceStudentPattern {
   presentCount: number;
   absentCount: number;
   lateCount: number;
+  /** Partly present days, e.g. Half day (0 < counts present < 1). */
+  halfDayCount: number;
   /** Day-offsets (0 = most recent school day) among the last `RECENT_SCHOOL_DAYS` school days this student was not fully present. */
   recentAbsentDayOffsets: number[];
 }
@@ -609,16 +603,19 @@ export async function getSectionAttendancePatterns(
     let presentCount = 0;
     let absentCount = 0;
     let lateCount = 0;
+    let halfDayCount = 0;
     const recentAbsentDayOffsets: number[] = [];
 
     for (const r of records) {
       const status = byCode.get(r.status);
       if (!status || !status.inDenominator) continue;
       const fullyPresent = status.countsPresent >= 1;
-      const isLate = r.status.toLowerCase() === "late";
+      // Late is decided by the school's label ("Late"): the code is short ("L").
+      const isLate = /\blate\b/i.test(status.label);
 
-      if (fullyPresent) presentCount += 1;
-      else if (isLate) lateCount += 1;
+      if (isLate) lateCount += 1;
+      else if (fullyPresent) presentCount += 1;
+      else if (status.countsPresent > 0) halfDayCount += 1;
       else absentCount += 1;
 
       if (!fullyPresent) {
@@ -633,6 +630,7 @@ export async function getSectionAttendancePatterns(
       presentCount,
       absentCount,
       lateCount,
+      halfDayCount,
       recentAbsentDayOffsets: recentAbsentDayOffsets.sort((a, b) => a - b),
     };
   });

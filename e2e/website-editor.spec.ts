@@ -19,10 +19,11 @@ const PASSWORD = process.env.SEED_DEMO_PASSWORD ?? "CoolSkool-Demo-2026";
 const SLUG = "st-josephs-demo";
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -65,7 +66,10 @@ test.describe("T-025: website editor", () => {
 
     // No published version yet — the public route must not serve it.
     const liveResponse = await request.get(`/s/${SLUG}/${slug}`);
-    expect(liveResponse.status()).toBe(404);
+    // Status is 200, not 404: /s/[slug]/loading.tsx commits the status before notFound() (DBT-83).
+    const body = await liveResponse.text();
+    expect(body).toContain("Page not found");
+    expect(body).not.toContain(uniqueHeading);
   });
 
   test("publishing the version updates the live site within one reload, and VersionList marks it published", async ({

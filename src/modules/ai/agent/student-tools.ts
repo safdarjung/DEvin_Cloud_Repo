@@ -10,10 +10,10 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { BlockSchema } from "@/modules/ai/blocks/schemas";
+import { unitSearchWords, unitTitleScore } from "./unit-match";
+import { escapeIlike } from "@/lib/list-search";
+import { listStudyItems } from "@/modules/ai/student-study.queries";
 
-function escapeIlike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
 
 function toolErrorMessage(toolName: string, err: unknown): string {
   const correlationId = crypto.randomUUID();
@@ -59,18 +59,26 @@ export async function studentTools(ctx: TenantContext, options: { visualsEnabled
         const gradeId = await myGradeId(supabase, ctx);
         if (!gradeId) return "You don't have an active enrolment, so no curriculum units are available.";
 
-        const term = `%${escapeIlike(query.trim())}%`;
+        // Word by word, as teacher-tools does: "acid bases and salts" must find "Acids, Bases and Salts".
+        const words = unitSearchWords(query);
+        const filter = (words.length ? words : [query.trim().toLowerCase()]).map((w) => `title.ilike.%${escapeIlike(w).replace(/[,()]/g, " ")}%`).join(",");
         const { data, error } = await supabase
           .from("curriculum_units")
           .select("id, title, subjects(name)")
           .eq("institution_id", ctx.institution.id)
           .eq("grade_id", gradeId)
-          .ilike("title", term)
-          .limit(5);
+          .or(filter)
+          .limit(60);
         if (error) throw error;
-        if (!data || data.length === 0) return "No matching curriculum unit found in your grade.";
+        const ranked = (data ?? [])
+          .map((row) => ({ row, score: unitTitleScore(row.title, words) }))
+          .filter((r) => words.length === 0 || r.score >= 0.5)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5)
+          .map((r) => r.row);
+        if (ranked.length === 0) return "No matching curriculum unit found in your grade.";
 
-        return data.map((row) => ({
+        return ranked.map((row) => ({
           id: row.id,
           title: row.title,
           subjectName: (row.subjects as { name: string } | null)?.name ?? "",
@@ -81,8 +89,22 @@ export async function studentTools(ctx: TenantContext, options: { visualsEnabled
     },
   });
 
+  // Own items only: listStudyItems filters by ctx.user.id and RLS; gated by the study_notebook capability's `tools`.
+  const listMyStudyItems = tool({
+    description: "List what this student has saved in their study notebook (title, kind, folder). Optional folder or title search.",
+    inputSchema: z.object({ folder: z.string().trim().max(100).optional(), search: z.string().trim().max(100).optional() }),
+    execute: async ({ folder, search }) => {
+      try {
+        const items = await listStudyItems(ctx, { folder: folder || undefined, search: search || undefined });
+        return items.length === 0 ? "Nothing saved in the study notebook yet." : items.slice(0, 30);
+      } catch (err) {
+        return toolErrorMessage("listMyStudyItems", err);
+      }
+    },
+  });
+
   if (!options.visualsEnabled) {
-    return { findMyCurriculumUnit };
+    return { findMyCurriculumUnit, listMyStudyItems };
   }
 
   const showStudyBlocks = tool({
@@ -100,5 +122,5 @@ export async function studentTools(ctx: TenantContext, options: { visualsEnabled
     execute: async ({ blocks }) => ({ shown: blocks.length }),
   });
 
-  return { findMyCurriculumUnit, showStudyBlocks };
+  return { findMyCurriculumUnit, listMyStudyItems, showStudyBlocks };
 }

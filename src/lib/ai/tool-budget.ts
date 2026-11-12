@@ -241,6 +241,8 @@ export interface ToolBudgetHints {
   idProviders?: SelectToolsInput["idProviders"];
   /** Latest user text first. */
   texts: readonly string[];
+  /** The stream's step limit: its last step gets no tool calls, so a turn always ends in text (seen: a student turn ended on a tool call and showed nothing). */
+  maxSteps?: number;
 }
 
 export interface BudgetInput<TOOLS extends ToolSet> extends ToolBudgetHints {
@@ -308,7 +310,7 @@ export function planToolBudget<TOOLS extends ToolSet>(input: BudgetInput<TOOLS>)
   };
 
   // Every step: core + loaded groups (newest first) + first-pick tools, while they fit the ceiling.
-  const prepareStep: PrepareStepFunction<ToolSet> = ({ messages: stepMessages }) => {
+  const prepareStep: PrepareStepFunction<ToolSet> = ({ messages: stepMessages, stepNumber }) => {
     let room = ceiling - systemTokens - messagesTokens(stepMessages);
     const loadedTools = [...loaded].reverse().flatMap((k) => findGroup(k)?.tools ?? []);
     // A loaded group brings its id lookups too, same as a first pick.
@@ -320,7 +322,8 @@ export function planToolBudget<TOOLS extends ToolSet>(input: BudgetInput<TOOLS>)
       active.push(name);
       room -= cost(name);
     }
-    return { activeTools: active };
+    const last = input.maxSteps !== undefined && stepNumber >= input.maxSteps - 1;
+    return last ? { activeTools: active, toolChoice: "none" } : { activeTools: active };
   };
 
   return {

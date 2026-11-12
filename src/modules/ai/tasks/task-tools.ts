@@ -160,7 +160,10 @@ export function buildTaskTools(opts: TaskToolsOptions): TaskTools {
         return output;
       } catch (err) {
         if (err instanceof AppError) return `Could not show that card: ${err.message}`;
-        throw err;
+        // A thrown DB error (e.g. PG 22008 bad date) killed the whole chat stream: log it, answer in text.
+        const ref = crypto.randomUUID();
+        console.error(`[${ref}] propose_task "${task}" failed`, err);
+        return `Could not show that card. Reference: ${ref}`;
       }
     },
     // Resolved names and ids go to the browser only, never back to the model (design §3).

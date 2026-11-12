@@ -37,9 +37,11 @@ test.describe("J-01: public site renders published content only", () => {
     expect(response?.status()).toBe(404);
   });
 
-  test("unknown path on a known slug returns 404", async ({ page }) => {
-    const response = await page.goto(`/s/${SLUG}/no-such-page`);
-    expect(response?.status()).toBe(404);
+  test("unknown path on a known slug shows the not-found page", async ({ page }) => {
+    // Status is 200, not 404: /s/[slug]/loading.tsx commits the status before notFound() (same cause as DBT-83).
+    await page.goto(`/s/${SLUG}/no-such-page`);
+    await expect(page.getByText("Page not found")).toBeVisible();
+    await expect(page.getByRole("button", { name: /submit enquiry/i })).toHaveCount(0);
   });
 
   test("C-80: draft v2 text never appears on the published home page", async ({ page }) => {

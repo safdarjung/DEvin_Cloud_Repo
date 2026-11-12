@@ -325,13 +325,17 @@ export function normalizeLabel(text: string): string {
   return text
     .toLowerCase()
     .replace(/\b(class|grade|section|std|mr|mrs|ms|dr|sir|madam)\b\.?/g, " ")
-    .replace(/[^a-z0-9]+/g, "");
+    // Letters, marks and digits of any script: a Devanagari name ("आरव") must not normalise to "".
+    .replace(/[^\p{L}\p{M}\p{N}]+/gu, "");
 }
 
 const ROMAN = ["", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"];
+const NUMBER_WORDS = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"];
 
-/** "10", "10th", "10a" also as Roman "x", "xa": sections are named "Grade X A" but said "class 10". */
+/** "10", "10th", "10a" also as Roman "x", "xa": sections are named "Grade X A" but said "class 10". "eight" too. */
 export function numeralForms(word: string): string[] {
+  const n = NUMBER_WORDS.indexOf(word);
+  if (n > 0) return [word, ROMAN[n]!];
   const m = /^(\d{1,2})(?:st|nd|rd|th)?([a-z])?$/.exec(word);
   const roman = m ? ROMAN[Number(m[1])] : undefined;
   return roman ? [word, `${roman}${m![2] ?? ""}`] : [word];

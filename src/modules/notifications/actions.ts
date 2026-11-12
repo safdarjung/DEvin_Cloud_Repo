@@ -23,6 +23,7 @@ export const markRead = defineAction({
       .update({ read_at: new Date().toISOString() })
       .eq("id", notificationId)
       .eq("recipient_user_id", ctx.user.id)
+      .is("read_at", null) // keep the first-read time on a repeat click
       .select("id")
       .maybeSingle();
 
@@ -31,7 +32,17 @@ export const markRead = defineAction({
       if (mapped.ok) throw new AppError("internal", "Unexpected error.");
       throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
     }
-    if (!data) throw new AppError("not_found", "Notification not found.");
+    if (!data) {
+      // Nothing updated: either already read (ok) or not this user's notification (not_found).
+      const { data: existing } = await supabase
+        .from("notifications")
+        .select("id")
+        .eq("id", notificationId)
+        .eq("recipient_user_id", ctx.user.id)
+        .maybeSingle();
+      if (!existing) throw new AppError("not_found", "Notification not found.");
+      return { id: existing.id };
+    }
 
     revalidatePath(`/${ctx.institution.slug}/notifications`);
     return { id: data.id };

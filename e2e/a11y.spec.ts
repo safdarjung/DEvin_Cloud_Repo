@@ -43,7 +43,7 @@ async function assertBasicA11y(page: Page): Promise<void> {
 
 test.describe("Accessibility smoke (hand-rolled substitute for axe-core — see note above)", () => {
   test("login page", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/login?switch=1");
     await assertBasicA11y(page);
   });
 

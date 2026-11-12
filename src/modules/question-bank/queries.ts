@@ -58,7 +58,8 @@ export async function listQuestions(ctx: TenantContext, filters: QuestionListInp
   if (filters.difficulty) query = query.eq("difficulty", filters.difficulty);
 
   const { data, error, count } = await query;
-  if (error) throw error;
+  // PGRST103: page past the last row -> empty page, not a 416 throw.
+  if (error && error.code !== "PGRST103") throw error;
 
   const items: QuestionBankItem[] = (data ?? []).map((row) => {
     const subject = row.subjects as { name: string } | null;

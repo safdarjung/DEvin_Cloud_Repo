@@ -60,7 +60,7 @@ test.describe("J-08: AI quiz generation, review, save, publish", () => {
     await generateQuizWithRetry(page);
     await expect(page.getByText(/Generated locally|Generated in cloud/)).toBeVisible();
 
-    await page.getByLabel("Title").fill(title);
+    await page.getByLabel("Title", { exact: true }).fill(title);
     // Each question renders as its own `div.rounded-lg.border` block (the
     // Title field above it isn't one) — scope to the first block's first
     // plain <input> (the stem) rather than a bare `.first()` over every
@@ -71,7 +71,7 @@ test.describe("J-08: AI quiz generation, review, save, publish", () => {
     await page.getByRole("button", { name: "Save as draft" }).click();
     await page.waitForURL(/\/assignments\/[0-9a-f-]+$/);
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
-    await expect(page.getByText("Status: draft")).toBeVisible();
+    await expect(page.getByText("draft", { exact: true })).toBeVisible();
 
     await page.goto(`/${SLUG}/assignments`);
     const row = page.getByRole("row").filter({ hasText: title });

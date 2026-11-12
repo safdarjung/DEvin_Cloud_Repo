@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { uuidV5 } from "../../scripts/seed/lib/ids.ts";
 
 // X05-T6 (seed section `notifications`). Reads the already-seeded demo
 // tenant — run `pnpm demo:reset` before this file (same convention as
@@ -11,6 +12,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 5 });
 const repoRoot = path.resolve(import.meta.dirname, "../..");
+// The messaging section fans out its own announcements too; these tests check only the
+// notifications section's Annual Day announcement.
+const ANNUAL_DAY_ID = uuidV5("notifications", "announcement:annual-day");
 
 function runDemoReset(): void {
   execFileSync("node", ["--env-file-if-exists=.env.local", "scripts/demo-reset.ts"], {
@@ -44,6 +48,7 @@ afterAll(async () => {
 });
 
 async function whatsappAttempts(recipientUserId: string, type: string) {
+  const annualDayOnly = type === "announcement" ? `announcement:${ANNUAL_DAY_ID}:${recipientUserId}` : null;
   return sql`
     select da.status, da.provider, da.rendered_body
     from public.delivery_attempts da
@@ -52,6 +57,7 @@ async function whatsappAttempts(recipientUserId: string, type: string) {
       and n.recipient_user_id = ${recipientUserId}
       and n.type = ${type}
       and da.channel = 'whatsapp'
+      and (${annualDayOnly}::text is null or n.data->>'key' = ${annualDayOnly})
   `;
 }
 
@@ -80,6 +86,7 @@ describe("X05-T6 seed section notifications", () => {
       join public.notifications n on n.id = da.notification_id
       where n.institution_id = ${institutionId} and n.recipient_user_id = ${guardianTwoUserId}
         and n.type = 'announcement' and da.channel = 'sms'
+        and n.data->>'key' = ${`announcement:${ANNUAL_DAY_ID}:${guardianTwoUserId}`}
     `;
     expect(smsRows.length).toBe(1);
   });

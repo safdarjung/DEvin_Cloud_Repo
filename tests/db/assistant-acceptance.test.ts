@@ -311,7 +311,7 @@ describe("POST /api/ai/agent/assistant — acceptance under real RLS (M24-T7)", 
       const ctxA = await buildContext(inst, "teacher");
       setActingClient(inst.clientAs("teacher") as unknown as SupabaseClient<Database>);
 
-      const { tools } = await buildAssistantTools(ctxA, "local", crypto.randomUUID());
+      const { tools } = await buildAssistantTools(ctxA, crypto.randomUUID());
       expect(Object.keys(tools).some((name) => name.startsWith("finance_"))).toBe(false);
 
       scriptModel(toolStep(["finance_listDefaulters", {}]), textStep("I don't have that information."));

@@ -108,7 +108,8 @@ export async function listAchievements(ctx: TenantContext, input: AchievementLis
     q = q.in("student_id", ids);
   }
   const { data, error, count } = await q;
-  if (error) throw error;
+  // PGRST103: page past the last row -> empty page, not a 416 throw.
+  if (error && error.code !== "PGRST103") throw error;
   return { rows: (data ?? []).map((r) => toRow(r as RawRow, ctx)), total: count ?? 0, page, pageSize: ACHIEVEMENTS_PAGE_SIZE };
 }
 

@@ -5,6 +5,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { ALUMNI_PAGE_SIZE, type AlumniListInput } from "./schemas";
+import { escapeIlike } from "@/lib/list-search";
 
 export interface AlumniRow {
   id: string;
@@ -25,9 +26,6 @@ export interface AlumniPage {
   pageSize: number;
 }
 
-function escapeIlike(v: string): string {
-  return v.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
 function quote(v: string): string {
   return `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 }
@@ -51,7 +49,8 @@ export async function listAlumni(ctx: TenantContext, input: AlumniListInput = {}
     b = b.or(`admission_no.ilike.${t},first_name.ilike.${t},last_name.ilike.${t}`, { referencedTable: "students" });
   }
   const { data, error, count } = await b;
-  if (error) throw error;
+  // PGRST103: page past the last row -> empty page, not a 416 throw.
+  if (error && error.code !== "PGRST103") throw error;
   const rows = (data ?? []).map((r) => {
     const s = r.students as unknown as { admission_no: string; first_name: string; last_name: string | null };
     return {

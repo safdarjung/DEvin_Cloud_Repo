@@ -35,10 +35,11 @@ function uniquePhone(): string {
 }
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -95,7 +96,7 @@ test.describe("J-05: enrol an accepted application", () => {
 
     await loginAs(page, "admissions@demo.coolskool.test");
     await page.goto(`/${SLUG}/admissions/applications/${application.id}`);
-    await expect(page.getByText(/status: accepted/)).toBeVisible();
+    await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Enrol", exact: true }).click();
     await page.getByLabel("Section").click();
@@ -115,7 +116,7 @@ test.describe("J-05: enrol an accepted application", () => {
 
     // Re-clicking enrol on the (now `enrolled`) application is a no-op success (C-20).
     await page.goto(`/${SLUG}/admissions/applications/${application.id}`);
-    await expect(page.getByText(/status: enrolled/)).toBeVisible();
+    await expect(page.getByText("Enrolled", { exact: true })).toBeVisible();
 
     await page.goto(`${href}`);
     await expect(page.getByText("J05 Guardian")).toBeVisible();

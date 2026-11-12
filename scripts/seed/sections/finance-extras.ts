@@ -54,9 +54,11 @@ export async function run(ctx: SeedContext): Promise<void> {
     select count(*)::int as n from public.online_payment_intents where institution_id = ${inst} and idempotency_key like 'seed-intent:%'`;
   if (existingIntents === 0) {
     const open = await ctx.sql.unsafe<{ id: string; outstanding: string }[]>(
+      // Ordered by business key, not i.id: invoice ids are random per reseed (seed-determinism test).
       `select i.id, (i.total - i.paid_total)::text as outstanding from public.invoices i
+       join public.students s on s.id = i.student_id join public.terms t on t.id = i.term_id
        where ${NON_DEMO(inst)} and i.status in ('issued', 'part_paid') and i.total - i.paid_total >= 100
-       order by i.id limit 12`,
+       order by s.admission_no, t.sequence limit 12`,
     );
     const states = ["created", "created", "created", "created", "created", "created", "paid", "paid", "paid", "paid", "unreconciled", "unreconciled"] as const;
     for (const [i, inv] of open.entries()) {
@@ -85,10 +87,11 @@ export async function run(ctx: SeedContext): Promise<void> {
       ctx.sql.unsafe<{ id: string }[]>(
         `select p.id from public.payments p join public.invoices i on i.id = p.invoice_id
          join public.receipts r on r.payment_id = p.id
+         join public.students s on s.id = i.student_id join public.terms t on t.id = i.term_id
          where ${NON_DEMO(inst)} and p.mode ${mode} and i.status <> 'cancelled'
            and not exists (select 1 from public.payment_reversals pr where pr.payment_id = p.id)
            and not exists (select 1 from public.online_payment_intents oi where oi.payment_id = p.id)
-         order by p.id limit ${limit} offset ${offset}`,
+         order by s.admission_no, t.sequence, p.received_at limit ${limit} offset ${offset}`,
       );
     const cheques = await pay("= 'cheque'", 4, 0);
     const others = await pay("<> 'cheque'", 8, 0);

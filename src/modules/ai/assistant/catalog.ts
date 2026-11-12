@@ -274,22 +274,16 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
 
 /**
  * Return the queries available to a provider, keyed by registry name.
- * - `"local"` gets every query (aggregate + personal)
- * - `"groq"`, `"gemini"` and `"zai"` (every cloud provider) get only the aggregate queries
+ * Every provider gets every query: owner decision 2026-11-12 lifted the
+ * cloud aggregate-only rule (redaction still applies on the cloud path).
+ * `aggregate` stays as review metadata only.
  *
  * Keys keep the registry's dotted name (`.` → `_` happens in `toolNameFor`,
  * M22's tool builder — not here).
  */
-export function queriesFor(provider: AssistantProvider): Readonly<Record<string, string>> {
-  const queries = Object.entries(ASSISTANT_QUERIES);
-
-  const filtered =
-    provider === "local"
-      ? queries
-      : queries.filter(([, spec]) => spec.aggregate === true);
-
+export function queriesFor(): Readonly<Record<string, string>> {
   const result: Record<string, string> = {};
-  for (const [name, spec] of filtered) {
+  for (const [name, spec] of Object.entries(ASSISTANT_QUERIES)) {
     result[name] = spec.description;
   }
   return result;

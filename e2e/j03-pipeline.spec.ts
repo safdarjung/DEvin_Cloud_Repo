@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { resetEnquiryRateLimit } from "./fixtures";
 
 // J-03 (08 §4) — admissions moves an enquiry through stages and converts it
 // to an application. Admissions seed data (`ENQ-*`) is T-029 and not yet
@@ -15,15 +16,17 @@ function uniquePhone(): string {
 }
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
 test.describe("J-03: admissions pipeline — move stages, convert to application", () => {
   test("a freshly submitted enquiry moves through stages and converts (AC1, AC2)", async ({ page }) => {
+    await resetEnquiryRateLimit();
     const childName = `J03 Child ${crypto.randomUUID().slice(0, 8)}`;
     const phone = uniquePhone();
 

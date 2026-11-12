@@ -76,12 +76,12 @@ describe("taskState lock chain", () => {
     expect(taskState({ ...ctx, membership: { ...ctx.membership, role: "principal" }, permissions: new Set(permissionsFor("principal")) }, "library.loan.issue").enabled).toBe(true);
   });
 
-  it("a task switched off is task_off; a rule-6 task is off by default until a stored override turns it on", () => {
+  it("a task switched off is task_off; a rule-6 task is on by default (owner decision 2026-11-12) until a stored override turns it off", () => {
     expect(taskState(ctxFor("owner", { aiRoles: { owner: { enabled: true, tasks: { "library.loan.issue": false } } } }), "library.loan.issue")).toMatchObject({
       lock: "task_off",
     });
-    expect(taskState(ctxFor("accountant"), "expenses.record")).toMatchObject({ enabled: false, lock: "task_off" });
-    expect(taskState(ctxFor("accountant", { aiRoles: { accountant: { enabled: true, tasks: { "expenses.record": true } } } }), "expenses.record").enabled).toBe(true);
+    expect(taskState(ctxFor("accountant"), "expenses.record").enabled).toBe(true);
+    expect(taskState(ctxFor("accountant", { aiRoles: { accountant: { enabled: true, tasks: { "expenses.record": false } } } }), "expenses.record")).toMatchObject({ enabled: false, lock: "task_off" });
   });
 
   it("an override never unlocks a lock above it (module off + task on stays module)", () => {

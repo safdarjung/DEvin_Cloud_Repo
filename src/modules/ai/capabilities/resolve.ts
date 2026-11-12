@@ -28,11 +28,9 @@ export interface CapabilityState {
   reason?: string;
 }
 
-// Roles whose overall AI switch has no legacy feature flag behind it
-// default to true; teacher/student instead fall back to their existing
-// flag (LEGACY_ENABLED_FEATURE) when nothing is stored yet.
-const DEFAULT_ENABLED_ROLES: readonly Role[] = ["owner", "principal", "admin", "admissions"];
-
+// Owner decision 2026-11-12: every role's AI chat and every capability its
+// ceiling allows default to on; teacher/student still honour their legacy
+// flag (LEGACY_ENABLED_FEATURE), which itself now defaults on.
 const LEGACY_ENABLED_FEATURE: Partial<Record<Role, "teacher_ai_agent" | "student_ai_study">> = {
   teacher: "teacher_ai_agent",
   student: "student_ai_study",
@@ -57,7 +55,7 @@ export function roleAiConfig(ctx: TenantContext, role: Role): ResolvedRoleAiConf
       ? stored.enabled
       : legacyKey
         ? isFeatureEnabled(ctx, legacyKey)
-        : DEFAULT_ENABLED_ROLES.includes(role);
+        : true;
 
   return {
     enabled,
@@ -88,7 +86,7 @@ export function capabilityState(ctx: TenantContext, role: Role, key: CapabilityK
 
   const stored = config.capabilities?.[key];
   const legacy = cap.legacyFeature ? isFeatureEnabled(ctx, cap.legacyFeature) : undefined;
-  const on = typeof stored === "boolean" ? stored : legacy ?? cap.defaultOn.includes(role);
+  const on = typeof stored === "boolean" ? stored : legacy ?? true;
   return { on, locked: null };
 }
 

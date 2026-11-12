@@ -406,10 +406,11 @@ export default async function DashboardPage({
     );
 
   const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && (
-    <KpiTile label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
+    <KpiTile key="open-enquiries" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
   );
   const collectedKpi = collections && (
     <KpiTile
+      key="collected"
       label="Collected this term"
       value={formatINR(collections.collectedPaise)}
       animateTo={collections.collectedPaise / 100}

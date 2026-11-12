@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
-import { generateQuizWithRetry, isOllamaReachable, loginAs, reportCardBySubjectCount, SLUG } from "./fixtures";
+import { generateQuizWithRetry, isOllamaReachable, loginAs, reportCardBySubjectCount, resetEnquiryRateLimit, SLUG } from "./fixtures";
 
 // T-041 — the full 13-step demo (01 §2, 11 §10), chained serial so a
 // regression anywhere in the chain fails at the step it broke, not three
@@ -59,9 +59,10 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
   });
 
   test("J-02: visitor submits an enquiry; reference shown", async ({ page }) => {
+    await resetEnquiryRateLimit();
     await page.goto(`/s/${SLUG}/admissions`);
-    await page.getByPlaceholder("Child's name").fill("Meera Kapoor");
-    await page.getByPlaceholder("Your name").fill("Narrative Guardian");
+    await page.getByLabel("Child's name").fill("Meera Kapoor");
+    await page.getByLabel("Your name").fill("Narrative Guardian");
     await page.getByPlaceholder("10-digit mobile number").fill(uniquePhone());
     await page.getByRole("button", { name: /submit enquiry/i }).click();
     await expect(page.getByRole("status")).toContainText(/reference ENQ-/i);
@@ -74,10 +75,10 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
     // Kapoor"` filter also matches a seeded enquiry whose GUARDIAN happens
     // to be named "Meera Kapoor" (applicant "Rudra Kapoor"), a strict-mode
     // violation (2 elements).
-    const card = page.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Meera Kapoor", exact: true }) });
+    const card = page.getByRole("listitem").filter({ has: page.getByRole("link", { name: "Meera Kapoor", exact: true }) }).first(); // earlier runs leave duplicates
     await expect(card).toBeVisible();
     await card.getByRole("combobox").click();
-    await page.getByRole("option", { name: "contacted", exact: true }).click();
+    await page.getByRole("option", { name: "Contacted", exact: true }).click();
     await page.waitForLoadState("networkidle");
   });
 
@@ -87,7 +88,7 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
 
     await loginAs(page, "admissions");
     await page.goto(`/${SLUG}/admissions/applications/${applicationId}`);
-    await expect(page.getByText(/status: accepted/)).toBeVisible();
+    await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
     await expect(page.locator("ul li", { hasText: /offer|accept/i }).first()).toBeVisible();
   });
 
@@ -97,7 +98,7 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
 
     await loginAs(page, "admissions");
     await page.goto(`/${SLUG}/admissions/applications/${applicationId}`);
-    await expect(page.getByText(/status: accepted/)).toBeVisible();
+    await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
 
     await page.getByRole("button", { name: "Enrol", exact: true }).click();
     await page.getByLabel("Section").click();
@@ -214,7 +215,7 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
     await generateQuizWithRetry(page);
     await expect(page.getByText(/Generated locally|Generated in cloud/)).toBeVisible();
 
-    await page.getByLabel("Title").fill(title);
+    await page.getByLabel("Title", { exact: true }).fill(title);
     await page.getByRole("button", { name: "Save as draft" }).click();
     await page.waitForURL(/\/assignments\/[0-9a-f-]+$/);
 
@@ -242,7 +243,7 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
     await page.getByRole("button", { name: /Create 1 paper/ }).click();
     await page.waitForURL(new RegExp(`/exams/${examId}$`));
     await page.getByRole("button", { name: "Open marks entry" }).click();
-    await expect(page.getByText("marks_entry", { exact: true })).toBeVisible();
+    await expect(page.getByText("Marks entry", { exact: true })).toBeVisible();
 
     await page.getByRole("link", { name: /X-A · Mathematics/ }).click();
     await page.waitForURL(/\/papers\/[0-9a-f-]+$/);
@@ -260,7 +261,7 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
     await loginAs(page, "examcontroller");
     await page.goto(`/${SLUG}/exams/${examId}`);
     await page.getByRole("button", { name: "Close marks entry" }).click();
-    await expect(page.getByText("verification", { exact: true })).toBeVisible();
+    await expect(page.getByText("Verification", { exact: true }).first()).toBeVisible();
     await page.getByRole("link", { name: "Publish / View results" }).click();
     await page.waitForURL(new RegExp(`/exams/${examId}/results$`));
     await expect(page.getByRole("button", { name: "Publish results" })).toBeEnabled();
@@ -325,8 +326,8 @@ test.describe("Demo narrative: J-01 -> J-13 chained", () => {
     await expect(page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeVisible();
 
     // KPI values count up from 0 after hydration — retrying assertions wait for the final value.
-    await expect(page.locator('[data-slot="card"]').filter({ hasText: "Attendance today" }).locator("p.text-2xl").first()).not.toHaveText("0%");
-    await expect(page.locator('[data-slot="card"]').filter({ hasText: "Collected this term" }).locator("p.text-2xl").first()).not.toHaveText(/^₹0\.00$/);
+    await expect(page.getByRole("link", { name: /^Attendance today/ }).locator("p").nth(1)).not.toHaveText("0%");
+    await expect(page.getByRole("link", { name: /^Collected this term/ }).locator("p").nth(1)).not.toHaveText(/^₹0(\.00)?$/);
 
     await expect(page.locator('[data-slot="card"]').filter({ hasText: "Admissions funnel" })).not.toBeEmpty();
     await expect(page.locator('[data-slot="card"]').filter({ hasText: "Exam grade distribution" }).getByText(/\d+ results/)).toBeVisible();

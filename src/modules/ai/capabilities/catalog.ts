@@ -26,7 +26,6 @@ export interface Capability {
   permission: Permission;
   module: ModuleKey;
   data: CapabilityData;
-  defaultOn: readonly Role[];
   queries?: readonly string[];
   tools?: readonly string[];
   legacyFeature?: FeatureKey;
@@ -93,7 +92,7 @@ function moduleTool(
   drafts?: readonly string[],
 ): Capability {
   const data = queries.every((q) => ASSISTANT_QUERIES[q]?.aggregate) ? "aggregate" : "personal";
-  return { key, label, description, kind: "chat_tool", roles, permission, module, data, defaultOn: roles, queries, ...(drafts && { drafts }) };
+  return { key, label, description, kind: "chat_tool", roles, permission, module, data, queries, ...(drafts && { drafts }) };
 }
 
 const LEADERS: readonly Role[] = ["owner", "principal", "admin"];
@@ -229,7 +228,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "attendance.read",
     module: "attendance",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: [
       "attendance.attendanceTodaySummary",
       "attendance.todayBySection",
@@ -248,7 +246,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.result.read",
     module: "exams",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: [
       "exams.listExams",
       "exams.examGradeDistribution",
@@ -272,7 +269,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "mastery.read",
     module: "mastery",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: [
       "mastery.heatmapBySection",
       "curriculum.coverageBySection",
@@ -289,7 +285,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "timetable.read",
     module: "timetable",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: [
       "timetable.todayFor",
       "timetable.roomUtilisation",
@@ -311,7 +306,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "finance.read",
     module: "fees",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: [
       "finance.listTermOptions",
       "finance.termCollectionSummary",
@@ -332,7 +326,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "admissions.enquiry.read",
     module: "admissions",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: ["admissions.getAdmissionsFunnelCounts", "admissions.listEnquiriesByStage", "admissions.listApplications"],
   },
   // ASSISTANT_QUERIES has no dedicated "approvals" or "assignments" domain
@@ -348,7 +341,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "student.read",
     module: "people",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: [
       "people.enrolmentCounts",
       "people.listStudents",
@@ -373,7 +365,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "insight.read",
     module: "insights",
     data: "personal",
-    defaultOn: ASSISTANT_ROLES,
     queries: ["insights.riskIndicators", "forecasts.cards", "insights.list", "lab.correlation", "lab.anomalies", "lab.feeRisk", "lab.trendBreaks"],
   },
   calendar_notices: {
@@ -385,7 +376,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "academics.read",
     module: "calendar",
     data: "aggregate",
-    defaultOn: ASSISTANT_ROLES,
     queries: ["calendar.forRole", "website.listNotices"],
   },
 
@@ -399,7 +389,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.chat",
     module: "core",
     data: "aggregate",
-    defaultOn: ASSISTANT_ROLES,
     tools: ["navigate"],
   },
   create_task: {
@@ -411,7 +400,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "insight.review",
     module: "insights",
     data: "aggregate",
-    defaultOn: ASSISTANT_ROLES,
     tools: ["createTask"],
   },
 
@@ -425,7 +413,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "student.read",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["teacher"],
     tools: ["findStudent"],
   },
   curriculum_unit: {
@@ -437,7 +424,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "academics.read",
     module: "ai_teacher",
     data: "aggregate",
-    defaultOn: ["teacher"],
     tools: ["findCurriculumUnit", "listMyUnits"],
   },
   attendance_pattern: {
@@ -449,7 +435,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "attendance.read",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["teacher"],
     tools: ["getAttendancePattern"],
   },
   exam_results: {
@@ -461,7 +446,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.result.read",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["teacher"],
     tools: ["getExamResults"],
   },
   assignment_status: {
@@ -473,7 +457,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "assignment.read",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["teacher"],
     tools: ["getAssignmentStatus"],
   },
   generate_quiz: {
@@ -485,7 +468,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "assignment.manage",
     module: "ai_teacher",
     data: "aggregate",
-    defaultOn: ["teacher"],
     tools: ["generateQuiz"],
   },
   draft_remark: {
@@ -497,7 +479,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.marks.enter",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["teacher"],
     tools: ["draftResultRemark"],
   },
 
@@ -511,7 +492,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "ai_student",
     data: "own",
-    defaultOn: ["student"],
     tools: ["findMyCurriculumUnit"],
   },
   study_visuals: {
@@ -523,7 +503,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "ai_student",
     data: "own",
-    defaultOn: [],
     legacyFeature: "student_ai_visuals",
     tools: ["showStudyBlocks"],
   },
@@ -536,8 +515,8 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "ai_student",
     data: "own",
-    defaultOn: [],
     legacyFeature: "student_ai_notebook",
+    tools: ["listMyStudyItems"],
   },
 
   // ---- Guardian child reads --------------------------------------------
@@ -550,7 +529,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "attendance.read",
     module: "attendance",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["attendance.getStudentAttendanceSummary"],
   },
   child_results: {
@@ -562,7 +540,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.result.read",
     module: "exams",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["exams.listResultsForStudent"],
   },
   child_fees: {
@@ -574,7 +551,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "finance.read",
     module: "fees",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["finance.listInvoicesForStudent"],
   },
   child_homework: {
@@ -586,7 +562,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "assignment.read",
     module: "diary",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["diary.forStudent"],
   },
 
@@ -601,7 +576,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.generate",
     module: "ai_teacher",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "teacher"],
   },
   // The gateway also needs ai.generate, which exam_controller lacks: it stays out of the ceiling.
   report_remark: {
@@ -613,7 +587,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.marks.enter",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["owner", "principal", "teacher"],
   },
   // Route checks ai.generate AND admissions.enquiry.read (both) — teacher
   // holds ai.generate but not admissions.enquiry.read, so it is excluded.
@@ -626,7 +599,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "admissions.enquiry.read",
     module: "ai_teacher",
     data: "personal",
-    defaultOn: ["owner", "principal", "admin", "admissions"],
   },
   // Route checks attendance.read + module; the gateway adds ai.generate, so
   // exam_controller (no ai.generate) stays out. Student/guardian hold
@@ -640,7 +612,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "attendance.read",
     module: "ai_briefings",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "teacher"],
   },
   // Route checks insight.read AND ai.generate (both) — accountant/exam_controller
   // hold insight.read but not ai.generate, so they are excluded.
@@ -654,7 +625,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "insight.read",
     module: "ai_briefings",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "admissions", "teacher"],
   },
   practice_quiz: {
     key: "practice_quiz",
@@ -665,7 +635,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "practice",
     data: "own",
-    defaultOn: ["student"],
   },
   // features-18 §D (api/ai/lab-*): text -> simulator sliders (scenario.manage
   // holders), and narration of computed lab aggregates (insight.review AND
@@ -680,7 +649,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "scenario.manage",
     module: "ai_briefings",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin"],
   },
   lab_explain: {
     key: "lab_explain",
@@ -691,7 +659,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "insight.review",
     module: "ai_briefings",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "admissions"],
   },
   // features-18 §C — page drafts. Each route checks its page permission
   // below AND the gateway's ai.generate, so roles without ai.generate
@@ -705,7 +672,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "assignment.manage",
     module: "lesson_plans",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "teacher"],
   },
   question_paper_builder: {
     key: "question_paper_builder",
@@ -716,7 +682,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "question.manage",
     module: "question_bank",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "teacher"],
   },
   fee_reminder_writer: {
     key: "fee_reminder_writer",
@@ -727,7 +692,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "finance.structure.manage",
     module: "fees",
     data: "personal",
-    defaultOn: ["owner", "principal", "admin"],
   },
   ptm_brief: {
     key: "ptm_brief",
@@ -738,7 +702,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ptm.slot.manage",
     module: "ptm",
     data: "personal",
-    defaultOn: ["owner", "principal", "admin", "teacher"],
   },
 
   // ---- Teacher chat capabilities (P3) ----------------------------------
@@ -751,7 +714,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "academics.read",
     module: "lesson_plans",
     data: "aggregate",
-    defaultOn: ["teacher"],
     queries: ["academics.listCurriculumUnits"],
     drafts: ["curriculum.lessonPlan.upsert"],
     instruction: "Help design a lesson plan.",
@@ -765,7 +727,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "message.send",
     module: "messaging",
     data: "personal",
-    defaultOn: ["teacher"],
     queries: ["people.getStudentProfile"],
     drafts: ["messaging.startThread", "messaging.send"],
     instruction: "Draft a clear, respectful message.",
@@ -779,7 +740,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "academics.read",
     module: "lesson_plans",
     data: "aggregate",
-    defaultOn: ["teacher"],
     queries: ["academics.listCurriculumUnits"],
     instruction: "Three levels: support, core, and stretch.",
   },
@@ -794,7 +754,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "ai_student",
     data: "own",
-    defaultOn: ["student"],
     instruction:
       "For a homework or exam problem the student has to solve, give a hint or guiding question first and the full worked answer only when they ask again. " +
       "When the student asks you to explain or teach a concept, explain it fully straight away in simple words with an everyday example, then you may end with one quick check question. Never answer an explain request with only a question.",
@@ -808,7 +767,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "mastery",
     data: "own",
-    defaultOn: ["student"],
     queries: ["mastery.gapsForStudent"],
     instruction: "Short study plan, weakest units first.",
   },
@@ -821,7 +779,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "ai_student",
     data: "own",
-    defaultOn: ["student"],
     instruction: "If the student writes in or asks for an Indian language (Hindi, Tamil, Telugu, Kannada, Malayalam, Marathi, Bengali, Gujarati, Punjabi, Odia), answer in it with simple words and English technical terms in brackets.",
   },
   exam_prep: {
@@ -833,7 +790,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "exams",
     data: "own",
-    defaultOn: ["student"],
     queries: ["exams.getMyPapers"],
     instruction: "Suggest what to revise and link Practice.",
   },
@@ -848,7 +804,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.result.read",
     module: "exams",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["exams.listResultsForStudent"],
     instruction: "Plain-language explanation, no comparison with other children.",
   },
@@ -861,7 +816,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "attendance.read",
     module: "attendance",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["attendance.getStudentAttendanceSummary", "diary.forStudent", "exams.listResultsForStudent", "finance.listInvoicesForStudent"],
     instruction: "Last 7 days in 5 short lines.",
   },
@@ -874,7 +828,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "finance.read",
     module: "fees",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["finance.listInvoicesForStudent"],
     instruction: "What is due, when, and how to pay.",
   },
@@ -887,8 +840,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "notification.read",
     module: "website",
     data: "own",
-    defaultOn: ["guardian"],
-    queries: ["website.listNotices"],
+    queries: ["website.listPublishedNotices"],
     instruction: "Translate into the language the guardian asks for.",
   },
   draft_leave_or_message: {
@@ -900,7 +852,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "student_leave.request",
     module: "student_leave",
     data: "own",
-    defaultOn: ["guardian"],
     drafts: ["studentLeave.request", "messaging.startThread", "messaging.send"],
     instruction: "Draft clearly and concisely.",
   },
@@ -915,7 +866,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "announcement.manage",
     module: "announcements",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin"],
     drafts: ["announcement.create", "ptm.event.create", "finance.reminders.send"],
     instruction: "Draft actions directly in chat.",
   },
@@ -928,7 +878,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "dashboard.view",
     module: "core",
     data: "aggregate",
-    defaultOn: ["owner", "principal"],
     queries: ["attendance.sectionsBelowThreshold", "finance.listDefaulters", "insights.list", "core.approvals.pending"],
     instruction: "One-page weekly report: attendance, fees, insights, approvals.",
   },
@@ -941,7 +890,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "finance.reminder.send",
     module: "finance_plus",
     data: "aggregate",
-    defaultOn: ["accountant", "owner", "principal"],
     queries: ["finance.listDefaulters"],
     drafts: ["finance.reminders.send"],
     instruction: "One short reminder per family in its language.",
@@ -955,7 +903,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "admissions.enquiry.write",
     module: "admissions",
     data: "personal",
-    defaultOn: ["admissions", "owner", "principal"],
     queries: ["admissions.listEnquiriesByStage"],
     drafts: ["admissions.enquiry.note"],
     instruction: "Draft a follow-up message per open enquiry to copy and log.",
@@ -969,7 +916,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "question.manage",
     module: "question_bank",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "exam_controller", "teacher"],
     queries: ["questionBank.paperDraft"],
     instruction: "When asked for a question paper, build it with the paper draft tool and say plainly that it is not saved anywhere.",
   },
@@ -982,7 +928,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "assignment.manage",
     module: "assignments",
     data: "personal",
-    defaultOn: ["owner", "principal", "teacher"],
     queries: ["academics.gradeSuggestions"],
     drafts: ["assignment.grade"],
     instruction: "Grade suggestions are only suggestions: draft one grade per submission for the teacher to review and save; never claim a grade is saved.",
@@ -996,7 +941,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "exam.marks.enter",
     module: "exams",
     data: "personal",
-    defaultOn: ["owner", "principal", "exam_controller"],
     queries: ["exams.markOutliers"],
     instruction: "Explain each flagged mark plainly and suggest who should check it; you cannot change marks.",
   },
@@ -1011,7 +955,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "helpdesk.manage",
     module: "helpdesk",
     data: "personal",
-    defaultOn: ["owner", "principal", "admin"],
   },
   // Route checks ai.generate only: any staff role that holds it may translate its own text.
   translate: {
@@ -1023,7 +966,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.generate",
     module: "ai_teacher",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "admissions", "teacher"],
   },
   form_draft: {
     key: "form_draft",
@@ -1034,7 +976,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "form.manage",
     module: "forms",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin"],
   },
   substitution_note: {
     key: "substitution_note",
@@ -1045,7 +986,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "timetable.manage",
     module: "substitution",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin"],
   },
 
   // ---- features-18 §E: new modules, reads + human-confirmed drafts --------
@@ -1145,7 +1085,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "resource.read",
     module: "core",
     data: "own",
-    defaultOn: ["guardian"],
     queries: ["achievements.portfolio", "resources.forStudent", "library.myLoans", "form.mine", "helpdesk.myTickets", "safety.alerts"],
   },
   my_activities: {
@@ -1157,7 +1096,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "resource.read",
     module: "core",
     data: "own",
-    defaultOn: ["student"],
     queries: ["achievements.portfolio", "resources.forStudent", "library.myLoans", "form.mine", "helpdesk.myTickets", "safety.alerts"],
   },
 
@@ -1171,7 +1109,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "lab.read",
     module: "school_labs",
     data: "aggregate",
-    defaultOn: LEADERS_AND_TEACHERS,
   },
   import_mapping: {
     key: "import_mapping",
@@ -1182,7 +1119,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "data.import",
     module: "core",
     data: "aggregate",
-    defaultOn: LEADERS,
   },
   // Prompt carries the school name, the brief and the page's own public blocks only.
   website_page_draft: {
@@ -1194,7 +1130,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "website.edit",
     module: "website",
     data: "aggregate",
-    defaultOn: ["owner", "principal", "admin", "admissions"],
   },
   website_theme_draft: {
     key: "website_theme_draft",
@@ -1205,7 +1140,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "website.publish",
     module: "website",
     data: "aggregate",
-    defaultOn: LEADERS,
   },
   // Prompt carries the request, the workflow catalog, section labels and agent names/summaries only.
   workflow_draft: {
@@ -1217,7 +1151,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "workflow.manage",
     module: "workflows",
     data: "aggregate",
-    defaultOn: ["owner", "principal"],
   },
   // Prompts carry the source text only (unit outline, shared resource, pasted notes; short answers for the check).
   study_studio: {
@@ -1230,7 +1163,6 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "ai_student",
     data: "own",
-    defaultOn: ["student"],
   },
   teacher_study_studio: {
     key: "teacher_study_studio",
@@ -1242,6 +1174,5 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.generate",
     module: "ai_teacher",
     data: "aggregate",
-    defaultOn: ["teacher"],
   },
 };

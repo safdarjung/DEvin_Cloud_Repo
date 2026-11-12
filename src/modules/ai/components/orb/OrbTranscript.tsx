@@ -211,6 +211,25 @@ function Cards({ proposals, institutionSlug, handlers }: { proposals: TaskPropos
   );
 }
 
+/** Whether a finished answer shows anything besides the provider badge (mirrors what ToolPart and Cards draw). */
+export function answerShows(parts: readonly Part[]): boolean {
+  if (plainChatText(parts.map((p) => (p.type === "text" ? p.text : "")).join("")).trim()) return true;
+  return parts.some((part) => {
+    if (!isToolUIPart(part)) return false;
+    if (part.state !== "output-available") return part.state !== "output-error";
+    return Boolean(
+      taskProposalFromPart(part) ||
+        chartFromTool(part.type, part.output) ||
+        navigateLink(part) ||
+        EDITOR_DRAFT_TOOLS.has(part.type) ||
+        (isDraftToolPartType(part.type) && parseDraftToolOutput(part.output)),
+    );
+  });
+}
+
+/** Shown instead of a bare badge when a model turn ended with nothing to show. */
+export const EMPTY_ANSWER_TEXT = "I looked this up but couldn't finish an answer. Ask again, or tell me a little more about what you need.";
+
 function ToolPart({ part, institutionSlug }: { part: Part; institutionSlug: string }) {
   if (!isToolUIPart(part)) return null;
   if (part.state === "output-available" && taskProposalFromPart(part)) return null; // rendered by <Cards>
@@ -255,12 +274,14 @@ function Message({ message, institutionSlug, streaming, handlers, onAgain }: {
 }) {
   const text = plainChatText(message.parts.map((p) => (p.type === "text" ? p.text : "")).join(""));
   const tools = message.parts.filter((p) => isToolUIPart(p));
-  if (!text && tools.length === 0) return null;
+  // A finished assistant turn with nothing in it still gets the fallback line below.
+  if (!text && tools.length === 0 && (message.role === "user" || streaming)) return null;
   if (message.role === "user") {
     return <p className={`ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground ${RISE}`}>{text}</p>;
   }
   const provider = message.metadata?.provider;
   const sources = [...new Set((message.metadata?.sources ?? []).map((s) => sourceLabel(s.query)))];
+  const empty = !streaming && !answerShows(message.parts);
   return (
     <div className={`min-w-0 max-w-full space-y-2 ${RISE}`}>
       {tools.map((part, i) => <ToolPart key={i} part={part} institutionSlug={institutionSlug} />)}
@@ -271,6 +292,7 @@ function Message({ message, institutionSlug, streaming, handlers, onAgain }: {
           {streaming && <span className="ml-0.5 inline-block h-4 w-[2px] translate-y-0.5 animate-pulse bg-foreground" aria-hidden />}
         </p>
       )}
+      {empty && <p className="whitespace-pre-wrap leading-relaxed text-muted-foreground">{EMPTY_ANSWER_TEXT}</p>}
       {sources.length > 0 && <p className="text-xs text-muted-foreground">Records used: {sources.join(" · ")}</p>}
       {(provider || (text && !streaming)) && (
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
@@ -279,7 +301,7 @@ function Message({ message, institutionSlug, streaming, handlers, onAgain }: {
           {text && !streaming && <CopyButton text={text} />}
           {text && !streaming && <SaveNoteButton institutionSlug={institutionSlug} title={text.split("\n")[0]!.slice(0, 80)} text={text} />}
           {/* Not for an answer that brought cards: asking again would make them twice. */}
-          {onAgain && text && !streaming && proposalsIn(message.parts).length === 0 && (
+          {onAgain && (text || empty) && !streaming && proposalsIn(message.parts).length === 0 && (
             <button
               type="button"
               onClick={onAgain}

@@ -13,6 +13,10 @@
 import { describe, expect, test } from "vitest";
 import {
   buildQuizPrompt,
+  generateWithMetaRetry,
+  isMetaQuestion,
+  META_RETRY_NOTE,
+  quizStems,
   QUIZ_DATA_BLOCK_MARKER_PATTERN,
   QUIZ_GENERATION_INSTRUCTIONS,
   sanitizeForDataBlock,
@@ -152,5 +156,57 @@ describe("buildQuizPrompt (07 §5, DBT-07)", () => {
   test("QuizPromptInput exposes only unit title/description, grade, subject, difficulty, questionCount — no student or guardian field is possible", () => {
     const allowedKeys = ["unitTitle", "unitDescription", "gradeLabel", "subjectName", "difficulty", "questionCount"];
     expect(Object.keys(base).sort()).toEqual([...allowedKeys].sort());
+  });
+
+  // Owner report 2026-11-12: an "Algebra basics" practice quiz asked "Which grade level is the
+  // Algebra Basics curriculum designed for?" instead of real maths problems.
+  test("the prompt treats the unit as the topic to test, not as material to quiz about", () => {
+    const prompt = buildQuizPrompt(base);
+    expect(prompt).not.toMatch(/Base every question only on the curriculum unit data/);
+    expect(prompt).toMatch(/names the topic/);
+  });
+
+  test("a maths unit asks for real problems with numbers and equations to work out", () => {
+    expect(buildQuizPrompt({ ...base, subjectName: "Mathematics" })).toMatch(/equation/i);
+    expect(buildQuizPrompt({ ...base, subjectName: "Maths" })).toMatch(/work out/i);
+    expect(buildQuizPrompt({ ...base, subjectName: "English" })).not.toMatch(/equation/i);
+  });
+
+  test("isMetaQuestion flags questions about the unit itself and passes real subject questions", () => {
+    for (const stem of [
+      "Which grade level is the Algebra Basics curriculum designed for?",
+      "What is the main focus of this unit?",
+      "According to the unit outline, which topic comes first?",
+      "Which subject does this syllabus belong to?",
+    ]) expect(isMetaQuestion(stem), stem).toBe(true);
+    for (const stem of [
+      "Solve for x: 3x + 5 = 20",
+      "Simplify 2(a + 3) - a",
+      "Which of these is a linear equation?",
+      "A unit of length in the metric system is the:",
+    ]) expect(isMetaQuestion(stem), stem).toBe(false);
+  });
+
+  test("generateWithMetaRetry regenerates once with the retry note when a question is about the unit", async () => {
+    const meta = { questions: [{ stem: "Which grade level is the Algebra Basics curriculum designed for?" }] };
+    const real = { questions: [{ stem: "Solve for x: 3x + 5 = 20" }] };
+    const prompts: string[] = [];
+    const generate = async (p: string) => {
+      prompts.push(p);
+      return prompts.length === 1 ? meta : real;
+    };
+    expect(await generateWithMetaRetry(generate, "P", quizStems)).toBe(real);
+    expect(prompts).toEqual(["P", `P\n\n${META_RETRY_NOTE}`]);
+  });
+
+  test("generateWithMetaRetry makes one call for a clean draft, and keeps the first draft if the retry fails", async () => {
+    let calls = 0;
+    const clean = { questions: [{ stem: "Simplify 2(a + 3) - a" }] };
+    expect(await generateWithMetaRetry(async () => (calls++, clean), "P", quizStems)).toBe(clean);
+    expect(calls).toBe(1);
+
+    const meta = { questions: [{ stem: "What is the main focus of this unit?" }] };
+    let n = 0;
+    expect(await generateWithMetaRetry(async () => (n++ === 0 ? meta : null), "P", quizStems)).toBe(meta);
   });
 });

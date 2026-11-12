@@ -66,7 +66,8 @@ export async function listIncidents(ctx: TenantContext, input: IncidentListInput
     q = q.in("student_id", ids);
   }
   const { data, error, count } = await q;
-  if (error) throw error;
+  // PGRST103: page past the last row -> empty page, not a 416 throw.
+  if (error && error.code !== "PGRST103") throw error;
   const rows = (data ?? []).map((r) => ({
     id: r.id,
     studentId: r.student_id,

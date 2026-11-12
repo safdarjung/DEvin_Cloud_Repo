@@ -233,7 +233,7 @@ async function plan(role: Role, mode: "cloud" | "local", question: string) {
   const ctx = ctxFor(role);
   const capabilities = enabledCapabilities(ctx, role).filter((k) => CAPABILITIES[k].kind === "chat_tool");
   const childId = role === "guardian" ? CHILD : undefined;
-  const { tools, groups } = await buildChatToolset(ctx, { personaRole: role, capabilities, mode, nonce: "n0nce", childId });
+  const { tools, groups } = await buildChatToolset(ctx, { personaRole: role, capabilities, nonce: "n0nce", childId });
   const tasks = buildTaskTools({ ctx, nonce: "n0nce", texts: [question], childId });
   const system = [systemPromptFor({ role, nonce: "n0nce", mode, capabilities, instructions: "", childId }), tasks.system].filter(Boolean).join("\n\n");
   const ceiling = mode === "cloud" ? TOKEN_CEILING.groq : TOKEN_CEILING.local;

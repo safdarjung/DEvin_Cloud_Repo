@@ -59,10 +59,14 @@ async function main() {
 
   // ---- demo logins -> user / staff / student ids ----
   const userByLogin: Record<string, string> = {};
-  const { data: userPage, error: userErr } = await admin.auth.admin.listUsers({ perPage: 1000 });
-  if (userErr) throw new Error(`listUsers: ${userErr.message}`);
-  for (const u of userPage.users) {
-    if (u.email?.endsWith("@demo.coolskool.test")) userByLogin[u.email.split("@")[0]!] = u.id;
+  // Page through every auth user: test runs leave thousands, so demo logins can sit past page 1.
+  for (let page = 1; ; page++) {
+    const { data: userPage, error: userErr } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (userErr) throw new Error(`listUsers: ${userErr.message}`);
+    for (const u of userPage.users) {
+      if (u.email?.endsWith("@demo.coolskool.test")) userByLogin[u.email.split("@")[0]!] = u.id;
+    }
+    if (userPage.users.length < 1000) break;
   }
   const memberships = await must<{ user_id: string; staff_id: string | null; student_id: string | null }[]>(
     admin.from("memberships").select("user_id, staff_id, student_id").eq("institution_id", institution_id),

@@ -6,13 +6,10 @@ import "server-only";
 // pages) — the same shape as attendance's per-section page guard.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { escapeIlike } from "@/lib/list-search";
 
 const PAGE_SIZE = 50;
 
-/** ILIKE treats `%`/`_` as wildcards — escape them so a search for "A_1" or "100%" doesn't become a pattern. */
-function escapeIlike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
-}
 
 /**
  * Phase 2 review (MEDIUM): PostgREST's `.or()` filter string splits on `,`
@@ -105,6 +102,9 @@ export async function listStudents(
   }
 
   const { data, error, count } = await builder;
+  // PGRST103: a page past the last one. An empty page, not an internal error.
+  // shortcut: total is unknown here (0), upgrade with a head-only count if a UI pages past the end.
+  if (error?.code === "PGRST103") return { students: [], total: 0, page: safePage, pageSize: PAGE_SIZE };
   if (error) throw error;
 
   const students = (data ?? []).map((row) => {
@@ -301,6 +301,19 @@ export async function enrolmentCounts(ctx: TenantContext): Promise<{ scope: stri
 export async function termIdOrCurrent(ctx: TenantContext, termId?: string): Promise<string | null> {
   if (termId) return termId;
   const supabase = await createClient();
+  // Terms are readable by every member (0051); academic_years is staff-only, so a guardian or student finds today's term by date.
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: term, error: termError } = await supabase
+    .from("terms")
+    .select("id")
+    .eq("institution_id", ctx.institution.id)
+    .lte("starts_on", today)
+    .gte("ends_on", today)
+    .order("starts_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (termError) throw termError;
+  if (term) return term.id;
   const { data: year, error } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
   if (error) throw error;
   return year ? getCurrentTermId(ctx, year.id) : null;

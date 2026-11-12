@@ -15,10 +15,11 @@ function serviceClient() {
 }
 
 async function loginAs(page: Page, email: string) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -52,17 +53,17 @@ test.describe("J-04: application decision — offer then accept", () => {
 
     await loginAs(page, "admissions@demo.coolskool.test");
     await page.goto(`/${SLUG}/admissions/applications/${application.id}`);
-    await expect(page.getByText(/status: under_review/)).toBeVisible();
+    await expect(page.getByText("Under review", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "offer", exact: true }).click();
+    await page.getByRole("button", { name: "Offer", exact: true }).click();
     await page.getByRole("button", { name: "Confirm", exact: true }).click();
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/status: offered/)).toBeVisible();
+    await expect(page.getByText("Offered", { exact: true })).toBeVisible();
 
-    await page.getByRole("button", { name: "accept", exact: true }).click();
+    await page.getByRole("button", { name: "Accept", exact: true }).click();
     await page.getByRole("button", { name: "Confirm", exact: true }).click();
     await page.waitForLoadState("networkidle");
-    await expect(page.getByText(/status: accepted/)).toBeVisible();
+    await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
 
     const decisions = page.locator("ul li", { hasText: /offer|accept/i });
     await expect(decisions).toHaveCount(2);

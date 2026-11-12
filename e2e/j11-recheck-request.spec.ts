@@ -15,15 +15,17 @@ function serviceClient() {
 }
 
 async function loginAs(page: Page, email: string, password = PASSWORD) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
 test.describe("J-11: guardian requests a recheck", () => {
   test("guardian submits a recheck request for one paper; a second request for the same paper is blocked", async ({ page }) => {
+    test.slow(); // multi-role journey with dev-mode page compiles
     const admin = serviceClient();
     const { data: institution } = await admin.from("institutions").select("id").eq("slug", SLUG).single();
     if (!institution) throw new Error("seeded demo institution not found");
@@ -126,7 +128,7 @@ test.describe("J-11: guardian requests a recheck", () => {
     await page.waitForURL(new RegExp(`/exams/${examId}$`));
 
     await page.getByRole("button", { name: "Open marks entry" }).click();
-    await expect(page.getByText("marks_entry", { exact: true })).toBeVisible();
+    await expect(page.getByText("Marks entry", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: new RegExp(`J11-${suffix}`) }).click();
     await page.waitForURL(/\/papers\/[0-9a-f-]+$/);
 
@@ -136,12 +138,12 @@ test.describe("J-11: guardian requests a recheck", () => {
 
     await page.goto(`/${SLUG}/exams/${examId}`);
     await page.getByRole("button", { name: "Close marks entry" }).click();
-    await expect(page.getByText("verification", { exact: true })).toBeVisible();
+    await expect(page.getByText("Verification", { exact: true }).first()).toBeVisible();
     await page.getByRole("link", { name: "Publish / View results" }).click();
     await page.waitForURL(new RegExp(`/exams/${examId}/results$`));
     await page.getByRole("button", { name: "Publish results" }).click();
     await page.getByRole("button", { name: "Confirm publish" }).click();
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("button", { name: "Confirm publish" })).toBeHidden({ timeout: 20_000 });
 
     // 2. guardian opens the portal, sees the report card, requests a recheck.
     await loginAs(page, guardianEmail, GUARDIAN_PASSWORD);

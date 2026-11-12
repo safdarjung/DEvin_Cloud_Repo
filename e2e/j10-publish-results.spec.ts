@@ -18,10 +18,11 @@ function serviceClient() {
 }
 
 async function loginAs(page: Page, email: string, password = PASSWORD) {
-  await page.goto("/login");
+  await page.goto("/login?switch=1");
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: /sign in/i }).click();
+  await page.waitForURL((url) => url.pathname !== "/login");
   await page.waitForLoadState("networkidle");
 }
 
@@ -73,6 +74,7 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
   test("examcontroller publishes once verification is clean; guardian sees only their own linked child's report card", async ({
     page,
   }) => {
+    test.slow(); // multi-role journey with dev-mode page compiles
     const admin = serviceClient();
     const { data: institution } = await admin.from("institutions").select("id").eq("slug", SLUG).single();
     if (!institution) throw new Error("seeded demo institution not found");
@@ -239,10 +241,9 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
     await publishTrigger.click();
     await expect(page.getByText("This cannot be undone; corrections are only possible via recheck.")).toBeVisible();
     await page.getByRole("button", { name: "Confirm publish" }).click();
-    await page.waitForLoadState("networkidle");
 
     // 4. results list shows both students; report card link works for staff.
-    await expect(page.getByRole("link", { name: "Asha J10" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Asha J10" })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("link", { name: "Vihaan J10" })).toBeVisible();
     await page.getByRole("link", { name: "Asha J10" }).click();
     await page.waitForURL(/\/results\/[0-9a-f-]+$/);
@@ -258,7 +259,10 @@ test.describe("J-10: publish exam results, report card, guardian view", () => {
 
     // ...but a URL for the other (unrelated) student is not_found.
     const otherUrl = reportCardUrl.replace(studentWithGuardianId!, studentOther.id);
-    const response = await page.goto(otherUrl);
-    expect(response?.status()).toBe(404);
+    // Status is 200, not 404: the tenant loading.tsx Suspense boundary commits it before notFound() (DBT-83).
+    // The guard holds: the not-found body renders and no report card reaches the page.
+    await page.goto(otherUrl);
+    await expect(page.getByText("Page not found")).toBeVisible();
+    await expect(page.getByTestId("report-card")).toHaveCount(0);
   });
 });

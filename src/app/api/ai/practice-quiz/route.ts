@@ -14,7 +14,7 @@ import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
 import { QuizContentSchema } from "@/modules/ai/quiz.schemas";
-import { buildQuizPrompt, PRACTICE_QUIZ_INSTRUCTIONS } from "@/modules/ai/prompts/quiz";
+import { buildQuizPrompt, generateWithMetaRetry, isMetaQuestion, PRACTICE_QUIZ_INSTRUCTIONS, quizStems } from "@/modules/ai/prompts/quiz";
 import { PracticeGenerationSchema, PracticeQuizRequestSchema, type PracticeQuestion } from "@/modules/practice/schemas";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 
@@ -159,17 +159,19 @@ export async function POST(request: Request): Promise<NextResponse> {
       questionCount: input.count,
     });
 
-    const result = await runStructured({
-      ctx,
-      feature: "practice_quiz",
-      agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
-      permission: "ai.study",
-      schema: PracticeGenerationSchema,
-      strictSchema: QuizContentSchema,
-      instructions: PRACTICE_QUIZ_INSTRUCTIONS,
-      prompt,
-      maxOutputTokens: MAX_OUTPUT_TOKENS,
-    });
+    const generate = (text: string) =>
+      runStructured({
+        ctx,
+        feature: "practice_quiz",
+        agentCloud: true, // owner cloud exception (D28 ext. 2026-11-06)
+        permission: "ai.study",
+        schema: PracticeGenerationSchema,
+        strictSchema: QuizContentSchema,
+        instructions: PRACTICE_QUIZ_INSTRUCTIONS,
+        prompt: text,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+      });
+    const result = await generateWithMetaRetry(generate, prompt, (r) => (r.ok ? quizStems(r.data.data) : []));
     if (!result.ok) return json(result);
 
     // Same strict re-parse as the teacher route: unique options, answer is one of them.
@@ -177,8 +179,12 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (!strict.success) {
       return json(fail("ai_invalid_output", "AI returned output that did not match the expected schema after one repair attempt."));
     }
+    const subjectQuestions = strict.data.questions.filter((q) => !isMetaQuestion(q.stem));
+    if (subjectQuestions.length === 0) {
+      return json(fail("ai_invalid_output", "AI wrote questions about the unit instead of the subject. Please try again."));
+    }
 
-    const questions: PracticeQuestion[] = strict.data.questions.slice(0, input.count).map((q) => ({
+    const questions: PracticeQuestion[] = subjectQuestions.slice(0, input.count).map((q) => ({
       stem: q.stem,
       options: q.options,
       answerIndex: q.options.indexOf(q.answer),

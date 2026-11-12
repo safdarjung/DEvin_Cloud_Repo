@@ -79,6 +79,20 @@ export const updateForm = defineAction({
   permission: "form.manage",
   handler: async (input: FormUpdateInput, ctx) => {
     const supabase = await createClient();
+    // Check sections before any write: the update below is three requests, so a late refusal would half-save.
+    const sectionIds = [...new Set(input.classSectionIds)];
+    if (sectionIds.length > 0) {
+      const { data: found, error: findError } = await supabase
+        .from("class_sections")
+        .select("id")
+        .eq("institution_id", ctx.institution.id)
+        .in("id", sectionIds);
+      if (findError) throwWriteError(findError);
+      if ((found ?? []).length !== sectionIds.length) {
+        throw new AppError("validation_failed", "One or more sections were not found.", { classSectionIds: ["Unknown section."] });
+      }
+    }
+
     const { data, error } = await supabase
       .from("forms")
       .update({ title: input.title, description: input.description || null, fields: input.fields })

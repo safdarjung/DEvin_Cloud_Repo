@@ -12,7 +12,7 @@ test.describe("One-click demo login buttons", () => {
       if (msg.type() === "error") errors.push(msg.text());
     });
 
-    await page.goto("/login");
+    await page.goto("/login?switch=1");
 
     // One <input type="hidden" name="email"> per account button — a direct
     // count against the fixtures list, not just a couple of spot checks.
@@ -26,14 +26,14 @@ test.describe("One-click demo login buttons", () => {
   });
 
   test("tapping a demo account signs in with no typing", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/login?switch=1");
     await page.getByRole("button", { name: /Principal/ }).click();
     await page.waitForURL(/\/dashboard$/);
     await expect(page.locator("body")).not.toContainText("Invalid email or password");
   });
 
   test("tapping a parent account lands on the portal", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/login?switch=1");
     await page.getByRole("button", { name: /Priya Sharma/ }).click();
     await page.waitForURL(/\/portal$/);
   });

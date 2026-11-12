@@ -2,9 +2,9 @@
 
 export const LIST_PAGE_SIZE = 50;
 
-/** ILIKE treats `%`/`_` as wildcards; escape them so "A_1" or "100%" is literal. */
+/** ILIKE treats `%`/`_` as wildcards (PostgREST reads `*` as `%`); escape them so "A_1", "100%" or "*" is literal. */
 export function escapeIlike(value: string): string {
-  return value.replace(/[\\%_]/g, (c) => `\\${c}`);
+  return value.replace(/[\\%_*]/g, (c) => `\\${c}`);
 }
 
 /** Wrap a value in double quotes so `,` `(` `)` inside it cannot split a PostgREST `.or()` string. */
