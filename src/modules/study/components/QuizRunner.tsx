@@ -25,6 +25,8 @@ interface Saved {
   startedAt: number;
   deadline: number | null;
   index: number;
+  /** Show whether each multiple-choice / true-false answer was right as soon as it is chosen. */
+  instant?: boolean;
 }
 interface Result {
   answers: QuizAnswer[];
@@ -94,6 +96,8 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  const [instant, setInstant] = useState(false);
+  const [onlyMissed, setOnlyMissed] = useState(false);
   const submittedRef = useRef(false);
   const update = useCallback((next: Saved) => write(key, JSON.stringify(next)), [key]);
 
@@ -174,9 +178,11 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
   const setAnswer = useCallback(
     (value: QuizAnswer) => {
       if (!state) return;
+      // Instant feedback: a choice that has been marked cannot be swapped for the right one.
+      if (state.instant && state.answers[state.index] !== null && questions[state.index]?.type !== "short") return;
       update({ ...state, answers: state.answers.map((a, i) => (i === state.index ? value : a)) });
     },
-    [state, update],
+    [state, update, questions],
   );
 
   useEffect(() => {
@@ -201,8 +207,9 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
       <section aria-labelledby="quiz-result" className="space-y-4">
         <div className="rounded-xl border p-4">
           <h3 id="quiz-result" className="text-lg font-semibold">
-            Practice result
+            Practice result{result.autoMax > 0 ? ` · ${Math.round((result.autoScore / result.autoMax) * 100)}%` : ""}
           </h3>
+          {result.autoMax > 0 && <p className="mt-1 text-sm font-medium">{encourage(result.autoScore / result.autoMax)}</p>}
           <p className="mt-1 text-sm tabular-nums">
             Auto-marked: {result.autoScore}/{result.autoMax}
             {result.aiMax > 0 && (
@@ -215,13 +222,20 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
           {!result.aiChecked && <p className="mt-1 text-xs text-muted-foreground">Short answers were not checked this time, so they are not scored.</p>}
         </div>
         {mock && <MockResult mock={mock} verdicts={result.verdicts} checks={result.aiChecked ? result.checks.filter((c): c is { score: number; feedback: string } => c !== null) : []} />}
+        {result.verdicts.some((v) => v === "incorrect" || v === "unanswered") && (
+          <label className="flex min-h-10 w-fit cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={onlyMissed} onChange={(e) => setOnlyMissed(e.target.checked)} className="size-4" />
+            Show only the ones I missed ({result.verdicts.filter((v) => v === "incorrect" || v === "unanswered").length})
+          </label>
+        )}
         <ol className="space-y-3">
           {questions.map((q, i) => {
             const a = result.answers[i] ?? null;
             const check = result.checks[i];
             const verdict = result.verdicts[i];
+            if (onlyMissed && verdict !== "incorrect" && verdict !== "unanswered") return null;
             return (
-              <li key={i} className="rounded-lg border p-3 text-sm">
+              <li key={i} value={i + 1} className="rounded-lg border p-3 text-sm">
                 <p className="font-medium">
                   {i + 1}. {q.stem}
                 </p>
@@ -258,9 +272,21 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
             );
           })}
         </ol>
-        <Link href={backHref} className="inline-flex min-h-10 items-center text-sm underline underline-offset-4">
-          Back to quizzes
-        </Link>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setResult(null);
+              setOnlyMissed(false);
+              submittedRef.current = false;
+            }}
+          >
+            Try again
+          </Button>
+          <Link href={backHref} className="inline-flex min-h-10 items-center text-sm underline underline-offset-4">
+            Back to quizzes
+          </Link>
+        </div>
       </section>
     );
   }
@@ -289,11 +315,17 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
           ))}
         </fieldset>
         )}
+        {!mock && (
+          <label className="flex min-h-10 cursor-pointer items-center gap-2 text-sm">
+            <input type="checkbox" checked={instant} onChange={(e) => setInstant(e.target.checked)} className="size-4" />
+            Show the answer after each question (good for learning; short answers are still checked at the end)
+          </label>
+        )}
         <Button
           size="lg"
           onClick={() => {
             const startedAt = Date.now();
-            update({ answers: questions.map(() => null), startedAt, deadline: timer ? startedAt + timer * 60_000 : null, index: 0 });
+            update({ answers: questions.map(() => null), startedAt, deadline: timer ? startedAt + timer * 60_000 : null, index: 0, ...(instant && !mock ? { instant: true } : {}) });
           }}
         >
           {mock ? "Start mock exam" : "Start quiz"}
@@ -365,6 +397,7 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
             </label>
           )}
         </div>
+        {state.instant && answer !== null && q.type !== "short" && <InstantFeedback q={q} answer={answer} />}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2">
@@ -382,6 +415,24 @@ export function QuizRunner({ institutionSlug, materialId, title, subjectId, unit
       <p className="text-xs text-muted-foreground" aria-hidden>
         Keys: 1–4 choose · ← → move
       </p>
+    </div>
+  );
+}
+
+function encourage(share: number): string {
+  if (share >= 0.9) return "Excellent. You know this well.";
+  if (share >= 0.7) return "Good work. A little more practice on the ones you missed.";
+  if (share >= 0.4) return "A fair start. Read the answers below, then try again.";
+  return "This one is still new to you. Read the answers below, then try again.";
+}
+
+function InstantFeedback({ q, answer }: { q: Exclude<QuizQuestion, { type: "short" }>; answer: QuizAnswer }) {
+  const right = q.type === "mcq" ? answer === q.answerIndex : answer === q.answer;
+  const correct = q.type === "mcq" ? `${letter(q.answerIndex)}. ${q.options[q.answerIndex]}` : q.answer ? "True" : "False";
+  return (
+    <div role="status" className={`mt-4 rounded-lg border p-3 text-sm ${right ? "border-emerald-600/40 bg-emerald-600/10" : "border-destructive/40 bg-destructive/10"}`}>
+      <p className="font-medium">{right ? "Correct" : `Not quite. The answer is ${correct}`}</p>
+      {q.explanation && <p className="mt-1 text-muted-foreground">{q.explanation}</p>}
     </div>
   );
 }
