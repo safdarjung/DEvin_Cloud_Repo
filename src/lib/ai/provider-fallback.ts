@@ -98,6 +98,9 @@ export function configuredCloudKeys(): CloudPlanInput["keys"] {
   return { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY), zai: Boolean(process.env.ZAI_API_KEY) };
 }
 
+/** AI-drawn pictures (/image) are billed per picture and need a Gemini plan with image output: off until the owner turns them on. */
+export const picturesEnabled = (): boolean => process.env.AI_IMAGES_ENABLED === "true" && configuredCloudKeys().gemini;
+
 const USER_MESSAGE: Record<AiErrorKind, { code: ErrorCode; message: string }> = {
   busy: { code: "rate_limited", message: "The AI service is busy right now. Please try again in a minute." },
   too_large: {

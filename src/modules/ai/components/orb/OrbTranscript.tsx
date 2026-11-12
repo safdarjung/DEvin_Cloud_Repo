@@ -19,6 +19,7 @@ import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
 import { AnatomyCard, type AnatomyResult } from "@/modules/ai/components/explain/AnatomyCard";
 import { InfographicCard, type InfographicResult } from "@/modules/ai/components/explain/InfographicCard";
+import { DiagramCard, ImageCard, MindMapCard, type DiagramResult, type ImageResult, type MindMapResult } from "@/modules/ai/components/explain/VisualCards";
 import { SpeakButton } from "@/modules/ai/components/voice/SpeakButton";
 import { navigateLink, plainChatText, readToolLabel, sourceLabel } from "@/modules/ai/chat-text";
 import type { ExplainDepth, ExplainMode } from "@/modules/ai/explain/schemas";
@@ -49,7 +50,7 @@ export interface LocalCard {
   at: number;
 }
 
-/** A slash command's run (/anatomy, /teardown, /infographic): its own entry, shown after the first `at` messages. */
+/** A slash command's run (/anatomy, /teardown, /infographic, /mindmap, /diagram, /image): its own entry, shown after the first `at` messages. */
 export interface ExplainEntry {
   id: string;
   at: number;
@@ -60,6 +61,9 @@ export interface ExplainEntry {
   pending: boolean;
   anatomy?: AnatomyResult;
   poster?: InfographicResult;
+  mindmap?: MindMapResult;
+  diagram?: DiagramResult;
+  image?: ImageResult;
   /** A depth change or a poster is being made. */
   busy?: boolean;
   /** The envelope's message (or the refusal reason): never blank. */
@@ -96,6 +100,9 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
       )}
       {e.busy && <Dots label="Working on it" />}
       {e.poster && <InfographicCard result={e.poster} variant="poster" />}
+      {e.mindmap && <MindMapCard result={e.mindmap} />}
+      {e.diagram && <DiagramCard result={e.diagram} />}
+      {e.image && <ImageCard result={e.image} />}
       {e.error && (
         <p role="alert" className="flex items-start gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-destructive">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />

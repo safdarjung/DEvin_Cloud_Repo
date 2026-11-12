@@ -92,7 +92,9 @@ function roleDailyTokenQuota(ctx: TenantContext): number | null {
 // exhaust `daily_token_quota` (institution-wide) and lock teachers out of
 // local AI for the rest of the day. Checked in addition to, never instead
 // of, the institution-wide quota above.
-const STUDENT_QUOTA_FEATURES = new Set(["student_study", "practice_quiz"]);
+// "image": each picture is billed, so every person (any role) has the same per-user daily
+// ceiling on it (about 14 pictures at the default 20,000 tokens).
+const STUDENT_QUOTA_FEATURES = new Set(["student_study", "practice_quiz", "image"]);
 
 export async function checkLimits(ctx: TenantContext, feature: string): Promise<LimitsResult> {
   const settings = aiSettingsFor(ctx);

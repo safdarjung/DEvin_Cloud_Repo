@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  coastDistance, easeOutBack, fibonacciSphere, flickDelta, frontAngle, frontIndex, idleEase, micLevel, nearestAngle, nodeLook, nodePoints,
-  nudgeAway, orbState, pointerDir, ringIsFull, rotateYX, scatterEnvelope, shockAt, snapAngle, springStep, stepIndex, typingPulse, waveFor,
+  dotLook, dotPoints, dotSize, easeOutBack, fibonacciSphere, flickDelta, frontAngle, frontTilt, idleEase, micLevel, nearestAngle,
+  nudgeAway, orbState, pointerDir, rotateYX, scatterEnvelope, shockAt, springStep, stepIndex, typingPulse, waveFor,
 } from "@/modules/ai/components/orb/orb-layout";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
@@ -122,74 +122,7 @@ describe("flick-to-mode snapping", () => {
   });
 });
 
-describe("nodePoints (sections on the sphere)", () => {
-  const deg = (r: number) => (r * 180) / Math.PI;
-  const lon = (v: readonly number[]) => deg(Math.atan2(v[0], v[2]));
-
-  it("returns n unit vectors; one section sits at the front", () => {
-    expect(nodePoints(0)).toEqual([]);
-    const [only] = nodePoints(1);
-    expect(only[0]).toBeCloseTo(0, 9);
-    expect(only[1]).toBe(0);
-    expect(only[2]).toBeCloseTo(1, 9);
-    for (const n of [2, 5, 8, 15]) for (const p of nodePoints(n)) expect(len(p)).toBeCloseTo(1, 9);
-  });
-
-  it("few sections share the front: at most 50° apart and centred on it", () => {
-    for (const n of [2, 3, 4, 5, 6, 7]) {
-      const pts = nodePoints(n);
-      for (let i = 1; i < n; i++) expect(lon(pts[i]) - lon(pts[i - 1])).toBeCloseTo(Math.min(50, 360 / n), 6);
-      expect(lon(pts[0]) + lon(pts[n - 1])).toBeCloseTo(0, 6);
-      // Two or three sections are all on the front hemisphere at rest.
-      if (n <= 3) for (const p of pts) expect(p[2]).toBeGreaterThan(0.6);
-    }
-  });
-
-  it("many sections go evenly round, and neighbours never share a row", () => {
-    for (const n of [8, 9, 12, 15]) {
-      const pts = nodePoints(n);
-      for (let i = 1; i < n; i++) {
-        expect(lon(pts[i]) - lon(pts[i - 1])).toBeCloseTo(360 / n, 6);
-        expect(pts[i][1]).not.toBe(pts[i - 1][1]);
-      }
-      for (const p of pts) expect(Math.abs(p[1])).toBeLessThan(0.5);
-    }
-    expect([0, 1, 4, 7].map(ringIsFull)).toEqual([false, false, false, false]);
-    expect([8, 12].map(ringIsFull)).toEqual([true, true]);
-    const two = nodePoints(2);
-    expect(two[0][1]).toBeGreaterThan(0);
-    expect(two[1][1]).toBeLessThan(0);
-  });
-});
-
-describe("front index / snap rotation", () => {
-  const pts = nodePoints(7);
-
-  it("frontAngle turns any section to face the viewer", () => {
-    for (const p of pts) {
-      const v = rotateYX(p, frontAngle(p), 0);
-      expect(v[0]).toBeCloseTo(0, 9);
-      expect(v[2]).toBeGreaterThan(0.9);
-    }
-  });
-
-  it("frontIndex picks the section facing the viewer", () => {
-    for (const i of [0, 3, 6]) expect(frontIndex(pts, frontAngle(pts[i]) + 0.05)).toBe(i);
-    expect(frontIndex([], 0)).toBe(-1);
-  });
-
-  it("snapAngle settles the nearest section at the front, the short way round, from any number of turns", () => {
-    for (const turns of [0, 3, -5]) {
-      const ry = frontAngle(pts[4]) + 0.2 + turns * 2 * Math.PI;
-      const a = snapAngle(pts, ry);
-      expect(a).not.toBeNull();
-      expect(Math.abs((a as number) - ry)).toBeLessThan(Math.PI);
-      expect(frontIndex(pts, a as number)).toBe(4);
-      expect(rotateYX(pts[4], a as number, 0)[0]).toBeCloseTo(0, 9);
-    }
-    expect(snapAngle([], 1)).toBeNull();
-  });
-
+describe("turning a dot to the front", () => {
   it("nearestAngle picks the equivalent angle closest to the current one", () => {
     expect(nearestAngle(0, 0.5)).toBeCloseTo(0.5, 9);
     expect(nearestAngle(10 * Math.PI, 0.5)).toBeCloseTo(10 * Math.PI + 0.5, 9);
@@ -216,43 +149,12 @@ describe("spin physics", () => {
     expect(s.x).toBeGreaterThan(0);
   });
 
-  it("coastDistance is how far exponential friction lets a spin travel", () => {
-    expect(coastDistance(3, 2)).toBeCloseTo(1.5, 9);
-    expect(coastDistance(-3, 2)).toBeCloseTo(-1.5, 9);
-    expect(coastDistance(0, 2)).toBe(0);
-  });
-
   it("idle spin stays off for 2 s after input, then eases in without a jump", () => {
     expect(idleEase(0)).toBe(0);
     expect(idleEase(2)).toBe(0);
     expect(idleEase(2.1)).toBeLessThan(0.05);
     expect(idleEase(2.8)).toBeGreaterThan(0.2);
     expect(idleEase(10)).toBe(1);
-  });
-});
-
-describe("nodeLook (pick)", () => {
-  it("front sections are full size and opaque; back ones small, dim and not pickable", () => {
-    expect(nodeLook(1)).toEqual({ scale: 1, opacity: 1, pickable: true });
-    const back = nodeLook(-1);
-    expect(back.scale).toBeCloseTo(0.6, 9);
-    expect(back.opacity).toBeCloseTo(0.15, 9);
-    expect(back.pickable).toBe(false);
-    expect(nodeLook(0).pickable).toBe(false);
-  });
-
-  it("size and opacity never shrink toward the front; a pickable section keeps a 52 px target at 44 px or more and readable text", () => {
-    let prev = nodeLook(-1);
-    for (let z = -1; z <= 1.0001; z += 0.05) {
-      const l = nodeLook(z);
-      expect(l.scale).toBeGreaterThanOrEqual(prev.scale);
-      expect(l.opacity).toBeGreaterThanOrEqual(prev.opacity - 1e-12);
-      if (l.pickable) {
-        expect(52 * l.scale).toBeGreaterThanOrEqual(44);
-        expect(l.opacity).toBeGreaterThanOrEqual(0.6);
-      }
-      prev = l;
-    }
   });
 });
 
@@ -353,5 +255,55 @@ describe("pointerDir", () => {
       expect(d[2]).toBeGreaterThanOrEqual(0);
     }
     expect(pointerDir(3, 4)[0]).toBeCloseTo(0.6, 6);
+  });
+});
+
+describe("feature dots on the sphere", () => {
+  it("frontAngle then frontTilt bring any point to the front", () => {
+    for (const v of fibonacciSphere(40)) {
+      const out = rotateYX(v, frontAngle(v), frontTilt(v));
+      expect(out[0]).toBeCloseTo(0, 6);
+      expect(out[1]).toBeCloseTo(0, 6);
+      expect(out[2]).toBeCloseTo(1, 6);
+    }
+  });
+
+  it("a few dots all sit where they can be clicked, in rows that keep same-row neighbours apart", () => {
+    expect(dotPoints(0)).toEqual([]);
+    expect(dotPoints(1)).toEqual([[0, 0, 1]]);
+    for (let n = 1; n < 8; n++) {
+      const pts = dotPoints(n);
+      expect(pts).toHaveLength(n);
+      for (const p of pts) {
+        expect(len(p)).toBeCloseTo(1, 9);
+        expect(dotLook(p[2]).pickable).toBe(true);
+      }
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (pts[i][1] === pts[j][1]) expect(dist(pts[i], pts[j])).toBeGreaterThan(0.55);
+    }
+  });
+
+  it("many dots cover the whole sphere", () => {
+    const many = dotPoints(60);
+    expect(many).toHaveLength(60);
+    expect(many.some((p) => p[2] < -0.8)).toBe(true);
+    expect(many.some((p) => p[1] > 0.9)).toBe(true);
+  });
+
+  it("dots grow and brighten toward the front, and only near-front ones take a click", () => {
+    expect(dotLook(1).scale).toBeCloseTo(1, 6);
+    expect(dotLook(-1).scale).toBeLessThan(0.4);
+    expect(dotLook(1).opacity).toBeGreaterThan(dotLook(0).opacity);
+    expect(dotLook(-1).pickable).toBe(false);
+    expect(dotLook(0).pickable).toBe(false);
+    expect(dotLook(0.9).pickable).toBe(true);
+    // A pickable dot is never much smaller than its full size.
+    for (let z = -1; z <= 1; z += 0.05) if (dotLook(z).pickable) expect(dotLook(z).scale).toBeGreaterThan(0.85);
+  });
+
+  it("dot size shrinks with the count and stays within its limits", () => {
+    expect(dotSize(150, 4)).toBe(52);
+    expect(dotSize(150, 70)).toBeLessThan(dotSize(150, 30));
+    expect(dotSize(60, 200)).toBe(22);
+    expect(dotSize(150, 0)).toBe(52);
   });
 });

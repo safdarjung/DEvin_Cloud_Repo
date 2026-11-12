@@ -110,7 +110,6 @@ export function rotateYX(v: Vec3, ry: number, rx: number): Vec3 {
   return [x1, v[1] * cx - z1 * sx, v[1] * sx + z1 * cx];
 }
 
-// ── Sections on the sphere ───────────────────────────────────────────────
 
 const TAU = Math.PI * 2;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -119,20 +118,25 @@ export const smoothstep = (lo: number, hi: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-/** Widest longitude step between neighbouring sections, so a few of them share the front. */
-const MAX_NODE_GAP = (50 * Math.PI) / 180;
-/** Latitude (y) of the rows above and below the equator that sections alternate between (wider with a third row on the equator, so rows stay a 52 px chip apart on a phone). */
-const NODE_BAND = 0.34;
-const NODE_BAND_3 = 0.46;
+// ── Feature dots on the sphere ───────────────────────────────────────────
+
+/** Fewer dots than this share the front (and can carry their names); from here on they cover the whole sphere. */
+export const FULL_SPHERE_FROM = 8;
+/** A few dots spread over this much of the front (radians, side to side), never more than MAX_GAP apart. */
+const FRONT_ARC = (110 * Math.PI) / 180;
+const MAX_GAP = (50 * Math.PI) / 180;
+/** Heights (y) of the rows a few dots take turns in, so neighbours' names do not collide: two rows up to 4 dots, three from 5. */
+const ROWS_2 = [0.34, -0.34];
+const ROWS_3 = [0.5, 0, -0.5];
 
 /**
- * n section positions (unit vectors) on a band round the equator, centred on the front (+z):
- * evenly round the sphere but never more than 50° apart, so 2–7 sections share the front.
- * Neighbours alternate above and below the equator (and through it too, past 8) so labels do not collide.
+ * n feature-dot positions (unit vectors). A few: side by side on the front (+z), taking turns between rows.
+ * Many: the whole sphere (Fibonacci lattice, top to bottom, so a section's dots sit together in a band).
  */
-export function nodePoints(n: number): Vec3[] {
-  const gap = Math.min(TAU / Math.max(n, 1), MAX_NODE_GAP);
-  const rows = n > 8 ? [NODE_BAND_3, 0, -NODE_BAND_3] : n > 1 ? [NODE_BAND, -NODE_BAND] : [0];
+export function dotPoints(n: number): Vec3[] {
+  if (n >= FULL_SPHERE_FROM) return fibonacciSphere(n);
+  const gap = Math.min(MAX_GAP, FRONT_ARC / Math.max(1, n - 1));
+  const rows = n > 4 ? ROWS_3 : n > 1 ? ROWS_2 : [0];
   return Array.from({ length: n }, (_, i): Vec3 => {
     const lon = (i - (n - 1) / 2) * gap;
     const y = rows[i % rows.length];
@@ -141,8 +145,21 @@ export function nodePoints(n: number): Vec3[] {
   });
 }
 
-/** Do n sections go all the way round (8 and up)? Then the idle motion can spin; fewer only sway, so they never drift behind. */
-export const ringIsFull = (n: number): boolean => n > 0 && TAU / n <= MAX_NODE_GAP;
+/** The tilt about X (after `frontAngle`'s turn about Y) that brings v level with the viewer: the two together put it at the front. */
+export const frontTilt = (v: Vec3): number => Math.asin(clamp(v[1], -1, 1));
+
+/** How a feature dot at depth z (1 front, -1 back) looks: full size and solid at the front, a small dim dot at the back; only near-front dots take a click. */
+export function dotLook(z: number): { scale: number; opacity: number; pickable: boolean } {
+  return { scale: 0.34 + 0.66 * smoothstep(-1, 1, z), opacity: 0.3 + 0.7 * smoothstep(-0.6, 0.6, z), pickable: z > 0.45 };
+}
+
+const DOT_PX = { min: 22, max: 52, fill: 0.72 };
+
+/** Diameter (px) of a front dot so n of them fit on a sphere of the given radius without touching. */
+export function dotSize(radiusPx: number, n: number): number {
+  if (n <= 0) return DOT_PX.max;
+  return Math.round(clamp(DOT_PX.fill * radiusPx * Math.sqrt((4 * Math.PI) / n), DOT_PX.min, DOT_PX.max));
+}
 
 /** The turn about Y (as `rotateYX(v, ry, 0)` uses it) that brings v to the front (+z). */
 export const frontAngle = (v: Vec3): number => Math.atan2(-v[0], v[2]);
@@ -150,26 +167,6 @@ export const frontAngle = (v: Vec3): number => Math.atan2(-v[0], v[2]);
 /** The angle equal to `target` (mod 2π) nearest to `current`, so a spin never goes the long way round. */
 export function nearestAngle(current: number, target: number): number {
   return target + TAU * Math.round((current - target) / TAU);
-}
-
-/** Index of the point nearest the viewer with the sphere turned by ry; -1 for none. */
-export function frontIndex(points: readonly Vec3[], ry: number): number {
-  let best = -1;
-  let bz = -Infinity;
-  for (let i = 0; i < points.length; i++) {
-    const z = rotateYX(points[i], ry, 0)[2];
-    if (z > bz) {
-      bz = z;
-      best = i;
-    }
-  }
-  return best;
-}
-
-/** The turn that brings the point nearest the front at `ry` exactly to the front, the short way round; null with no points. */
-export function snapAngle(points: readonly Vec3[], ry: number): number | null {
-  const i = frontIndex(points, ry);
-  return i < 0 ? null : nearestAngle(ry, frontAngle(points[i]));
 }
 
 const SPRING_STIFFNESS = 60;
@@ -181,9 +178,6 @@ export function springStep(x: number, v: number, target: number, dt: number): { 
   return { x: x + nv * dt, v: nv };
 }
 
-/** How far a spin at velocity v still travels under exponential friction (v' = -friction * v). */
-export const coastDistance = (v: number, friction: number): number => (v === 0 ? 0 : v / friction);
-
 const IDLE_AFTER_S = 2;
 const IDLE_RAMP_S = 1.5;
 
@@ -192,16 +186,8 @@ export function idleEase(sinceInput: number): number {
   return smoothstep(0, 1, (sinceInput - IDLE_AFTER_S) / IDLE_RAMP_S);
 }
 
-/** Sections at or behind this depth take no pointer events (scale ≥ 0.85 when pickable keeps a 52 px target ≥ 44 px). */
-const PICK_Z = 0.25;
-
-/** How a section at depth z (1 front, -1 back) looks: front large and opaque, sides fading (never below 0.6 while pickable, for text contrast), back small, dim and not pickable. */
-export function nodeLook(z: number): { scale: number; opacity: number; pickable: boolean } {
-  return { scale: 0.8 + 0.2 * z, opacity: 0.15 + 0.85 * smoothstep(-0.25, 0.7, z), pickable: z > PICK_Z };
-}
-
 /**
- * Neighbours part around a hovered section: p turns away from h along the sphere by up to
+ * Neighbours part around the hot dot: p turns away from h along the sphere by up to
  * `amount` radians, most when close, not at all beyond ~78° (cos 0.2).
  */
 export function nudgeAway(p: Vec3, h: Vec3, amount: number): Vec3 {

@@ -111,7 +111,7 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
       {showIntro && modes.length > 1 && (
         <div role="note" className="flex max-w-3xl items-start gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-sm">
           <p className="flex-1 leading-relaxed">
-            Ask answers questions; the other modes prepare cards you approve. Tabs or keys 1–{modes.length} switch modes, / starts a message; drag the orb to browse.
+            Each dot on the orb is one thing it can do: point at it to see what, click to run it, drag to spin. Ask answers questions; the other modes prepare cards you approve. Keys 1–{modes.length} switch modes, / starts a message.
           </p>
           <button
             type="button"

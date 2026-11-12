@@ -1,6 +1,6 @@
 import "server-only";
 import { createOllama } from "ai-sdk-ollama";
-import type { LanguageModel } from "ai";
+import type { ImageModel, LanguageModel } from "ai";
 
 // 04 §5, 11 §1 — env-configured local provider. Safe to import eagerly:
 // `ai-sdk-ollama` does no network I/O at import time, and local is in every
@@ -62,6 +62,21 @@ export async function getGeminiModel(): Promise<LanguageModel> {
   const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
   const google = createGoogleGenerativeAI({ apiKey });
   return google(geminiModelId());
+}
+
+/** The Gemini model that draws pictures (/image); a different model family from the text one. */
+export function geminiImageModelId(): string {
+  return process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-image";
+}
+
+/** Lazily imported like `getGeminiModel` (C-62). Throws if `GEMINI_API_KEY` is unset; the gateway checks the key first. */
+export async function getGeminiImageModel(): Promise<ImageModel> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+  const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
+  return createGoogleGenerativeAI({ apiKey }).image(geminiImageModelId());
 }
 
 // D29 — the teacher agent's "routine" tier, routed alongside Gemini (see

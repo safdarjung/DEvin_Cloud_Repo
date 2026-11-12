@@ -4,6 +4,7 @@ import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listMyChildren } from "@/modules/people/queries";
+import { picturesEnabled } from "@/lib/ai/provider-fallback";
 import { enabledCapabilities, roleAiConfig } from "@/modules/ai/capabilities/resolve";
 import { OrbView, type OrbChat } from "@/modules/ai/components/orb/OrbView";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
@@ -77,6 +78,7 @@ export default async function OrbPage({
       initialTask={query.task}
       controlCentreHref={controlCentreHref}
       firstName={firstNameOf(ctx.user.profile.fullName)}
+      pictures={picturesEnabled()}
     />
   );
 }

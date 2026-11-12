@@ -91,6 +91,9 @@ export function explainFeatures(role: string, have: readonly OrbMode[]): OrbFeat
     { name: "anatomy", label: "Anatomy: name the parts" },
     { name: "teardown", label: "Teardown: how it works" },
     { name: "infographic", label: "Make an infographic" },
+    { name: "mindmap", label: "Draw a mind map" },
+    { name: "diagram", label: "Draw a flowchart" },
+    { name: "image", label: "Draw a picture" },
   ];
   return modes.flatMap((mode) =>
     items.map((it): OrbFeature => ({ key: `explain:${mode}:${it.name}`, label: it.label, mode, groupId: student ? "study" : "teaching", kind: "ask", prompt: `/${it.name} ` })),

@@ -19,7 +19,7 @@ import { DOTS_FRAGMENT, DOTS_VERTEX, GLASS_FRAGMENT, GLASS_VERTEX } from "./orb-
 import { ORB_ERROR } from "./orb-theme";
 
 /**
- * Live inputs written outside React: mic loudness (0..1), a keystroke/hover pulse, the sphere's spin (radians, OrbBody),
+ * Live inputs written outside React: mic loudness (0..1), a keystroke/hover pulse, the sphere's spin and tilt (radians, OrbBody),
  * the hovered section (view-space x, y, z and 0..1 strength), `shock` (set to 1 to send one ring of light across the ball)
  * and the mouse over the orb (x, y in the ball's own -1..1 square with y up, then 1 while it is there).
  */
@@ -27,6 +27,7 @@ export interface OrbSignals {
   level: number;
   pulse: number;
   spin: number;
+  tilt: number;
   hot: [number, number, number, number];
   shock: number;
   ptr: [number, number, number];
@@ -168,7 +169,7 @@ function Dust({ state, dark, accent, signals }: Props) {
     lo.light[1] = lerp(lo.light[1], LIGHT[1] + (sig.ptr[1] - LIGHT[1]) * k, dt * 5);
     u.uLight.value.set(lo.light[0], lo.light[1], LIGHT[2]);
     lo.ry += dt * AUTO_SPIN * wave.spin;
-    u.uRot.value.setFromMatrix4(m4[0].makeRotationX(0.3).multiply(m4[1].makeRotationY(lo.ry + sig.spin)));
+    u.uRot.value.setFromMatrix4(m4[0].makeRotationX(sig.tilt).multiply(m4[1].makeRotationY(lo.ry + sig.spin)));
     u.uHot.value.set(sig.hot[0], sig.hot[1], sig.hot[2], sig.hot[3]);
     u.uPx.value = DOT_PX * dpr * Math.min(1.3, Math.max(0.6, (RADIUS_SHARE * Math.min(size.width, size.height)) / 90));
   });

@@ -1,5 +1,5 @@
 import "server-only";
-import { asSchema, generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output, streamText, type ModelMessage, type StopCondition, type ToolSet } from "ai";
+import { asSchema, generateImage, generateText, NoObjectGeneratedError, NoOutputGeneratedError, Output, streamText, type ModelMessage, type StopCondition, type ToolSet } from "ai";
 import type { z } from "zod";
 import { fail, ok, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import type { Permission } from "@/lib/auth/permissions";
@@ -16,6 +16,7 @@ import {
   classifyAiError,
   cloudModelWithFallback,
   configuredCloudKeys,
+  picturesEnabled,
   streamErrorText,
   structuredCloudPlan,
   userFacingAiError,
@@ -375,6 +376,100 @@ export async function runStructuredFile<T>(input: RunStructuredFileInput<T>): Pr
         ? { code: "rate_limited" as const, message: "The AI service is busy right now. Please try again in a minute." }
         : { code: "ai_unavailable" as const, message: FILE_UNREADABLE_NOW };
     await failUsage(code, Date.now() - startedAt, redactions);
+    return fail(code, message);
+  } finally {
+    releaseConcurrencySlot(ctx.institution.id, "cloud");
+  }
+}
+
+// Pictures (/image). One picture per request, Gemini only (no other configured
+// provider draws), only with the role's cloud switch on: the same owner cloud
+// exception as the agentCloud text path. The prompt is redacted like any cloud
+// text. Nothing is stored: the caller hands the bytes to the browser. No
+// fallback and no retry: a second attempt would bill a second picture.
+export interface RunImageInput {
+  ctx: TenantContext;
+  feature: string;
+  /** The whole prompt, the caller's fixed frame included. */
+  prompt: string;
+  denyNames: string[];
+  permission?: Permission;
+}
+
+export interface RunImageOutput {
+  base64: string;
+  mediaType: string;
+  provider: "cloud";
+  model: string;
+}
+
+const IMAGE_TIMEOUT_MS = 60_000;
+/** What Gemini bills one picture as (output tokens): counted against the day's quota like any answer. */
+const IMAGE_OUTPUT_TOKENS = 1290;
+/** Refuse an answer larger than this (base64 characters, about 3 MB of picture): the JSON must fit a 4.5 MB function response. */
+const IMAGE_MAX_BASE64 = 4_000_000;
+
+export async function runImage(input: RunImageInput): Promise<ActionResult<RunImageOutput>> {
+  const { ctx, feature, prompt, denyNames, permission = "ai.generate" } = input;
+  if (!hasPermission(ctx, permission)) return fail("forbidden", "You do not have permission to use AI features.");
+  if (!picturesEnabled()) return fail("ai_unavailable", "Pictures are not switched on yet. Try /diagram or /mindmap instead.");
+  if (!roleAiConfig(ctx, ctx.membership.role).cloud) {
+    return fail("ai_unavailable", "Pictures are drawn by the school's cloud AI provider, which is not switched on for your role.");
+  }
+
+  const modelId = providers.geminiImageModelId();
+  // `billed`: the provider drew a picture (and charged for it), whether or not it could be used.
+  const usage = (billed: boolean, errorCode: ErrorCode | null, latencyMs: number, redactions: number) =>
+    logUsage({
+      ctx,
+      feature,
+      provider: "cloud",
+      model: modelId,
+      inputTokens: billed ? estimateTokens(prompt) : 0,
+      outputTokens: billed ? IMAGE_OUTPUT_TOKENS : 0,
+      latencyMs,
+      costEstimateUsd: billed ? estimateCost("cloud", modelId, estimateTokens(prompt), IMAGE_OUTPUT_TOKENS) : 0,
+      ok: errorCode === null,
+      errorCode,
+      redactions,
+    });
+
+  let limits: Awaited<ReturnType<typeof checkLimits>>;
+  try {
+    limits = await checkLimits(ctx, feature);
+  } catch {
+    return fail("dependency_failed", "AI usage limits could not be checked; please try again.");
+  }
+  if (!limits.ok) {
+    await usage(false, limits.code, 0, 0);
+    return fail(limits.code, limits.code === "quota_exceeded" ? "Daily AI usage quota exceeded for this institution." : "Too many AI requests; please slow down and try again.");
+  }
+  if (!acquireConcurrencySlot(ctx.institution.id, "cloud", aiSettingsFor(ctx).max_concurrent_cloud)) {
+    return fail("rate_limited", "AI concurrency limit reached; please try again shortly.");
+  }
+
+  const startedAt = Date.now();
+  const redacted = redact(prompt, denyNames);
+  try {
+    const result = await generateImage({ model: await providers.getGeminiImageModel(), prompt: redacted.text, n: 1, maxRetries: 0, abortSignal: AbortSignal.timeout(IMAGE_TIMEOUT_MS) });
+    const { base64, mediaType } = result.image;
+    if (!base64 || base64.length > IMAGE_MAX_BASE64 || !/^image\/(png|jpeg|webp)$/.test(mediaType)) {
+      // A picture that came back unusable was still drawn and charged: it counts toward the day's quota.
+      await usage(Boolean(base64), "ai_invalid_output", Date.now() - startedAt, redacted.count);
+      return fail("ai_invalid_output", "The AI did not send back a picture. Try again, or describe it differently.");
+    }
+    await usage(true, null, Date.now() - startedAt, redacted.count);
+    return ok({ base64, mediaType, provider: "cloud", model: modelId });
+  } catch (err) {
+    const info = classifyAiError(err);
+    // Status/code only: provider messages can echo the prompt.
+    console.warn("[ai-image] call failed", { feature, provider: "gemini", ...info });
+    const { code, message } =
+      info.kind === "busy"
+        ? // A 429 here is a spent picture quota as often as a busy minute (a plan without image output answers the same way).
+          { code: "rate_limited" as const, message: "The AI provider did not take the picture request: its picture quota is used up or not part of the school's plan. Try /diagram or /mindmap, or try again later." }
+        : { code: "ai_unavailable" as const, message: "The picture could not be drawn right now. Try again, or describe it differently." };
+    await usage(false, code, Date.now() - startedAt, redacted.count);
     return fail(code, message);
   } finally {
     releaseConcurrencySlot(ctx.institution.id, "cloud");

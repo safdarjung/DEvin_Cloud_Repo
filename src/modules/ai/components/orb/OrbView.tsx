@@ -1,10 +1,10 @@
 "use client";
 
 // App Orb: the one place to ask, do and create. A living, physical orb shows the AI
-// state; a mode tablist (Ask / Do / Create / Teach / Learn / Manage, only the ones
-// this person has) filters the sections; each section's features ask a question,
-// start a draft, open a page, or open an approval card (no model call, or with the
-// typed request as a task hint). Cards from answers and clicks stay in the
+// state and carries one dot per feature; a mode tablist (Ask / Do / Create / Teach /
+// Learn / Manage, only the ones this person has) chooses which features; each feature
+// asks a question, starts a draft, opens a page, or opens an approval card (no model
+// call, or with the typed request as a task hint). Cards from answers and clicks stay in the
 // conversation, and a "Waiting for you" tray keeps the unapproved ones in reach.
 // Everything comes from the server: the client never recomputes permissions.
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -16,7 +16,7 @@ import Link from "next/link";
 import type { Role } from "@/lib/auth/permissions";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { startProposal } from "@/modules/ai/components/task-card/api";
-import { runAnatomy, runInfographic } from "@/modules/ai/components/explain/api";
+import { runAnatomy, runDiagram, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
 import { useSpeechOutput } from "@/modules/ai/components/voice/useSpeechOutput";
 import { plainChatText } from "@/modules/ai/chat-text";
 import { parseOrbCommand } from "@/modules/ai/explain/commands";
@@ -27,6 +27,7 @@ import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 import { OrbBody, buzz, type Lean } from "./OrbBody";
 import { OrbComposer } from "./OrbComposer";
 import type { OrbSignals } from "./OrbCore";
+import { OrbDots, OrbLegend } from "./OrbDots";
 import { FeatureSearch, OrbGroups, useModeSwipe } from "./OrbGroups";
 import { OrbModes, tabId } from "./OrbModes";
 import { OrbTranscript, proposalsIn, type ExplainEntry, type LocalCard, type OrbMessage } from "./OrbTranscript";
@@ -61,6 +62,8 @@ interface Props {
   controlCentreHref?: string;
   /** The person's first name, for the greeting over the orb. */
   firstName?: string;
+  /** /image is switched on for this deployment (it is billed per picture); off: the command and its dot are not offered. */
+  pictures?: boolean;
 }
 
 const noSubscribe = () => () => {};
@@ -136,10 +139,6 @@ const ERROR_FLASH_MS = 1800;
 const DONE_MS = 1400;
 const EXPIRY_TICK_MS = 30_000;
 const ALL_MODES = MODES.map((m) => m.id);
-/** Fewer groups than this in a mode: their features ride the sphere instead. */
-const FEATURE_CHIPS_BELOW = 4;
-/** Without WebGL or with reduced motion the chips lie flat on the orb's front: more than this would spill over its edge, so they go in the row instead. */
-const FLAT_MAX = 6;
 const AUDIENCE: Partial<Record<Role, "student" | "teacher" | "parent">> = { student: "student", teacher: "teacher", guardian: "parent" };
 const explainError = (msg: string | undefined) => msg?.trim() || "That didn't work. Try again in a moment.";
 /** Ready questions that take turns as the message box's placeholder. */
@@ -150,7 +149,7 @@ const dayPart = () => {
   return h < 5 ? "Hello" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 };
 
-export function OrbView({ institutionSlug, role, chat, features, starters, initialQuery, initialMode, initialTask, controlCentreHref, firstName }: Props) {
+export function OrbView({ institutionSlug, role, chat, features, starters, initialQuery, initialMode, initialTask, controlCentreHref, firstName, pictures = false }: Props) {
   const idBase = useId();
   const panelId = `${idBase}-panel`;
   const [input, setInput] = useState("");
@@ -173,7 +172,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const reduced = useSyncExternalStore(subscribeReduced, () => window.matchMedia(REDUCED).matches, () => false);
   const dark = useTheme().resolvedTheme === "dark";
   const hello = useSyncExternalStore(noSubscribe, dayPart, () => "Hello");
-  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, hot: [0, 0, 1, 0], shock: 0, ptr: [0, 0, 0] });
+  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, tilt: 0, hot: [0, 0, 1, 0], shock: 0, ptr: [0, 0, 0] });
+  // Which dots are lit: a section pinned or peeked at in the legend (kept per mode), or the search's matches.
+  const [pinnedKey, setPinnedKey] = useState<string | null>(null);
+  const [peek, setPeek] = useState<string | null>(null);
+  const [hits, setHits] = useState<string[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
@@ -190,9 +193,9 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     () => [
       ...(chat ? recentKey.split("\n").filter(Boolean).map((t): OrbFeature => ({ key: `recent:${t}`, label: t, prompt: t, mode: "ask", groupId: "recent", kind: "ask" })) : []),
       ...features,
-      ...(chat ? explainFeatures(role, modesOf(features)) : []),
+      ...(chat ? explainFeatures(role, modesOf(features)).filter((f) => pictures || f.prompt !== "/image ") : []),
     ],
-    [chat, recentKey, features, role],
+    [chat, recentKey, features, role, pictures],
   );
   const available = useMemo(() => modesOf(searchable), [searchable]);
   // First visit opens the role's own mode (when it has features there); afterwards the remembered one.
@@ -221,7 +224,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const patchExplain = (id: string, p: Partial<ExplainEntry>) => setExplains((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const audience = AUDIENCE[role] ?? "staff";
 
-  /** /anatomy, /teardown, /infographic: the explain routes, not chat; the result is its own transcript entry. */
+  /** /anatomy, /teardown, /infographic, /mindmap, /diagram, /image: the explain routes, not chat; the result is its own transcript entry. */
   async function runCommand(line: string, cmd: NonNullable<ReturnType<typeof parseOrbCommand>>) {
     if (explaining) return;
     setInput("");
@@ -231,6 +234,24 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const entry: ExplainEntry = { id, at: messages.length, line, subject: cmd.arg, mode, pending: Boolean(cmd.arg) };
     if (!cmd.arg) return setExplains((xs) => [...xs, { ...entry, error: `Say what to explain after the command, e.g. /${cmd.command} human heart.` }]);
     setExplains((xs) => [...xs, entry]);
+    if (cmd.command === "mindmap") {
+      const res = await runMindMap({ institutionSlug, topic: cmd.arg });
+      if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, mindmap: res.data });
+    }
+    if (cmd.command === "diagram") {
+      const res = await runDiagram({ institutionSlug, topic: cmd.arg });
+      if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, diagram: res.data });
+    }
+    if (cmd.command === "image") {
+      const res = await runImage({ institutionSlug, prompt: cmd.arg });
+      if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, image: res.data });
+    }
     if (cmd.command === "infographic") {
       const res = await runInfographic({ institutionSlug, topic: cmd.arg, audience });
       if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
@@ -268,7 +289,9 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const t = text.trim();
     if (!chat || !t || busy) return;
     speech.stop();
-    const cmd = taskHint ? null : parseOrbCommand(t);
+    const parsed = taskHint ? null : parseOrbCommand(t);
+    // /image off: the text goes to chat like any other message.
+    const cmd = parsed?.command === "image" && !pictures ? null : parsed;
     if (cmd) return void runCommand(t, cmd);
     if (error) clearError();
     signals.current.shock = 1;
@@ -324,12 +347,17 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     latest.current = { startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat) };
   });
   const onRun = useCallback((f: OrbFeature) => {
+    signals.current.shock = 1;
     if (f.kind === "task" && f.task) void latest.current.startTask(f.task, f.label);
     // An "Explain & create" feature only fills the message box with its command.
     else if (f.prompt && parseOrbCommand(f.prompt)?.arg === "") latest.current.edit(f.prompt);
     else if (f.prompt) latest.current.send(f.prompt);
   }, []);
   const onEdit = useCallback((t: string) => latest.current.edit(t), []);
+  const onHot = useCallback(() => {
+    signals.current.pulse = typingPulse(signals.current.pulse);
+    buzz(false, 4);
+  }, []);
   const onSwipe = useCallback((d: number) => latest.current.stepMode(d), []);
   const onActive = useCallback((el: HTMLElement | null, hue: string) => {
     const orb = orbRef.current?.getBoundingClientRect();
@@ -481,16 +509,24 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   });
   const hasTalk = (Boolean(chat) && messages.length > 0) || localCards.length > 0 || explains.length > 0;
   const showTranscript = hasTalk && (open || Boolean(error));
-  // The groups ride the orb unless it is small (a conversation open, or a screen too small for tappable chips): then a row under it.
-  const onSphere = !showTranscript && roomy && groups.length > 0 && ((use3d && !reduced) || groups.length <= FLAT_MAX);
+  // The features ride the orb as dots unless it is small (a conversation open, or a screen too small for tappable dots)
+  // or cannot spin (no WebGL, reduced motion): then the sections are a row under it.
+  const onSphere = !showTranscript && roomy && groups.length > 0 && use3d && !reduced;
+  const pinned = pinnedKey?.startsWith(`${mode}:`) ? pinnedKey.slice(mode.length + 1) : null;
+  const litGroup = peek ?? pinned;
+  const litKey = hits ? `q:${hits.join(" ")}` : litGroup ? `g:${litGroup}` : "";
+  const lit = useMemo(
+    () => (hits ? new Set(hits) : litGroup ? new Set(groups.find((g) => g.id === litGroup)?.features.map((f) => f.key)) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- litKey stands for hits and litGroup
+    [litKey, groups],
+  );
+  const dotCount = groups.reduce((n, g) => n + g.features.length, 0);
   const home = ROLE_HOME[role];
   const hints = useMemo(() => (chat ? features.flatMap((f) => (f.kind === "ask" && f.mode === "ask" && f.prompt ? [f.prompt] : [])).slice(0, HINTS_MAX) : []), [chat, features]);
   const groupsEl = groups.length > 0 && (
     <OrbGroups
       mode={mode}
       groups={groups}
-      layout={onSphere ? "sphere" : "row"}
-      spin={use3d && !reduced}
       hasDraft={input.trim().length > 0}
       busy={busy}
       starting={starting}
@@ -499,7 +535,6 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
       onRun={onRun}
       onEdit={onEdit}
       onActive={onActive}
-      featureChips={groups.length < FEATURE_CHIPS_BELOW}
     />
   );
 
@@ -521,11 +556,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
 
   return (
     // The tall transcript spans all three rows on lg: only the last row may grow, so the orb, groups and composer stay evenly spaced.
-    <div className={`mx-auto grid w-full max-w-6xl gap-4 lg:grid-cols-[minmax(0,1fr)] lg:grid-rows-[auto_auto_1fr] ${showTranscript ? (explains.length > 0 ? "lg:grid-cols-[minmax(0,1fr)_minmax(23rem,36rem)]" : "lg:grid-cols-[minmax(0,1fr)_23rem]") : ""}`}>
+    <div className={`mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-4 lg:grid-rows-[auto_auto_1fr] ${showTranscript ? (explains.length > 0 ? "lg:grid-cols-[minmax(0,1fr)_minmax(23rem,36rem)]" : "lg:grid-cols-[minmax(0,1fr)_23rem]") : ""}`}>
       <h1 className="sr-only">App Orb</h1>
       <p ref={liveRef} role="status" aria-live="polite" className="sr-only" />
 
-      <section aria-label="Orb" className="flex flex-col items-center gap-3 lg:col-start-1 lg:row-start-1">
+      <section aria-label="Orb" className="relative flex flex-col items-center gap-3 lg:col-start-1 lg:row-start-1">
         {!showTranscript && (
           <p className="text-balance px-4 text-center">
             <span
@@ -553,14 +588,17 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           lean={lean}
           typingTick={typingTick}
           orbRef={orbRef}
-          nodeKey={onSphere ? `${mode}:${groups.map((g) => `${g.id}${g.features.length}`).join(",")}` : ""}
+          nodeKey={onSphere ? `${mode}:${dotCount}` : ""}
           onRoomy={setRoomy}
           onTap={() => inputRef.current?.focus()}
           onPointer={onPointer}
           showStatus={Boolean(chat) || pending.length > 0}
         >
-          {onSphere && groupsEl}
+          {onSphere && (
+            <OrbDots mode={mode} groups={groups} lit={lit} litKey={litKey} hasDraft={input.trim().length > 0} busy={busy} starting={starting} onRun={onRun} onHot={onHot} />
+          )}
         </OrbBody>
+        {onSphere && groups.length > 1 && <OrbLegend groups={groups} pinned={pinned} onPin={(id) => setPinnedKey(id && `${mode}:${id}`)} onPeek={setPeek} />}
         <OrbModes
           modes={visibleModes}
           current={mode}
@@ -627,7 +665,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           <p className="text-center text-sm text-muted-foreground">No AI sections are available for your role yet.</p>
         ) : groups.length > 0 ? (
           <div className="space-y-3">
-            <FeatureSearch features={searchable} hasDraft={input.trim().length > 0} busy={busy} starting={starting} reduced={reduced} onRun={onRun} />
+            <FeatureSearch features={searchable} hasDraft={input.trim().length > 0} busy={busy} starting={starting} reduced={reduced} onRun={onRun} onHits={setHits} />
             {!onSphere && groupsEl}
           </div>
         ) : (
@@ -665,6 +703,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           input={input}
           busy={busy}
           starters={starters}
+          pictures={pictures}
           hints={hints}
           level={signals}
           reduced={reduced}
