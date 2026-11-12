@@ -232,6 +232,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     defaultOn: ASSISTANT_ROLES,
     queries: [
       "attendance.attendanceTodaySummary",
+      "attendance.todayBySection",
       "attendance.sectionsBelowThreshold",
       "dashboard.attendanceTrend",
       "attendance.getStudentAttendanceSummary",
@@ -781,14 +782,16 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   hints_first: {
     key: "hints_first",
     label: "Hints first",
-    description: "Give hints or guiding questions first; full answer only when asked again.",
+    description: "Give hints or guiding questions first on problems the student must solve; explain concepts straight away.",
     kind: "chat_tool",
     roles: ["student"],
     permission: "ai.study",
     module: "ai_student",
     data: "own",
     defaultOn: ["student"],
-    instruction: "Give a hint or guiding question first; full answer only when asked again.",
+    instruction:
+      "For a homework or exam problem the student has to solve, give a hint or guiding question first and the full worked answer only when they ask again. " +
+      "When the student asks you to explain or teach a concept, explain it fully straight away in simple words with an everyday example, then you may end with one quick check question. Never answer an explain request with only a question.",
   },
   weak_area_plan: {
     key: "weak_area_plan",

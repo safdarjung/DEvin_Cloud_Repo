@@ -63,3 +63,21 @@ describe("computeAttendancePercentage (AC5)", () => {
     expect(result.percentage).toBe(100);
   });
 });
+
+describe("headCounts", () => {
+  it("counts whole students per status: a half day is one student, never 0.5", async () => {
+    const { headCounts } = await import("@/modules/attendance/queries");
+    const statuses = [
+      { code: "P", label: "Present", countsPresent: 1, inDenominator: true },
+      { code: "A", label: "Absent", countsPresent: 0, inDenominator: true },
+      { code: "L", label: "Late", countsPresent: 1, inDenominator: true },
+      { code: "HD", label: "Half day", countsPresent: 0.5, inDenominator: true },
+      { code: "LV", label: "Leave", countsPresent: 0, inDenominator: false },
+    ];
+    const c = headCounts([{ status: "P", n: 70 }, { status: "L", n: 2 }, { status: "HD", n: 1 }, { status: "A", n: 11 }, { status: "LV", n: 3 }], statuses);
+    expect(c).toMatchObject({ studentsMarked: 84, present: 72, halfDay: 1, absent: 11, notCounted: 3 });
+    expect(c.byStatus[0]).toEqual({ status: "Present", students: 70 });
+    expect(c.byStatus.find((s) => s.status === "Half day")?.students).toBe(1);
+    expect(Number.isInteger(c.present)).toBe(true);
+  });
+});

@@ -31,7 +31,11 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   // Aggregate — safe for cloud (no person identifiers)
   "attendance.attendanceTodaySummary": {
     // The counts say "not taken yet" only implicitly; the model read 0 marked as "nobody absent".
-    description: "Today's school attendance: marked count, present, percent (0 marked = not taken yet today)",
+    description: "Whole school today: students present, halfDay, absent, byStatus, %. 0 marked = not taken. One class: todayBySection",
+    aggregate: true,
+  },
+  "attendance.todayBySection": {
+    description: "Today per class (VIII-A = class 8A): students present, halfDay, absent, byStatus, %; notTakenYet = no register yet",
     aggregate: true,
   },
   "attendance.sectionsBelowThreshold": {

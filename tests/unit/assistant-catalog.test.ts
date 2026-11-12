@@ -17,14 +17,14 @@ describe("assistant catalog", () => {
   });
 
   describe("ASSISTANT_QUERIES", () => {
-    it("has exactly 108 entries (features-18 §E added 70)", () => {
+    it("has exactly 109 entries (features-18 §E added 70)", () => {
       const names = Object.keys(ASSISTANT_QUERIES);
-      expect(names).toHaveLength(108);
+      expect(names).toHaveLength(109);
     });
 
-    it("has exactly 43 with aggregate flag", () => {
+    it("has exactly 44 with aggregate flag", () => {
       const aggregateCount = Object.values(ASSISTANT_QUERIES).filter((q) => q.aggregate).length;
-      expect(aggregateCount).toBe(43);
+      expect(aggregateCount).toBe(44);
     });
 
     it("has all descriptions between 1 and 120 chars", () => {
@@ -45,6 +45,7 @@ describe("assistant catalog", () => {
     it("includes all aggregate names from the table", () => {
       const aggregateNames = [
         "attendance.attendanceTodaySummary",
+        "attendance.todayBySection",
         "attendance.sectionsBelowThreshold",
         "dashboard.attendanceTrend",
         "exams.listExams",
@@ -153,18 +154,18 @@ describe("assistant catalog", () => {
   });
 
   describe("queriesFor", () => {
-    it("returns all 108 queries for local provider", () => {
+    it("returns all 109 queries for local provider", () => {
       const local = queriesFor("local");
-      expect(Object.keys(local)).toHaveLength(108);
+      expect(Object.keys(local)).toHaveLength(109);
     });
 
     it("returns only aggregate queries for cloud providers", () => {
       const groq = queriesFor("groq");
       const gemini = queriesFor("gemini");
 
-      // Cloud providers should only have aggregate queries (43)
-      expect(Object.keys(groq)).toHaveLength(43);
-      expect(Object.keys(gemini)).toHaveLength(43);
+      // Cloud providers should only have aggregate queries (44)
+      expect(Object.keys(groq)).toHaveLength(44);
+      expect(Object.keys(gemini)).toHaveLength(44);
 
       // Verify they don't have personal queries
       expect(groq).not.toHaveProperty("finance.listDefaulters");

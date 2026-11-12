@@ -46,6 +46,7 @@ function ctxFor(role: Role): TenantContext {
 // means reading its shape and adding it here.
 const REVIEWED_AGGREGATES = [
   "attendance.attendanceTodaySummary",
+  "attendance.todayBySection",
   "attendance.sectionsBelowThreshold",
   "dashboard.attendanceTrend",
   "exams.listExams",

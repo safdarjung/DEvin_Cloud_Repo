@@ -720,7 +720,7 @@ export default async function DashboardPage({
     const absentees = value(absenteesR);
     const approvalRows = value(approvalsR);
     const queue = approvalRows || studentLeaves ? buildApprovalQueue(approvalRows ?? [], studentLeaves ?? [], now.getTime()) : null;
-    const marked = data.attendanceToday.totalInDenominator;
+    const marked = data.attendanceToday.studentsMarked;
     const inrWhole = (paise: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
 
     const tiles: (StatTileProps & { spark?: number[]; tone?: "default" | "success" | "warning" | "destructive" })[] = [];

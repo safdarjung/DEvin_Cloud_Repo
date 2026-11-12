@@ -42,7 +42,7 @@ describe("T-039 dashboard aggregates (seeded demo tenant, real RLS)", () => {
       const { result, ms } = await timed(() => attendanceTodaySummary(ctx));
       expect(result.percentage).toBeGreaterThanOrEqual(0);
       expect(result.percentage).toBeLessThanOrEqual(100);
-      expect(result.presentWeighted).toBeLessThanOrEqual(result.totalInDenominator);
+      expect(result.present + result.halfDay + result.absent).toBe(result.studentsMarked);
       // AC2 / lead ruling 3 — scoped to today's date, so this should stay
       // fast even before P-01's 20261028000020_rls_performance.sql merges
       // (that fix targets unfiltered institution-wide counts/scans).

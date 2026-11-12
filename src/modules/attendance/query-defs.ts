@@ -17,6 +17,7 @@ import {
   periodSummary,
   sectionsBelowThreshold,
 } from "./queries";
+import { attendanceTodayBySection } from "./command.queries";
 
 // permission: attendance.read — attendance/page.tsx:17 (attendance.read)
 // and today/page.tsx:57 (attendance.mark, a subset of attendance.read's
@@ -59,6 +60,16 @@ export const attendanceTodaySummaryQuery = defineQuery({
   schema: z.object({}).strict(),
   permission: "attendance.read",
   handler: (_input, ctx) => attendanceTodaySummary(ctx),
+});
+
+// Today, class by class (whole students per status) and the classes not marked yet. RLS limits the
+// sections a teacher sees; counts only, no names.
+export const attendanceTodayBySectionQuery = defineQuery({
+  name: "attendance.todayBySection",
+  module: "attendance",
+  schema: z.object({}).strict(),
+  permission: "attendance.read",
+  handler: (_input, ctx) => attendanceTodayBySection(ctx),
 });
 
 // permission: attendance.read — same reasoning as attendanceTodaySummary.

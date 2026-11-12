@@ -291,22 +291,63 @@ export async function attendanceDailyCounts(
   }));
 }
 
-export interface AttendanceTodaySummary {
-  date: string;
-  percentage: number;
-  presentWeighted: number;
-  totalInDenominator: number;
+/**
+ * Whole students per status for a day. A half day is one student marked "Half day", never 0.5 of a
+ * student: the weighted sum is only for the percentage. (The AI once said "72.5 present out of 84".)
+ */
+export interface AttendanceHeadCounts {
+  /** Students marked with a status that counts toward the percentage. */
+  studentsMarked: number;
+  /** Full day present (Present, Late and any status counting fully present). */
+  present: number;
+  /** Partly present, e.g. Half day. */
+  halfDay: number;
+  /** Absent for the day. */
+  absent: number;
+  /** Marked with a status left out of the percentage, e.g. leave. */
+  notCounted: number;
+  /** Students per status as the school names them, e.g. [{ status: "Absent", students: 11 }]. */
+  byStatus: { status: string; students: number }[];
 }
 
-/** Institution-wide attendance % for today, across all sections. */
+export function headCounts(
+  rows: { status: string; n: number }[],
+  statuses: Pick<AttendanceStatusOption, "code" | "label" | "countsPresent" | "inDenominator">[],
+): AttendanceHeadCounts {
+  const byCode = new Map(statuses.map((s) => [s.code, s]));
+  const out: AttendanceHeadCounts = { studentsMarked: 0, present: 0, halfDay: 0, absent: 0, notCounted: 0, byStatus: [] };
+  const perLabel = new Map<string, number>();
+  for (const row of rows) {
+    const s = byCode.get(row.status);
+    perLabel.set(s?.label ?? row.status, (perLabel.get(s?.label ?? row.status) ?? 0) + row.n);
+    if (!s || !s.inDenominator) {
+      out.notCounted += row.n;
+      continue;
+    }
+    out.studentsMarked += row.n;
+    if (s.countsPresent >= 1) out.present += row.n;
+    else if (s.countsPresent > 0) out.halfDay += row.n;
+    else out.absent += row.n;
+  }
+  out.byStatus = [...perLabel.entries()].map(([status, students]) => ({ status, students })).sort((a, b) => b.students - a.students);
+  return out;
+}
+
+export interface AttendanceTodaySummary extends AttendanceHeadCounts {
+  date: string;
+  /** Attendance % (a half day counts half). 0 when nothing is marked yet. */
+  percentage: number;
+}
+
+/** Institution-wide attendance for today, across all sections: % plus whole-student head counts. */
 export async function attendanceTodaySummary(ctx: TenantContext): Promise<AttendanceTodaySummary> {
   const settings = getAttendanceSettings(ctx);
   const date = todayInInstitutionTimezone(ctx);
 
   const rows = await attendanceDailyCounts(ctx, { from: date, to: date });
-  const { percentage, presentWeighted, totalInDenominator } = percentageFromCounts(rows, settings.statuses);
+  const { percentage } = percentageFromCounts(rows, settings.statuses);
 
-  return { date, percentage, presentWeighted, totalInDenominator };
+  return { date, percentage, ...headCounts(rows, settings.statuses) };
 }
 
 export interface SectionAttendanceAlert {

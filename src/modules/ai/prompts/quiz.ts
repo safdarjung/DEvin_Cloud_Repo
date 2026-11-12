@@ -22,6 +22,12 @@ export interface QuizPromptInput {
 // untrusted) and it goes only in the delimited data block below.
 export const QUIZ_GENERATION_INSTRUCTIONS =
   "You write multiple-choice quizzes for school teachers from a curriculum unit. " +
+  // Seen on the demo: from a one-line outline the model asked "Which grade is this unit for?". The
+  // unit names the topic; the questions test the topic itself, at the level of that class.
+  "Every question tests the subject matter of the unit's topic as taught in the Indian school (CBSE/NCERT-style) " +
+  "syllabus for that class: facts, concepts, worked problems and applications. Never ask about the unit, its " +
+  "outline, title, grade, subject or materials. Cover different sub-topics, mix recall with application, and make " +
+  "the wrong options the mistakes students really make. " +
   "Always produce exactly the requested number of questions, each with exactly 4 " +
   "unique answer options where `answer` matches one option verbatim. " +
   "Respond with JSON only, matching the schema — no markdown fences, no commentary. " +

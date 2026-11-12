@@ -2,7 +2,7 @@ import "server-only";
 // Dashboard command-center reads. Signed-in user's RLS client only.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
-import { attendanceDailyCounts, getAttendanceSettings, percentageFromCounts, todayInInstitutionTimezone } from "./queries";
+import { attendanceDailyCounts, getAttendanceSettings, headCounts, percentageFromCounts, todayInInstitutionTimezone, type AttendanceHeadCounts } from "./queries";
 import { absentStatusCodes, tallyRepeatedAbsentees, type RepeatedAbsentee } from "./absentees";
 
 export interface SectionAttendanceToday {
@@ -48,6 +48,60 @@ export async function sectionAttendanceToday(ctx: TenantContext): Promise<{ sect
     })
     .sort((a, b) => a.percentage - b.percentage || a.label.localeCompare(b.label));
   return { sections, absentTotal };
+}
+
+export interface SectionHeadCountsToday extends Omit<AttendanceHeadCounts, "byStatus"> {
+  /** e.g. "VIII-A": grade code and section name (a teacher may say "class 8A"). */
+  section: string;
+  /** e.g. "Grade VIII". */
+  grade: string;
+  /** Attendance % for the section (a half day counts half). */
+  percentage: number;
+  byStatus: AttendanceHeadCounts["byStatus"];
+}
+
+/**
+ * Today, class by class, for the AI and the command centre: whole students per status for every
+ * section of the current year the caller can see, and the sections with no register taken yet.
+ * Counts only (no names), so it is an aggregate.
+ */
+export async function attendanceTodayBySection(ctx: TenantContext): Promise<{ date: string; sections: SectionHeadCountsToday[]; notTakenYet: string[] }> {
+  const supabase = await createClient();
+  const settings = getAttendanceSettings(ctx);
+  const date = todayInInstitutionTimezone(ctx);
+
+  const { data: year, error: yearError } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
+  if (yearError) throw yearError;
+  const [rows, sectionsRes] = await Promise.all([
+    attendanceDailyCounts(ctx, { from: date, to: date, bySection: true }),
+    year
+      ? supabase.from("class_sections").select("id, name, grades(code, display_name, sort_key)").eq("institution_id", ctx.institution.id).eq("academic_year_id", year.id)
+      : Promise.resolve({ data: [] as never[], error: null }),
+  ]);
+  if (sectionsRes.error) throw sectionsRes.error;
+
+  const bySection = new Map<string, { status: string; n: number }[]>();
+  for (const row of rows) {
+    if (!row.classSectionId) continue;
+    bySection.set(row.classSectionId, [...(bySection.get(row.classSectionId) ?? []), { status: row.status, n: row.n }]);
+  }
+  type Grade = { code: string; display_name: string; sort_key: number } | null;
+  const all = (sectionsRes.data ?? [])
+    .map((s) => ({ id: s.id, name: s.name, grade: s.grades as Grade }))
+    .sort((a, b) => (a.grade?.sort_key ?? 0) - (b.grade?.sort_key ?? 0) || a.name.localeCompare(b.name));
+  const label = (s: (typeof all)[number]) => `${s.grade?.code ?? "?"}-${s.name}`;
+
+  const sections: SectionHeadCountsToday[] = [];
+  const notTakenYet: string[] = [];
+  for (const s of all) {
+    const counts = bySection.get(s.id);
+    if (!counts?.length) {
+      notTakenYet.push(label(s));
+      continue;
+    }
+    sections.push({ section: label(s), grade: s.grade?.display_name ?? "", percentage: percentageFromCounts(counts, settings.statuses).percentage, ...headCounts(counts, settings.statuses) });
+  }
+  return { date, sections, notTakenYet };
 }
 
 function addDays(date: string, delta: number): string {

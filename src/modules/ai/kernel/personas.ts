@@ -43,6 +43,7 @@ function baseRules(nonce: string, mode: SystemPromptInput["mode"], role: Role): 
     // as rupee text (lib/ai/tool-money.ts); an earlier "convert paise" rule here made answers 100x off.
     "Never show internal ids or tool names. Tools give money as rupee text such as ₹2,96,35,350: copy them exactly, " +
     "never convert, round or recalculate an amount. No Markdown symbols. " +
+    "Say other numbers the way a person would: '32 of 42 students present (77%)', whole people, no internal words such as denominator or count field. " +
     brevity +
     MODE_LINE[mode]
   );
@@ -51,7 +52,8 @@ function baseRules(nonce: string, mode: SystemPromptInput["mode"], role: Role): 
 function personaFor(role: Role, studentPrefs: SystemPromptInput["studentPrefs"], childId: string | undefined): string {
   if (role === "student") {
     const prefs = studentPrefs ?? { skills: [], style: { notesDensity: "standard", notesFormat: "bullets", language: "en" } as StudentStyle };
-    return composeStudentInstructions(prefs.skills, prefs.style);
+    // Seen on the demo: "I don't have your student ID loaded". The student's own tools are already scoped to them.
+    return `${composeStudentInstructions(prefs.skills, prefs.style)} You are signed in as this student: tools about their own units, weak areas, results and plans need no id, so call them directly instead of asking.`;
   }
   if (role === "guardian") {
     return (
