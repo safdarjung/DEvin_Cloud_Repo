@@ -267,3 +267,15 @@ describe("unit title matching", () => {
     expect(unitTitleScore("Metals and Non-metals", w)).toBe(0);
   });
 });
+
+describe("lesson resources", () => {
+  it("keeps only web links on sites Google returned, and builds trusted search links as a fallback", async () => {
+    const { groundedResources, trustedSearchLinks } = await import("@/modules/ai/explain/schemas");
+    const text = ["NCERT chapter | https://ncert.nic.in/textbook/pdf/jesc102.pdf | reading | The chapter itself", "Made up | https://invented.example.com/x | video | not real", "PhET pH | https://phet.colorado.edu/en/simulations/ph-scale | simulation | pH scale"].join("\n");
+    const found = groundedResources(text, [{ url: "https://vertexaisearch.cloud.google.com/redirect/1", title: "ncert.nic.in" }, { url: "https://phet.colorado.edu/x", title: "PhET" }]);
+    expect(found.map((r) => r.title)).toEqual(["NCERT chapter", "PhET pH"]);
+    const links = trustedSearchLinks("Acids, Bases and Salts", "Class 10");
+    expect(links.every((l) => l.url.startsWith("https://"))).toBe(true);
+    expect(links.find((l) => l.url.includes("diksha"))?.url).toContain("Acids%2C%20Bases%20and%20Salts");
+  });
+});

@@ -19,6 +19,7 @@ import {
   AnatomyGenerationSchema,
   FileAnswerGenerationSchema,
   groundedResources,
+  trustedSearchLinks,
   type LessonResource,
   type LessonResourcesRequest,
   type LessonResourcesResponse,
@@ -250,7 +251,11 @@ export async function findLessonResources(ctx: TenantContext, input: LessonResou
     return ok({ resources, note: resources.length ? "" : "No resource on the school's Resources page matches this topic yet. Try the internet, or add one on the Resources page." });
   }
   const searched = await runWebSearch({ ...base(ctx), feature: "lesson_resources_web", prompt: webResourcesPrompt(input.topic, input.classLabel) });
-  if (!searched.ok) return searched;
-  const resources = groundedResources(searched.data.text, searched.data.sources);
-  return ok({ resources, note: resources.length ? "Found by a Google search. Open each one and check it before class." : "The search found nothing that could be checked. Try again or name the chapter differently." });
+  const resources = searched.ok ? groundedResources(searched.data.text, searched.data.sources) : [];
+  if (resources.length) return ok({ resources, note: "Found by a Google search. Open each one and check it before class." });
+  // Live search unavailable or nothing checkable: searches on trusted education sites instead (links built here).
+  return ok({
+    resources: trustedSearchLinks(input.topic, input.classLabel),
+    note: searched.ok ? "No checkable page came back, so these open a search for this topic on trusted sites." : "Live web search is not available right now, so these open a search for this topic on trusted education sites.",
+  });
 }

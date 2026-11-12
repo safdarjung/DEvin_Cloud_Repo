@@ -622,3 +622,19 @@ export function groundedResources(text: string, sources: readonly { url: string;
   }
   return out;
 }
+
+/**
+ * When live web search is unavailable (no key, quota used up): search links for the topic on trusted
+ * education sites, built here, not by a model, so every link works. Pure.
+ */
+export function trustedSearchLinks(topic: string, classLabel: string): LessonResource[] {
+  const q = encodeURIComponent(topic.trim());
+  const qc = encodeURIComponent(`${topic.trim()} ${classLabel}`.trim());
+  return [
+    { title: `NCERT textbooks (find "${topic}")`, url: "https://ncert.nic.in/textbook.php", kind: "reading", why: "The official NCERT chapter for this topic, free to read.", source: "web" },
+    { title: `DIKSHA: ${topic}`, url: `https://diksha.gov.in/explore?searchQuery=${q}`, kind: "reading", why: "Government e-content, videos and worksheets mapped to the CBSE syllabus.", source: "web" },
+    { title: `PhET simulations: ${topic}`, url: `https://phet.colorado.edu/en/simulations/browse?q=${q}`, kind: "simulation", why: "Free interactive simulations for science and maths topics.", source: "web" },
+    { title: `Khan Academy: ${topic}`, url: `https://www.khanacademy.org/search?page_search_query=${q}`, kind: "video", why: "Short explainer videos and practice questions.", source: "web" },
+    { title: `YouTube: ${topic} ${classLabel}`.trim(), url: `https://www.youtube.com/results?search_query=${qc}`, kind: "video", why: "Class videos; pick one from a trusted education channel.", source: "web" },
+  ];
+}
