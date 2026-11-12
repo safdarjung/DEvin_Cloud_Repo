@@ -43,6 +43,8 @@ const QuizRequestSchema = z
     count: z.union([z.literal(QUIZ_LENGTHS[0]), z.literal(QUIZ_LENGTHS[1]), z.literal(QUIZ_LENGTHS[2])]),
     difficulty: z.enum(DIFFICULTIES),
     types: z.array(z.enum(QUIZ_TYPES)).min(1).max(3),
+    /** What the student or teacher wants the questions to concentrate on (a topic they typed). */
+    focus: z.string().trim().max(200).optional(),
   })
   .strict();
 

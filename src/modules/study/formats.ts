@@ -67,7 +67,16 @@ export const FORMAT_RULES: Record<GeneratedFormat, string> = {
   flashcards:
     "Write a flashcard deck: 6 to 40 cards; each front is a short cue or question (at most 20 words), each back a precise answer (at most 40 words). One fact per card.",
   quiz:
-    "Write a practice quiz with exactly the requested number of questions, using only the requested question types. For 'mcq' give exactly 4 different options and the 0-based index of the correct one. For 'true_false' set answerTrue. For 'short' give a model answer of at most 60 words and 1 to 4 rubric points a correct answer must contain. Every question gets a one-sentence explanation. Unused fields: empty string, empty list, -1 or false.",
+    "Write a practice quiz with exactly the requested number of questions, using only the requested question types. " +
+    "Relevance comes first: every question must test an idea that is in the source or, when the outline is short, in the standard Indian school (CBSE/NCERT-style) syllabus for that exact topic and class, never general knowledge about the subject. " +
+    "Cover different sub-topics of the source and never ask the same thing twice; if a focus is given, keep to it. " +
+    "Mix recall with understanding and application; for hard questions use two-step reasoning or a calculation, and for maths and science prefer short worked or real-life situations over bare definitions. " +
+    "Write each question so it stands on its own: no 'according to the text', no 'which of the above'. " +
+    "For 'mcq' give exactly 4 different options of similar length and the 0-based index of the correct one: one option clearly right, the others the mistakes students really make, no 'all of the above' or 'none of the above', and do not always put the right one in the same place. " +
+    "For 'true_false' set answerTrue; the statement must be plainly true or plainly false, not a trick of wording. " +
+    "For 'short' give a model answer of at most 60 words and 1 to 4 rubric points a correct answer must contain. " +
+    "Every question gets a one-sentence explanation that says why the answer is right and, where there is one, the usual mistake. " +
+    "Unused fields: empty string, empty list, -1 or false.",
 };
 
 const text = (max: number) => z.string().trim().min(1).max(max);

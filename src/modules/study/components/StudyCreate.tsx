@@ -99,6 +99,7 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
   const [count, setCount] = useState<(typeof QUIZ_LENGTHS)[number]>(5);
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [types, setTypes] = useState<QuizType[]>(["mcq", "true_false"]);
+  const [focus, setFocus] = useState("");
   const [generating, setGenerating] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editing, setEditing] = useState(false);
@@ -135,7 +136,7 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
       const res = await fetch(audience === "teacher" ? "/api/ai/study-teacher-generate" : "/api/ai/study-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ institutionSlug, format, source: sourceBody(), ...(format === "quiz" ? { quiz: { count, difficulty, types } } : {}) }),
+        body: JSON.stringify({ institutionSlug, format, source: sourceBody(), ...(format === "quiz" ? { quiz: { count, difficulty, types, ...(focus.trim() ? { focus: focus.trim() } : {}) } } : {}) }),
       });
       const body = (await res.json()) as
         | { ok: true; data: Draft }
@@ -481,6 +482,16 @@ export function StudyCreate({ audience, institutionSlug, aiOn, subjects, resourc
                 />
               ))}
             </div>
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="w-24 text-muted-foreground">Focus on</span>
+              <input
+                value={focus}
+                maxLength={200}
+                onChange={(e) => setFocus(e.target.value)}
+                placeholder="Optional: a topic, e.g. word problems, or Newton's third law"
+                className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </label>
             <p className="text-xs text-muted-foreground">Short answers are checked by AI against a model answer. It is practice only and never a mark.</p>
           </div>
         )}

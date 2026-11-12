@@ -90,7 +90,7 @@ export async function generateStudy(
       subjectName: source.subjectName,
       sourceLabel: source.sourceLabel,
       sourceLines: source.lines,
-      quiz: quiz ? { count: quiz.count, difficulty: quiz.difficulty, types: quiz.types } : undefined,
+      quiz: quiz ? { count: quiz.count, difficulty: quiz.difficulty, types: quiz.types, focus: quiz.focus } : undefined,
     }),
     denyNames: ctx.user.profile.fullName ? [ctx.user.profile.fullName] : [],
     maxOutputTokens: input.format === "worksheet" ? WORKSHEET_OUTPUT_TOKENS : MAX_OUTPUT_TOKENS,
