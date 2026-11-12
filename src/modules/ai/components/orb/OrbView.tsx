@@ -680,8 +680,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const hasTalk = (Boolean(chat) && messages.length > 0) || localCards.length > 0 || explains.length > 0;
   const showTranscript = hasTalk && (open || Boolean(error));
   // The features ride the orb as dots unless it is small (a conversation open, or a screen too small for tappable dots)
-  // or cannot spin (no WebGL, reduced motion): then the sections are a row under it.
-  const onSphere = !showTranscript && roomy && groups.length > 0 && use3d && !reduced;
+  // Not tied to WebGL or reduced motion any more: the dots are elements, only the glass ball needs WebGL.
+  const onSphere = !showTranscript && roomy && groups.length > 0;
   const pinned = pinnedKey?.startsWith(`${mode}:`) ? pinnedKey.slice(mode.length + 1) : null;
   const litGroup = peek ?? pinned;
   const litKey = hits ? `q:${hits.join(" ")}` : litGroup ? `g:${litGroup}` : "";
@@ -752,6 +752,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           dark={dark}
           reduced={reduced}
           use3d={use3d}
+          dots={onSphere}
           signals={signals}
           compact={showTranscript}
           waiting={pending.length}

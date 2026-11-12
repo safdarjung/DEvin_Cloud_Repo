@@ -39,6 +39,8 @@ interface Props {
   dark: boolean;
   reduced: boolean;
   use3d: boolean;
+  /** Feature dots ride the sphere: they are placed and turned here, with or without WebGL. */
+  dots?: boolean;
   signals: React.RefObject<OrbSignals>;
   compact: boolean;
   /** Cards waiting for approval. */
@@ -207,6 +209,9 @@ export function OrbBody(p: Props) {
     hover: false, focus: false, press: -1, pts: [],
   });
   const showCanvas = use3d && !reduced;
+  // The dots are plain elements: they show and turn without WebGL and under reduced motion (only the
+  // automatic movement stops). Dots used to need both, so many phones and browsers showed none.
+  const live = showCanvas || Boolean(p.dots);
 
   useEffect(() => {
     keyRef.current = nodeKey;
@@ -269,7 +274,7 @@ export function OrbBody(p: Props) {
   // The frame loop: spin physics on two axes, the dots' transforms, the hot dot's label, and the spin + hot spot for the dust.
   useEffect(() => {
     const el = stage.current;
-    if (!showCanvas || !el) return;
+    if (!live || !el) return;
     const sp = spin.current;
     const sig = signals.current;
     const born = performance.now();
@@ -301,7 +306,7 @@ export function OrbBody(p: Props) {
         if (fresh) {
           // New dots (arrival or a mode change) fly out to their places while the sphere turns back to its resting pose.
           since = 0;
-          fly = now - born < 500 ? ARRIVAL : MODE_CHANGE;
+          fly = reduced ? [0, 0] : now - born < 500 ? ARRIVAL : MODE_CHANGE;
           sp.vy = sp.vx = 0;
           sp.coasting = false;
           sp.press = -1;
@@ -338,6 +343,12 @@ export function OrbBody(p: Props) {
 
       if (sp.dragging) {
         // The pointer turns the sphere (onPointerDown).
+      } else if (sp.target && reduced) {
+        // Reduced motion: no glide, the sphere is simply at its new pose.
+        sp.ry = sp.target.ry;
+        sp.rx = sp.target.rx;
+        sp.vy = sp.vx = 0;
+        sp.target = null;
       } else if (sp.target) {
         const a = springStep(sp.ry, sp.vy, sp.target.ry, dt);
         const b = springStep(sp.rx, sp.vx, sp.target.rx, dt);
@@ -372,7 +383,7 @@ export function OrbBody(p: Props) {
       const resting = els.length > 0 && hot < 0 && !sp.hover && !sp.focus && !sp.dragging && !sp.coasting && sp.target === null;
       idle = resting ? idleEase((now - sp.lastInput) / 1000) : idle * Math.exp(-dt * 8);
       // Every orb spins slowly when left alone: its dots cover the whole sphere, so the back comes round.
-      if (resting) sp.ry += dt * AUTO_SPIN * idle;
+      if (resting && !reduced) sp.ry += dt * AUTO_SPIN * idle;
       sig.spin = sp.ry;
       sig.tilt = sp.rx;
 
@@ -447,12 +458,12 @@ export function OrbBody(p: Props) {
       cancelFrame(step);
       sig.hot[3] = 0;
     };
-  }, [showCanvas, signals]);
+  }, [live, reduced, signals]);
 
   // Wheel and trackpad spin the sphere; the page must not scroll under it (non-passive listener).
   useEffect(() => {
     const el = stage.current;
-    if (!showCanvas || !el) return;
+    if (!live || !el) return;
     const onWheel = (e: WheelEvent) => {
       if (!keyRef.current) return;
       e.preventDefault();
@@ -466,7 +477,7 @@ export function OrbBody(p: Props) {
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [showCanvas]);
+  }, [live]);
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (e.button !== 0) return;
@@ -482,7 +493,7 @@ export function OrbBody(p: Props) {
       sx.set(1.03);
       sy.set(0.96);
     }
-    if (showCanvas) {
+    if (live) {
       sp.dragging = true;
       sp.target = null;
       sp.coasting = false;
@@ -555,7 +566,7 @@ export function OrbBody(p: Props) {
     const node = nodeOf(e.target);
     const v = node ? sp.pts[Number(node.dataset.node)] : undefined;
     // Keyboard focus turns the dot to the front; a click runs it where it is.
-    if (!node || !v || !showCanvas || !node.matches(":focus-visible")) return;
+    if (!node || !v || !live || !node.matches(":focus-visible")) return;
     sp.coasting = false;
     sp.lastInput = performance.now();
     sp.target = { ry: nearestAngle(sp.ry, frontAngle(v)), rx: nearestAngle(sp.rx, Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v)))) };
@@ -599,8 +610,8 @@ export function OrbBody(p: Props) {
           spin.current.focus = e.currentTarget.contains(e.relatedTarget as Node | null);
         }}
         // Vertical swipes still scroll the page; horizontal drags spin the sphere.
-        style={{ touchAction: showCanvas && !compact ? "none" : "pan-y", ...roleVars }}
-        className={`relative isolate select-none ${showCanvas ? "cursor-grab active:cursor-grabbing" : ""} ${compact ? "size-28 sm:size-32" : "size-[min(90vw,34rem,58dvh,calc(100dvh_-_30rem))]"}`}
+        style={{ touchAction: live && !compact ? "none" : "pan-y", ...roleVars }}
+        className={`relative isolate select-none ${live ? "cursor-grab active:cursor-grabbing" : ""} ${compact ? "size-28 sm:size-32" : "size-[max(min(90vw,19rem),min(90vw,34rem,58dvh,calc(100dvh_-_30rem)))]"}`}
       >
         {/* Depth: a soft role-tinted glow and the far half of an orbit ring behind the sphere. */}
         <div
