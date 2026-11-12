@@ -6,7 +6,7 @@ import { getTenantContext } from "@/lib/auth/context";
 import { requireModule, requirePermission } from "@/lib/auth/require";
 import { listLabelledTeachableSections, listSectionSubjects } from "@/modules/academics/assignments.queries";
 import { DiaryView } from "@/modules/diary/components/DiaryView";
-import { diaryForSection } from "@/modules/diary/queries";
+import { defaultDiarySectionId, diaryForSection } from "@/modules/diary/queries";
 import { aiTaskOn } from "@/modules/ai/task-route";
 
 export const metadata: Metadata = { title: "Class diary" };
@@ -27,7 +27,8 @@ export default async function DiaryPage({
   requirePermission(ctx, "diary.write");
 
   const sections = await listLabelledTeachableSections(ctx);
-  const active = sections.find((s) => s.id === section) ?? sections[0];
+  const fallbackId = section && sections.some((s) => s.id === section) ? undefined : await defaultDiarySectionId(ctx, sections);
+  const active = sections.find((s) => s.id === (fallbackId ?? section)) ?? sections[0];
 
   if (!active) {
     return (

@@ -88,6 +88,32 @@ async function ackedEntryIds(ctx: TenantContext, studentId: string, entryIds: st
 }
 
 /** The section's diary entries in the window, newest entry_date first then created_at. RLS narrows to admin/taught-section/own-section. */
+/**
+ * The class the diary opens on when none is chosen: a teacher's own class, else the class with the
+ * newest entry among those offered, else the first. The first alone opened an empty "I-A" for most staff.
+ */
+export async function defaultDiarySectionId(ctx: TenantContext, offered: readonly { id: string }[]): Promise<string | undefined> {
+  if (offered.length === 0) return undefined;
+  const ids = new Set(offered.map((s) => s.id));
+  const supabase = await createClient();
+  if (ctx.membership.role === "teacher" && ctx.membership.staffId) {
+    const { data, error } = await supabase.from("class_sections").select("id").eq("institution_id", ctx.institution.id).eq("class_teacher_id", ctx.membership.staffId);
+    if (error) throw error;
+    const own = (data ?? []).find((s) => ids.has(s.id));
+    if (own) return own.id;
+  }
+  const { data, error } = await supabase
+    .from("diary_entries")
+    .select("class_section_id")
+    .eq("institution_id", ctx.institution.id)
+    .in("class_section_id", [...ids].slice(0, 200))
+    .order("entry_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.class_section_id ?? offered[0]!.id;
+}
+
 export async function diaryForSection(
   ctx: TenantContext,
   classSectionId: string,
