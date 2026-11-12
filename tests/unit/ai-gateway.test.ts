@@ -253,7 +253,7 @@ describe("runStructured", () => {
 
     expect(result).toEqual({
       ok: false,
-      error: { code: "quota_exceeded", message: "Daily AI usage quota exceeded for this institution." },
+      error: { code: "quota_exceeded", message: "Today's AI limit is used up. It resets at midnight." },
     });
     expect(generateTextMock).not.toHaveBeenCalled();
   });
@@ -427,7 +427,7 @@ describe("streamAgent (D31/D32/GU-05)", () => {
 
     expect(result).toEqual({
       ok: false,
-      error: { code: "quota_exceeded", message: "Daily AI usage quota exceeded for this institution." },
+      error: { code: "quota_exceeded", message: "Today's AI limit is used up. It resets at midnight." },
     });
     expect(streamTextMock).not.toHaveBeenCalled();
   });

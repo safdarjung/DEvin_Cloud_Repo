@@ -103,7 +103,7 @@ export async function streamCloudAgent<TOOLS extends ToolSet>(
     });
     const message =
       limits.code === "quota_exceeded"
-        ? "Daily AI usage quota exceeded for this institution."
+        ? "Today's AI limit is used up. It resets at midnight."
         : "Too many AI requests; please slow down and try again.";
     return { ok: false, error: { code: limits.code, message } };
   }

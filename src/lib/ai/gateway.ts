@@ -140,7 +140,7 @@ export async function runStructured<T>(input: RunStructuredInput<T>): Promise<Ac
     });
     const message =
       limits.code === "quota_exceeded"
-        ? "Daily AI usage quota exceeded for this institution."
+        ? "Today's AI limit is used up. It resets at midnight."
         : "Too many AI requests; please slow down and try again.";
     return fail(limits.code, message);
   }
@@ -308,7 +308,7 @@ export async function runStructuredFile<T>(input: RunStructuredFileInput<T>): Pr
   }
   if (!limits.ok) {
     await failUsage(limits.code, 0, 0);
-    return fail(limits.code, limits.code === "quota_exceeded" ? "Daily AI usage quota exceeded for this institution." : "Too many AI requests; please slow down and try again.");
+    return fail(limits.code, limits.code === "quota_exceeded" ? "Today's AI limit is used up. It resets at midnight." : "Too many AI requests; please slow down and try again.");
   }
   if (!acquireConcurrencySlot(ctx.institution.id, "cloud", aiSettingsFor(ctx).max_concurrent_cloud)) {
     return fail("rate_limited", "AI concurrency limit reached; please try again shortly.");
@@ -442,7 +442,7 @@ export async function runImage(input: RunImageInput): Promise<ActionResult<RunIm
   }
   if (!limits.ok) {
     await usage(false, limits.code, 0, 0);
-    return fail(limits.code, limits.code === "quota_exceeded" ? "Daily AI usage quota exceeded for this institution." : "Too many AI requests; please slow down and try again.");
+    return fail(limits.code, limits.code === "quota_exceeded" ? "Today's AI limit is used up. It resets at midnight." : "Too many AI requests; please slow down and try again.");
   }
   if (!acquireConcurrencySlot(ctx.institution.id, "cloud", aiSettingsFor(ctx).max_concurrent_cloud)) {
     return fail("rate_limited", "AI concurrency limit reached; please try again shortly.");
@@ -597,7 +597,7 @@ export async function streamAgent<TOOLS extends ToolSet>(
     });
     const message =
       limits.code === "quota_exceeded"
-        ? "Daily AI usage quota exceeded for this institution."
+        ? "Today's AI limit is used up. It resets at midnight."
         : "Too many AI requests; please slow down and try again.";
     return { ok: false, error: { code: limits.code, message } };
   }
