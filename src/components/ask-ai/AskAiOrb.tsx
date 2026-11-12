@@ -1,42 +1,62 @@
 "use client";
 
-import { motion, useAnimate, useAnimationFrame, useMotionValue, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { useEffect } from "react";
+import { motion, useAnimate, useAnimationFrame, useReducedMotion, useSpring } from "motion/react";
+import { useEffect, useRef } from "react";
 import { fibonacciSphere, rotateYX } from "@/modules/ai/components/orb/orb-layout";
 
-// Dot sphere, split in two depth layers so the front leans further toward the pointer (parallax).
-const DOTS = fibonacciSphere(64).map((v, i) => {
-  const [x, y, z] = rotateYX(v, 0.5, 0.45);
-  const depth = (z + 1) / 2;
-  // Rounded strings: server and browser trig differ in the last digit, which breaks hydration.
-  const f = (n: number) => n.toFixed(3);
-  return { cx: f(x), cy: f(-y), r: f((i % 6 === 0 ? 0.11 : 0.06) * (0.6 + 0.6 * depth)), opacity: f(0.25 + 0.75 * depth), front: depth > 0.5 };
-});
+// A see-through wireframe ball (owner, 2026-11-12: "a 3-d skeletal ball joined by pixels", no solid
+// background, nothing spilling past the edge): points on a sphere, each joined to its nearest
+// neighbours, turning in real 3D. Near points are larger and brighter, far ones fade.
+const POINTS = fibonacciSphere(42);
+const EDGES: readonly (readonly [number, number])[] = (() => {
+  const seen = new Set<string>();
+  const out: [number, number][] = [];
+  POINTS.forEach((p, i) => {
+    const near = POINTS.map((q, j) => ({ j, d: (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 + (p[2] - q[2]) ** 2 }))
+      .filter((n) => n.j !== i)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 3);
+    for (const { j } of near) {
+      const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        out.push(i < j ? [i, j] : [j, i]);
+      }
+    }
+  });
+  return out;
+})();
+const R = 1;
+const TILT = 0.42;
+const SPIN = (2 * Math.PI) / 14; // one turn in 14 s
 const LEAN_REACH = 200;
-const LEAN_PX = 5;
 const WIGGLE_MS = 12_000;
 
-function Layer({ front, x, y }: { front: boolean; x: ReturnType<typeof useSpring>; y: ReturnType<typeof useSpring> }) {
-  return (
-    <motion.g style={{ x, y }}>
-      {DOTS.filter((d) => d.front === front).map((d, i) => (
-        <circle key={i} cx={d.cx} cy={d.cy} r={d.r} opacity={d.opacity} />
-      ))}
-    </motion.g>
-  );
+/** Positions at an angle, rounded so the server HTML and the first browser frame match. */
+function frame(ry: number, rx: number) {
+  const f = (n: number) => Number(n.toFixed(3));
+  const pts = POINTS.map((v) => {
+    const [x, y, z] = rotateYX(v, ry, rx);
+    const depth = (z + 1) / 2;
+    return { x: f(x * R), y: f(-y * R), depth };
+  });
+  return pts;
 }
+const FIRST = frame(0.6, TILT);
 
-/** The fidgety orb face: breathing, slow spin, pointer lean, periodic wiggle. Button chrome lives in the parent. */
-export function AskAiOrb({ idle, accent, glow, excite }: { idle: boolean; accent: readonly [string, string]; /** Nudge colour while a nudge is showing: dots swirl faster and pulse in it. */ glow?: string; /** Bump to play a short attention wiggle. */ excite: number }) {
+/** The fidgety orb face: slow 3D spin, pointer lean, periodic wiggle. Button chrome lives in the parent. */
+export function AskAiOrb({ idle, accent, glow, excite }: { idle: boolean; accent: readonly [string, string]; /** Nudge colour while a nudge is showing: the ball spins faster and lights up in it. */ glow?: string; /** Bump to play a short attention wiggle. */ excite: number }) {
   const reduced = useReducedMotion();
   const [scope, animateWiggle] = useAnimate();
-  const lx = useMotionValue(0);
-  const ly = useMotionValue(0);
-  const sx = useSpring(lx, { stiffness: 220, damping: 16 });
-  const sy = useSpring(ly, { stiffness: 220, damping: 16 });
-  const bx = useTransform(sx, (v) => v * 0.45);
-  const by = useTransform(sy, (v) => v * 0.45);
+  const dots = useRef<(SVGCircleElement | null)[]>([]);
+  const lines = useRef<(SVGLineElement | null)[]>([]);
+  const turn = useRef({ ry: 0.6, leanX: 0, leanY: 0 });
+  const speed = useSpring(1, { stiffness: 50, damping: 10 });
+  useEffect(() => {
+    speed.set(glow ? 6 : 1);
+  }, [glow, speed]);
 
+  // The ball leans a little toward a nearby pointer (mouse only).
   useEffect(() => {
     if (reduced) return;
     function onMove(e: PointerEvent) {
@@ -47,64 +67,102 @@ export function AskAiOrb({ idle, accent, glow, excite }: { idle: boolean; accent
       const dx = e.clientX - (r.left + r.width / 2);
       const dy = e.clientY - (r.top + r.height / 2);
       const d = Math.hypot(dx, dy);
-      if (d > LEAN_REACH || d === 0) {
-        lx.set(0);
-        ly.set(0);
-        return;
-      }
-      const k = (1 - d / LEAN_REACH) * LEAN_PX;
-      lx.set((dx / d) * k * 0.05);
-      ly.set((dy / d) * k * 0.05);
+      const k = d > LEAN_REACH || d === 0 ? 0 : 1 - d / LEAN_REACH;
+      turn.current.leanX = (dx / (d || 1)) * k * 0.5;
+      turn.current.leanY = (dy / (d || 1)) * k * 0.4;
     }
     window.addEventListener("pointermove", onMove, { passive: true });
     return () => window.removeEventListener("pointermove", onMove);
-  }, [reduced, scope, lx, ly]);
+  }, [reduced, scope]);
 
-  // Spin is driven by hand so its speed can spring up while a nudge shows.
-  const angle = useMotionValue(0);
-  const speed = useSpring(1, { stiffness: 50, damping: 10 });
-  useEffect(() => {
-    speed.set(glow ? 7 : 1);
-  }, [glow, speed]);
+  // Drawn by hand each frame (no React render): 42 points and their joins.
   useAnimationFrame((_, delta) => {
-    if (!reduced) angle.set((angle.get() + (delta / 1000) * (360 / 48) * speed.get()) % 360);
+    if (reduced) return;
+    const t = turn.current;
+    t.ry += (delta / 1000) * SPIN * speed.get();
+    const pts = frame(t.ry + t.leanX, TILT + t.leanY);
+    pts.forEach((p, i) => {
+      const c = dots.current[i];
+      if (!c) return;
+      c.setAttribute("cx", String(p.x));
+      c.setAttribute("cy", String(p.y));
+      c.setAttribute("r", (0.035 + 0.055 * p.depth).toFixed(3));
+      c.setAttribute("opacity", (0.25 + 0.75 * p.depth).toFixed(2));
+    });
+    EDGES.forEach(([a, b], i) => {
+      const l = lines.current[i];
+      if (!l) return;
+      const pa = pts[a]!;
+      const pb = pts[b]!;
+      l.setAttribute("x1", String(pa.x));
+      l.setAttribute("y1", String(pa.y));
+      l.setAttribute("x2", String(pb.x));
+      l.setAttribute("y2", String(pb.y));
+      l.setAttribute("opacity", (0.12 + 0.55 * ((pa.depth + pb.depth) / 2)).toFixed(2));
+    });
   });
+
   useEffect(() => {
     if (reduced || excite === 0 || !scope.current) return;
-    void animateWiggle(scope.current, { rotate: [0, -28, 22, -14, 0] }, { duration: 0.8 });
+    void animateWiggle(scope.current, { rotate: [0, -24, 18, -10, 0] }, { duration: 0.8 });
   }, [excite, reduced, scope, animateWiggle]);
-
   useEffect(() => {
     if (reduced || !idle) return;
-    const id = setInterval(() => void animateWiggle(scope.current, { rotate: [0, -14, 11, -6, 0] }, { duration: 0.7 }), WIGGLE_MS);
+    const id = setInterval(() => void animateWiggle(scope.current, { rotate: [0, -12, 9, -5, 0] }, { duration: 0.7 }), WIGGLE_MS);
     return () => clearInterval(id);
   }, [reduced, idle, scope, animateWiggle]);
 
+  const lineColour = glow ?? accent[0];
+  const dotColour = glow ?? accent[1];
   return (
-    // The same glass ball as the App Orb, in CSS: bright toward the light, a darker limb, a rim of the bright stop.
+    // No fill and nothing outside the button's own circle: only a faint glow at the core for contrast.
     <span
-      className="absolute inset-0 grid place-items-center overflow-hidden rounded-full"
-      style={{
-        background: `radial-gradient(circle at 34% 28%, ${accent[1]}, ${accent[0]} 72%)`,
-        boxShadow: `inset 0 0 10px 0 ${accent[1]}, inset -5px -7px 12px -4px rgb(0 0 0 / 0.45)`,
-      }}
+      className="absolute inset-0 grid place-items-center rounded-full"
+      style={{ background: `radial-gradient(circle, color-mix(in oklab, ${accent[1]} 22%, transparent), transparent 68%)` }}
     >
-      <motion.span ref={scope} className="block size-[78%]" animate={reduced ? undefined : { scale: [1, 1.05, 1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}>
-        <motion.span className="block size-full" style={{ rotate: angle }}>
-          <motion.svg
-            aria-hidden
-            viewBox="-1.2 -1.2 2.4 2.4"
-            className="size-full overflow-visible fill-white transition-[fill] duration-300"
-            style={glow ? { fill: glow } : undefined}
-            animate={reduced || !glow ? { opacity: 1 } : { opacity: [1, 0.55, 1] }}
-            transition={glow ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
-          >
-            <Layer front={false} x={bx} y={by} />
-            <Layer front x={sx} y={sy} />
-          </motion.svg>
-        </motion.span>
+      <motion.span ref={scope} className="block size-[88%]">
+        <motion.svg
+          aria-hidden
+          viewBox="-1.12 -1.12 2.24 2.24"
+          className="size-full [filter:drop-shadow(0_1px_1.5px_rgb(0_0_0/0.25))]"
+          animate={reduced || !glow ? { opacity: 1 } : { opacity: [1, 0.6, 1] }}
+          transition={glow ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" } : { duration: 0.2 }}
+        >
+          <g stroke={lineColour} strokeWidth={0.035} strokeLinecap="round" className="transition-[stroke] duration-300">
+            {EDGES.map(([a, b], i) => {
+              const pa = FIRST[a]!;
+              const pb = FIRST[b]!;
+              return (
+                <line
+                  key={i}
+                  ref={(el) => {
+                    lines.current[i] = el;
+                  }}
+                  x1={pa.x}
+                  y1={pa.y}
+                  x2={pb.x}
+                  y2={pb.y}
+                  opacity={(0.12 + 0.55 * ((pa.depth + pb.depth) / 2)).toFixed(2)}
+                />
+              );
+            })}
+          </g>
+          <g fill={dotColour} className="transition-[fill] duration-300">
+            {FIRST.map((p, i) => (
+              <circle
+                key={i}
+                ref={(el) => {
+                  dots.current[i] = el;
+                }}
+                cx={p.x}
+                cy={p.y}
+                r={(0.035 + 0.055 * p.depth).toFixed(3)}
+                opacity={(0.25 + 0.75 * p.depth).toFixed(2)}
+              />
+            ))}
+          </g>
+        </motion.svg>
       </motion.span>
-      <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_24%,rgb(255_255_255/0.7),transparent_30%)]" />
     </span>
   );
 }

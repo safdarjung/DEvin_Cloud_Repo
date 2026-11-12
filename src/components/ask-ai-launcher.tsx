@@ -263,7 +263,7 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems, tasks = [] }: 
             setOpen((o) => !o);
           }}
           title="Tap to ask, hold to open the Orb"
-          className="relative block size-14 rounded-full text-white shadow-lg ring-1 ring-black/10 select-none [-webkit-touch-callout:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none lg:size-16"
+          className="relative block size-14 rounded-full text-white select-none [-webkit-touch-callout:none] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none lg:size-16"
         >
           <AskAiOrb idle={!open && !hot} accent={accent} glow={glow} excite={excite} />
           {/* Hold feedback: a ring fills round the orb while it is held. */}
@@ -285,15 +285,6 @@ export function AskAiLauncher({ institutionSlug, role, jumpItems, tasks = [] }: 
             </svg>
           )}
         </motion.button>
-        {glow && !reduced && (
-          <motion.span
-            aria-hidden
-            className="pointer-events-none absolute -inset-1 rounded-full border-2"
-            style={{ borderColor: glow }}
-            animate={{ scale: [1, 1.3], opacity: [0.8, 0] }}
-            transition={{ duration: 1.1, repeat: Infinity, ease: "easeOut" }}
-          />
-        )}
         {bubble.unseenAlerts > 0 && (
           <motion.span
             key={bump}
