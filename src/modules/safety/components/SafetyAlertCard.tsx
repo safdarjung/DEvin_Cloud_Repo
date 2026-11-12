@@ -57,7 +57,7 @@ export function SafetyDeliveryNote() {
     <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
       <SimulatedBadge />
       <span>
-        In-app notifications are real and are created when you press send: everyone in the audience gets one in CoolSkool. If that step fails,
+        In-app notifications are real and are created when you press send: everyone in the audience gets one in FabricOS. If that step fails,
         the alert is still saved and its notifications wait for the job runner. The SMS copy is simulated, so no text message is sent.
         WhatsApp and email are not used for safety alerts. Use your phone tree or PA system as well.
       </span>

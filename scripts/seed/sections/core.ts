@@ -75,7 +75,7 @@ export async function run(ctx: SeedContext): Promise<void> {
   await ctx.admin.from("institutions").upsert({
     id: ctx.institutionId,
     slug: "st-josephs-demo",
-    name: "St. Joseph's Convent School (Demo)",
+    name: "St. Joseph's Convent School",
     board: "CBSE",
     is_demo: true,
     ai_policy: "local_only",

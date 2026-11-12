@@ -47,9 +47,9 @@ async function postOnce(attempt: DeliveryAttemptDraft, toAddress: string): Promi
     method: "POST",
     headers,
     body: JSON.stringify({
-      from: process.env.RESEND_FROM || "CoolSkool <onboarding@resend.dev>",
+      from: process.env.RESEND_FROM || "FabricOS <onboarding@resend.dev>",
       to: [toAddress],
-      subject: attempt.subject || "CoolSkool",
+      subject: attempt.subject || "FabricOS",
       text: attempt.renderedBody,
     }),
     signal: AbortSignal.timeout(NETWORK_TIMEOUT_MS),

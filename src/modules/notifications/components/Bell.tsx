@@ -45,7 +45,11 @@ export function Bell({
       <PopoverTrigger asChild>
         <Link
           href={href}
-          onClick={(e) => e.preventDefault()}
+          // Radix skips its own toggle when the default is prevented, so the link opens the popover itself.
+          onClick={(e) => {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }}
           aria-label="Notifications"
           className="relative flex min-h-10 min-w-10 items-center justify-center rounded-md outline-none transition-colors duration-(--duration-fast) ease-(--ease-out) hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >

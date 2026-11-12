@@ -268,18 +268,23 @@ describe("feature dots on the sphere", () => {
     }
   });
 
-  it("a few dots all sit where they can be clicked, in rows that keep same-row neighbours apart", () => {
+  it("dots at every count are spread evenly over the whole sphere, back included", () => {
     expect(dotPoints(0)).toEqual([]);
     expect(dotPoints(1)).toEqual([[0, 0, 1]]);
-    for (let n = 1; n < 8; n++) {
+    for (let n = 2; n <= 30; n++) {
       const pts = dotPoints(n);
       expect(pts).toHaveLength(n);
-      for (const p of pts) {
-        expect(len(p)).toBeCloseTo(1, 9);
-        expect(dotLook(p[2]).pickable).toBe(true);
-      }
-      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) if (pts[i][1] === pts[j][1]) expect(dist(pts[i], pts[j])).toBeGreaterThan(0.55);
+      for (const p of pts) expect(len(p)).toBeCloseTo(1, 6);
+      let nearest = Infinity;
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) nearest = Math.min(nearest, dist(pts[i], pts[j]));
+      // Even spacing: the closest pair is not far below the spacing of n equal patches of the sphere.
+      expect(nearest).toBeGreaterThan(0.75 * Math.sqrt((4 * Math.PI) / n) * (n <= 4 ? 1 : 0.95));
+      if (n >= 4) expect(pts.some((p) => p[2] < -0.3)).toBe(true);
     }
+    // Same answer every time (cached), and a caller cannot change the cached points.
+    const a = dotPoints(7);
+    (a[0] as unknown as number[])[0] = 99;
+    expect(dotPoints(7)[0][0]).not.toBe(99);
   });
 
   it("many dots cover the whole sphere", () => {

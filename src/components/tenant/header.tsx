@@ -47,11 +47,6 @@ export function TenantHeader({
         <MobileNav items={navItems} user={sidebarUser} />
         <HeaderCrumb institutionName={institutionName} logoUrl={logoUrl} />
         <span className="hidden shrink-0 md:inline-flex lg:hidden xl:inline-flex"><RoleBadge role={role} /></span>
-        {isDemo && (
-          <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-warning/40 bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-foreground sm:inline">
-            Demo<span className="md:hidden xl:inline"> mode · sample data</span>
-          </span>
-        )}
       </div>
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <CommandPalette

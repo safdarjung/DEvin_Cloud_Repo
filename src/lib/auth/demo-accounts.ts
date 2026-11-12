@@ -121,3 +121,22 @@ export const DEMO_ACCOUNT_GROUPS: readonly DemoAccount["group"][] = [
   "Teachers",
   "Families",
 ];
+
+const ROLE_KIND_LABEL: Readonly<Record<string, string>> = { teacher: "Teacher", guardian: "Parent", student: "Student" };
+
+/**
+ * The "Switch role" menu: one login per kind of role (the first teacher, the first parent, the first
+ * student), named by the role, never by a person ("Parent", not "Priya Sharma"). The login page keeps
+ * every named login for the demo script.
+ */
+export const SWITCH_ROLE_ACCOUNTS: readonly { email: string; label: string }[] = (() => {
+  const seen = new Set<string>();
+  const out: { email: string; label: string }[] = [];
+  for (const a of DEMO_ACCOUNTS) {
+    const kind = a.email.split(/[.@]/)[0]!;
+    if (seen.has(kind)) continue;
+    seen.add(kind);
+    out.push({ email: a.email, label: ROLE_KIND_LABEL[kind] ?? a.name });
+  }
+  return out;
+})();

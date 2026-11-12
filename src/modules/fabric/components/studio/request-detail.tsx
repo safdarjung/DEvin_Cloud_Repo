@@ -162,7 +162,7 @@ export function RequestDetail({
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <LimitedBadge /> No sandboxed preview or in-app install for a custom build yet — the CoolSkool team ships it and installs it once approved.
+                  <LimitedBadge /> No sandboxed preview or in-app install for a custom build yet — the FabricOS team ships it and installs it once approved.
                 </p>
               </div>
             )}
@@ -178,7 +178,7 @@ export function RequestDetail({
                     {done ? <CheckCircle2 className="size-4 text-success" aria-hidden /> : <Circle className="size-4 text-muted-foreground" aria-hidden />}
                     <span className={done ? "font-medium" : "text-muted-foreground"}>{humanize(step)}</span>
                     {future && <LimitedBadge />}
-                    {future && <span className="text-xs text-muted-foreground">built by the CoolSkool team</span>}
+                    {future && <span className="text-xs text-muted-foreground">built by the FabricOS team</span>}
                   </li>
                 );
               })}

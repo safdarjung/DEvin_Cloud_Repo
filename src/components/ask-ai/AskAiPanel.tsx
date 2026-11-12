@@ -76,6 +76,12 @@ export function AskAiPanel({ slug, pathname, title, items, tasks, corner, reduce
   const current = Math.min(active, Math.max(matches.length - 1, 0));
 
   useEffect(() => {
+    // Touch screens: focus the panel, not a text box, so the keyboard does not open and push the panel up.
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      root.current?.focus({ preventScroll: true });
+      root.current?.scrollTo({ top: 0 });
+      return;
+    }
     (focus === "jump" ? jumpRef : askRef).current?.focus();
   }, [focus]);
 
@@ -134,6 +140,7 @@ export function AskAiPanel({ slug, pathname, title, items, tasks, corner, reduce
       ref={root}
       role="dialog"
       aria-modal="true"
+      tabIndex={-1}
       aria-label="Ask AI"
       onKeyDown={(e) => {
         if (e.key === "Escape") {
@@ -146,7 +153,7 @@ export function AskAiPanel({ slug, pathname, title, items, tasks, corner, reduce
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.85, transition: { duration: 0.12 } }}
       transition={reduced ? { duration: 0.1 } : { type: "spring", stiffness: 380, damping: 26 }}
-      className={`fixed inset-x-2 z-(--z-header) flex max-h-[calc(100dvh-13rem)] flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-xl lg:inset-x-auto lg:w-[360px] print:hidden ${POS[corner]}`}
+      className={`fixed inset-x-2 z-(--z-header) flex outline-none max-h-[calc(100dvh-13rem)] flex-col gap-3 overflow-y-auto rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-xl lg:inset-x-auto lg:w-[360px] print:hidden ${POS[corner]}`}
     >
       <form
         onSubmit={(e) => {
@@ -267,7 +274,14 @@ export function AskAiPanel({ slug, pathname, title, items, tasks, corner, reduce
                 role="option"
                 aria-selected={i === current}
                 ref={(el) => {
-                  if (el && i === current) el.scrollIntoView({ block: "nearest" });
+                  // Scroll only the list, never the panel: scrollIntoView also scrolled the whole panel down to the
+                  // highlighted page on open, hiding the ask box on phones.
+                  const list = el?.closest("ul");
+                  if (!el || !list || i !== current) return;
+                  const r = el.getBoundingClientRect();
+                  const l = list.getBoundingClientRect();
+                  if (r.top < l.top) list.scrollTop -= l.top - r.top;
+                  else if (r.bottom > l.bottom) list.scrollTop += r.bottom - l.bottom;
                 }}
                 onMouseMove={() => setActive(i)}
                 onClick={() => {

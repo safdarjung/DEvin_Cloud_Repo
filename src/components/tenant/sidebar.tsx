@@ -167,7 +167,7 @@ function Brand({ collapsed, user }: { collapsed: boolean; user: SidebarUser }) {
     <div className="flex h-14 shrink-0 items-center gap-2.5 overflow-hidden border-b border-sidebar-border pl-5">
       <Mark />
       <motion.span initial={false} className="flex min-w-0 flex-col leading-tight whitespace-nowrap" {...labelFade(collapsed, reduce)}>
-        <span className="text-[15px] font-semibold tracking-tight text-white">CoolSkool</span>
+        <span className="text-[15px] font-semibold tracking-tight text-white">FabricOS</span>
         <span className="truncate text-[11px] text-sidebar-muted">{user.institutionName}</span>
       </motion.span>
     </div>
@@ -304,7 +304,7 @@ export function MobileNav({ items, user, trigger }: { items: NavLinkItem[]; user
         )}
       </SheetTrigger>
       <SheetContent side="left" className="gap-0 border-sidebar-border bg-sidebar p-0 text-sidebar-foreground [&>button]:text-sidebar-foreground">
-        <SheetTitle className="sr-only">CoolSkool</SheetTitle>
+        <SheetTitle className="sr-only">FabricOS</SheetTitle>
         <SheetDescription className="sr-only">Site navigation</SheetDescription>
         <TooltipProvider>
           <Brand collapsed={false} user={user} />

@@ -20,7 +20,7 @@ import { AnimatePresence, animate, cancelFrame, frame, motion, useMotionValue, u
 import { Check, FilePlus2, Inbox, Loader2, MessageSquareText, Mic, Sparkles, TriangleAlert } from "lucide-react";
 import type { OrbSignals } from "./OrbCore";
 import {
-  FULL_SPHERE_FROM, dotLook, dotPoints, dotSize, easeOutBack, frontAngle, frontTilt, idleEase, nearestAngle, nudgeAway, rotateYX, springStep,
+  dotLook, dotPoints, dotSize, easeOutBack, frontAngle, frontTilt, idleEase, nearestAngle, nudgeAway, rotateYX, springStep,
   type OrbState, type Vec3,
 } from "./orb-layout";
 import { ORB_ERROR } from "./orb-theme";
@@ -88,12 +88,13 @@ const BALL_SHARE = 0.76;
 const MIN_NODE_SPHERE_PX = 220;
 const AUTO_SPIN = 0.12;
 /** Idle sway (radians either way) for a few dots on the front; it peaks at the AUTO_SPIN speed. */
-const SWAY = 0.3;
 /** Exponential friction on a free spin (1/s), and the speed (rad/s) under which a fling counts as over. */
 const FRICTION = 1.9;
 const STILL = 0.05;
 /** The sphere tilts this far either way (radians): the poles come to the front, never past it. */
 const MAX_TILT = 1.15;
+/** An angle kept in (-π, π] so a free tilt never grows without bound. */
+const wrapAngle = (a: number): number => a - 2 * Math.PI * Math.floor((a + Math.PI) / (2 * Math.PI));
 /** Tilt it rests at after a mode change: a little of the top shows. */
 const REST_TILT = 0.22;
 /** Wheel px -> spin impulse (rad/s). */
@@ -281,8 +282,6 @@ export function OrbBody(p: Props) {
     let fly: readonly [number, number] = ARRIVAL;
     let since = 0;
     let idle = 0;
-    let rest: number | null = null;
-    let swayT = 0;
     let lit = "";
     let hotK = 0;
     let hotI = -1;
@@ -306,7 +305,7 @@ export function OrbBody(p: Props) {
           sp.vy = sp.vx = 0;
           sp.coasting = false;
           sp.press = -1;
-          sp.target = { ry: nearestAngle(sp.ry, 0), rx: REST_TILT };
+          sp.target = { ry: nearestAngle(sp.ry, 0), rx: nearestAngle(sp.rx, REST_TILT) };
           hotI = -1;
           lit = "";
         }
@@ -332,7 +331,7 @@ export function OrbBody(p: Props) {
           const v: Vec3 = [c[0] / len, c[1] / len, c[2] / len];
           // A ring of dots round the axis has its middle on the axis: only the tilt says anything then.
           const ry = Math.hypot(v[0], v[2]) > 0.2 ? nearestAngle(sp.ry, frontAngle(v)) : sp.ry;
-          sp.target = { ry, rx: Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v))) };
+          sp.target = { ry, rx: nearestAngle(sp.rx, Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v)))) };
           sp.coasting = false;
         }
       }
@@ -355,14 +354,10 @@ export function OrbBody(p: Props) {
         }
       } else {
         sp.ry += sp.vy * dt;
-        sp.rx += sp.vx * dt;
+        sp.rx = wrapAngle(sp.rx + sp.vx * dt);
         const f = Math.exp(-dt * FRICTION);
         sp.vy *= f;
         sp.vx *= f;
-        if (Math.abs(sp.rx) > MAX_TILT) {
-          sp.rx = Math.sign(sp.rx) * MAX_TILT;
-          sp.vx = 0;
-        }
         if (sp.coasting && Math.abs(sp.vy) < STILL && Math.abs(sp.vx) < STILL) {
           sp.coasting = false;
           sp.lastInput = now;
@@ -374,19 +369,10 @@ export function OrbBody(p: Props) {
       // The hot dot (OrbDots marks the hovered, focused or tapped one); none while the sphere is dragged.
       const hot = sp.dragging ? -1 : els.findIndex((n) => n.dataset.hot !== undefined);
       // Idle motion eases in 2 s after the last input; never while hovered, focused, dragged, turning or coasting.
-      // A full sphere spins; a few dots sway round where they rest, so none drifts behind the ball.
       const resting = els.length > 0 && hot < 0 && !sp.hover && !sp.focus && !sp.dragging && !sp.coasting && sp.target === null;
       idle = resting ? idleEase((now - sp.lastInput) / 1000) : idle * Math.exp(-dt * 8);
-      if (!resting) rest = null;
-      else if (els.length >= FULL_SPHERE_FROM) sp.ry += dt * AUTO_SPIN * idle;
-      else {
-        if (rest === null) {
-          rest = sp.ry;
-          swayT = 0;
-        }
-        swayT += dt;
-        sp.ry = rest + SWAY * Math.sin((swayT * AUTO_SPIN) / SWAY) * idle;
-      }
+      // Every orb spins slowly when left alone: its dots cover the whole sphere, so the back comes round.
+      if (resting) sp.ry += dt * AUTO_SPIN * idle;
       sig.spin = sp.ry;
       sig.tilt = sp.rx;
 
@@ -516,9 +502,11 @@ export function OrbBody(p: Props) {
         // px -> radians so the front of the sphere follows the pointer, on both axes.
         const k = 1 / Math.max(40, NODE_RADIUS * size.current);
         const span = Math.max(8, t - lt) / 1000;
-        sp.ry += dx * k;
-        sp.rx = Math.max(-MAX_TILT, Math.min(MAX_TILT, sp.rx + dy * k));
-        sp.vy = 0.5 * sp.vy + (0.5 * dx * k) / span;
+        // Free on both axes: past the pole the sphere is upside down, so a sideways drag turns it the other way.
+        const flip = Math.cos(sp.rx) < 0 ? -1 : 1;
+        sp.ry += dx * k * flip;
+        sp.rx = wrapAngle(sp.rx + dy * k);
+        sp.vy = 0.5 * sp.vy + (0.5 * dx * k * flip) / span;
         sp.vx = 0.5 * sp.vx + (0.5 * dy * k) / span;
         sp.lastInput = t;
       }
@@ -570,7 +558,7 @@ export function OrbBody(p: Props) {
     if (!node || !v || !showCanvas || !node.matches(":focus-visible")) return;
     sp.coasting = false;
     sp.lastInput = performance.now();
-    sp.target = { ry: nearestAngle(sp.ry, frontAngle(v)), rx: Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v))) };
+    sp.target = { ry: nearestAngle(sp.ry, frontAngle(v)), rx: nearestAngle(sp.rx, Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v)))) };
   }
 
   const ui = STATE_UI[state];
@@ -611,7 +599,7 @@ export function OrbBody(p: Props) {
           spin.current.focus = e.currentTarget.contains(e.relatedTarget as Node | null);
         }}
         // Vertical swipes still scroll the page; horizontal drags spin the sphere.
-        style={{ touchAction: "pan-y", ...roleVars }}
+        style={{ touchAction: showCanvas && !compact ? "none" : "pan-y", ...roleVars }}
         className={`relative isolate select-none ${showCanvas ? "cursor-grab active:cursor-grabbing" : ""} ${compact ? "size-28 sm:size-32" : "size-[min(90vw,34rem,58dvh,calc(100dvh_-_30rem))]"}`}
       >
         {/* Depth: a soft role-tinted glow and the far half of an orbit ring behind the sphere. */}

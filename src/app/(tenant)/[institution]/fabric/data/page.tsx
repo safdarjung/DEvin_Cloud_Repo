@@ -44,7 +44,7 @@ export default async function DataPage({
   ]);
 
   const channels = [
-    { name: "In-app", simulated: false, note: "Delivered inside CoolSkool." },
+    { name: "In-app", simulated: false, note: "Delivered inside FabricOS." },
     { name: "SMS", simulated: true, note: "No SMS provider is connected. Messages are logged, not delivered." },
     ctx.institution.is_demo
       ? { name: "WhatsApp", simulated: true, note: "Demo school: always simulated." }

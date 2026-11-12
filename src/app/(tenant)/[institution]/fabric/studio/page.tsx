@@ -49,7 +49,7 @@ export default async function CustomStudioPage({
     <div data-fabric-ws="studio" className="space-y-4">
       <PageHeader
         title="Custom Studio"
-        description="Request custom software or integrations from the CoolSkool team. AI drafts a proposal; a principal or owner approves it before any build starts."
+        description="Request custom software or integrations from the FabricOS team. AI drafts a proposal; a principal or owner approves it before any build starts."
         actions={<RequestWizard institutionSlug={slug} base={base} />}
       />
       {loadFailed ? (

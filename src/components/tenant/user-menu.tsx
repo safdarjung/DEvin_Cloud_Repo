@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { useTheme } from "next-themes";
 import { Bell, ChevronDown, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
 import { demoLogin } from "@/app/(auth)/login/actions";
-import { DEMO_ACCOUNTS } from "@/lib/auth/demo-accounts";
+import { SWITCH_ROLE_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -16,9 +16,6 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { Role } from "@/lib/auth/permissions";
@@ -74,7 +71,7 @@ export function UserMenu({
         <span className="hidden max-w-32 truncate text-sm font-medium md:inline">{name}</span>
         <ChevronDown className="hidden size-3.5 text-muted-foreground md:inline" aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="max-h-[min(80dvh,var(--radix-dropdown-menu-content-available-height))] w-64 overflow-y-auto">
         <div className="space-y-1 px-1.5 py-1.5">
           <p className="truncate text-sm font-medium">{name}</p>
           {email && <p className="truncate text-xs text-muted-foreground">{email}</p>}
@@ -93,20 +90,17 @@ export function UserMenu({
         {isDemo && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className={item} disabled={switching}>
-                <Users aria-hidden /> {switching ? "Switching…" : "Switch role"}
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="w-60">
-                <DropdownMenuRadioGroup value={email ?? ""} onValueChange={switchTo}>
-                  {DEMO_ACCOUNTS.map((a) => (
-                    <DropdownMenuRadioItem key={a.email} value={a.email} className={item}>
-                      {a.name}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+            {/* Inline, not a side submenu: on a phone the submenu opened off the screen. */}
+            <DropdownMenuLabel className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <Users aria-hidden className="size-3.5" /> {switching ? "Switching…" : "Switch role"}
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={email ?? ""} onValueChange={switchTo}>
+              {SWITCH_ROLE_ACCOUNTS.map((a) => (
+                <DropdownMenuRadioItem key={a.email} value={a.email} className={item} disabled={switching}>
+                  {a.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
           </>
         )}
         <DropdownMenuSeparator />

@@ -120,29 +120,55 @@ export const smoothstep = (lo: number, hi: number, x: number): number => {
 
 // ── Feature dots on the sphere ───────────────────────────────────────────
 
-/** Fewer dots than this share the front (and can carry their names); from here on they cover the whole sphere. */
+/** From this many dots the names stay off the sphere (the hovered dot's name shows instead). */
 export const FULL_SPHERE_FROM = 8;
-/** A few dots spread over this much of the front (radians, side to side), never more than MAX_GAP apart. */
-const FRONT_ARC = (110 * Math.PI) / 180;
-const MAX_GAP = (50 * Math.PI) / 180;
-/** Heights (y) of the rows a few dots take turns in, so neighbours' names do not collide: two rows up to 4 dots, three from 5. */
-const ROWS_2 = [0.34, -0.34];
-const ROWS_3 = [0.5, 0, -0.5];
+/** Up to this many dots are relaxed into an even spacing; more already sit evenly on the Fibonacci lattice. */
+const RELAX_UP_TO = 24;
 
 /**
- * n feature-dot positions (unit vectors). A few: side by side on the front (+z), taking turns between rows.
- * Many: the whole sphere (Fibonacci lattice, top to bottom, so a section's dots sit together in a band).
+ * Points spread evenly over the whole sphere: the Fibonacci lattice, then pushed apart (each point away
+ * from its neighbours, back onto the sphere) so a few dots are as far from each other as they can be.
+ * The owner saw a student's 7 dots bunched on the front and an empty back (2026-11-12). Deterministic.
+ */
+function evenSphere(n: number): Vec3[] {
+  const pts = fibonacciSphere(n).map((p) => [...p] as Vec3);
+  for (let step = 0; step < 80; step++) {
+    const push = pts.map((): Vec3 => [0, 0, 0]);
+    for (let a = 0; a < n; a++) {
+      for (let b = 0; b < n; b++) {
+        if (a === b) continue;
+        const d: Vec3 = [pts[a][0] - pts[b][0], pts[a][1] - pts[b][1], pts[a][2] - pts[b][2]];
+        const r2 = Math.max(1e-6, d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+        const f = 1 / (r2 * Math.sqrt(r2));
+        push[a] = [push[a][0] + d[0] * f, push[a][1] + d[1] * f, push[a][2] + d[2] * f];
+      }
+    }
+    const k = 0.15 / n;
+    for (let a = 0; a < n; a++) {
+      const q: Vec3 = [pts[a][0] + push[a][0] * k, pts[a][1] + push[a][1] * k, pts[a][2] + push[a][2] * k];
+      const len = Math.hypot(q[0], q[1], q[2]) || 1;
+      pts[a] = [q[0] / len, q[1] / len, q[2] / len];
+    }
+  }
+  return pts;
+}
+
+const evenCache = new Map<number, Vec3[]>();
+
+/**
+ * n feature-dot positions (unit vectors), spread evenly over the whole sphere at every count, so the
+ * spacing is the same on every role's orb and turning it always brings more dots round.
  */
 export function dotPoints(n: number): Vec3[] {
-  if (n >= FULL_SPHERE_FROM) return fibonacciSphere(n);
-  const gap = Math.min(MAX_GAP, FRONT_ARC / Math.max(1, n - 1));
-  const rows = n > 4 ? ROWS_3 : n > 1 ? ROWS_2 : [0];
-  return Array.from({ length: n }, (_, i): Vec3 => {
-    const lon = (i - (n - 1) / 2) * gap;
-    const y = rows[i % rows.length];
-    const r = Math.sqrt(1 - y * y);
-    return [Math.sin(lon) * r, y, Math.cos(lon) * r];
-  });
+  if (n <= 0) return [];
+  if (n === 1) return [[0, 0, 1]];
+  if (n > RELAX_UP_TO) return fibonacciSphere(n);
+  let pts = evenCache.get(n);
+  if (!pts) {
+    pts = evenSphere(n);
+    evenCache.set(n, pts);
+  }
+  return pts.map((p) => [...p] as Vec3);
 }
 
 /** The tilt about X (after `frontAngle`'s turn about Y) that brings v level with the viewer: the two together put it at the front. */

@@ -183,7 +183,7 @@ export const setAiRoleConfig = defineAction({
 // M17-T3 (D42) — invite email text. Not exported: "use server" files may
 // only export async functions. No address/token logging (rulings "Invite").
 function buildInviteEmailText(schoolName: string, role: string, link: string): string {
-  return `You've been invited to join ${schoolName} as a ${role} on CoolSkool.\n\nAccept your invite: ${link}`;
+  return `You've been invited to join ${schoolName} as a ${role} on FabricOS.\n\nAccept your invite: ${link}`;
 }
 
 // M03-T5 — invite_member/revoke_invitation (0079) are themselves the

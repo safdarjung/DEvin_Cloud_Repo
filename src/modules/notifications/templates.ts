@@ -280,6 +280,7 @@ export const WHATSAPP_PARAMS: { readonly [T in WhatsAppType]: readonly (keyof Va
 
 const WHATSAPP_HEADING: Record<Lang, string> = { en: "School update", hi: "स्कूल अपडेट" };
 const WHATSAPP_CLOSING: Record<Lang, string> = {
+  // WhatsApp approval text: must match the template Meta approved (coolskool_* names); rebrand needs new templates.
   en: "Details are in the CoolSkool app.",
   hi: "विवरण CoolSkool ऐप में देखें।",
 };
