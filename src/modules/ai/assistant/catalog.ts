@@ -31,11 +31,11 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   // Aggregate — safe for cloud (no person identifiers)
   "attendance.attendanceTodaySummary": {
     // The counts say "not taken yet" only implicitly; the model read 0 marked as "nobody absent".
-    description: "Whole school today: students present, halfDay, absent, byStatus, %. 0 marked = not taken. One class: todayBySection",
+    description: "Today's attendance, whole school: students present, halfDay, absent, byStatus, %; 0 marked = not taken",
     aggregate: true,
   },
   "attendance.todayBySection": {
-    description: "Today per class (VIII-A = class 8A): students present, halfDay, absent, byStatus, %; notTakenYet = no register yet",
+    description: "Attendance by class for a day: today unless date; VIII-A = class 8A; present, halfDay, absent, %; notTakenYet",
     aggregate: true,
   },
   "attendance.sectionsBelowThreshold": {
@@ -47,11 +47,11 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
     aggregate: true,
   },
   "exams.listExams": {
-    description: "All exams in the current academic year",
+    description: "Exams: every academic year with term and dates; check the dates before calling one current",
     aggregate: true,
   },
   "exams.examGradeDistribution": {
-    description: "Grade distribution for exam results",
+    description: "Letter-grade counts: A1, B2… for one exam, whole school; latest published if no examId",
     aggregate: true,
   },
   "exams.listSubjectOptions": {
@@ -71,15 +71,15 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
     aggregate: true,
   },
   "curriculum.coverageBySection": {
-    description: "Curriculum coverage percentage by section",
+    description: "Curriculum coverage: units covered vs planned per section and subject (counts, not %)",
     aggregate: true,
   },
   "timetable.roomUtilisation": {
-    description: "Room utilization rates and schedules",
+    description: "Room use: rooms in the published timetable",
     aggregate: true,
   },
   "finance.termCollectionSummary": {
-    description: "Fee collection summary for a term",
+    description: "Fee collection this term: current if no termId; due = total billed, collected, outstanding = unpaid",
     aggregate: true,
   },
   "finance.collectionReport": {
@@ -95,11 +95,11 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
     aggregate: true,
   },
   "insights.riskIndicators": {
-    description: "Risk indicators for at-risk students by section",
+    description: "Open insights by area: counts of insights, not students; trend = new insights",
     aggregate: true,
   },
   "forecasts.cards": {
-    description: "Academic and performance forecasts",
+    description: "Forecasts: weekly attendance and this term's fees only; current 0 = no history yet",
     aggregate: true,
   },
   "website.listNotices": {
@@ -108,23 +108,38 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   },
 
   // Personal — local only (contain student/staff identifiers)
+  "people.enrolmentCounts": {
+    description: "Students per class: active students per section (VIII-A = class 8A) and the school total",
+    aggregate: true,
+  },
+  "finance.defaulterCounts": {
+    description: "Fee defaulter counts this term: unpaid and overdue invoices, students overdue, overdue amount",
+    aggregate: true,
+  },
+  "finance.listTermOptions": {
+    description: "Terms: id and name; fee and attendance tools use the current term when none is given",
+    aggregate: true,
+  },
   "people.listStudents": {
-    description: "List of all enrolled students",
+    description: "Student directory: name search, 50 per page; total includes past students",
   },
   "people.getStudentProfile": {
     description: "Student profile including contact and enrollment details",
   },
+  "people.searchStaff": {
+    description: "Staff search: id, name and role by name; the id gives another teacher's timetable",
+  },
   "people.staffAvailabilityToday": {
-    description: "Staff availability and schedule for today",
+    description: "Staff availability today: present, on leave and absent counts and names; not a schedule",
   },
   "attendance.getStudentAttendanceSummary": {
-    description: "Attendance record and patterns for a student",
+    description: "A student's attendance this term: % and days present of days marked; half day = 0.5",
   },
   "attendance.getSectionAttendancePatterns": {
     description: "Detailed attendance patterns for section students",
   },
   "exams.listResultsForStudent": {
-    description: "All exam results and grades for a student",
+    description: "A student's exam results: overall total and % per exam, not per-subject marks",
   },
   "exams.listResultsForExam": {
     description: "Student results and grades for an exam",
@@ -136,7 +151,7 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
     description: "Student-level mastery metrics and progress",
   },
   "finance.listDefaulters": {
-    description: "Students with outstanding fee payments",
+    description: "Unpaid fee invoices this term: current if no termId; overdue=true only when past due",
   },
   "finance.listInvoicesForStudent": {
     description: "Invoice history for a student",
@@ -154,13 +169,13 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
     description: "Class schedule and timetable for a section",
   },
   "timetable.forTeacher": {
-    description: "Class schedule for a teacher",
+    description: "A teacher's timetable: the caller's own unless staffId (people.searchStaff); weekday 1 = Monday",
   },
   "timetable.teacherWorkload": {
-    description: "Teaching load and workload analysis by teacher",
+    description: "Teacher workload: teaching periods per teacher in the published timetable",
   },
   "timetable.conflicts": {
-    description: "Scheduling conflicts in the timetable",
+    description: "Timetable clashes: same teacher or room twice in a slot, published timetable",
   },
   "core.approvals.pending": {
     description: "Pending approvals awaiting review",
@@ -182,7 +197,7 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   "expenses.budgetVsActual": { description: "Budget vs actual spend per expense category and budget period", aggregate: true },
   "inventory.stock": { description: "Stock on hand per inventory item with its reorder level and low-stock flag", aggregate: true },
   "inventory.lowStockCount": { description: "Number of active inventory items at or below their reorder level", aggregate: true },
-  "scholarships.summary": { description: "Concession counts by status and approved value by rule and by grade" },
+  "scholarships.summary": { description: "Concession summary: counts by status; value = fixed-amount awards only, all years" },
   "canteen.items": { description: "Canteen menu items with prices and on-sale flag", aggregate: true },
   "canteen.daySales": { description: "Canteen sales by item and top-up totals for one day", aggregate: true },
   "hostel.rooms": { description: "Hostel rooms with capacity and current occupancy count", aggregate: true },

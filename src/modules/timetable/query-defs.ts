@@ -19,7 +19,10 @@ import {
   SuggestFillSchema,
   VersionQuerySchema,
 } from "./schemas";
+import { AppError } from "@/lib/actions/result";
+import type { TenantContext } from "@/lib/auth/types";
 import {
+  defaultPublishedVersionId,
   loadRules,
   timetableConflicts,
   timetableForSection,
@@ -65,28 +68,36 @@ export const timetableTodayForQuery = defineQuery({
   handler: (input, ctx) => timetableTodayFor(ctx, input.studentId),
 });
 
+// No versionId: the published timetable (no AI tool lists versions; a guessed id answered "no conflicts").
+const OptionalVersionSchema = z.object({ versionId: uuid.optional() }).strict();
+async function versionOrPublished(ctx: TenantContext, versionId?: string): Promise<string> {
+  const id = versionId ?? (await defaultPublishedVersionId(ctx));
+  if (!id) throw new AppError("not_found", "No timetable is published yet.");
+  return id;
+}
+
 export const timetableConflictsQuery = defineQuery({
   name: "timetable.conflicts",
   module: "timetable",
-  schema: VersionQuerySchema,
+  schema: OptionalVersionSchema,
   permission: "timetable.manage",
-  handler: (input, ctx) => timetableConflicts(ctx, input.versionId),
+  handler: async (input, ctx) => timetableConflicts(ctx, await versionOrPublished(ctx, input.versionId)),
 });
 
 export const timetableTeacherWorkloadQuery = defineQuery({
   name: "timetable.teacherWorkload",
   module: "timetable",
-  schema: VersionQuerySchema,
+  schema: OptionalVersionSchema,
   permission: "timetable.manage",
-  handler: (input, ctx) => timetableTeacherWorkload(ctx, input.versionId),
+  handler: async (input, ctx) => timetableTeacherWorkload(ctx, await versionOrPublished(ctx, input.versionId)),
 });
 
 export const timetableRoomUtilisationQuery = defineQuery({
   name: "timetable.roomUtilisation",
   module: "timetable",
-  schema: VersionQuerySchema,
+  schema: OptionalVersionSchema,
   permission: "timetable.manage",
-  handler: (input, ctx) => timetableRoomUtilisation(ctx, input.versionId),
+  handler: async (input, ctx) => timetableRoomUtilisation(ctx, await versionOrPublished(ctx, input.versionId)),
 });
 
 // M08-T12: timetable.coverNeeded / substitutionCandidates / substitutions

@@ -244,7 +244,7 @@ describe("chat text helpers (what the chat UIs render)", async () => {
   });
 
   it("names records by description and keeps the thinking line until text arrives", () => {
-    expect(sourceLabel("finance.termCollectionSummary")).toBe("Fee collection summary for a term");
+    expect(sourceLabel("finance.termCollectionSummary")).toBe("Fee collection this term");
     expect(sourceLabel("unknown.query")).toBe("unknown.query");
     expect(lastHasText([{ role: "user", parts: [{ type: "text", text: "q" }] }])).toBe(false);
     expect(lastHasText([{ role: "assistant", parts: [{ type: "reasoning", text: "…" }] }])).toBe(false);

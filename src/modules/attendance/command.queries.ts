@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
 import { attendanceDailyCounts, getAttendanceSettings, headCounts, percentageFromCounts, todayInInstitutionTimezone, type AttendanceHeadCounts } from "./queries";
 import { absentStatusCodes, tallyRepeatedAbsentees, type RepeatedAbsentee } from "./absentees";
+import { visibleSectionCounts, WHOLE_SCHOOL_ROLES } from "@/modules/people/queries";
 
 export interface SectionAttendanceToday {
   classSectionId: string;
@@ -65,10 +66,10 @@ export interface SectionHeadCountsToday extends Omit<AttendanceHeadCounts, "bySt
  * section of the current year the caller can see, and the sections with no register taken yet.
  * Counts only (no names), so it is an aggregate.
  */
-export async function attendanceTodayBySection(ctx: TenantContext): Promise<{ date: string; sections: SectionHeadCountsToday[]; notTakenYet: string[] }> {
+export async function attendanceTodayBySection(ctx: TenantContext, day?: string): Promise<{ date: string; scope: string; sections: SectionHeadCountsToday[]; notTakenYet: string[] }> {
   const supabase = await createClient();
   const settings = getAttendanceSettings(ctx);
-  const date = todayInInstitutionTimezone(ctx);
+  const date = day ?? todayInInstitutionTimezone(ctx);
 
   const { data: year, error: yearError } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
   if (yearError) throw yearError;
@@ -86,7 +87,11 @@ export async function attendanceTodayBySection(ctx: TenantContext): Promise<{ da
     bySection.set(row.classSectionId, [...(bySection.get(row.classSectionId) ?? []), { status: row.status, n: row.n }]);
   }
   type Grade = { code: string; display_name: string; sort_key: number } | null;
+  // A teacher sees only their own sections' registers: other sections would all look "not taken yet".
+  const whole = WHOLE_SCHOOL_ROLES.includes(ctx.membership.role);
+  const mine = whole ? null : await visibleSectionCounts(ctx);
   const all = (sectionsRes.data ?? [])
+    .filter((s) => !mine || mine.has(s.id))
     .map((s) => ({ id: s.id, name: s.name, grade: s.grades as Grade }))
     .sort((a, b) => (a.grade?.sort_key ?? 0) - (b.grade?.sort_key ?? 0) || a.name.localeCompare(b.name));
   const label = (s: (typeof all)[number]) => `${s.grade?.code ?? "?"}-${s.name}`;
@@ -101,7 +106,7 @@ export async function attendanceTodayBySection(ctx: TenantContext): Promise<{ da
     }
     sections.push({ section: label(s), grade: s.grade?.display_name ?? "", percentage: percentageFromCounts(counts, settings.statuses).percentage, ...headCounts(counts, settings.statuses) });
   }
-  return { date, sections, notTakenYet };
+  return { date, scope: whole ? "whole school" : "only your own classes. A class not listed here is not yours: its records are hidden from you, not zero or empty. Say that.", sections, notTakenYet };
 }
 
 function addDays(date: string, delta: number): string {

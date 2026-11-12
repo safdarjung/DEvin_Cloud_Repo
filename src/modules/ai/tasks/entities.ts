@@ -263,6 +263,9 @@ function allowed(ctx: TenantContext, source: EntitySource): boolean {
 }
 
 /** Lower-case letters and digits only, minus filler words, so "Class 8B" matches "8-B" and "Ms. Rao" matches "Rao". */
+/** Whether a picker can list this entity at all (no source = an empty picker on the card). */
+export const entityHasSource = (entity: EntityType): boolean => (SOURCES[entity]?.length ?? 0) > 0;
+
 export function normalizeLabel(text: string): string {
   return text
     .toLowerCase()

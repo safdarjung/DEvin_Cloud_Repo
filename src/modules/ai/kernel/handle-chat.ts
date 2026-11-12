@@ -38,6 +38,8 @@ import { systemPromptFor } from "@/modules/ai/kernel/personas";
 import { FILE_ATTACH_GROUP, FILE_ATTACH_TOOL, fileAttachTool } from "@/modules/textbooks/ai-attach-tool";
 import { scopedChatExtras } from "@/modules/study/scope-chat";
 import { ACT_FIRST_RULE, NO_DRAWING_RULE, VISUALS_ONLY_VIA_TOOL_RULE } from "@/modules/ai/prompts/honesty";
+import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
+import { createClient } from "@/lib/supabase/server";
 import { buildTaskTools, withTaskTools } from "@/modules/ai/tasks/task-tools";
 import { ORB_MODES, TASK_KEY_RE } from "@/modules/core/control-centre/ids";
 
@@ -162,7 +164,8 @@ function queryAllowedOnCloud(name: string, cap: { data: string }): boolean {
 // question needs the term list, a student question the student search).
 export const CORE_TOOLS = ["navigate"];
 export const ID_PROVIDERS: Readonly<Record<string, readonly string[]>> = {
-  termId: ["exams_listTermOptions"],
+  termId: ["exams_listTermOptions", "finance_listTermOptions"],
+  staffId: ["people_searchStaff"],
   studentId: ["findStudent", "people_listStudents"],
   examId: ["exams_listExams"],
   classSectionId: ["exams_listSectionOptions"],
@@ -253,6 +256,41 @@ export async function buildChatToolset(ctx: TenantContext, input: ChatToolsetInp
     groups.push(FILE_ATTACH_GROUP);
   }
   return { tools, groups };
+}
+
+/**
+ * A teacher's own classes for the prompt: "my class" / "my classes" were answered for the whole school
+ * because the model did not know which sections are theirs. Section and subject labels only.
+ */
+async function teacherClassesLine(ctx: TenantContext): Promise<string> {
+  const staffId = ctx.membership.staffId;
+  if (ctx.membership.role !== "teacher" || !staffId) return "";
+  // A prompt hint only: a failed read leaves it out and the chat goes on.
+  try {
+    return await teacherClasses(ctx, staffId);
+  } catch {
+    return "";
+  }
+}
+
+async function teacherClasses(ctx: TenantContext, staffId: string): Promise<string> {
+  const supabase = await createClient();
+  const [own, taught] = await Promise.all([
+    supabase.from("class_sections").select("name, grades(code)").eq("institution_id", ctx.institution.id).eq("class_teacher_id", staffId),
+    supabase.from("subject_assignments").select("subjects(name), class_sections(name, grades(code))").eq("institution_id", ctx.institution.id).eq("teacher_id", staffId),
+  ]);
+  if (own.error || taught.error) return "";
+  type Sec = { name: string; grades: { code: string } | null } | null;
+  const label = (s: Sec) => (s ? `${s.grades?.code ?? "?"}-${s.name}` : "?");
+  const ownClasses = (own.data ?? []).map((s) => label(s as Sec));
+  const lessons = (taught.data ?? []).map((r) => `${label(r.class_sections as Sec)} ${(r.subjects as { name: string } | null)?.name ?? ""}`.trim());
+  if (!ownClasses.length && !lessons.length) return "";
+  return [
+    ownClasses.length ? `This teacher is class teacher of ${ownClasses.join(", ")} ("my class").` : "",
+    lessons.length ? `They teach ${lessons.join(", ")} ("my classes" means all of these sections).` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 export async function handleAiChat(request: Request): Promise<Response> {
@@ -372,7 +410,17 @@ export async function handleAiChat(request: Request): Promise<Response> {
     studentPrefs: studentPrefs ? { skills: studentPrefs.skills, style: studentPrefs.style } : undefined,
     childId,
   });
-  const system = [basePrompt, ACT_FIRST_RULE, "showStudyBlocks" in chatTools ? VISUALS_ONLY_VIA_TOOL_RULE : NO_DRAWING_RULE, scoped?.system, tasks?.system].filter(Boolean).join("\n\n");
+  // The model has no clock: "yesterday", "this week" and date-taking tools were guessed (audit 2026-11-12).
+  const today = todayInInstitutionTimezone(ctx);
+  const weekday = new Date(`${today}T12:00:00Z`).toLocaleDateString("en-IN", { weekday: "long", timeZone: "UTC" });
+  const dateLine = `Today is ${weekday}, ${today} (the school's time zone). Work out "yesterday", "this week" and every date a tool needs from this date.`;
+  // On the cloud path a staff chat has no person-level tools: say so instead of answering with school-wide figures.
+  const scopeLine =
+    mode === "cloud" && personaRole !== "student" && personaRole !== "guardian"
+      ? "If a question is about one named person and no tool here returned that person's records, say you cannot see that here and where to look in the app. Never answer it with school-wide figures instead."
+      : "";
+  const classesLine = personaRole === "teacher" ? await teacherClassesLine(ctx) : "";
+  const system = [basePrompt, dateLine, classesLine, scopeLine, ACT_FIRST_RULE, "showStudyBlocks" in chatTools ? VISUALS_ONLY_VIA_TOOL_RULE : NO_DRAWING_RULE, scoped?.system, tasks?.system].filter(Boolean).join("\n\n");
 
   const outgoing = mode === "cloud" ? redactMessageText(strippedMessages) : { messages: strippedMessages, redactions: 0 };
   const modelMessages = await convertToModelMessages(outgoing.messages);

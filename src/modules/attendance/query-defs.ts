@@ -18,6 +18,16 @@ import {
   sectionsBelowThreshold,
 } from "./queries";
 import { attendanceTodayBySection } from "./command.queries";
+import { AppError } from "@/lib/actions/result";
+import type { TenantContext } from "@/lib/auth/types";
+import { termIdOrCurrent } from "@/modules/people/queries";
+
+/** No termId: the current term (an unknown term used to answer "0% attendance"). */
+async function requireTerm(ctx: TenantContext, termId?: string): Promise<string> {
+  const id = await termIdOrCurrent(ctx, termId);
+  if (!id) throw new AppError("not_found", "No term is set up for the current academic year.");
+  return id;
+}
 
 // permission: attendance.read — attendance/page.tsx:17 (attendance.read)
 // and today/page.tsx:57 (attendance.mark, a subset of attendance.read's
@@ -47,9 +57,9 @@ export const getSessionQuery = defineQuery({
 export const getStudentAttendanceSummaryQuery = defineQuery({
   name: "attendance.getStudentAttendanceSummary",
   module: "attendance",
-  schema: z.object({ studentId: uuid, termId: uuid }).strict(),
+  schema: z.object({ studentId: uuid, termId: uuid.optional() }).strict(),
   permission: "attendance.read",
-  handler: (input, ctx) => getStudentAttendanceSummary(ctx, input.studentId, input.termId),
+  handler: async (input, ctx) => getStudentAttendanceSummary(ctx, input.studentId, await requireTerm(ctx, input.termId)),
 });
 
 // permission: attendance.read — module default; no direct page caller
@@ -67,9 +77,10 @@ export const attendanceTodaySummaryQuery = defineQuery({
 export const attendanceTodayBySectionQuery = defineQuery({
   name: "attendance.todayBySection",
   module: "attendance",
-  schema: z.object({}).strict(),
+  // date: another day (YYYY-MM-DD), e.g. "was attendance taken yesterday in 8A?". Default today.
+  schema: z.object({ date: isoDate.optional() }).strict(),
   permission: "attendance.read",
-  handler: (_input, ctx) => attendanceTodayBySection(ctx),
+  handler: (input, ctx) => attendanceTodayBySection(ctx, input.date),
 });
 
 // permission: attendance.read — same reasoning as attendanceTodaySummary.
@@ -91,9 +102,9 @@ export const sectionsBelowThresholdQuery = defineQuery({
 export const getSectionAttendancePatternsQuery = defineQuery({
   name: "attendance.getSectionAttendancePatterns",
   module: "attendance",
-  schema: z.object({ classSectionId: uuid, termId: uuid }).strict(),
+  schema: z.object({ classSectionId: uuid, termId: uuid.optional() }).strict(),
   permission: "attendance.read",
-  handler: (input, ctx) => getSectionAttendancePatterns(ctx, input.classSectionId, input.termId),
+  handler: async (input, ctx) => getSectionAttendancePatterns(ctx, input.classSectionId, await requireTerm(ctx, input.termId)),
 });
 
 // permission: attendance.read — M08-T10: the substitution dialog

@@ -135,8 +135,20 @@ describe("agent tool builder", () => {
     expect(typeof out).toBe("string");
     const match = /^<data-n0nce123>([\s\S]*)<\/data-n0nce123>$/.exec(out as string);
     expect(match).not.toBeNull();
-    expect(match![1]).toHaveLength(4_000);
+    expect(match![1].length).toBeLessThanOrEqual(4_000);
     expect(match![1].startsWith('{"rows":"yyy')).toBe(true);
+    expect(match![1]).toContain("[cut:");
+  });
+
+  it("a long list is shortened item by item, keeps its totals and says how many rows are shown", async () => {
+    const rows = Array.from({ length: 50 }, (_, i) => ({ name: `Student number ${i}`, section: "VIII-A", admissionNo: `ADM-${1000 + i}`, guardian: `Guardian of student number ${i}` }));
+    fakeEntry(getRegisteredQueries(), "finance.listDefaulters", async () => ok({ rows, count: 50 }));
+    const { tools } = await buildAgentTools(ctxFor("owner"), "finance", createProposalSink(), NONCE);
+    const out = (await run(tools, "finance_listDefaulters", { termId: TERM })) as string;
+    const json = JSON.parse(/^<data-n0nce123>([\s\S]*)<\/data-n0nce123>$/.exec(out)![1]!) as { truncated: string; count: number; rows: unknown[] };
+    expect(json.count).toBe(50);
+    expect(json.rows.length).toBeLessThan(50);
+    expect(json.truncated).toContain(`rows: showing ${json.rows.length} of 50`);
   });
 
   it("buildReadTools calls onOk once with the query name and input on ok, never on failure", async () => {

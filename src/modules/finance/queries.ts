@@ -616,6 +616,8 @@ export interface DefaulterRow {
   // X04-T9 — ruling "Defaulters respect instalments": true when this
   // invoice has an instalment plan (set via `feePlans.instalments.set`).
   onPlan: boolean;
+  /** Past its due date (or a plan part is overdue). An unpaid invoice not yet due is not a defaulter yet. */
+  overdue: boolean;
 }
 
 const INSTALMENT_STATUS_PAGE_SIZE = 1000;
@@ -671,6 +673,7 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
     if (!page || page.length < INSTALMENT_STATUS_PAGE_SIZE) break;
   }
 
+  const today = new Date().toISOString().slice(0, 10);
   return data
     .flatMap((row) => {
       const plan = planParts.get(row.id);
@@ -691,9 +694,22 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
           outstanding: paiseToMoney(moneyToPaise(row.total) - moneyToPaise(row.paid_total)),
           dueOn,
           onPlan,
+          overdue: onPlan ? true : dueOn !== null && dueOn < today,
         },
       ];
     });
+}
+
+/** How many students owe fees this term and how much is overdue, without names (safe for the cloud model). */
+export async function defaulterCounts(ctx: TenantContext, termId: string): Promise<{ unpaidInvoices: number; overdueInvoices: number; studentsOverdue: number; overduePaise: number }> {
+  const rows = await listDefaulters(ctx, { termId });
+  const overdue = rows.filter((r) => r.overdue);
+  return {
+    unpaidInvoices: rows.length,
+    overdueInvoices: overdue.length,
+    studentsOverdue: new Set(overdue.map((r) => r.studentId)).size,
+    overduePaise: overdue.reduce((t, r) => t + moneyToPaise(r.outstanding), 0),
+  };
 }
 
 // dashboard — T-039.
@@ -701,8 +717,11 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
 export interface TermCollectionSummary {
   termId: string;
   invoiceCount: number;
+  /** Total billed this term (every invoice's total), not what is still unpaid. */
   duePaise: number;
   collectedPaise: number;
+  /** Still to collect: billed minus collected. */
+  outstandingPaise: number;
 }
 
 /** Collected vs due for one term, summed in integer paise (CLAUDE.md rule 4). DBT-40 fix: totals from the `term_collection_totals` SQL function (sums every matching row server-side), not a PostgREST select — the old select here had no `.range()`, so `max_rows = 1000` silently truncated a term with more than 1,000 invoices. */
@@ -718,6 +737,7 @@ export async function termCollectionSummary(ctx: TenantContext, termId: string):
     invoiceCount: Number(data.invoice_count),
     duePaise: moneyToPaise(data.due),
     collectedPaise: moneyToPaise(data.collected),
+    outstandingPaise: Math.max(0, moneyToPaise(data.due) - moneyToPaise(data.collected)),
   };
 }
 

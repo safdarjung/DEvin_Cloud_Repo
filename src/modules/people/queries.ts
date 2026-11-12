@@ -241,6 +241,71 @@ export async function getCurrentTermId(ctx: TenantContext, academicYearId: strin
   return (current ?? data[0]).id;
 }
 
+/**
+ * Active students per class this academic year, and the school total ("how many students in 8A?").
+ * Counts only. RLS limits the rows a teacher sees to their own sections.
+ */
+/** Roles that see every section's students (the enrolments RLS list); everyone else sees only their own sections. */
+export const WHOLE_SCHOOL_ROLES: readonly string[] = ["owner", "principal", "admin", "admissions", "accountant", "exam_controller"];
+
+/**
+ * Active students per section this year as the caller can see them (RLS). For a teacher, sections they
+ * cannot see are left out instead of reported as 0 ("no students in X-A" when X-A was not theirs).
+ */
+export async function visibleSectionCounts(ctx: TenantContext): Promise<Map<string, number>> {
+  const supabase = await createClient();
+  const { data: year, error: yearError } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
+  if (yearError) throw yearError;
+  const counts = new Map<string, number>();
+  if (!year) return counts;
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("enrolments")
+      .select("id, class_section_id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("academic_year_id", year.id)
+      .eq("status", "active")
+      .order("id")
+      .range(from, from + 999);
+    if (error) throw error;
+    for (const r of data ?? []) counts.set(r.class_section_id, (counts.get(r.class_section_id) ?? 0) + 1);
+    if (!data || data.length < 1000) break;
+  }
+  return counts;
+}
+
+export async function enrolmentCounts(ctx: TenantContext): Promise<{ scope: string; totalActive: number; sections: { section: string; grade: string; students: number }[] }> {
+  const supabase = await createClient();
+  const whole = WHOLE_SCHOOL_ROLES.includes(ctx.membership.role);
+  const scope = whole ? "whole school" : "only your own classes. A class not listed here is not yours: its records are hidden from you, not zero or empty. Say that.";
+  const { data: year, error: yearError } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
+  if (yearError) throw yearError;
+  if (!year) return { scope, totalActive: 0, sections: [] };
+  const counts = await visibleSectionCounts(ctx);
+  const { data: sections, error } = await supabase
+    .from("class_sections")
+    .select("id, name, grades(code, display_name, sort_key)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("academic_year_id", year.id);
+  if (error) throw error;
+  type G = { code: string; display_name: string; sort_key: number } | null;
+  const rows = (sections ?? [])
+    .filter((s) => whole || counts.has(s.id))
+    .map((s) => ({ g: s.grades as G, name: s.name, students: counts.get(s.id) ?? 0 }))
+    .sort((a, b) => (a.g?.sort_key ?? 0) - (b.g?.sort_key ?? 0) || a.name.localeCompare(b.name))
+    .map((r) => ({ section: `${r.g?.code ?? "?"}-${r.name}`, grade: r.g?.display_name ?? "", students: r.students }));
+  return { scope, totalActive: [...counts.values()].reduce((a, b) => a + b, 0), sections: rows };
+}
+
+/** The term the person named, or the current one: today's term in the current academic year, else its latest. Null when no term is set up. */
+export async function termIdOrCurrent(ctx: TenantContext, termId?: string): Promise<string | null> {
+  if (termId) return termId;
+  const supabase = await createClient();
+  const { data: year, error } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
+  if (error) throw error;
+  return year ? getCurrentTermId(ctx, year.id) : null;
+}
+
 export interface ChildSummary {
   id: string;
   firstName: string;

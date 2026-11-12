@@ -47,6 +47,9 @@ function ctxFor(role: Role): TenantContext {
 const REVIEWED_AGGREGATES = [
   "attendance.attendanceTodaySummary",
   "attendance.todayBySection",
+  "people.enrolmentCounts",
+  "finance.listTermOptions",
+  "finance.defaulterCounts",
   "attendance.sectionsBelowThreshold",
   "dashboard.attendanceTrend",
   "exams.listExams",

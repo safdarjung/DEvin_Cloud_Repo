@@ -223,7 +223,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   attendance_overview: {
     key: "attendance_overview",
     label: "Attendance",
-    description: "Today's attendance summary, sections below threshold, the attendance trend, and a named student's attendance/pattern.",
+    description: "Attendance today or on a day, per class and for the whole school (present, absent, not taken), sections below threshold, the trend, and a named student's attendance.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "attendance.read",
@@ -311,7 +311,9 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     data: "personal",
     defaultOn: ASSISTANT_ROLES,
     queries: [
+      "finance.listTermOptions",
       "finance.termCollectionSummary",
+      "finance.defaulterCounts",
       "finance.collectionReport",
       "finance.listDefaulters",
       "finance.listInvoicesForStudent",
@@ -338,7 +340,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     key: "people_overview",
     label: "People",
     description:
-      "Student directory, a student's profile and lifecycle history, certificates, staff availability, attendance and leave, pending approvals, and assignment submissions.",
+      "How many students per class and in the school, student directory, a student's profile and history, certificates, finding staff, staff availability and leave, pending approvals, and assignment submissions.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "student.read",
@@ -346,7 +348,9 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     data: "personal",
     defaultOn: ASSISTANT_ROLES,
     queries: [
+      "people.enrolmentCounts",
       "people.listStudents",
+      "people.searchStaff",
       "people.getStudentProfile",
       "people.staffAvailabilityToday",
       "core.approvals.pending",

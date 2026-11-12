@@ -242,10 +242,10 @@ describe("tool budget with the full real registry", () => {
     expect(plan.activeTools).toContain("attendance_attendanceTodaySummary");
   });
 
-  it("a fees question picks the finance tools plus the term list they need an id from", async () => {
+  it("a fees question picks the finance tools, which default to the current term, and the term list", async () => {
     const cloud = await realPlan("owner", "cloud", "Which fees are still unpaid this term?");
     expect(cloud.plan.groups[0]).toBe("finance_overview");
-    expect(cloud.plan.activeTools).toEqual(expect.arrayContaining(["finance_termCollectionSummary", "exams_listTermOptions"]));
+    expect(cloud.plan.activeTools).toEqual(expect.arrayContaining(["finance_termCollectionSummary", "finance_listTermOptions"]));
     const local = await realPlan("principal", "local", "Who has not paid fees?");
     expect(local.plan.activeTools).toContain("finance_listDefaulters");
   });

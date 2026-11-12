@@ -9,6 +9,7 @@ import { z } from "zod";
 import { getQueryMeta, getRegisteredQueries } from "@/lib/actions/define-query";
 import { getActionMeta, getRegisteredActions, type ActionMeta, type AnyAction } from "@/lib/actions/registry";
 import type { ActionResult } from "@/lib/actions/result";
+import { fitForModel } from "@/lib/ai/fit-for-model";
 import { moneyForModel } from "@/lib/ai/tool-money";
 import type { Permission } from "@/lib/auth/permissions";
 import { hasPermission } from "@/lib/auth/require";
@@ -104,7 +105,7 @@ function readTool(
         const result = (await query(ctx.institution.slug, input)) as ActionResult<unknown>;
         if (!result.ok) return `Query failed: ${result.error.code}`;
         onOk?.(name, input);
-        const payload = (JSON.stringify(moneyForModel(name, result.data)) ?? "null").slice(0, MAX_TOOL_RESULT_CHARS);
+        const payload = fitForModel(moneyForModel(name, result.data), MAX_TOOL_RESULT_CHARS);
         return `<data-${nonce}>${payload}</data-${nonce}>`;
       } catch (err) {
         console.error(`[agents] read tool "${name}" threw`, err);

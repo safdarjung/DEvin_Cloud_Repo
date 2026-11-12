@@ -7,6 +7,8 @@
 import { defineQuery } from "@/lib/actions/define-query";
 import { isoDate, uuid } from "@/lib/schemas/common";
 import { z } from "zod";
+import { AppError } from "@/lib/actions/result";
+import { termIdOrCurrent } from "@/modules/people/queries";
 import { CollectionReportSchema } from "./schemas";
 import {
   collectionReport,
@@ -14,6 +16,7 @@ import {
   getInvoice,
   getReceipt,
   listAcademicYears,
+  defaulterCounts,
   listDefaulters,
   listFeeStructures,
   listGradeOptions,
@@ -52,6 +55,12 @@ export const listGradeOptionsQuery = defineQuery({
 // when canGenerate/finance.invoice.generate is true) and
 // finance/defaulters/page.tsx:27 (finance.structure.manage); both actual
 // caller sets are subsets of finance.read's holders.
+async function requireTerm(ctx: Parameters<typeof termIdOrCurrent>[0], termId?: string): Promise<string> {
+  const id = await termIdOrCurrent(ctx, termId);
+  if (!id) throw new AppError("not_found", "No term is set up for the current academic year.");
+  return id;
+}
+
 export const listTermOptionsQuery = defineQuery({
   name: "finance.listTermOptions",
   module: "fees",
@@ -154,9 +163,19 @@ export const listLedgerEntriesQuery = defineQuery({
 export const listDefaultersQuery = defineQuery({
   name: "finance.listDefaulters",
   module: "fees",
-  schema: z.object({ termId: uuid }).strict(),
+  // No termId: the current term (the AI used to guess an id and read the empty answer as "no defaulters").
+  schema: z.object({ termId: uuid.optional() }).strict(),
   permission: "finance.structure.manage",
-  handler: (input, ctx) => listDefaulters(ctx, { termId: input.termId }),
+  handler: async (input, ctx) => listDefaulters(ctx, { termId: await requireTerm(ctx, input.termId) }),
+});
+
+// Counts only (no names): "how many students have overdue fees?" on the cloud model.
+export const defaulterCountsQuery = defineQuery({
+  name: "finance.defaulterCounts",
+  module: "fees",
+  schema: z.object({ termId: uuid.optional() }).strict(),
+  permission: "finance.structure.manage",
+  handler: async (input, ctx) => defaulterCounts(ctx, await requireTerm(ctx, input.termId)),
 });
 
 // permission: finance.read — module default; this fn's only caller
@@ -165,9 +184,9 @@ export const listDefaultersQuery = defineQuery({
 export const termCollectionSummaryQuery = defineQuery({
   name: "finance.termCollectionSummary",
   module: "fees",
-  schema: z.object({ termId: uuid }).strict(),
+  schema: z.object({ termId: uuid.optional() }).strict(),
   permission: "finance.read",
-  handler: (input, ctx) => termCollectionSummary(ctx, input.termId),
+  handler: async (input, ctx) => termCollectionSummary(ctx, await requireTerm(ctx, input.termId)),
 });
 
 // permission: finance.structure.manage — same holders as the ledger/defaulters

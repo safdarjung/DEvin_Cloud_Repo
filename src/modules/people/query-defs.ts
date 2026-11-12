@@ -6,7 +6,7 @@
 import { defineQuery } from "@/lib/actions/define-query";
 import { uuid } from "@/lib/schemas/common";
 import { z } from "zod";
-import { getCurrentTermId, getMyStudent, getStudentProfile, listMyChildren, listStudents, searchStaff } from "./queries";
+import { enrolmentCounts, getCurrentTermId, getMyStudent, getStudentProfile, listMyChildren, listStudents, searchStaff } from "./queries";
 
 // permission: student.read — the page gate at students/page.tsx (staff list)
 // and students/[studentId]/page.tsx (profile); every other caller
@@ -70,6 +70,15 @@ export const searchStudentsQuery = defineQuery({
   schema: z.object({ query: z.string().trim().max(100).optional() }).strict(),
   permission: "student.read",
   handler: async (input, ctx) => (await listStudents(ctx, input.query, 1)).students.slice(0, 20),
+});
+
+// Counts only (no names): safe for the cloud model.
+export const enrolmentCountsQuery = defineQuery({
+  name: "people.enrolmentCounts",
+  module: "people",
+  schema: z.object({}).strict(),
+  permission: "student.read",
+  handler: (_input, ctx) => enrolmentCounts(ctx),
 });
 
 export const searchStaffQuery = defineQuery({
