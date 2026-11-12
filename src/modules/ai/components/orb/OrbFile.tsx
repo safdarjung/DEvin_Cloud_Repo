@@ -5,7 +5,7 @@
 // Summarize / Mind map / Flowchart, and typed questions then go to the file. The AI reads the
 // file only after the person agrees once (file-reading consent); nothing is saved from the answer.
 import { useRef } from "react";
-import { FileText, Loader2, Network, Paperclip, Workflow, X } from "lucide-react";
+import { FileText, Layers, Loader2, Network, Paperclip, Workflow, X } from "lucide-react";
 import type { FileAnswerResponse } from "@/modules/ai/explain/schemas";
 
 export interface AttachedFile {
@@ -52,7 +52,7 @@ export function AttachButton({ progress, disabled, onPick }: { progress: number 
   );
 }
 
-export type FileAction = "summary" | "mindmap" | "diagram";
+export type FileAction = "summary" | "mindmap" | "diagram" | "flashcards";
 
 /** Over the message box: the file in use, what to do with it, and the one-time agreement. */
 export function FileBar({
@@ -106,6 +106,9 @@ export function FileBar({
               </button>
               <button type="button" disabled={busy} onClick={() => onAction("diagram")} className={BTN}>
                 <Workflow className="size-3.5" aria-hidden /> Flowchart
+              </button>
+              <button type="button" disabled={busy} onClick={() => onAction("flashcards")} className={BTN}>
+                <Layers className="size-3.5" aria-hidden /> Flashcards
               </button>
               {busy ? <Loader2 className="size-4 animate-spin text-muted-foreground motion-reduce:animate-none" aria-label="Reading the file" /> : <span className="text-xs text-muted-foreground">or type a question about it</span>}
             </div>

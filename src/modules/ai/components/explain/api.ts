@@ -4,7 +4,7 @@
 import { fail, type ActionResult } from "@/lib/actions/result";
 import type { z } from "zod";
 import type {
-  AnatomyRequestSchema, AnatomyResponse, DiagramResponse, FileAnswerResponse, FileAskRequestSchema, ImageRequestSchema, ImageResponse, InfographicRequestSchema, InfographicResponse, MindMapResponse, VisualRequestSchema,
+  AnatomyRequestSchema, AnatomyResponse, DiagramResponse, FileAnswerResponse, FileAskRequestSchema, FlashcardsResponse, ImageRequestSchema, ImageResponse, InfographicRequestSchema, InfographicResponse, MindMapResponse, VisualRequestSchema,
 } from "@/modules/ai/explain/schemas";
 
 export type AnatomyInput = z.input<typeof AnatomyRequestSchema>;
@@ -27,3 +27,4 @@ export const runMindMap = (input: VisualInput) => post<MindMapResponse>("/api/ai
 export const runDiagram = (input: VisualInput) => post<DiagramResponse>("/api/ai/diagram", input);
 export const runImage = (input: z.input<typeof ImageRequestSchema>) => post<ImageResponse>("/api/ai/image", input);
 export const runFileAsk = (input: z.input<typeof FileAskRequestSchema>) => post<FileAnswerResponse>("/api/ai/file-ask", input);
+export const runFlashcards = (input: VisualInput) => post<FlashcardsResponse>("/api/ai/flashcards", input);

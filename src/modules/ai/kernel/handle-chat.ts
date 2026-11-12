@@ -37,6 +37,7 @@ import { enabledCapabilities, previewEnabledCapabilities, roleAiConfig } from "@
 import { systemPromptFor } from "@/modules/ai/kernel/personas";
 import { FILE_ATTACH_GROUP, FILE_ATTACH_TOOL, fileAttachTool } from "@/modules/textbooks/ai-attach-tool";
 import { scopedChatExtras } from "@/modules/study/scope-chat";
+import { NO_DRAWING_RULE, VISUALS_ONLY_VIA_TOOL_RULE } from "@/modules/ai/prompts/honesty";
 import { buildTaskTools, withTaskTools } from "@/modules/ai/tasks/task-tools";
 import { ORB_MODES, TASK_KEY_RE } from "@/modules/core/control-centre/ids";
 
@@ -371,7 +372,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
     studentPrefs: studentPrefs ? { skills: studentPrefs.skills, style: studentPrefs.style } : undefined,
     childId,
   });
-  const system = [basePrompt, scoped?.system, tasks?.system].filter(Boolean).join("\n\n");
+  const system = [basePrompt, "showStudyBlocks" in chatTools ? VISUALS_ONLY_VIA_TOOL_RULE : NO_DRAWING_RULE, scoped?.system, tasks?.system].filter(Boolean).join("\n\n");
 
   const outgoing = mode === "cloud" ? redactMessageText(strippedMessages) : { messages: strippedMessages, redactions: 0 };
   const modelMessages = await convertToModelMessages(outgoing.messages);

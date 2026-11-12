@@ -419,3 +419,26 @@ export function toFileAnswer(g: FileAnswerGeneration): FileAnswer | null {
   const parsed = FileAnswerSchema.safeParse({ answer: clip(g.answer, 2400), points: clean(g.points, 240, 6), found: g.found, followUps: clean(g.followUps, 120, 3) });
   return parsed.success ? parsed.data : null;
 }
+
+// ---- flashcards ----
+
+export const FlashcardsSchema = z
+  .object({ title: line(80), cards: z.array(z.object({ front: line(160), back: line(300) }).strict()).min(4).max(16) })
+  .strict();
+export type Flashcards = z.infer<typeof FlashcardsSchema>;
+export type FlashcardsResponse = Refused | ({ refused: false; flashcards: Flashcards } & AiMeta);
+
+export const FlashcardsGenerationSchema = z
+  .object({ refusal: z.string(), title: z.string(), cards: z.array(z.object({ front: z.string(), back: z.string() }).strict()) })
+  .strict();
+export type FlashcardsGeneration = z.infer<typeof FlashcardsGenerationSchema>;
+
+export function toFlashcards(g: FlashcardsGeneration): Flashcards | null {
+  const seen = new Set<string>();
+  const cards = g.cards
+    .map((c) => ({ front: clip(c.front, 160), back: clip(c.back, 300) }))
+    .filter((c) => c.front && c.back && !seen.has(c.front.toLowerCase()) && seen.add(c.front.toLowerCase()))
+    .slice(0, 16);
+  const parsed = FlashcardsSchema.safeParse({ title: clip(g.title, 80), cards });
+  return parsed.success ? parsed.data : null;
+}

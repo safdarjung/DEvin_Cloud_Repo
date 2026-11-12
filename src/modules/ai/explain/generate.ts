@@ -12,10 +12,13 @@ import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { hasFileReadingConsent } from "@/modules/study/generate";
 import { fileSource } from "@/modules/study/help-sources";
-import { anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flowInstructions, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
+import { anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flashcardsInstructions, flowInstructions, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
 import {
   AnatomyGenerationSchema,
   FileAnswerGenerationSchema,
+  FlashcardsGenerationSchema,
+  toFlashcards,
+  type FlashcardsResponse,
   toFileAnswer,
   type FileAnswerResponse,
   type FileAskRequest,
@@ -142,6 +145,21 @@ export async function makeDiagram(ctx: TenantContext, input: VisualRequest): Pro
   const flow = toFlow(data);
   if (!flow) return fail("ai_invalid_output", "The diagram came back with too few joined steps. Try again, or name the process more clearly.");
   return ok({ refused: false, flow, provider, model });
+}
+
+export async function makeFlashcards(ctx: TenantContext, input: VisualRequest): Promise<ActionResult<FlashcardsResponse>> {
+  const blocked = blockedTopic(input.topic);
+  if (blocked) return ok({ refused: true, reason: blocked });
+  const call = { ...base(ctx), feature: "flashcards", schema: FlashcardsGenerationSchema, instructions: flashcardsInstructions(input), prompt: visualPrompt(input.topic, Boolean(input.materialId)), maxOutputTokens: 1800 };
+  const file = input.materialId ? await readableFile(ctx, input.materialId) : null;
+  if (file && !file.ok) return file;
+  const generated = file ? await runStructuredFile({ ...call, file: file.data }) : await runStructured({ ...call, agentCloud: true });
+  if (!generated.ok) return generated;
+  const { data, provider, model } = generated.data;
+  if (data.refusal.trim()) return ok({ refused: true, reason: clip(data.refusal, 300) });
+  const flashcards = toFlashcards(data);
+  if (!flashcards) return fail("ai_invalid_output", "The deck came back with too few cards. Try again, or name the topic more clearly.");
+  return ok({ refused: false, flashcards, provider, model });
 }
 
 export async function makeImage(ctx: TenantContext, input: ImageRequest): Promise<ActionResult<ImageResponse>> {

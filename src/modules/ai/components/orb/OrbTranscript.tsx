@@ -14,6 +14,7 @@ import { ArrowDown, Check, ChevronDown, Copy, RefreshCw, RotateCcw, TriangleAler
 import { Button } from "@/components/ui/button";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
+import { FlashcardsCard, type FlashcardsResult } from "@/modules/ai/components/explain/FlashcardsCard";
 import { FileAnswerCard, type FileAnswerResult } from "./OrbFile";
 import TaskStack from "@/modules/ai/components/task-card/TaskStack";
 import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
@@ -66,6 +67,7 @@ export interface ExplainEntry {
   diagram?: DiagramResult;
   image?: ImageResult;
   file?: FileAnswerResult;
+  flashcards?: FlashcardsResult;
   /** Made from an uploaded file: the follow-on buttons would lose the file, so they are not offered. */
   fromFile?: boolean;
   /** A depth change or a poster is being made. */
@@ -82,11 +84,12 @@ export interface ExplainHandlers {
   onNext: (id: string, kind: NextKind) => void;
 }
 
-export type NextKind = "anatomy" | "mindmap" | "diagram";
+export type NextKind = "anatomy" | "mindmap" | "diagram" | "flashcards";
 const NEXT: { kind: NextKind; label: string }[] = [
   { kind: "anatomy", label: "Explain the parts" },
   { kind: "mindmap", label: "Draw a mind map" },
   { kind: "diagram", label: "Draw a flowchart" },
+  { kind: "flashcards", label: "Make flashcards" },
 ];
 
 function Dots({ label }: { label: string }) {
@@ -117,10 +120,11 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
       {e.mindmap && <MindMapCard result={e.mindmap} fromFile={e.fromFile} />}
       {e.diagram && <DiagramCard result={e.diagram} fromFile={e.fromFile} />}
       {e.image && <ImageCard result={e.image} />}
-      {!e.pending && !e.busy && !e.fromFile && (e.anatomy || e.mindmap || e.diagram) && (
+      {e.flashcards && <FlashcardsCard result={e.flashcards} fromFile={e.fromFile} />}
+      {!e.pending && !e.busy && !e.fromFile && (e.anatomy || e.mindmap || e.diagram || e.flashcards) && (
         <div className="flex flex-wrap items-center gap-1.5" aria-label="Also make">
           <span className="text-xs text-muted-foreground">Also:</span>
-          {NEXT.filter((n) => !(n.kind === "anatomy" && e.anatomy) && !(n.kind === "mindmap" && e.mindmap) && !(n.kind === "diagram" && e.diagram)).map((n) => (
+          {NEXT.filter((n) => !(n.kind === "anatomy" && e.anatomy) && !(n.kind === "mindmap" && e.mindmap) && !(n.kind === "diagram" && e.diagram) && !(n.kind === "flashcards" && e.flashcards)).map((n) => (
             <Button key={n.kind} type="button" size="sm" variant="outline" className="min-h-9 rounded-full text-xs" onClick={() => handlers.onNext(e.id, n.kind)}>
               {n.label}
             </Button>

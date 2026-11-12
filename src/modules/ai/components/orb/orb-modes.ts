@@ -93,6 +93,7 @@ export function explainFeatures(role: string, have: readonly OrbMode[]): OrbFeat
     { name: "infographic", label: "Make an infographic" },
     { name: "mindmap", label: "Draw a mind map" },
     { name: "diagram", label: "Draw a flowchart" },
+    { name: "flashcards", label: "Make flashcards" },
     { name: "image", label: "Draw a picture" },
   ];
   return modes.flatMap((mode) =>

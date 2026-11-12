@@ -149,3 +149,47 @@ describe("orb commands for visuals", () => {
     expect(ORB_COMMANDS.map((c) => c.name)).toContain("diagram");
   });
 });
+
+describe("naturalVisualRequest", () => {
+  it("turns a clear request with a topic into a mind map or flowchart", async () => {
+    const { naturalVisualRequest } = await import("@/modules/ai/explain/commands");
+    expect(naturalVisualRequest("make a mind map of the water cycle")).toEqual({ command: "mindmap", arg: "the water cycle" });
+    expect(naturalVisualRequest("Draw a flowchart for how admission works.")).toEqual({ command: "diagram", arg: "how admission works" });
+    expect(naturalVisualRequest("create mind map for Forces and Energy unit and flashcards")).toEqual({ command: "mindmap", arg: "Forces and Energy unit" });
+    expect(naturalVisualRequest("make a mind map and flashcards for Forces and Energy unit")).toEqual({ command: "mindmap", arg: "Forces and Energy unit" });
+    expect(naturalVisualRequest("make me a diagram of the human heart")).toEqual({ command: "diagram", arg: "the human heart" });
+  });
+  it("leaves questions, bare words and commands to the chat", async () => {
+    const { naturalVisualRequest } = await import("@/modules/ai/explain/commands");
+    expect(naturalVisualRequest("what is a mind map?")).toBeNull();
+    expect(naturalVisualRequest("mind map")).toBeNull();
+    expect(naturalVisualRequest("make a mind map")).toBeNull();
+    expect(naturalVisualRequest("/mindmap the heart")).toBeNull();
+    expect(naturalVisualRequest("explain the diagram on page 4 of my book")).toBeNull();
+  });
+});
+
+describe("flashcards", () => {
+  it("toFlashcards drops blanks and repeated fronts and caps the deck", async () => {
+    const { toFlashcards } = await import("@/modules/ai/explain/schemas");
+    const card = (n: number) => ({ front: `Q${n}?`, back: `A${n}` });
+    const g = { refusal: "", title: " Force ", cards: [card(1), { front: "q1?", back: "dup" }, { front: "", back: "x" }, card(2), card(3), card(4), card(5), ...Array.from({ length: 20 }, (_, i) => card(i + 10))] };
+    const d = toFlashcards(g);
+    expect(d?.title).toBe("Force");
+    expect(d?.cards.map((c) => c.front).slice(0, 5)).toEqual(["Q1?", "Q2?", "Q3?", "Q4?", "Q5?"]);
+    expect(d?.cards).toHaveLength(16);
+    expect(toFlashcards({ refusal: "", title: "T", cards: [card(1), card(2)] })).toBeNull();
+  });
+  it("reads /flashcards and 'make flashcards for X'", async () => {
+    const { naturalVisualRequest, parseOrbCommand } = await import("@/modules/ai/explain/commands");
+    expect(parseOrbCommand("/flashcards photosynthesis")).toEqual({ command: "flashcards", arg: "photosynthesis" });
+    expect(naturalVisualRequest("make flashcards for photosynthesis")).toEqual({ command: "flashcards", arg: "photosynthesis" });
+    expect(naturalVisualRequest("can you make flashcards for me?")).toBeNull();
+  });
+  it("every chat is told it cannot draw, unless the study-blocks tool is on", async () => {
+    const { NO_DRAWING_RULE, VISUALS_ONLY_VIA_TOOL_RULE } = await import("@/modules/ai/prompts/honesty");
+    expect(NO_DRAWING_RULE).toMatch(/never say or imply that you did/);
+    expect(NO_DRAWING_RULE).toMatch(/\/mindmap/);
+    expect(VISUALS_ONLY_VIA_TOOL_RULE).toMatch(/showStudyBlocks/);
+  });
+});

@@ -16,10 +16,10 @@ import Link from "next/link";
 import type { Role } from "@/lib/auth/permissions";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { startProposal } from "@/modules/ai/components/task-card/api";
-import { runAnatomy, runDiagram, runFileAsk, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
+import { runAnatomy, runDiagram, runFileAsk, runFlashcards, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
 import { useSpeechOutput } from "@/modules/ai/components/voice/useSpeechOutput";
 import { plainChatText } from "@/modules/ai/chat-text";
-import { parseOrbCommand } from "@/modules/ai/explain/commands";
+import { naturalVisualRequest, parseOrbCommand } from "@/modules/ai/explain/commands";
 import type { ExplainDepth } from "@/modules/ai/explain/schemas";
 import { useResolutions } from "@/modules/ai/components/task-card/store";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
@@ -253,7 +253,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     setAfterAgree(null);
     signals.current.shock = 1;
     const name = file.fileName;
-    const line = { ask: question, summary: `Summarize ${name}`, mindmap: `Mind map of ${name}`, diagram: `Flowchart of ${name}` }[kind];
+    const line = { ask: question, summary: `Summarize ${name}`, mindmap: `Mind map of ${name}`, diagram: `Flowchart of ${name}`, flashcards: `Flashcards from ${name}` }[kind];
     const id = `${Date.now()}-${explains.length}`;
     setExplains((xs) => [...xs, { id, at: messages.length, line, subject: name, mode: "anatomy", pending: true, fromFile: true }]);
     const failed = (e: { message: string; fieldErrors?: Record<string, string[]> }) => {
@@ -265,6 +265,12 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     };
     const topic = name.replace(/\.[^.]+$/, "").slice(0, 200) || "the file";
     const ref = { institutionSlug, materialId: file.materialId };
+    if (kind === "flashcards") {
+      const res = await runFlashcards({ ...ref, topic });
+      if (!res.ok) return failed(res.error);
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, flashcards: res.data });
+    }
     if (kind === "mindmap" || kind === "diagram") {
       const res = kind === "mindmap" ? await runMindMap({ ...ref, topic }) : await runDiagram({ ...ref, topic });
       if (!res.ok) return failed(res.error);
@@ -301,6 +307,12 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
       if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
       if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
       return patchExplain(id, { pending: false, mindmap: res.data });
+    }
+    if (cmd.command === "flashcards") {
+      const res = await runFlashcards({ institutionSlug, topic: cmd.arg });
+      if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, flashcards: res.data });
     }
     if (cmd.command === "diagram") {
       const res = await runDiagram({ institutionSlug, topic: cmd.arg });
@@ -359,7 +371,10 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     if (!chat || !t || busy) return;
     speech.stop();
     // With a file attached, what the person types is a question about it (commands still run as commands).
-    if (typed && file && !parseOrbCommand(t)) return void askAbout("ask", t);
+    const said = typed && !taskHint && !parseOrbCommand(t) ? naturalVisualRequest(t) : null;
+    if (typed && file && !parseOrbCommand(t)) return void (said ? askAbout(said.command) : askAbout("ask", t));
+    // "make a mind map of the water cycle" in words draws it, instead of the chat only talking about one.
+    if (said) return void runCommand(t, said);
     const parsed = taskHint ? null : parseOrbCommand(t);
     // /image off: the text goes to chat like any other message.
     const cmd = parsed?.command === "image" && !pictures ? null : parsed;

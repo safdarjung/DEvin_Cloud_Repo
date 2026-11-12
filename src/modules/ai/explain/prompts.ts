@@ -83,6 +83,19 @@ export function mindMapInstructions(input: Pick<VisualRequest, "language">): str
   ].join("\n");
 }
 
+export function flashcardsInstructions(input: Pick<VisualRequest, "language">): string {
+  return [
+    "You make flashcards for a student of an Indian school to revise a topic.",
+    SAFETY,
+    "title: the topic, at most 6 words.",
+    "cards: 8 to 12 cards that together cover the main ideas of the topic. One idea per card.",
+    "front: a short question or cue the student can answer from memory (at most 20 words); never a yes/no question.",
+    "back: the precise answer in one or two short sentences, with the key term or formula.",
+    "Mix definitions, how and why questions, and one or two small worked examples or calculations where the subject has them. Never repeat a front. Only well-established facts. Plain text, no markdown.",
+    LANGUAGE[input.language],
+  ].join("\n");
+}
+
 export function flowInstructions(input: Pick<VisualRequest, "language">): string {
   return [
     "You draw flowcharts for school use: a process, a cycle or a decision as steps joined by arrows.",
