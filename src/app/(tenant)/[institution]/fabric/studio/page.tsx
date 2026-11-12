@@ -38,11 +38,13 @@ export default async function CustomStudioPage({
 
   const selectedId = sp.request;
   const selected = selectedId ? items.find((r) => r.id === selectedId) : undefined;
+  // Nothing picked: the wide-screen pane shows the newest request instead of an empty "Pick a request".
+  const shown = selected ?? (!selectedId ? items[0] : undefined);
   const statusFilter = STATUS_FILTERS.find((s) => s === sp.status);
   // U2: only before proposing — once the AI has proposed, its resolution says the same thing.
   const matches =
-    selected?.status === "submitted"
-      ? catalogMatches(selected, listModules(ctx).flatMap((group) => group.modules))
+    shown?.status === "submitted"
+      ? catalogMatches(shown, listModules(ctx).flatMap((group) => group.modules))
       : [];
 
   return (
@@ -65,8 +67,8 @@ export default async function CustomStudioPage({
             <RequestList base={base} items={items} selectedId={selectedId} statusFilter={statusFilter} />
           </div>
           <div className={selected ? undefined : "hidden lg:block"}>
-            {selected ? (
-              <RequestDetail institutionSlug={slug} base={base} request={selected} canApprove={canApprove} catalogMatches={matches} />
+            {shown ? (
+              <RequestDetail institutionSlug={slug} base={base} request={shown} canApprove={canApprove} catalogMatches={matches} />
             ) : (
               <EmptyState
                 title={selectedId ? "Request not in this list" : "Pick a request"}

@@ -75,6 +75,10 @@ export default async function InsightsPage({
     const all = await listInsights(ctx, { status: ["new", "reviewing", "actioned", "resolved", "dismissed"], limit: 200 }).catch(() => []);
     selected = all.find((i) => i.id === id);
   }
+  // Nothing picked: the right-hand pane (wide screens only) shows the first insight instead of an empty "Pick one".
+  const preview = !id ? items[0] : undefined;
+  const previewActions = preview ? await listInsightActions(ctx, preview.id).catch(() => []) : [];
+  const shown = selected ?? preview;
   const backHref = insightHref(base, { status: tab.key, domain });
 
   return (
@@ -104,13 +108,13 @@ export default async function InsightsPage({
             <InsightList base={base} status={tab.key} domain={domain} items={items} selectedId={id} />
           </div>
           <div className={selected ? undefined : "hidden lg:block"}>
-            {selected ? (
+            {shown ? (
               <InsightDetail
                 institutionSlug={slug}
                 backHref={backHref}
-                insight={selected}
-                actions={actionsRes.status === "fulfilled" ? actionsRes.value : []}
-                actionsFailed={actionsRes.status === "rejected"}
+                insight={shown}
+                actions={selected ? (actionsRes.status === "fulfilled" ? actionsRes.value : []) : previewActions}
+                actionsFailed={selected ? actionsRes.status === "rejected" : false}
                 canReview={hasPermission(ctx, "insight.review")}
                 canExplain={hasPermission(ctx, "ai.generate")}
               />
