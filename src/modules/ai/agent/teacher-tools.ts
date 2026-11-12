@@ -9,6 +9,7 @@ import "server-only";
 // returns an error STRING in the tool result, never a thrown exception,
 // so the model can relay it and the stream keeps going.
 import { tool } from "ai";
+import { unitSearchWords, unitTitleScore } from "./unit-match";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { uuid } from "@/lib/schemas/common";
@@ -79,28 +80,30 @@ async function findCurriculumUnitImpl(
   ctx: TenantContext,
   query: string,
 ): Promise<Array<{ id: string; title: string; gradeLabel: string; subjectName: string }>> {
-  const term = `%${escapeIlike(query.trim())}%`;
+  // Word by word, not one exact phrase: "acid bases and salts" must find "Acids, Bases and Salts".
+  const words = unitSearchWords(query);
+  const filter = (words.length ? words : [query.trim().toLowerCase()]).map((w) => `title.ilike.%${escapeIlike(w).replace(/[,()]/g, " ")}%`).join(",");
   const [{ data, error }, scope] = await Promise.all([
     supabase
       .from("curriculum_units")
       .select("id, title, grade_id, subject_id, grades(display_name), subjects(name)")
       .eq("institution_id", ctx.institution.id)
-      .ilike("title", term)
-      .limit(20),
+      .or(filter)
+      .limit(60),
     allowedGradeSubjectPairs(supabase, ctx),
   ]);
   if (error) throw error;
 
-  const results: Array<{ id: string; title: string; gradeLabel: string; subjectName: string }> = [];
-  for (const row of data ?? []) {
-    if (results.length >= 5) break;
-    const allowed = scope === "all" || scope.has(`${row.grade_id}:${row.subject_id}`);
-    if (!allowed) continue;
+  const ranked = (data ?? [])
+    .filter((row) => scope === "all" || scope.has(`${row.grade_id}:${row.subject_id}`))
+    .map((row) => ({ row, score: unitTitleScore(row.title, words) }))
+    .filter((r) => words.length === 0 || r.score >= 0.5)
+    .sort((a, b) => b.score - a.score);
+  return ranked.slice(0, 5).map(({ row }) => {
     const grade = row.grades as { display_name: string } | null;
     const subject = row.subjects as { name: string } | null;
-    results.push({ id: row.id, title: row.title, gradeLabel: grade?.display_name ?? "", subjectName: subject?.name ?? "" });
-  }
-  return results;
+    return { id: row.id, title: row.title, gradeLabel: grade?.display_name ?? "", subjectName: subject?.name ?? "" };
+  });
 }
 
 /** Builds the full tool set for this authenticated teacher's turn, sharing one RLS-scoped client. */
@@ -134,7 +137,8 @@ export async function teacherTools(ctx: TenantContext) {
       execute: async ({ query }) => {
         try {
           const results = await findCurriculumUnitImpl(supabase, ctx, query);
-          if (results.length === 0) return "No matching curriculum unit found that you teach.";
+          if (results.length === 0)
+            return "No unit with that title in the classes and subjects you teach. Do not stop here: a lesson plan, quiz or worksheet does not need a unit. Carry on with the chapter as the person named it.";
           return results;
         } catch (err) {
           return toolErrorMessage("findCurriculumUnit", err);

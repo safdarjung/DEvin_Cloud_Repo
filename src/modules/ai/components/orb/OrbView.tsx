@@ -16,10 +16,11 @@ import Link from "next/link";
 import type { Role } from "@/lib/auth/permissions";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { startProposal } from "@/modules/ai/components/task-card/api";
-import { runAnatomy, runDiagram, runFileAsk, runFlashcards, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
+import { runAnatomy, runDiagram, runFileAsk, runFlashcards, runLessonPlan, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
 import { useSpeechOutput } from "@/modules/ai/components/voice/useSpeechOutput";
 import { plainChatText } from "@/modules/ai/chat-text";
-import { naturalVisualRequest, parseOrbCommand } from "@/modules/ai/explain/commands";
+import { naturalLessonPlan, naturalVisualRequest, parseOrbCommand } from "@/modules/ai/explain/commands";
+import { lessonPlanFormText } from "@/modules/ai/explain/schemas";
 import type { ExplainDepth } from "@/modules/ai/explain/schemas";
 import { useResolutions } from "@/modules/ai/components/task-card/store";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
@@ -144,6 +145,14 @@ const EXPIRY_TICK_MS = 30_000;
 const ALL_MODES = MODES.map((m) => m.id);
 const AUDIENCE: Partial<Record<Role, "student" | "teacher" | "parent">> = { student: "student", teacher: "teacher", guardian: "parent" };
 const explainError = (msg: string | undefined) => msg?.trim() || "That didn't work. Try again in a moment.";
+const textOf = (m: OrbMessage | undefined): string => (m ? m.parts.map((p) => (p.type === "text" ? p.text : "")).join("") : "");
+/** "tomorrow" / "today" in the teacher's words, as the lesson's date (local calendar day). */
+function plannedFrom(words: string): string | undefined {
+  const days = /\btomorrow\b|\bkal\b/i.test(words) ? 1 : /\btoday\b|\baaj\b/i.test(words) ? 0 : null;
+  if (days === null) return undefined;
+  const d = new Date(Date.now() + days * 86_400_000);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 /** Ready questions that take turns as the message box's placeholder. */
 const HINTS_MAX = 5;
 /** The browser's clock, so the server renders a plain "Hello" and the client the time of day. */
@@ -226,6 +235,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const explaining = explains.some((x) => x.pending || x.busy);
   const patchExplain = (id: string, p: Partial<ExplainEntry>) => setExplains((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const audience = AUDIENCE[role] ?? "staff";
+  const staff = role !== "student" && role !== "guardian";
 
   // A PDF or photo the AI reads (OrbFile): uploaded to the person's own shelf, then asked about, summarised or drawn.
   const [file, setFile] = useState<AttachedFile | null>(null);
@@ -300,13 +310,19 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const id = `${Date.now()}-${explains.length}`;
     const mode = cmd.command === "teardown" ? "teardown" : "anatomy";
     const entry: ExplainEntry = { id, at: messages.length, line, subject: cmd.arg, mode, pending: Boolean(cmd.arg) };
-    if (!cmd.arg) return setExplains((xs) => [...xs, { ...entry, error: `Say what to explain after the command, e.g. /${cmd.command} human heart.` }]);
+    if (!cmd.arg) return setExplains((xs) => [...xs, { ...entry, error: cmd.command === "lessonplan" ? "Say the chapter and class after the command, e.g. /lessonplan Class 10 acids, bases and salts, 40 min." : `Say what to explain after the command, e.g. /${cmd.command} human heart.` }]);
     setExplains((xs) => [...xs, entry]);
     if (cmd.command === "mindmap") {
       const res = await runMindMap({ institutionSlug, topic: cmd.arg });
       if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
       if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
       return patchExplain(id, { pending: false, mindmap: res.data });
+    }
+    if (cmd.command === "lessonplan") {
+      const res = await runLessonPlan({ institutionSlug, request: cmd.arg });
+      if (!res.ok) return patchExplain(id, { pending: false, error: explainError(res.error.message) });
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, lessonplan: res.data });
     }
     if (cmd.command === "flashcards") {
       const res = await runFlashcards({ institutionSlug, topic: cmd.arg });
@@ -341,9 +357,30 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
 
   /** "Also make": the same topic as another kind of result, as if typed. */
   function nextFrom(id: string, kind: NextKind) {
-    const topic = explains.find((x) => x.id === id)?.subject;
+    const x = explains.find((e) => e.id === id);
+    const topic = x?.lessonplan?.plan.title.split(":")[0]?.trim() || x?.subject;
     if (!topic || explaining) return;
     void runCommand(`/${kind === "anatomy" ? "anatomy" : kind} ${topic}`, { command: kind, arg: topic });
+  }
+
+  /** The plan's text into the lesson-plan approval card: class, subject and date are matched there and the teacher checks them. */
+  async function saveLessonPlan(id: string) {
+    const x = explains.find((e) => e.id === id);
+    const plan = x?.lessonplan?.plan;
+    if (!plan || x.busy) return;
+    patchExplain(id, { busy: true, error: undefined });
+    const when = plannedFrom(x.subject);
+    const values = {
+      ...lessonPlanFormText(plan),
+      ...(plan.classLabel ? { classSectionId: plan.classLabel } : {}),
+      ...(plan.subject ? { subjectId: plan.subject } : {}),
+      ...(when ? { plannedOn: when } : {}),
+    };
+    const res = await startProposal(institutionSlug, "curriculum.lessonPlan.upsert", values);
+    patchExplain(id, { busy: false });
+    if (!res.ok) return patchExplain(id, { error: explainError(res.error.message) });
+    setLocalCards((cs) => [...cs, { proposal: res.data, at: messages.length }]);
+    setOpen(true);
   }
 
   async function changeDepth(id: string, depth: ExplainDepth) {
@@ -371,6 +408,23 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     if (!chat || !t || busy) return;
     speech.stop();
     // With a file attached, what the person types is a question about it (commands still run as commands).
+    // A lesson plan asked for in words (or the details given after the chat asked for them) goes to the real generator.
+    if (typed && !taskHint && staff && !parseOrbCommand(t)) {
+      const lastUser = textOf(messages.filter((m) => m.role === "user").at(-1));
+      const lastAi = textOf(messages.at(-1)?.role === "assistant" ? messages.at(-1) : undefined).trim();
+      const followUp = naturalLessonPlan(lastUser) === null && /\blesson[\s-]?plans?\b/i.test(lastUser) && /\?/.test(lastAi) ? `${lastUser} ${t}`.slice(0, 300) : null;
+      // The orb's own "which chapter?" was the last thing said: this message is the answer.
+      const asked = explains.at(-1);
+      const answered = asked?.note && asked.at === messages.length && /\blesson[\s-]?plans?\b/i.test(asked.line) ? `${asked.line} ${t}`.slice(0, 300) : null;
+      const plan = naturalLessonPlan(t) ?? answered ?? followUp;
+      if (plan) return void runCommand(t, { command: "lessonplan", arg: plan });
+      if (/\blesson[\s-]?plans?\b/i.test(t) && /\b(?:draft|make|create|write|prepare|generate|plan|need|want)\b/i.test(t)) {
+        // No chapter yet: one question, and the box is ready for the answer (no model call, no generic card).
+        setExplains((xs) => [...xs, { id: `${Date.now()}-${xs.length}`, at: messages.length, line: t, subject: "", mode: "anatomy", pending: false, note: "Which chapter, and for which class? For example: Class 10, Acids, Bases and Salts, 40 minutes, tomorrow." }]);
+        setOpen(true);
+        return edit("/lessonplan ");
+      }
+    }
     const said = typed && !taskHint && !parseOrbCommand(t) ? naturalVisualRequest(t) : null;
     if (typed && file && !parseOrbCommand(t)) return void (said ? askAbout(said.command) : askAbout("ask", t));
     // "make a mind map of the water cycle" in words draws it, instead of the chat only talking about one.
@@ -716,7 +770,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             messages={messages}
             localCards={localCards}
             explains={explains}
-            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id), onAskFile: (q) => void askAbout("ask", q), onNext: nextFrom }}
+            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id), onAskFile: (q) => void askAbout("ask", q), onNext: nextFrom, onSaveLessonPlan: (id) => void saveLessonPlan(id) }}
             status={status}
             error={error ? chatErrorMessage(error) : null}
             accent={accent[1]}
@@ -805,6 +859,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           busy={busy}
           starters={starters}
           pictures={pictures}
+          staff={staff}
           hints={hints}
           level={signals}
           reduced={reduced}

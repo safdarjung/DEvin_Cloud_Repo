@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 import { FlashcardsCard, type FlashcardsResult } from "@/modules/ai/components/explain/FlashcardsCard";
+import { LessonPlanCard, type LessonPlanResult } from "@/modules/ai/components/explain/LessonPlanCard";
 import { FileAnswerCard, type FileAnswerResult } from "./OrbFile";
 import TaskStack from "@/modules/ai/components/task-card/TaskStack";
 import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
@@ -68,6 +69,9 @@ export interface ExplainEntry {
   image?: ImageResult;
   file?: FileAnswerResult;
   flashcards?: FlashcardsResult;
+  lessonplan?: LessonPlanResult;
+  /** A short reply from the orb itself (no model call), e.g. what a command still needs. */
+  note?: string;
   /** Made from an uploaded file: the follow-on buttons would lose the file, so they are not offered. */
   fromFile?: boolean;
   /** A depth change or a poster is being made. */
@@ -82,6 +86,8 @@ export interface ExplainHandlers {
   onAskFile: (question: string) => void;
   /** "Also make": the same topic as another kind of result. */
   onNext: (id: string, kind: NextKind) => void;
+  /** Open the lesson-plan approval card prefilled from this plan. */
+  onSaveLessonPlan: (id: string) => void;
 }
 
 export type NextKind = "anatomy" | "mindmap" | "diagram" | "flashcards";
@@ -107,6 +113,7 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
     <div className="space-y-2">
       <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground">{e.line}</p>
       {e.pending && <Dots label="Working on it" />}
+      {e.note && <p className="w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-md border bg-card px-3 py-2">{e.note}</p>}
       {e.anatomy && (
         <AnatomyCard
           result={e.anatomy}
@@ -121,10 +128,11 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
       {e.diagram && <DiagramCard result={e.diagram} fromFile={e.fromFile} />}
       {e.image && <ImageCard result={e.image} />}
       {e.flashcards && <FlashcardsCard result={e.flashcards} fromFile={e.fromFile} />}
-      {!e.pending && !e.busy && !e.fromFile && (e.anatomy || e.mindmap || e.diagram || e.flashcards) && (
+      {e.lessonplan && <LessonPlanCard result={e.lessonplan} saving={e.busy} onSave={() => handlers.onSaveLessonPlan(e.id)} />}
+      {!e.pending && !e.busy && !e.fromFile && (e.anatomy || e.mindmap || e.diagram || e.flashcards || e.lessonplan) && (
         <div className="flex flex-wrap items-center gap-1.5" aria-label="Also make">
           <span className="text-xs text-muted-foreground">Also:</span>
-          {NEXT.filter((n) => !(n.kind === "anatomy" && e.anatomy) && !(n.kind === "mindmap" && e.mindmap) && !(n.kind === "diagram" && e.diagram) && !(n.kind === "flashcards" && e.flashcards)).map((n) => (
+          {NEXT.filter((n) => !(n.kind === "anatomy" && (e.anatomy || e.lessonplan)) && !(n.kind === "mindmap" && e.mindmap) && !(n.kind === "diagram" && e.diagram) && !(n.kind === "flashcards" && e.flashcards)).map((n) => (
             <Button key={n.kind} type="button" size="sm" variant="outline" className="min-h-9 rounded-full text-xs" onClick={() => handlers.onNext(e.id, n.kind)}>
               {n.label}
             </Button>

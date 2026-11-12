@@ -1,7 +1,7 @@
 // Orb slash commands. Pure: the orb calls parseOrbCommand on what the person
 // typed; null means "not a command", so normal chat (including other text that
 // starts with a slash) is untouched.
-export type OrbCommandName = "anatomy" | "teardown" | "infographic" | "mindmap" | "diagram" | "flashcards" | "image";
+export type OrbCommandName = "anatomy" | "teardown" | "infographic" | "mindmap" | "diagram" | "flashcards" | "lessonplan" | "image";
 
 export interface OrbCommand {
   name: OrbCommandName;
@@ -16,6 +16,7 @@ export const ORB_COMMANDS: readonly OrbCommand[] = [
   { name: "mindmap", usage: "/mindmap <topic>", help: "Draw a topic as a mind map you can save as a picture." },
   { name: "diagram", usage: "/diagram <process>", help: "Draw a process, cycle or decision as a flowchart you can save as a picture." },
   { name: "flashcards", usage: "/flashcards <topic>", help: "Make a deck of flashcards to flip through and practise." },
+  { name: "lessonplan", usage: "/lessonplan <chapter, class, length>", help: "Write a full timed lesson plan (teachers), e.g. /lessonplan Class 10 acids bases and salts, 40 min." },
   { name: "image", usage: "/image <what to draw>", help: "Draw an illustration for a lesson (made by the cloud AI; check it before you use it)." },
 ];
 
@@ -43,4 +44,16 @@ export function naturalVisualRequest(text: string): { command: "mindmap" | "diag
   const topic = m?.[1]?.replace(/\s+and\s+(?:flash\s?cards?|a quiz|notes)\b.*$/i, "").replace(/[.!]+$/, "").trim();
   if (!topic || topic.length < 3) return null;
   return { command: /mind[\s-]?map/i.test(t) ? "mindmap" : /flash\s?cards?/i.test(t) && !/flow/i.test(t) ? "flashcards" : "diagram", arg: topic };
+}
+
+// Words that say "a lesson plan" but no lesson: what is left after removing them must name a topic.
+const PLAN_FILLER =
+  /\b(?:please|pls|can|could|would|you|u|i|me|my|we|our|wanna|want|to|need|help|draft|make|create|write|prepare|generate|build|give|plan|plans|lesson|lessons|a|an|the|for|on|about|of|with|curriculum|unit|units|teach|teaching|it|this|that|some|one|minutes?|mins?|min|period|periods|\d+[- ]?minutes?|\d+[- ]?mins?)\b/gi;
+
+/** "lesson plan for class 10 acids bases and salts tomorrow": the whole request goes to /lessonplan (the model reads class, length and chapter). */
+export function naturalLessonPlan(text: string): string | null {
+  const t = text.trim();
+  if (t.length > 300 || t.startsWith("/") || !/\blesson[\s-]?plans?\b/i.test(t)) return null;
+  const rest = t.replace(PLAN_FILLER, " ").replace(/[^a-z0-9\u0900-\u097f]+/gi, " ").trim();
+  return rest.split(" ").filter((w) => w.length > 1).length >= 1 ? t : null;
 }

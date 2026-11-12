@@ -12,11 +12,15 @@ import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { hasFileReadingConsent } from "@/modules/study/generate";
 import { fileSource } from "@/modules/study/help-sources";
-import { anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flashcardsInstructions, flowInstructions, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
+import { anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flashcardsInstructions, flowInstructions, lessonPlanInstructions, lessonPlanPrompt, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
 import {
   AnatomyGenerationSchema,
   FileAnswerGenerationSchema,
   FlashcardsGenerationSchema,
+  LessonPlanGenerationSchema,
+  toLessonPlanDoc,
+  type LessonPlanRequest,
+  type LessonPlanResponse,
   toFlashcards,
   type FlashcardsResponse,
   toFileAnswer,
@@ -189,4 +193,26 @@ export async function askFile(ctx: TenantContext, input: FileAskRequest): Promis
   const result = toFileAnswer(data);
   if (!result) return fail("ai_invalid_output", "The answer came back empty. Try asking in other words.");
   return ok({ refused: false, fileName: file.data.fileName, action: input.action, result, provider, model });
+}
+
+/** Teachers and school staff only: a lesson plan is teaching material, not study help. */
+export async function makeLessonPlan(ctx: TenantContext, input: LessonPlanRequest): Promise<ActionResult<LessonPlanResponse>> {
+  if (ctx.membership.role === "student" || ctx.membership.role === "guardian") return fail("forbidden", "Lesson plans are for teachers.");
+  const blocked = blockedTopic(input.request);
+  if (blocked) return ok({ refused: true, reason: blocked });
+  const generated = await runStructured({
+    ...base(ctx),
+    feature: "lesson_plan_doc",
+    schema: LessonPlanGenerationSchema,
+    instructions: lessonPlanInstructions(input),
+    prompt: lessonPlanPrompt(input.request),
+    maxOutputTokens: 3200,
+    agentCloud: true,
+  });
+  if (!generated.ok) return generated;
+  const { data, provider, model } = generated.data;
+  if (data.refusal.trim()) return ok({ refused: true, reason: clip(data.refusal, 300) });
+  const plan = toLessonPlanDoc(data);
+  if (!plan) return fail("ai_invalid_output", "The lesson plan came back incomplete. Try again, or name the chapter and class.");
+  return ok({ refused: false, plan, provider, model });
 }

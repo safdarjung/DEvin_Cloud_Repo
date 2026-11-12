@@ -52,6 +52,9 @@ function fakeSupabase(tables: TableData) {
         ilike() {
           return builder;
         },
+        or() {
+          return builder;
+        },
         is() {
           return builder;
         },
@@ -146,7 +149,22 @@ describe("teacherTools", () => {
       vi.mocked(serverClient.createClient).mockResolvedValueOnce(fakeSupabase({ curriculum_units: [] }));
       const tools = await teacherTools(baseCtx());
       const result = await tools.findCurriculumUnit.execute!({ query: "nothing" }, { toolCallId: "1", messages: [], context: {} });
-      expect(result).toBe("No matching curriculum unit found that you teach.");
+      expect(result).toMatch(/^No unit with that title in the classes and subjects you teach\. Do not stop here/);
+    });
+
+    it("matches a title said loosely, word by word", async () => {
+      vi.mocked(serverClient.createClient).mockResolvedValueOnce(
+        fakeSupabase({
+          curriculum_units: [
+            { id: "u1", title: "Metals and Non-metals", grade_id: "g1", subject_id: "sub1", grades: { display_name: "X" }, subjects: { name: "Science" } },
+            { id: "u2", title: "Acids, Bases and Salts", grade_id: "g1", subject_id: "sub1", grades: { display_name: "X" }, subjects: { name: "Science" } },
+          ],
+          subject_assignments: [{ subject_id: "sub1", class_sections: { grade_id: "g1" } }],
+        }),
+      );
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.findCurriculumUnit.execute!({ query: "chapter acid bases and salts" }, { toolCallId: "1", messages: [], context: {} });
+      expect(result).toEqual([{ id: "u2", title: "Acids, Bases and Salts", gradeLabel: "X", subjectName: "Science" }]);
     });
   });
 

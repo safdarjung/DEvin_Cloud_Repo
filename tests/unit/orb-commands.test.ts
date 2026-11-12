@@ -37,7 +37,7 @@ describe("parseOrbCommand", () => {
 
 describe("ORB_COMMANDS", () => {
   it("lists every parsed command once with usage and help", () => {
-    expect(ORB_COMMANDS.map((c) => c.name)).toEqual(["anatomy", "teardown", "infographic", "mindmap", "diagram", "flashcards", "image"]);
+    expect(ORB_COMMANDS.map((c) => c.name)).toEqual(["anatomy", "teardown", "infographic", "mindmap", "diagram", "flashcards", "lessonplan", "image"]);
     for (const c of ORB_COMMANDS) {
       expect(c.usage.startsWith(`/${c.name} `)).toBe(true);
       expect(c.help.length).toBeGreaterThan(10);

@@ -442,3 +442,121 @@ export function toFlashcards(g: FlashcardsGeneration): Flashcards | null {
   const parsed = FlashcardsSchema.safeParse({ title: clip(g.title, 80), cards });
   return parsed.success ? parsed.data : null;
 }
+
+// ---- lesson plan (teachers) ----
+
+/** The teacher's own words, e.g. "class 10, acids bases and salts, 40 minutes, tomorrow". */
+export const LessonPlanRequestSchema = z
+  .object({ institutionSlug, request: z.string().trim().min(3).max(300), language: z.enum(EXPLAIN_LANGUAGES).default("en") })
+  .strict();
+export type LessonPlanRequest = z.infer<typeof LessonPlanRequestSchema>;
+
+export const LESSON_MINUTES = { min: 15, max: 120, fallback: 40 } as const;
+
+export const LessonPlanGenerationSchema = z
+  .object({
+    refusal: z.string(),
+    title: z.string(),
+    classLabel: z.string(),
+    subject: z.string(),
+    minutes: z.number(),
+    objectives: z.array(z.string()),
+    materials: z.array(z.string()),
+    phases: z.array(z.object({ name: z.string(), minutes: z.number(), teacher: z.string(), students: z.string() }).strict()),
+    boardNotes: z.array(z.string()),
+    checks: z.array(z.object({ question: z.string(), answer: z.string() }).strict()),
+    support: z.string(),
+    stretch: z.string(),
+    misconceptions: z.array(z.string()),
+    homework: z.string(),
+  })
+  .strict();
+export type LessonPlanGeneration = z.infer<typeof LessonPlanGenerationSchema>;
+
+const optText = (max: number) => z.string().trim().max(max);
+export const LessonPlanDocSchema = z
+  .object({
+    title: line(120),
+    classLabel: optText(60),
+    subject: optText(60),
+    minutes: z.number().int().min(LESSON_MINUTES.min).max(LESSON_MINUTES.max),
+    objectives: z.array(line(220)).min(2).max(5),
+    materials: z.array(line(120)).max(8),
+    phases: z.array(z.object({ name: line(60), minutes: z.number().int().min(1).max(LESSON_MINUTES.max), teacher: line(500), students: optText(300) }).strict()).min(3).max(7),
+    boardNotes: z.array(line(200)).max(8),
+    checks: z.array(z.object({ question: line(240), answer: line(300) }).strict()).min(2).max(5),
+    support: optText(300),
+    stretch: optText(300),
+    misconceptions: z.array(line(260)).max(4),
+    homework: optText(300),
+  })
+  .strict();
+export type LessonPlanDoc = z.infer<typeof LessonPlanDocSchema>;
+export type LessonPlanResponse = Refused | ({ refused: false; plan: LessonPlanDoc } & AiMeta);
+
+/** Phase minutes rescaled to add up exactly to the lesson's length (the model's sums drift). */
+export function fitMinutes(weights: readonly number[], total: number): number[] {
+  if (weights.length === 0) return [];
+  const w = weights.map((x) => (Number.isFinite(x) && x > 0 ? x : 1));
+  const sum = w.reduce((a, b) => a + b, 0);
+  const out = w.map((x) => Math.max(1, Math.round((x / sum) * total)));
+  let diff = total - out.reduce((a, b) => a + b, 0);
+  // Put the rounding difference on the longest phases, never below one minute.
+  const order = out.map((m, i) => [m, i] as const).sort((a, b) => b[0] - a[0]).map(([, i]) => i);
+  for (let k = 0; diff !== 0 && k < 1000; k++) {
+    const i = order[k % order.length]!;
+    if (diff > 0) {
+      out[i]! += 1;
+      diff--;
+    } else if (out[i]! > 1) {
+      out[i]! -= 1;
+      diff++;
+    }
+  }
+  return out;
+}
+
+export function toLessonPlanDoc(g: LessonPlanGeneration): LessonPlanDoc | null {
+  const list = (xs: string[], max: number, n: number) => [...new Set(xs.map((x) => clip(x, max)).filter(Boolean))].slice(0, n);
+  const minutes = Math.min(LESSON_MINUTES.max, Math.max(LESSON_MINUTES.min, Math.round(g.minutes) || LESSON_MINUTES.fallback));
+  const phases = g.phases
+    .map((p) => ({ name: clip(p.name, 60), minutes: p.minutes, teacher: clip(p.teacher, 500), students: clip(p.students, 300) }))
+    .filter((p) => p.name && p.teacher)
+    .slice(0, 7);
+  const fitted = fitMinutes(phases.map((p) => p.minutes), minutes);
+  const parsed = LessonPlanDocSchema.safeParse({
+    title: clip(g.title, 120),
+    classLabel: clip(g.classLabel, 60),
+    subject: clip(g.subject, 60),
+    minutes,
+    objectives: list(g.objectives, 220, 5),
+    materials: list(g.materials, 120, 8),
+    phases: phases.map((p, i) => ({ ...p, minutes: fitted[i]! })),
+    boardNotes: list(g.boardNotes, 200, 8),
+    checks: g.checks.map((c) => ({ question: clip(c.question, 240), answer: clip(c.answer, 300) })).filter((c) => c.question && c.answer).slice(0, 5),
+    support: clip(g.support, 300),
+    stretch: clip(g.stretch, 300),
+    misconceptions: list(g.misconceptions, 260, 4),
+    homework: clip(g.homework, 300),
+  });
+  return parsed.success ? parsed.data : null;
+}
+
+/** The plan as the lesson-plan form's text fields (objectives and resources, 2000 characters each). */
+export function lessonPlanFormText(plan: LessonPlanDoc): { title: string; objectives: string; resources: string } {
+  const cap = (t: string) => (t.length > 2000 ? `${t.slice(0, 1997)}...` : t);
+  return {
+    title: plan.title.slice(0, 120),
+    objectives: cap(plan.objectives.map((o) => `- ${o}`).join("\n")),
+    resources: cap(
+      [
+        ...plan.phases.map((p) => `${p.name} (${p.minutes} min): ${p.teacher}`),
+        plan.materials.length ? `Materials: ${plan.materials.join(", ")}` : "",
+        plan.checks.length ? `Check: ${plan.checks.map((c) => c.question).join(" ")}` : "",
+        plan.homework ? `Homework: ${plan.homework}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    ),
+  };
+}

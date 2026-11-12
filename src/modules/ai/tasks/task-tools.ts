@@ -106,6 +106,8 @@ function tasksBlock(nonce: string, actions: readonly string[]): string {
     "- To do one, call propose_task right away with its name and only the values the person gave. Do not look anything up first:",
     "  pass names, sections and dates as the person said them; the server finds the records and fills class rosters. Leave out what you do not know.",
     "- Put each thing the person named in its field: a class such as VIII-B in classSectionId; dates as YYYY-MM-DD, today or tomorrow.",
+    "- Never ask for details before showing a card, and never stop because something was not found: show the card with what you have; the person picks the rest on it.",
+    "- For text fields (objectives, notes, messages) write the real content yourself from what the person said. A lesson plan needs no curriculum unit.",
     "- The person reviews and approves every card. Never say a task was done; say a card is ready.",
     "- For several steps, call propose_task once per step and set after to the earlier call's number (1 = first).",
     "- Asked to do something no listed task fits? Call find_task with the person's words first. Only if it finds nothing say the app cannot,",

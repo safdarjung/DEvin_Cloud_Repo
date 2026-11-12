@@ -36,6 +36,8 @@ interface Props {
   starters?: string[];
   /** /image is on: it is listed with the other commands. */
   pictures: boolean;
+  /** Teachers and staff: /lessonplan is listed. */
+  staff: boolean;
   /** Ready questions shown in turn as the placeholder. */
   hints: readonly string[];
   /** Live mic loudness (0..1), read every frame while listening. */
@@ -83,7 +85,7 @@ function MicBars({ level }: { level: React.RefObject<{ level: number }> }) {
   );
 }
 
-export function OrbComposer({ chatOn, input, busy, starters, pictures, hints, level, reduced, voice, speech, inputRef, attach, askingAbout, onInput, onSend, onStop }: Props) {
+export function OrbComposer({ chatOn, input, busy, starters, pictures, staff, hints, level, reduced, voice, speech, inputRef, attach, askingAbout, onInput, onSend, onStop }: Props) {
   const listId = useId();
   // The placeholder: the standing line first, then one ready question at a time.
   const [turn, setTurn] = useState(0);
@@ -99,7 +101,7 @@ export function OrbComposer({ chatOn, input, busy, starters, pictures, hints, le
   // The input value at which Esc hid the list (typing on shows it again).
   const [hiddenAt, setHiddenAt] = useState<string | null>(null);
   const slash = /^\/\S*$/.test(input) ? input.slice(1).toLowerCase() : null;
-  const hits = slash === null ? [] : ORB_COMMANDS.filter((c) => c.name.startsWith(slash) && (pictures || c.name !== "image"));
+  const hits = slash === null ? [] : ORB_COMMANDS.filter((c) => c.name.startsWith(slash) && (pictures || c.name !== "image") && (staff || c.name !== "lessonplan"));
   const listOpen = hits.length > 0 && hiddenAt !== input;
   const at = Math.min(cursor, hits.length - 1);
   const pick = (name: string) => {

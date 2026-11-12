@@ -270,10 +270,23 @@ export function normalizeLabel(text: string): string {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+const ROMAN = ["", "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"];
+
+/** "10", "10th", "10a" also as Roman "x", "xa": sections are named "Grade X A" but said "class 10". */
+export function numeralForms(word: string): string[] {
+  const m = /^(\d{1,2})(?:st|nd|rd|th)?([a-z])?$/.exec(word);
+  const roman = m ? ROMAN[Number(m[1])] : undefined;
+  return roman ? [word, `${roman}${m![2] ?? ""}`] : [word];
+}
+
 function matches(option: EntityOption, search: string): boolean {
-  const target = normalizeLabel(`${option.label} ${option.hint ?? ""}`);
+  const label = `${option.label} ${option.hint ?? ""}`;
+  const target = normalizeLabel(label);
+  // A Roman class number must be a whole word ("x" is in "xi"): checked against the label's own words.
+  const tokens = label.toLowerCase().replace(/\b(class|grade|section|std)\b\.?/g, " ").split(/[^a-z0-9]+/).filter(Boolean);
+  const romanHit = (form: string) => tokens.some((t, i) => t === form || `${t}${tokens[i + 1] ?? ""}` === form);
   const words = search.split(/\s+/).map(normalizeLabel).filter(Boolean);
-  return words.length > 0 && words.every((w) => target.includes(w));
+  return words.length > 0 && words.every((w) => target.includes(w) || numeralForms(w).slice(1).some(romanHit));
 }
 
 async function firstServed(ctx: TenantContext, entity: EntityType, search: string | undefined, scope: EntityScope) {
