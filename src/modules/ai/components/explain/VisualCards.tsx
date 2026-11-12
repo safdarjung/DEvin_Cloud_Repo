@@ -64,13 +64,17 @@ function pngBlob(svg: SVGSVGElement, width: number, height: number): Promise<Blo
 }
 
 /** The card round a drawing: what it is, its title, where it came from, the save buttons and the facts note. */
-function Frame({ kind, Icon, title, meta, width, height, children }: {
+const FILE_NOTE = "Drawn from your file by AI. It can miss or misread things, so check it against the file before you share or print it.";
+
+function Frame({ kind, Icon, title, meta, width, height, fromFile, children }: {
   kind: string;
   Icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: string;
   meta: AiMeta;
   width: number;
   height: number;
+  /** Drawn from the person's own file: the badge and note say so instead of "general knowledge". */
+  fromFile?: boolean;
   children: (ref: React.RefObject<SVGSVGElement | null>) => React.ReactNode;
 }) {
   const svg = useRef<SVGSVGElement>(null);
@@ -103,7 +107,7 @@ function Frame({ kind, Icon, title, meta, width, height, children }: {
           {kind}
         </Badge>
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</h3>
-        <ProviderBadge provider={meta.provider} />
+        {fromFile ? <Badge variant="secondary">Read from your file (cloud)</Badge> : <ProviderBadge provider={meta.provider} />}
       </header>
       {/* The whole drawing, fitted to the card (never blown up past its own size); a click opens it large. */}
       <button type="button" onClick={() => setOpen(true)} aria-label={`Open the ${kind.toLowerCase()} at full size`} className="block max-h-[70dvh] w-full cursor-zoom-in overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" style={{ background: PAPER }}>
@@ -140,7 +144,7 @@ function Frame({ kind, Icon, title, meta, width, height, children }: {
             This browser could not make the picture. Save the SVG instead.
           </p>
         )}
-        <p className="w-full text-xs text-muted-foreground">{SOURCES_NOTE}</p>
+        <p className="w-full text-xs text-muted-foreground">{fromFile ? FILE_NOTE : SOURCES_NOTE}</p>
       </footer>
     </article>
   );
@@ -192,11 +196,11 @@ function MapBox({ n }: { n: MapNode }) {
   );
 }
 
-export function MindMapCard({ result }: { result: MindMapResult }) {
+export function MindMapCard({ result, fromFile }: { result: MindMapResult; fromFile?: boolean }) {
   const { nodes, links, width, height } = mindMapLayout(result.mindmap);
   const at = new Map(nodes.map((n) => [n.id, n]));
   return (
-    <Frame kind="Mind map" Icon={Network} title={result.mindmap.title} meta={result} width={width} height={height}>
+    <Frame kind="Mind map" Icon={Network} title={result.mindmap.title} meta={result} width={width} height={height} fromFile={fromFile}>
       {(ref) => (
         <svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={`Mind map of ${result.mindmap.title}`} style={{ display: "block" }}>
           <rect width={width} height={height} fill={PAPER} />
@@ -248,14 +252,14 @@ function FlowShape({ b }: { b: FlowBox }) {
   );
 }
 
-export function DiagramCard({ result }: { result: DiagramResult }) {
+export function DiagramCard({ result, fromFile }: { result: DiagramResult; fromFile?: boolean }) {
   const { boxes, edges, width, height } = flowLayout(result.flow);
   const at = new Map(boxes.map((b) => [b.id, b]));
   const laneX = width - 18;
   // Several flowcharts can share a page: each needs its own arrowhead id.
   const arrow = `flow-arrow-${useId().replace(/[^a-z0-9]/gi, "")}`;
   return (
-    <Frame kind="Flowchart" Icon={GitFork} title={result.flow.title} meta={result} width={width} height={height}>
+    <Frame kind="Flowchart" Icon={GitFork} title={result.flow.title} meta={result} width={width} height={height} fromFile={fromFile}>
       {(ref) => (
         <svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox={`0 0 ${width} ${height}`} width="100%" role="img" aria-label={`Flowchart of ${result.flow.title}`} style={{ display: "block" }}>
           <defs>

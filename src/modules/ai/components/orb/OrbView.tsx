@@ -16,7 +16,7 @@ import Link from "next/link";
 import type { Role } from "@/lib/auth/permissions";
 import { chatErrorMessage } from "@/modules/ai/chat-error";
 import { startProposal } from "@/modules/ai/components/task-card/api";
-import { runAnatomy, runDiagram, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
+import { runAnatomy, runDiagram, runFileAsk, runImage, runInfographic, runMindMap } from "@/modules/ai/components/explain/api";
 import { useSpeechOutput } from "@/modules/ai/components/voice/useSpeechOutput";
 import { plainChatText } from "@/modules/ai/chat-text";
 import { parseOrbCommand } from "@/modules/ai/explain/commands";
@@ -25,12 +25,15 @@ import { useResolutions } from "@/modules/ai/components/task-card/store";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
 import type { TaskProposalOutput } from "@/modules/ai/tasks/types";
 import { OrbBody, buzz, type Lean } from "./OrbBody";
+import { uploadMaterialFile } from "@/modules/textbooks/components/upload-file";
+import { giveFileReadingConsent, giveTeacherFileReadingConsent } from "@/modules/study/help.actions";
 import { OrbComposer } from "./OrbComposer";
+import { AttachButton, FileBar, type AttachedFile, type FileAction } from "./OrbFile";
 import type { OrbSignals } from "./OrbCore";
 import { OrbDots, OrbLegend } from "./OrbDots";
 import { FeatureSearch, OrbGroups, useModeSwipe } from "./OrbGroups";
 import { OrbModes, tabId } from "./OrbModes";
-import { OrbTranscript, proposalsIn, type ExplainEntry, type LocalCard, type OrbMessage } from "./OrbTranscript";
+import { OrbTranscript, proposalsIn, type ExplainEntry, type NextKind, type LocalCard, type OrbMessage } from "./OrbTranscript";
 import { CardFlight, OrbTray, type Flight, type StartFailure } from "./OrbTray";
 import { orbState, stepIndex, typingPulse } from "./orb-layout";
 import { MODES, explainFeatures, groupsFor, modesOf, pickMode, pushRecent, type OrbFeature, type OrbMode } from "./orb-modes";
@@ -224,6 +227,65 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const patchExplain = (id: string, p: Partial<ExplainEntry>) => setExplains((xs) => xs.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const audience = AUDIENCE[role] ?? "staff";
 
+  // A PDF or photo the AI reads (OrbFile): uploaded to the person's own shelf, then asked about, summarised or drawn.
+  const [file, setFile] = useState<AttachedFile | null>(null);
+  const [upload, setUpload] = useState<number | null>(null);
+  const [fileNote, setFileNote] = useState<string | null>(null);
+  /** Set while the first read waits for the person's agreement; runs the read again once they agree. */
+  const [afterAgree, setAfterAgree] = useState<(() => void) | null>(null);
+
+  async function attachFile(f: File) {
+    setFileNote(null);
+    setUpload(0);
+    const res = await uploadMaterialFile(institutionSlug, f, {}, setUpload);
+    setUpload(null);
+    if (!res.ok) return setFileNote(res.error);
+    setFile({ materialId: res.materialId, fileName: res.fileName, sizeBytes: res.sizeBytes });
+    setAfterAgree(null);
+    signals.current.shock = 1;
+  }
+
+  async function askAbout(kind: FileAction | "ask", question = "") {
+    if (!file || explaining) return;
+    if (kind === "ask" && !question.trim()) return;
+    setInput("");
+    setOpen(true);
+    setAfterAgree(null);
+    signals.current.shock = 1;
+    const name = file.fileName;
+    const line = { ask: question, summary: `Summarize ${name}`, mindmap: `Mind map of ${name}`, diagram: `Flowchart of ${name}` }[kind];
+    const id = `${Date.now()}-${explains.length}`;
+    setExplains((xs) => [...xs, { id, at: messages.length, line, subject: name, mode: "anatomy", pending: true, fromFile: true }]);
+    const failed = (e: { message: string; fieldErrors?: Record<string, string[]> }) => {
+      if (e.fieldErrors?.consent) {
+        setExplains((xs) => xs.filter((x) => x.id !== id));
+        return setAfterAgree(() => () => void askAbout(kind, question));
+      }
+      patchExplain(id, { pending: false, error: explainError(e.message) });
+    };
+    const topic = name.replace(/\.[^.]+$/, "").slice(0, 200) || "the file";
+    const ref = { institutionSlug, materialId: file.materialId };
+    if (kind === "mindmap" || kind === "diagram") {
+      const res = kind === "mindmap" ? await runMindMap({ ...ref, topic }) : await runDiagram({ ...ref, topic });
+      if (!res.ok) return failed(res.error);
+      if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+      return patchExplain(id, { pending: false, ...("mindmap" in res.data ? { mindmap: res.data } : { diagram: res.data }) });
+    }
+    const res = await runFileAsk({ ...ref, action: kind, question });
+    if (!res.ok) return failed(res.error);
+    if (res.data.refused) return patchExplain(id, { pending: false, error: explainError(res.data.reason) });
+    patchExplain(id, { pending: false, file: res.data });
+    if (speech.readAloud) speech.speak(res.data.result.answer);
+  }
+
+  async function agreeToRead() {
+    const agreed = role === "student" ? await giveFileReadingConsent(institutionSlug, { agree: true }) : await giveTeacherFileReadingConsent(institutionSlug, { agree: true });
+    if (!agreed.ok) return setFileNote(explainError(agreed.error.message));
+    const again = afterAgree;
+    setAfterAgree(null);
+    again?.();
+  }
+
   /** /anatomy, /teardown, /infographic, /mindmap, /diagram, /image: the explain routes, not chat; the result is its own transcript entry. */
   async function runCommand(line: string, cmd: NonNullable<ReturnType<typeof parseOrbCommand>>) {
     if (explaining) return;
@@ -265,6 +327,13 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     if (speech.readAloud) speech.speak(`${res.data.anatomy.title}. ${res.data.anatomy.summary}`);
   }
 
+  /** "Also make": the same topic as another kind of result, as if typed. */
+  function nextFrom(id: string, kind: NextKind) {
+    const topic = explains.find((x) => x.id === id)?.subject;
+    if (!topic || explaining) return;
+    void runCommand(`/${kind === "anatomy" ? "anatomy" : kind} ${topic}`, { command: kind, arg: topic });
+  }
+
   async function changeDepth(id: string, depth: ExplainDepth) {
     const x = explains.find((e) => e.id === id);
     if (!x?.anatomy || explaining) return;
@@ -285,10 +354,12 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     patchExplain(id, { busy: false, poster: res.data });
   }
 
-  function send(text: string, taskHint?: string) {
+  function send(text: string, taskHint?: string, typed = false) {
     const t = text.trim();
     if (!chat || !t || busy) return;
     speech.stop();
+    // With a file attached, what the person types is a question about it (commands still run as commands).
+    if (typed && file && !parseOrbCommand(t)) return void askAbout("ask", t);
     const parsed = taskHint ? null : parseOrbCommand(t);
     // /image off: the text goes to chat like any other message.
     const cmd = parsed?.command === "image" && !pictures ? null : parsed;
@@ -630,7 +701,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             messages={messages}
             localCards={localCards}
             explains={explains}
-            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id) }}
+            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id), onAskFile: (q) => void askAbout("ask", q), onNext: nextFrom }}
             status={status}
             error={error ? chatErrorMessage(error) : null}
             accent={accent[1]}
@@ -698,8 +769,23 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           }}
           onDismissFailure={() => setFailure(null)}
         />
+        <FileBar
+          file={file}
+          busy={explaining}
+          needConsent={afterAgree !== null}
+          note={fileNote}
+          onAction={(a) => void askAbout(a)}
+          onAgree={() => void agreeToRead()}
+          onRemove={() => {
+            setFile(null);
+            setAfterAgree(null);
+          }}
+          onDismissNote={() => setFileNote(null)}
+        />
         <OrbComposer
           chatOn={Boolean(chat)}
+          attach={chat ? <AttachButton progress={upload} disabled={busy || explaining} onPick={(f) => void attachFile(f)} /> : null}
+          askingAbout={file?.fileName}
           input={input}
           busy={busy}
           starters={starters}
@@ -716,7 +802,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             signals.current.pulse = typingPulse(signals.current.pulse);
             setTypingTick((n) => n + 1);
           }}
-          onSend={send}
+          onSend={(t) => send(t, undefined, true)}
           onStop={() => void stop()}
         />
       </div>

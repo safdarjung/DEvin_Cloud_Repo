@@ -277,7 +277,13 @@ export type DiagramResponse = Refused | ({ refused: false; flow: Flow } & AiMeta
 
 /** One request shape for both: only the topic the person typed reaches the model. */
 export const VisualRequestSchema = z
-  .object({ institutionSlug, topic: z.string().trim().min(1).max(200), language: z.enum(EXPLAIN_LANGUAGES).default("en") })
+  .object({
+    institutionSlug,
+    topic: z.string().trim().min(1).max(200),
+    language: z.enum(EXPLAIN_LANGUAGES).default("en"),
+    /** A file on the caller's study shelf: draw the map or flowchart from the file instead of from the topic alone. */
+    materialId: uuid.optional(),
+  })
   .strict();
 export type VisualRequest = z.infer<typeof VisualRequestSchema>;
 
@@ -373,4 +379,43 @@ export type ImageResponse = Refused | ({ refused: false; prompt: string; image: 
 /** The refusal message for a subject, or null. */
 export function blockedTopic(subject: string): string | null {
   return BLOCKED.find(([re]) => re.test(subject))?.[1] ?? null;
+}
+
+// ---- ask a file ----
+
+export const FILE_ACTIONS = ["ask", "summary"] as const;
+export const FileAskRequestSchema = z
+  .object({
+    institutionSlug,
+    /** A file on the caller's study shelf (curriculum_materials.id), uploaded from the orb or the Study page. */
+    materialId: uuid,
+    action: z.enum(FILE_ACTIONS),
+    question: z.string().trim().max(500).default(""),
+    language: z.enum(EXPLAIN_LANGUAGES).default("en"),
+  })
+  .strict()
+  .refine((r) => r.action === "summary" || r.question.length > 0, { message: "Type a question about the file.", path: ["question"] });
+export type FileAskRequest = z.infer<typeof FileAskRequestSchema>;
+
+export const FileAnswerGenerationSchema = z
+  .object({ refusal: z.string(), answer: z.string(), points: z.array(z.string()), found: z.boolean(), followUps: z.array(z.string()) })
+  .strict();
+export type FileAnswerGeneration = z.infer<typeof FileAnswerGenerationSchema>;
+
+export const FileAnswerSchema = z
+  .object({
+    answer: z.string().trim().min(1).max(2400),
+    points: z.array(line(240)).max(6),
+    /** false: the file does not cover the question (the answer says so). */
+    found: z.boolean(),
+    followUps: z.array(line(120)).max(3),
+  })
+  .strict();
+export type FileAnswer = z.infer<typeof FileAnswerSchema>;
+export type FileAnswerResponse = Refused | ({ refused: false; fileName: string; action: (typeof FILE_ACTIONS)[number]; result: FileAnswer } & AiMeta);
+
+export function toFileAnswer(g: FileAnswerGeneration): FileAnswer | null {
+  const clean = (xs: string[], max: number, n: number) => [...new Set(xs.map((x) => clip(x, max)).filter(Boolean))].slice(0, n);
+  const parsed = FileAnswerSchema.safeParse({ answer: clip(g.answer, 2400), points: clean(g.points, 240, 6), found: g.found, followUps: clean(g.followUps, 120, 3) });
+  return parsed.success ? parsed.data : null;
 }

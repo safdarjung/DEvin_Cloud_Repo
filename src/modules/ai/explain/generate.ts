@@ -12,9 +12,13 @@ import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { hasFileReadingConsent } from "@/modules/study/generate";
 import { fileSource } from "@/modules/study/help-sources";
-import { anatomyInstructions, anatomyPrompt, flowInstructions, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
+import { anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flowInstructions, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
 import {
   AnatomyGenerationSchema,
+  FileAnswerGenerationSchema,
+  toFileAnswer,
+  type FileAnswerResponse,
+  type FileAskRequest,
   FlowGenerationSchema,
   InfographicGenerationSchema,
   MindMapGenerationSchema,
@@ -47,6 +51,15 @@ const base = (ctx: TenantContext) => ({
   permission: "ai.chat" as const,
   denyNames: ctx.user.profile.fullName ? [ctx.user.profile.fullName] : [],
 });
+
+const CONSENT_NEEDED = "Tick the box to agree that your file is sent to the school's AI provider to be read.";
+
+/** The file the person picked, read under their own access: consent first, then ownership (RLS), size and type checks. */
+async function readableFile(ctx: TenantContext, materialId: string): Promise<ActionResult<NonNullable<Awaited<ReturnType<typeof fileSource>>["file"]>>> {
+  if (!(await hasFileReadingConsent(ctx))) return fail("validation_failed", CONSENT_NEEDED, { consent: ["Required the first time"] });
+  const source = await fileSource(await createClient(), ctx, materialId, ctx.membership.role === "student" ? "student" : "teacher");
+  return source.file ? ok(source.file) : fail("not_found", "That file was not found.");
+}
 
 export async function explainAnatomy(ctx: TenantContext, input: AnatomyRequest): Promise<ActionResult<AnatomyResponse>> {
   const blocked = blockedTopic(input.subject);
@@ -102,15 +115,10 @@ export async function makeInfographic(ctx: TenantContext, input: InfographicRequ
 export async function makeMindMap(ctx: TenantContext, input: VisualRequest): Promise<ActionResult<MindMapResponse>> {
   const blocked = blockedTopic(input.topic);
   if (blocked) return ok({ refused: true, reason: blocked });
-  const generated = await runStructured({
-    ...base(ctx),
-    feature: "mindmap",
-    schema: MindMapGenerationSchema,
-    instructions: mindMapInstructions(input),
-    prompt: visualPrompt(input.topic),
-    maxOutputTokens: MINDMAP_TOKENS,
-    agentCloud: true,
-  });
+  const call = { ...base(ctx), feature: "mindmap", schema: MindMapGenerationSchema, instructions: mindMapInstructions(input), prompt: visualPrompt(input.topic, Boolean(input.materialId)), maxOutputTokens: MINDMAP_TOKENS };
+  const file = input.materialId ? await readableFile(ctx, input.materialId) : null;
+  if (file && !file.ok) return file;
+  const generated = file ? await runStructuredFile({ ...call, file: file.data }) : await runStructured({ ...call, agentCloud: true });
   if (!generated.ok) return generated;
 
   const { data, provider, model } = generated.data;
@@ -123,15 +131,10 @@ export async function makeMindMap(ctx: TenantContext, input: VisualRequest): Pro
 export async function makeDiagram(ctx: TenantContext, input: VisualRequest): Promise<ActionResult<DiagramResponse>> {
   const blocked = blockedTopic(input.topic);
   if (blocked) return ok({ refused: true, reason: blocked });
-  const generated = await runStructured({
-    ...base(ctx),
-    feature: "diagram",
-    schema: FlowGenerationSchema,
-    instructions: flowInstructions(input),
-    prompt: visualPrompt(input.topic),
-    maxOutputTokens: FLOW_TOKENS,
-    agentCloud: true,
-  });
+  const call = { ...base(ctx), feature: "diagram", schema: FlowGenerationSchema, instructions: flowInstructions(input), prompt: visualPrompt(input.topic, Boolean(input.materialId)), maxOutputTokens: FLOW_TOKENS };
+  const file = input.materialId ? await readableFile(ctx, input.materialId) : null;
+  if (file && !file.ok) return file;
+  const generated = file ? await runStructuredFile({ ...call, file: file.data }) : await runStructured({ ...call, agentCloud: true });
   if (!generated.ok) return generated;
 
   const { data, provider, model } = generated.data;
@@ -148,4 +151,24 @@ export async function makeImage(ctx: TenantContext, input: ImageRequest): Promis
   if (!drawn.ok) return drawn;
   const { base64, mediaType, provider, model } = drawn.data;
   return ok({ refused: false, prompt: input.prompt, image: { base64, mediaType }, provider, model });
+}
+
+export async function askFile(ctx: TenantContext, input: FileAskRequest): Promise<ActionResult<FileAnswerResponse>> {
+  const file = await readableFile(ctx, input.materialId);
+  if (!file.ok) return file;
+  const generated = await runStructuredFile({
+    ...base(ctx),
+    feature: "file_ask",
+    schema: FileAnswerGenerationSchema,
+    instructions: fileAskInstructions(input),
+    prompt: fileAskPrompt(input),
+    maxOutputTokens: 1400,
+    file: file.data,
+  });
+  if (!generated.ok) return generated;
+  const { data, provider, model } = generated.data;
+  if (data.refusal.trim()) return ok({ refused: true, reason: clip(data.refusal, 300) });
+  const result = toFileAnswer(data);
+  if (!result) return fail("ai_invalid_output", "The answer came back empty. Try asking in other words.");
+  return ok({ refused: false, fileName: file.data.fileName, action: input.action, result, provider, model });
 }

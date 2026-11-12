@@ -44,6 +44,10 @@ interface Props {
   voice: OrbVoiceUi;
   speech: OrbReadAloudUi;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  /** The paperclip (see OrbFile). */
+  attach?: React.ReactNode;
+  /** A file is attached: the box asks about it. */
+  askingAbout?: string | null;
   onInput: (v: string) => void;
   onSend: (text: string) => void;
   onStop: () => void;
@@ -79,7 +83,7 @@ function MicBars({ level }: { level: React.RefObject<{ level: number }> }) {
   );
 }
 
-export function OrbComposer({ chatOn, input, busy, starters, pictures, hints, level, reduced, voice, speech, inputRef, onInput, onSend, onStop }: Props) {
+export function OrbComposer({ chatOn, input, busy, starters, pictures, hints, level, reduced, voice, speech, inputRef, attach, askingAbout, onInput, onSend, onStop }: Props) {
   const listId = useId();
   // The placeholder: the standing line first, then one ready question at a time.
   const [turn, setTurn] = useState(0);
@@ -90,7 +94,7 @@ export function OrbComposer({ chatOn, input, busy, starters, pictures, hints, le
     return () => clearInterval(t);
   }, [idleBox, hints.length, reduced]);
   const hint = turn % (hints.length + 1);
-  const placeholder = voice.listening ? "Listening…" : hint === 0 ? PLACEHOLDER : `Try “${hints[hint - 1]}”`;
+  const placeholder = voice.listening ? "Listening…" : askingAbout ? `Ask about ${askingAbout}…` : hint === 0 ? PLACEHOLDER : `Try “${hints[hint - 1]}”`;
   const [cursor, setCursor] = useState(0);
   // The input value at which Esc hid the list (typing on shows it again).
   const [hiddenAt, setHiddenAt] = useState<string | null>(null);
@@ -163,6 +167,7 @@ export function OrbComposer({ chatOn, input, busy, starters, pictures, hints, le
             // Focused, the box glows in the orb's colour (--orb-b from OrbView).
             className="flex items-center gap-1 rounded-full border border-border bg-card p-1.5 shadow-[0_16px_40px_-20px_rgb(0_0_0/0.35)] transition-[border-color,box-shadow] duration-200 focus-within:border-foreground/40 focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--orb-b,transparent)_26%,transparent),0_18px_44px_-18px_var(--orb-b,rgb(0_0_0/0.35))]"
           >
+            {attach}
             <button
               type="button"
               onClick={voice.listening ? voice.stop : voice.start}

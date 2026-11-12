@@ -81,7 +81,7 @@ describe("streamCloudAgent", () => {
     checkLimitsMock.mockResolvedValueOnce({ ok: false, code: "quota_exceeded" });
     const result = await streamCloudAgent(baseInput({ feature: "assistant", redactions: 3 }));
     expect(checkLimitsMock).toHaveBeenCalledWith(expect.anything(), "assistant");
-    expect(result).toEqual({ ok: false, error: { code: "quota_exceeded", message: expect.stringMatching(/quota/i) } });
+    expect(result).toEqual({ ok: false, error: { code: "quota_exceeded", message: expect.stringMatching(/AI limit is used up/i) } });
     expect(logUsageMock).toHaveBeenCalledWith(
       expect.objectContaining({ feature: "assistant", ok: false, errorCode: "quota_exceeded", redactions: 3 }),
     );

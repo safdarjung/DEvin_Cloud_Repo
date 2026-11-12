@@ -14,6 +14,7 @@ import { ArrowDown, Check, ChevronDown, Copy, RefreshCw, RotateCcw, TriangleAler
 import { Button } from "@/components/ui/button";
 import { ActionDraftCard, isDraftToolPartType, parseDraftToolOutput } from "@/modules/ai/components/ActionDraftCard";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
+import { FileAnswerCard, type FileAnswerResult } from "./OrbFile";
 import TaskStack from "@/modules/ai/components/task-card/TaskStack";
 import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
@@ -64,6 +65,9 @@ export interface ExplainEntry {
   mindmap?: MindMapResult;
   diagram?: DiagramResult;
   image?: ImageResult;
+  file?: FileAnswerResult;
+  /** Made from an uploaded file: the follow-on buttons would lose the file, so they are not offered. */
+  fromFile?: boolean;
   /** A depth change or a poster is being made. */
   busy?: boolean;
   /** The envelope's message (or the refusal reason): never blank. */
@@ -73,7 +77,17 @@ export interface ExplainEntry {
 export interface ExplainHandlers {
   onDepth: (id: string, depth: ExplainDepth) => void;
   onPoster: (id: string) => void;
+  onAskFile: (question: string) => void;
+  /** "Also make": the same topic as another kind of result. */
+  onNext: (id: string, kind: NextKind) => void;
 }
+
+export type NextKind = "anatomy" | "mindmap" | "diagram";
+const NEXT: { kind: NextKind; label: string }[] = [
+  { kind: "anatomy", label: "Explain the parts" },
+  { kind: "mindmap", label: "Draw a mind map" },
+  { kind: "diagram", label: "Draw a flowchart" },
+];
 
 function Dots({ label }: { label: string }) {
   return (
@@ -100,9 +114,20 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
       )}
       {e.busy && <Dots label="Working on it" />}
       {e.poster && <InfographicCard result={e.poster} variant="poster" />}
-      {e.mindmap && <MindMapCard result={e.mindmap} />}
-      {e.diagram && <DiagramCard result={e.diagram} />}
+      {e.mindmap && <MindMapCard result={e.mindmap} fromFile={e.fromFile} />}
+      {e.diagram && <DiagramCard result={e.diagram} fromFile={e.fromFile} />}
       {e.image && <ImageCard result={e.image} />}
+      {!e.pending && !e.busy && !e.fromFile && (e.anatomy || e.mindmap || e.diagram) && (
+        <div className="flex flex-wrap items-center gap-1.5" aria-label="Also make">
+          <span className="text-xs text-muted-foreground">Also:</span>
+          {NEXT.filter((n) => !(n.kind === "anatomy" && e.anatomy) && !(n.kind === "mindmap" && e.mindmap) && !(n.kind === "diagram" && e.diagram)).map((n) => (
+            <Button key={n.kind} type="button" size="sm" variant="outline" className="min-h-9 rounded-full text-xs" onClick={() => handlers.onNext(e.id, n.kind)}>
+              {n.label}
+            </Button>
+          ))}
+        </div>
+      )}
+      {e.file && <FileAnswerCard result={e.file} onAsk={handlers.onAskFile} disabled={Boolean(e.pending || e.busy)} />}
       {e.error && (
         <p role="alert" className="flex items-start gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-destructive">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
