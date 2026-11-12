@@ -2,9 +2,10 @@ import type { ReactNode } from "react";
 import { AlertTriangle, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-function StateBox({ icon, title, description, bare, children }: { icon: ReactNode; title: string; description?: string; bare?: boolean; children?: ReactNode }) {
+function StateBox({ icon, title, description, bare, children, kind }: { icon: ReactNode; title: string; description?: string; bare?: boolean; children?: ReactNode; kind: "empty" | "error" }) {
   return (
-    <div className={bare ? "flex flex-col items-center gap-2 px-4 py-8 text-center" : "flex flex-col items-center gap-2 rounded-lg border bg-card px-4 py-10 text-center"}>
+    // data-state lets the page crawler (and tests) find empty and error states without matching wording.
+    <div data-state={kind} className={bare ? "flex flex-col items-center gap-2 px-4 py-8 text-center" : "flex flex-col items-center gap-2 rounded-lg border bg-card px-4 py-10 text-center"}>
       <div className="text-muted-foreground">{icon}</div>
       <p className="text-sm font-semibold">{title}</p>
       {description && <p className="max-w-prose text-sm text-muted-foreground">{description}</p>}
@@ -16,7 +17,7 @@ function StateBox({ icon, title, description, bare, children }: { icon: ReactNod
 /** `bare`: no border/background, for use inside a Card. */
 export function EmptyState({ title, description, action, bare }: { title: string; description?: string; action?: ReactNode; bare?: boolean }) {
   return (
-    <StateBox icon={<Inbox className="size-6" aria-hidden />} title={title} description={description} bare={bare}>
+    <StateBox kind="empty" icon={<Inbox className="size-6" aria-hidden />} title={title} description={description} bare={bare}>
       {action}
     </StateBox>
   );
@@ -37,7 +38,7 @@ export function ErrorState({
 }) {
   return (
     <div role="alert">
-      <StateBox icon={<AlertTriangle className="size-6 text-destructive" aria-hidden />} title={title} description={description} bare={bare}>
+      <StateBox kind="error" icon={<AlertTriangle className="size-6 text-destructive" aria-hidden />} title={title} description={description} bare={bare}>
         {onRetry && (
           <Button type="button" variant="outline" className="mt-2" onClick={onRetry}>
             Try again

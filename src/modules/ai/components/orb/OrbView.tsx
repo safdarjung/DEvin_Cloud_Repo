@@ -30,6 +30,8 @@ import { uploadMaterialFile } from "@/modules/textbooks/components/upload-file";
 import { giveFileReadingConsent, giveTeacherFileReadingConsent } from "@/modules/study/help.actions";
 import { OrbComposer } from "./OrbComposer";
 import { AttachButton, FileBar, type AttachedFile, type FileAction } from "./OrbFile";
+import { OrbHistory, type OpenedChat } from "./OrbHistory";
+import { callAction } from "@/modules/ai/components/task-card/api";
 import type { OrbSignals } from "./OrbCore";
 import { OrbDots, OrbLegend } from "./OrbDots";
 import { FeatureSearch, OrbGroups, useModeSwipe } from "./OrbGroups";
@@ -237,6 +239,34 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const audience = AUDIENCE[role] ?? "staff";
   const staff = role !== "student" && role !== "guardian";
 
+  // Recent chats (OrbHistory): every finished answer saves the conversation to the person's own row.
+  const chatId = useRef<string | null>(null);
+  useEffect(() => {
+    if (status !== "ready" || messages.length === 0 || messages.at(-1)?.role !== "assistant") return;
+    const snapshot = messages
+      .map((m) => ({ id: m.id, role: m.role, parts: m.parts.flatMap((p) => (p.type === "text" && p.text.trim() ? [{ type: "text", text: p.text.slice(0, 4000) }] : [])) }))
+      .filter((m) => m.parts.length > 0 && m.role !== "system")
+      .slice(-50);
+    if (!snapshot.some((m) => m.role === "user")) return;
+    const first = snapshot.find((m) => m.role === "user")?.parts[0]?.text ?? "Orb chat";
+    const t = setTimeout(() => {
+      void callAction<{ id: string }>(institutionSlug, "ai.orb.chat.save", { ...(chatId.current ? { chatId: chatId.current } : {}), title: first.slice(0, 80), messages: snapshot }).then((res) => {
+        if (res.ok) chatId.current = res.data.id;
+      });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [status, messages, institutionSlug]);
+
+  function openChat(saved: OpenedChat) {
+    if (busy) void stop();
+    clearError();
+    chatId.current = saved.id;
+    setLocalCards([]);
+    setExplains([]);
+    setMessages(saved.messages as OrbMessage[]);
+    setOpen(true);
+  }
+
   // A PDF or photo the AI reads (OrbFile): uploaded to the person's own shelf, then asked about, summarised or drawn.
   const [file, setFile] = useState<AttachedFile | null>(null);
   const [upload, setUpload] = useState<number | null>(null);
@@ -364,14 +394,14 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   }
 
   /** The plan's text into the lesson-plan approval card: class, subject and date are matched there and the teacher checks them. */
-  async function saveLessonPlan(id: string) {
+  async function saveLessonPlan(id: string, chosen: readonly { title: string; url: string }[] = []) {
     const x = explains.find((e) => e.id === id);
     const plan = x?.lessonplan?.plan;
     if (!plan || x.busy) return;
     patchExplain(id, { busy: true, error: undefined });
     const when = plannedFrom(x.subject);
     const values = {
-      ...lessonPlanFormText(plan),
+      ...lessonPlanFormText(plan, chosen),
       ...(plan.classLabel ? { classSectionId: plan.classLabel } : {}),
       ...(plan.subject ? { subjectId: plan.subject } : {}),
       ...(when ? { plannedOn: when } : {}),
@@ -770,7 +800,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             messages={messages}
             localCards={localCards}
             explains={explains}
-            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id), onAskFile: (q) => void askAbout("ask", q), onNext: nextFrom, onSaveLessonPlan: (id) => void saveLessonPlan(id) }}
+            explainHandlers={{ onDepth: (id, d) => void changeDepth(id, d), onPoster: (id) => void makePoster(id), onAskFile: (q) => void askAbout("ask", q), onNext: nextFrom, onSaveLessonPlan: (id, chosen) => void saveLessonPlan(id, chosen) }}
             status={status}
             error={error ? chatErrorMessage(error) : null}
             accent={accent[1]}
@@ -779,9 +809,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
               void regenerate({ body: { mode } });
             }}
             onDismissError={clearError}
+            onOpenChat={openChat}
             onNewChat={() => {
               if (busy) void stop();
               clearError();
+              chatId.current = null;
               setMessages([]);
               setLocalCards([]);
               setExplains([]);
@@ -838,6 +870,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           }}
           onDismissFailure={() => setFailure(null)}
         />
+        {chat && !showTranscript && (
+          <div className="mb-1.5 flex justify-end">
+            <OrbHistory institutionSlug={institutionSlug} onOpenChat={openChat} />
+          </div>
+        )}
         <FileBar
           file={file}
           busy={explaining}

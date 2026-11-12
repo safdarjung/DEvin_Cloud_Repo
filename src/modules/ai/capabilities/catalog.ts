@@ -252,6 +252,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     queries: [
       "exams.listExams",
       "exams.examGradeDistribution",
+      "exams.sectionScoreBands",
       "exams.listSubjectOptions",
       "exams.listSectionOptions",
       "exams.listTermOptions",
@@ -282,7 +283,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   timetable_overview: {
     key: "timetable_overview",
     label: "Timetable",
-    description: "Room utilisation and a section's/teacher's schedule, teacher workload, scheduling conflicts, and substitutions.",
+    description: "Today's timetable and my schedule, a section's or teacher's timetable, room use, teacher workload, scheduling conflicts, and substitutions.",
     kind: "chat_tool",
     roles: ASSISTANT_ROLES,
     permission: "timetable.read",
@@ -290,6 +291,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     data: "personal",
     defaultOn: ASSISTANT_ROLES,
     queries: [
+      "timetable.todayFor",
       "timetable.roomUtilisation",
       "timetable.forSection",
       "timetable.forTeacher",
@@ -436,7 +438,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     module: "ai_teacher",
     data: "aggregate",
     defaultOn: ["teacher"],
-    tools: ["findCurriculumUnit"],
+    tools: ["findCurriculumUnit", "listMyUnits"],
   },
   attendance_pattern: {
     key: "attendance_pattern",

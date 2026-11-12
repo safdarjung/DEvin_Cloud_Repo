@@ -7,6 +7,7 @@ import { isoDate, uuid } from "@/lib/schemas/common";
 import { z } from "zod";
 import {
   examGradeDistribution,
+  sectionScoreBands,
   getCurrentResult,
   getExamWithPapers,
   getMyPapers,
@@ -181,6 +182,15 @@ export const getResultRemarkQuery = defineQuery({
 
 // permission: exam.result.read — module default; no direct page caller
 // (only composed internally by core's getDashboardData).
+// Counts only, per section: "how many in each class 10 section scored under 70%?" (cloud-safe aggregate).
+export const sectionScoreBandsQuery = defineQuery({
+  name: "exams.sectionScoreBands",
+  schema: z.object({ examId: uuid.optional(), belowPercent: z.number().min(1).max(100).optional() }).strict(),
+  module: "exams",
+  permission: "exam.result.read",
+  handler: (input, ctx) => sectionScoreBands(ctx, input),
+});
+
 export const examGradeDistributionQuery = defineQuery({
   name: "exams.examGradeDistribution",
   schema: z.object({ examId: uuid.optional() }).strict(),

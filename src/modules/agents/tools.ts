@@ -103,7 +103,11 @@ function readTool(
     execute: async (input: unknown): Promise<string> => {
       try {
         const result = (await query(ctx.institution.slug, input)) as ActionResult<unknown>;
-        if (!result.ok) return `Query failed: ${result.error.code}`;
+        // Seen: the model guessed an id ("latest"), got validation_failed and asked the person for an exam id.
+        if (!result.ok)
+          return result.error.code === "validation_failed"
+            ? "Query failed: the input was not valid. Call it again without any id you were not given: optional ids default to the current or latest record."
+            : `Query failed: ${result.error.code}`;
         onOk?.(name, input);
         const payload = fitForModel(moneyForModel(name, result.data), MAX_TOOL_RESULT_CHARS);
         return `<data-${nonce}>${payload}</data-${nonce}>`;

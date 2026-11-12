@@ -20,7 +20,7 @@ export const CHARS_PER_TOKEN = 4;
  *   start of a longer prompt (the system rules) — shortcut: assumes the
  *   default num_ctx; raise this if the school runs Ollama with a larger one.
  */
-export const TOKEN_CEILING = { groq: 5_500, gemini: 24_000, zai: 24_000, local: 3_500 } as const;
+export const TOKEN_CEILING = { groq: 5_500, gemini: 24_000, zai: 24_000, nim: 24_000, local: 3_500 } as const;
 export type BudgetProvider = keyof typeof TOKEN_CEILING;
 
 /** Room kept free on the first step for one tool result (agents/tools.ts MAX_TOOL_RESULT_CHARS) plus the call. */

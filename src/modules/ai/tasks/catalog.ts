@@ -33,7 +33,7 @@ export const FIRST_SLICE: readonly string[] = [
   "people.leave.approve", "people.leave.reject", "studentLeave.approve", "studentLeave.reject", "timetable.substitution.assign",
   "announcement.create", "announcement.publish", "calendar.event.upsert", "ptm.event.create", "website.notice.upsert",
   "form.create", "form.publish", "helpdesk.message.reply", "helpdesk.ticket.update",
-  "maintenance.assign", "compliance.item.create", "insight.resolve", "insight.dismiss",
+  "maintenance.assign", "compliance.item.create", "insight.resolve", "insight.dismiss", "insight.action", "insight.review",
   "clubs.event.create", "achievement.record",
   // accountant
   "finance.reminders.send", "expenses.record",
@@ -334,6 +334,7 @@ export const EXCLUDED_PATTERNS: readonly (readonly [RegExp, string])[] = [
   [/^core\.dashboard\.layout\./, UI_STATE],
   [/^ai\.study\./, "the study chat's own saves"],
   [/^ai\.proposal\./, OWN_CONTROLS],
+  [/^ai\.orb\./, "the orb's own saved chats and notes"],
 ];
 
 /** The row for a registered action: its own row, else an excluded family, else undefined (unclassified). */

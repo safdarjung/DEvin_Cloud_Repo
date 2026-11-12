@@ -51,6 +51,8 @@ export function choicePatches(ctx: Pick<TenantContext, "institution">, action: s
       return { "/position": suggest(POSITIONS) };
     case "visitors.checkIn":
       return { "/purpose": suggest(VISIT_PURPOSES) };
+    case "insight.action":
+      return { "/owner": suggest(["Principal", "Class teacher", "Subject teacher", "Accountant", "Admissions office", "Counsellor", "Admin"]) };
     case "academics.grade.upsert":
       return { "/gradeGroup": suggest(GRADE_GROUPS) };
     default:

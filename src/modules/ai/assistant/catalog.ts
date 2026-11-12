@@ -95,7 +95,7 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
     aggregate: true,
   },
   "insights.riskIndicators": {
-    description: "Open insights by area: counts of insights, not students; trend = new insights",
+    description: "Open insights by area: school-wide, not per class; per class use todayBySection, sectionsBelowThreshold, lab.anomalies",
     aggregate: true,
   },
   "forecasts.cards": {
@@ -108,6 +108,14 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   },
 
   // Personal — local only (contain student/staff identifiers)
+  "timetable.todayFor": {
+    description: "Today's timetable: the caller's own periods today with times, subject, class, and which is now or next",
+    aggregate: true,
+  },
+  "exams.sectionScoreBands": {
+    description: "Exam scores by class: per section students, how many below a % (default 70), average; latest exam",
+    aggregate: true,
+  },
   "people.enrolmentCounts": {
     description: "Students per class: active students per section (VIII-A = class 8A) and the school total",
     aggregate: true,

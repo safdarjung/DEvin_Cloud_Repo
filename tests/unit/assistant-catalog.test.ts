@@ -17,14 +17,14 @@ describe("assistant catalog", () => {
   });
 
   describe("ASSISTANT_QUERIES", () => {
-    it("has exactly 113 entries (features-18 §E added 70)", () => {
+    it("has exactly 115 entries (features-18 §E added 70)", () => {
       const names = Object.keys(ASSISTANT_QUERIES);
-      expect(names).toHaveLength(113);
+      expect(names).toHaveLength(115);
     });
 
-    it("has exactly 47 with aggregate flag", () => {
+    it("has exactly 49 with aggregate flag", () => {
       const aggregateCount = Object.values(ASSISTANT_QUERIES).filter((q) => q.aggregate).length;
-      expect(aggregateCount).toBe(47);
+      expect(aggregateCount).toBe(49);
     });
 
     it("has all descriptions between 1 and 120 chars", () => {
@@ -47,6 +47,8 @@ describe("assistant catalog", () => {
         "attendance.attendanceTodaySummary",
         "attendance.todayBySection",
         "people.enrolmentCounts",
+        "timetable.todayFor",
+        "exams.sectionScoreBands",
         "finance.listTermOptions",
         "finance.defaulterCounts",
         "attendance.sectionsBelowThreshold",
@@ -157,18 +159,18 @@ describe("assistant catalog", () => {
   });
 
   describe("queriesFor", () => {
-    it("returns all 113 queries for local provider", () => {
+    it("returns all 115 queries for local provider", () => {
       const local = queriesFor("local");
-      expect(Object.keys(local)).toHaveLength(113);
+      expect(Object.keys(local)).toHaveLength(115);
     });
 
     it("returns only aggregate queries for cloud providers", () => {
       const groq = queriesFor("groq");
       const gemini = queriesFor("gemini");
 
-      // Cloud providers should only have aggregate queries (47)
-      expect(Object.keys(groq)).toHaveLength(47);
-      expect(Object.keys(gemini)).toHaveLength(47);
+      // Cloud providers should only have aggregate queries (49)
+      expect(Object.keys(groq)).toHaveLength(49);
+      expect(Object.keys(gemini)).toHaveLength(49);
 
       // Verify they don't have personal queries
       expect(groq).not.toHaveProperty("finance.listDefaulters");

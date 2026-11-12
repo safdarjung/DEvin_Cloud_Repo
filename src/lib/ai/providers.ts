@@ -64,6 +64,17 @@ export async function getGeminiModel(): Promise<LanguageModel> {
   return google(geminiModelId());
 }
 
+/** The Gemini text model with Google Search grounding switched on (web resources); same key and lazy import. */
+export async function getGeminiSearch(): Promise<{ model: LanguageModel; tools: Record<string, unknown> }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured.");
+  }
+  const { createGoogleGenerativeAI } = await import("@ai-sdk/google");
+  const google = createGoogleGenerativeAI({ apiKey });
+  return { model: google(geminiModelId()), tools: { google_search: google.tools.googleSearch({}) } };
+}
+
 /** The Gemini model that draws pictures (/image); a different model family from the text one. */
 export function geminiImageModelId(): string {
   return process.env.GEMINI_IMAGE_MODEL ?? "gemini-2.5-flash-image";
@@ -98,6 +109,31 @@ export async function getGroqModel(): Promise<LanguageModel> {
   const { createGroq } = await import("@ai-sdk/groq");
   const groq = createGroq({ apiKey });
   return groq(groqModelId());
+}
+
+// Owner decision 2026-11-12: NVIDIA NIM answers first whenever NVIDIA_API_KEY is set; Gemini, Groq
+// and Z.ai are the backups (provider-fallback.ts). OpenAI-compatible endpoint; it calls tools and
+// follows a JSON schema. Thinking is off by default for speed (NIM_THINKING=true turns it on).
+export function nimModelId(): string {
+  return process.env.NIM_MODEL ?? "nvidia/nemotron-3-ultra-550b-a55b";
+}
+
+export async function getNimModel(): Promise<LanguageModel> {
+  const apiKey = process.env.NVIDIA_API_KEY;
+  if (!apiKey) {
+    throw new Error("NVIDIA_API_KEY is not configured.");
+  }
+  const { createOpenAICompatible } = await import("@ai-sdk/openai-compatible");
+  const thinking = process.env.NIM_THINKING === "true";
+  const nim = createOpenAICompatible({
+    name: "nim",
+    baseURL: process.env.NIM_BASE_URL ?? "https://integrate.api.nvidia.com/v1",
+    apiKey,
+    includeUsage: true,
+    supportsStructuredOutputs: true,
+    transformRequestBody: (body) => ({ ...body, chat_template_kwargs: { enable_thinking: thinking } }),
+  });
+  return nim(nimModelId());
 }
 
 // Owner decision 2026-11-11: Z.ai (GLM) answers first whenever ZAI_API_KEY is

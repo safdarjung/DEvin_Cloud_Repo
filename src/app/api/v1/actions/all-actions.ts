@@ -9,6 +9,7 @@ import "@/modules/academics/submissions.actions";
 import "@/modules/admissions/actions";
 import "@/modules/agents/actions";
 import "@/modules/ai/student-study.actions";
+import "@/modules/ai/orb-saves.actions";
 import "@/modules/ai/tasks/proposals.actions";
 import "@/modules/attendance/actions";
 import "@/modules/calendar/actions";

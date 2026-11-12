@@ -17,6 +17,9 @@ import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 import { FlashcardsCard, type FlashcardsResult } from "@/modules/ai/components/explain/FlashcardsCard";
 import { LessonPlanCard, type LessonPlanResult } from "@/modules/ai/components/explain/LessonPlanCard";
 import { FileAnswerCard, type FileAnswerResult } from "./OrbFile";
+import { OrbHistory, SaveNoteButton, type OpenedChat } from "./OrbHistory";
+import { OrbDataChart, chartFromTool } from "./OrbDataChart";
+import { lessonPlanText } from "@/modules/ai/components/explain/LessonPlanCard";
 import TaskStack from "@/modules/ai/components/task-card/TaskStack";
 import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
 import type { TaskCardProps } from "@/modules/ai/components/task-card/TaskCard";
@@ -87,7 +90,7 @@ export interface ExplainHandlers {
   /** "Also make": the same topic as another kind of result. */
   onNext: (id: string, kind: NextKind) => void;
   /** Open the lesson-plan approval card prefilled from this plan. */
-  onSaveLessonPlan: (id: string) => void;
+  onSaveLessonPlan: (id: string, chosen: readonly { title: string; url: string }[]) => void;
 }
 
 export type NextKind = "anatomy" | "mindmap" | "diagram" | "flashcards";
@@ -108,7 +111,21 @@ function Dots({ label }: { label: string }) {
   );
 }
 
-function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }) {
+/** A result as plain text for a saved note. */
+function entryText(e: ExplainEntry): string {
+  if (e.lessonplan) return lessonPlanText(e.lessonplan.plan);
+  if (e.file) return [e.file.result.answer, ...e.file.result.points.map((p) => `- ${p}`)].join("\n");
+  if (e.flashcards) return e.flashcards.flashcards.cards.map((c) => `Q: ${c.front}\nA: ${c.back}`).join("\n");
+  if (e.mindmap) return e.mindmap.mindmap.branches.map((b) => `${b.label}: ${b.twigs.map((t) => t.label).join(", ")}`).join("\n");
+  if (e.diagram) return e.diagram.flow.nodes.map((n, i) => `${i + 1}. ${n.label}`).join("\n");
+  if (e.anatomy) return [e.anatomy.anatomy.summary, ...e.anatomy.anatomy.parts.map((p) => `- ${p.name}: ${p.role}`)].join("\n");
+  return "";
+}
+function entryTitle(e: ExplainEntry): string {
+  return e.lessonplan?.plan.title ?? e.flashcards?.flashcards.title ?? e.mindmap?.mindmap.title ?? e.diagram?.flow.title ?? e.anatomy?.anatomy.title ?? e.line.slice(0, 80);
+}
+
+function Explain({ e, handlers, institutionSlug }: { e: ExplainEntry; handlers: ExplainHandlers; institutionSlug: string }) {
   return (
     <div className="space-y-2">
       <p className="ml-auto w-fit max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-primary px-3 py-2 text-primary-foreground">{e.line}</p>
@@ -128,7 +145,7 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
       {e.diagram && <DiagramCard result={e.diagram} fromFile={e.fromFile} />}
       {e.image && <ImageCard result={e.image} />}
       {e.flashcards && <FlashcardsCard result={e.flashcards} fromFile={e.fromFile} />}
-      {e.lessonplan && <LessonPlanCard result={e.lessonplan} saving={e.busy} onSave={() => handlers.onSaveLessonPlan(e.id)} />}
+      {e.lessonplan && <LessonPlanCard result={e.lessonplan} institutionSlug={institutionSlug} saving={e.busy} onSave={(chosen) => handlers.onSaveLessonPlan(e.id, chosen)} />}
       {!e.pending && !e.busy && !e.fromFile && (e.anatomy || e.mindmap || e.diagram || e.flashcards || e.lessonplan) && (
         <div className="flex flex-wrap items-center gap-1.5" aria-label="Also make">
           <span className="text-xs text-muted-foreground">Also:</span>
@@ -140,6 +157,12 @@ function Explain({ e, handlers }: { e: ExplainEntry; handlers: ExplainHandlers }
         </div>
       )}
       {e.file && <FileAnswerCard result={e.file} onAsk={handlers.onAskFile} disabled={Boolean(e.pending || e.busy)} />}
+      {!e.pending && !e.busy && entryText(e) && (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <SaveNoteButton institutionSlug={institutionSlug} title={entryTitle(e)} text={entryText(e)} />
+          Save to your notes
+        </div>
+      )}
       {e.error && (
         <p role="alert" className="flex items-start gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-destructive">
           <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -200,6 +223,9 @@ function ToolPart({ part, institutionSlug }: { part: Part; institutionSlug: stri
       </p>
     );
   }
+  // Numbers from a data tool are drawn as a chart under the answer.
+  const chart = chartFromTool(part.type, part.output);
+  if (chart) return <OrbDataChart spec={chart} />;
   const link = navigateLink(part);
   if (link) {
     return (
@@ -251,6 +277,7 @@ function Message({ message, institutionSlug, streaming, handlers, onAgain }: {
           {provider && <ProviderBadge provider={provider} />}
           {text && !streaming && <SpeakButton text={text} />}
           {text && !streaming && <CopyButton text={text} />}
+          {text && !streaming && <SaveNoteButton institutionSlug={institutionSlug} title={text.split("\n")[0]!.slice(0, 80)} text={text} />}
           {/* Not for an answer that brought cards: asking again would make them twice. */}
           {onAgain && text && !streaming && proposalsIn(message.parts).length === 0 && (
             <button
@@ -281,15 +308,16 @@ interface Props extends CardHandlers {
   onRetry: () => void;
   onDismissError: () => void;
   onNewChat: () => void;
+  onOpenChat: (chat: OpenedChat) => void;
   onCollapse: () => void;
 }
 
 export function OrbTranscript({
-  institutionSlug, messages, localCards, explains, explainHandlers, status, error, accent, onRetry, onDismissError, onNewChat, onCollapse, onResolved, onStart,
+  institutionSlug, messages, localCards, explains, explainHandlers, status, error, accent, onRetry, onDismissError, onNewChat, onOpenChat, onCollapse, onResolved, onStart,
 }: Props) {
   const handlers: CardHandlers = { onResolved, onStart };
   const localAt = (n: number) => localCards.filter((c) => c.at === n).map((c) => c.proposal);
-  const explainsAt = (n: number) => explains.filter((x) => x.at === n).map((x) => <Explain key={x.id} e={x} handlers={explainHandlers} />);
+  const explainsAt = (n: number) => explains.filter((x) => x.at === n).map((x) => <Explain key={x.id} e={x} handlers={explainHandlers} institutionSlug={institutionSlug} />);
   const scroller = useRef<HTMLDivElement>(null);
   const last = messages.at(-1);
   const answerShown = last?.role === "assistant" && last.parts.some((p) => (p.type === "text" && p.text) || isToolUIPart(p));
@@ -341,6 +369,7 @@ export function OrbTranscript({
         <h2 className="text-sm font-semibold">Conversation</h2>
         <span className="text-xs text-muted-foreground">{label}</span>
         <div className="ml-auto flex items-center gap-0.5">
+          <OrbHistory compact institutionSlug={institutionSlug} onOpenChat={onOpenChat} />
           <Button type="button" variant="ghost" size="icon-sm" onClick={onNewChat} aria-label="Start a new conversation" title="New conversation">
             <RotateCcw />
           </Button>

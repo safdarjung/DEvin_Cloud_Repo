@@ -27,6 +27,9 @@ delete process.env.RESEND_API_KEY;
 delete process.env.MSG91_AUTH_KEY;
 // Z.ai answers first whenever its key is set: tests never call it — stub it back in per test.
 delete process.env.ZAI_API_KEY;
+// NVIDIA NIM answers first whenever its key is set: same rule, stub it back in per test.
+delete process.env.NVIDIA_API_KEY;
+delete process.env.EDENAI_API_KEY;
 
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],

@@ -72,7 +72,7 @@ describe("orb task catalog — completeness (design §2)", () => {
   });
 
   it("every first-slice action is classified, not excluded", () => {
-    expect(FIRST_SLICE).toHaveLength(50);
+    expect(FIRST_SLICE).toHaveLength(52);
     expect(FIRST_SLICE.filter((n) => TASK_CATALOG[n]?.label === undefined)).toEqual([]);
   });
 

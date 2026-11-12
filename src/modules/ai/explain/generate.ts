@@ -7,15 +7,21 @@ import "server-only";
 // under RLS, 10 MB, magic bytes) and runStructuredFile (Gemini, neutral file
 // name). Persists nothing: the answer is a suggestion on screen (rule 6).
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
-import { runImage, runStructured, runStructuredFile } from "@/lib/ai/gateway";
+import { runImage, runStructured, runStructuredFile, runWebSearch } from "@/lib/ai/gateway";
+import { browseResources } from "@/modules/resources/queries";
+import { unitSearchWords, unitTitleScore } from "@/modules/ai/agent/unit-match";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
 import { hasFileReadingConsent } from "@/modules/study/generate";
 import { fileSource } from "@/modules/study/help-sources";
-import { anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flashcardsInstructions, flowInstructions, lessonPlanInstructions, lessonPlanPrompt, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
+import { webResourcesPrompt, anatomyInstructions, anatomyPrompt, fileAskInstructions, fileAskPrompt, flashcardsInstructions, flowInstructions, lessonPlanInstructions, lessonPlanPrompt, imagePrompt, infographicInstructions, infographicPrompt, mindMapInstructions, visualPrompt } from "./prompts";
 import {
   AnatomyGenerationSchema,
   FileAnswerGenerationSchema,
+  groundedResources,
+  type LessonResource,
+  type LessonResourcesRequest,
+  type LessonResourcesResponse,
   FlashcardsGenerationSchema,
   LessonPlanGenerationSchema,
   toLessonPlanDoc,
@@ -215,4 +221,36 @@ export async function makeLessonPlan(ctx: TenantContext, input: LessonPlanReques
   const plan = toLessonPlanDoc(data);
   if (!plan) return fail("ai_invalid_output", "The lesson plan came back incomplete. Try again, or name the chapter and class.");
   return ok({ refused: false, plan, provider, model });
+}
+
+/**
+ * Resources for a lesson: the school's own (Resources page, under the caller's RLS) ranked by how well
+ * their title, unit and description match the topic, or the web through Google-grounded search.
+ */
+export async function findLessonResources(ctx: TenantContext, input: LessonResourcesRequest): Promise<ActionResult<LessonResourcesResponse>> {
+  if (ctx.membership.role === "student" || ctx.membership.role === "guardian") return fail("forbidden", "Lesson resources are for teachers.");
+  const blocked = blockedTopic(input.topic);
+  if (blocked) return ok({ resources: [], note: blocked });
+  if (input.source === "school") {
+    const words = unitSearchWords(input.topic);
+    const rows = await browseResources(ctx);
+    const slug = ctx.institution.slug;
+    const resources: LessonResource[] = rows
+      .map((r) => ({ r, score: unitTitleScore(`${r.title} ${r.unitTitle ?? ""} ${r.description ?? ""}`, words) }))
+      .filter((x) => x.score >= 0.5)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map(({ r }) => ({
+        title: r.title,
+        url: r.url ?? `/${slug}/resources`,
+        kind: r.kind,
+        why: [r.subjectName, r.unitTitle].filter(Boolean).join(" · ") || "From your school's resources",
+        source: "school" as const,
+      }));
+    return ok({ resources, note: resources.length ? "" : "No resource on the school's Resources page matches this topic yet. Try the internet, or add one on the Resources page." });
+  }
+  const searched = await runWebSearch({ ...base(ctx), feature: "lesson_resources_web", prompt: webResourcesPrompt(input.topic, input.classLabel) });
+  if (!searched.ok) return searched;
+  const resources = groundedResources(searched.data.text, searched.data.sources);
+  return ok({ resources, note: resources.length ? "Found by a Google search. Open each one and check it before class." : "The search found nothing that could be checked. Try again or name the chapter differently." });
 }

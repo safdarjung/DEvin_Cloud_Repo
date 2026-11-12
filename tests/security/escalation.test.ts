@@ -56,6 +56,12 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
   "agent.custom.archive": { permission: "agent.approve", input: () => ({ id: U() }) },
   "core.dashboard.layout.save": { permission: "dashboard.view", input: () => ({ hidden: [], order: [] }) },
   "core.dashboard.layout.reset": { permission: "dashboard.view", input: () => ({}) },
+  "ai.orb.chat.save": { permission: "ai.chat", input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }) },
+  "ai.orb.note.save": { permission: "ai.chat", input: () => ({ title: "Probe", text: "Probe" }) },
+  "ai.orb.items.list": { permission: "ai.chat", input: () => ({}) },
+  "ai.orb.item.get": { permission: "ai.chat", input: () => ({ itemId: U() }) },
+  "ai.orb.item.pin": { permission: "ai.chat", input: () => ({ itemId: U(), pinned: true }) },
+  "ai.orb.item.delete": { permission: "ai.chat", input: () => ({ itemId: U() }) },
   "ai.study.chat.save": {
     permission: "ai.study",
     input: () => ({ title: "Probe", messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "Probe" }] }] }),

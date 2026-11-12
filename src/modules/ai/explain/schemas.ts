@@ -543,7 +543,7 @@ export function toLessonPlanDoc(g: LessonPlanGeneration): LessonPlanDoc | null {
 }
 
 /** The plan as the lesson-plan form's text fields (objectives and resources, 2000 characters each). */
-export function lessonPlanFormText(plan: LessonPlanDoc): { title: string; objectives: string; resources: string } {
+export function lessonPlanFormText(plan: LessonPlanDoc, chosen: readonly { title: string; url: string }[] = []): { title: string; objectives: string; resources: string } {
   const cap = (t: string) => (t.length > 2000 ? `${t.slice(0, 1997)}...` : t);
   return {
     title: plan.title.slice(0, 120),
@@ -554,9 +554,71 @@ export function lessonPlanFormText(plan: LessonPlanDoc): { title: string; object
         plan.materials.length ? `Materials: ${plan.materials.join(", ")}` : "",
         plan.checks.length ? `Check: ${plan.checks.map((c) => c.question).join(" ")}` : "",
         plan.homework ? `Homework: ${plan.homework}` : "",
+        ...chosen.map((r) => `Resource: ${r.title} (${r.url})`),
       ]
         .filter(Boolean)
         .join("\n"),
     ),
   };
+}
+
+// ---- teaching resources for a lesson ----
+
+export const RESOURCE_SOURCES = ["school", "web"] as const;
+export const LessonResourcesRequestSchema = z
+  .object({ institutionSlug, topic: z.string().trim().min(2).max(200), classLabel: z.string().trim().max(60).default(""), source: z.enum(RESOURCE_SOURCES) })
+  .strict();
+export type LessonResourcesRequest = z.infer<typeof LessonResourcesRequestSchema>;
+
+export interface LessonResource {
+  title: string;
+  /** https link, or an in-app path for the school's own files. */
+  url: string;
+  kind: "video" | "simulation" | "reading" | "worksheet" | "link" | "file" | "note";
+  why: string;
+  source: "school" | "web";
+}
+export type LessonResourcesResponse = { resources: LessonResource[]; note: string };
+
+const KINDS = new Set(["video", "simulation", "reading", "worksheet", "link"]);
+
+/**
+ * The model's list ("TITLE | URL | KIND | WHY" per line) kept only where the link's site is one Google
+ * returned for this search: a model can invent a URL, a grounded source cannot. Pure.
+ */
+export function groundedResources(text: string, sources: readonly { url: string; title: string }[], max = 8): LessonResource[] {
+  const hosts = new Set(
+    sources.flatMap((s) => {
+      const out: string[] = [];
+      try {
+        out.push(new URL(s.url).hostname.replace(/^www\./, ""));
+      } catch {
+        /* not a URL */
+      }
+      // Grounding links are Google redirects; their title is the real site's domain.
+      if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(s.title)) out.push(s.title.toLowerCase().replace(/^www\./, ""));
+      return out;
+    }),
+  );
+  const seen = new Set<string>();
+  const out: LessonResource[] = [];
+  for (const line of text.split("\n")) {
+    const parts = line.replace(/^[\s*•\-\d.)]+/, "").split("|").map((p) => p.trim());
+    if (parts.length < 4) continue;
+    const [title, url, kind, why] = parts as [string, string, string, string];
+    let host = "";
+    try {
+      const u = new URL(url);
+      if (u.protocol !== "https:") continue;
+      host = u.hostname.replace(/^www\./, "");
+    } catch {
+      continue;
+    }
+    const grounded = [...hosts].some((h) => host === h || host.endsWith(`.${h}`) || h.endsWith(`.${host}`));
+    if (!grounded || seen.has(url) || !title) continue;
+    seen.add(url);
+    out.push({ title: clip(title, 120), url: url.slice(0, 500), kind: (KINDS.has(kind.toLowerCase()) ? kind.toLowerCase() : "link") as LessonResource["kind"], why: clip(why, 200), source: "web" });
+    if (out.length >= max) break;
+  }
+  return out;
 }

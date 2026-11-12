@@ -106,6 +106,40 @@ async function findCurriculumUnitImpl(
   });
 }
 
+/**
+ * The units of the subjects and grades this teacher teaches, optionally narrowed by a class ("10", "X")
+ * or a subject word. Seen: "what chapters are there for class 10?" got "I don't have a tool to list chapters".
+ */
+async function listMyUnitsImpl(
+  supabase: AgentClient,
+  ctx: TenantContext,
+  filter: { grade?: string; subject?: string },
+): Promise<Array<{ id: string; title: string; gradeLabel: string; subjectName: string }>> {
+  const scope = await allowedGradeSubjectPairs(supabase, ctx);
+  const { data, error } = await supabase
+    .from("curriculum_units")
+    .select("id, title, sequence, grade_id, subject_id, grades(display_name, code), subjects(name)")
+    .eq("institution_id", ctx.institution.id)
+    .order("sequence")
+    .limit(400);
+  if (error) throw error;
+  const ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+  const g = filter.grade?.trim().replace(/^(class|grade|std)\s*/i, "").replace(/(st|nd|rd|th)$/i, "").toUpperCase();
+  const gradeCode = g && /^\d+$/.test(g) ? ROMAN[Number(g)] : g;
+  const subject = filter.subject?.trim().toLowerCase();
+  return (data ?? [])
+    .filter((row) => scope === "all" || scope.has(`${row.grade_id}:${row.subject_id}`))
+    .filter((row) => !gradeCode || (row.grades as { code: string } | null)?.code?.toUpperCase() === gradeCode)
+    .filter((row) => !subject || ((row.subjects as { name: string } | null)?.name ?? "").toLowerCase().includes(subject))
+    .slice(0, 40)
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      gradeLabel: (row.grades as { display_name: string } | null)?.display_name ?? "",
+      subjectName: (row.subjects as { name: string } | null)?.name ?? "",
+    }));
+}
+
 /** Builds the full tool set for this authenticated teacher's turn, sharing one RLS-scoped client. */
 export async function teacherTools(ctx: TenantContext) {
   const supabase = await createClient();
@@ -126,6 +160,20 @@ export async function teacherTools(ctx: TenantContext) {
           }));
         } catch (err) {
           return toolErrorMessage("findStudent", err);
+        }
+      },
+    }),
+
+    listMyUnits: tool({
+      description:
+        "List the curriculum units (chapters) of the subjects this teacher teaches, optionally for one class (e.g. '10' or 'X') or subject. Use it to offer units to choose from instead of asking for an exact title.",
+      inputSchema: z.object({ grade: z.string().trim().max(20).optional(), subject: z.string().trim().max(60).optional() }),
+      execute: async ({ grade, subject }) => {
+        try {
+          const units = await listMyUnitsImpl(supabase, ctx, { grade, subject });
+          return units.length ? units : "No units found for that class or subject among the ones you teach.";
+        } catch (err) {
+          return toolErrorMessage("listMyUnits", err);
         }
       },
     }),

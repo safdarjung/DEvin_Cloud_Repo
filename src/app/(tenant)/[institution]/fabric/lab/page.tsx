@@ -43,12 +43,19 @@ export default async function AnalysisLabPage({ params }: { params: Promise<{ in
   }
 
   // Panels load independently: one failed or timed-out analysis shows its own error, not a blank page.
-  const [correlation, anomalies, feeRisk, trends] = await Promise.allSettled([
-    labCorrelation(ctx),
-    labSectionAnomalies(ctx),
-    labFeeRiskCohorts(ctx),
-    labTrendBreaks(ctx),
-  ]);
+  // One after another: the four heavy queries at once hit the database statement timeout (57014) on the
+  // hosted demo, while each alone finishes well inside it.
+  const settle = async <T,>(run: () => Promise<T>): Promise<PromiseSettledResult<T>> => {
+    try {
+      return { status: "fulfilled", value: await run() };
+    } catch (reason) {
+      return { status: "rejected", reason };
+    }
+  };
+  const correlation = await settle(() => labCorrelation(ctx));
+  const anomalies = await settle(() => labSectionAnomalies(ctx));
+  const feeRisk = await settle(() => labFeeRiskCohorts(ctx));
+  const trends = await settle(() => labTrendBreaks(ctx));
   for (const r of [correlation, anomalies, feeRisk, trends]) {
     if (r.status === "rejected") console.error("analysis lab panel failed:", r.reason instanceof Error ? r.reason.message : r.reason);
   }

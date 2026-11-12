@@ -476,6 +476,82 @@ export async function runImage(input: RunImageInput): Promise<ActionResult<RunIm
   }
 }
 
+// Web search (lesson-plan resources): one Gemini call with Google Search grounding. Only the
+// pages Google returned are kept (a model's own URLs can be invented). The query is the topic the
+// person typed, redacted like every cloud prompt; nothing is stored.
+export interface RunWebSearchInput {
+  ctx: TenantContext;
+  feature: string;
+  prompt: string;
+  denyNames?: readonly string[];
+  permission?: Permission;
+}
+export interface WebSource {
+  url: string;
+  title: string;
+}
+export interface RunWebSearchOutput {
+  text: string;
+  sources: WebSource[];
+  provider: "cloud";
+  model: string;
+}
+const WEB_SEARCH_TIMEOUT_MS = 30_000;
+const WEB_SEARCH_OUTPUT_TOKENS = 900;
+
+export async function runWebSearch(input: RunWebSearchInput): Promise<ActionResult<RunWebSearchOutput>> {
+  const { ctx, feature, prompt, denyNames, permission = "ai.generate" } = input;
+  if (!hasPermission(ctx, permission)) return fail("forbidden", "You do not have permission to use AI features.");
+  if (!process.env.GEMINI_API_KEY) return fail("ai_unavailable", "Web search needs the school's Gemini key, which is not set up.");
+  if (!roleAiConfig(ctx, ctx.membership.role).cloud) {
+    return fail("ai_unavailable", "Web search uses the school's cloud AI provider, which is not switched on for your role.");
+  }
+  const modelId = providers.geminiModelId();
+  const usage = (inTok: number, outTok: number, errorCode: ErrorCode | null, latencyMs: number, redactions: number) =>
+    logUsage({ ctx, feature, provider: "cloud", model: modelId, inputTokens: inTok, outputTokens: outTok, latencyMs, costEstimateUsd: estimateCost("cloud", modelId, inTok, outTok), ok: errorCode === null, errorCode, redactions });
+
+  let limits: Awaited<ReturnType<typeof checkLimits>>;
+  try {
+    limits = await checkLimits(ctx, feature);
+  } catch {
+    return fail("dependency_failed", "AI usage limits could not be checked; please try again.");
+  }
+  if (!limits.ok) {
+    await usage(0, 0, limits.code, 0, 0);
+    return fail(limits.code, limits.code === "quota_exceeded" ? "Today's AI limit is used up. It resets at midnight." : "Too many AI requests; please slow down and try again.");
+  }
+  if (!acquireConcurrencySlot(ctx.institution.id, "cloud", aiSettingsFor(ctx).max_concurrent_cloud)) {
+    return fail("rate_limited", "AI concurrency limit reached; please try again shortly.");
+  }
+  const startedAt = Date.now();
+  const redacted = redact(prompt, denyNames);
+  try {
+    const { model, tools } = await providers.getGeminiSearch();
+    const result = await generateText({
+      model,
+      tools: tools as ToolSet,
+      prompt: redacted.text,
+      maxOutputTokens: WEB_SEARCH_OUTPUT_TOKENS,
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(WEB_SEARCH_TIMEOUT_MS),
+    });
+    const sources: WebSource[] = [];
+    for (const s of result.sources ?? []) {
+      if (s.sourceType === "url" && /^https:\/\//.test(s.url) && !sources.some((x) => x.url === s.url)) sources.push({ url: s.url, title: (s.title ?? "").slice(0, 200) });
+    }
+    await usage(result.usage.inputTokens ?? estimateTokens(redacted.text), result.usage.outputTokens ?? 0, null, Date.now() - startedAt, redacted.count);
+    return ok({ text: result.text.slice(0, 6000), sources: sources.slice(0, 20), provider: "cloud", model: modelId });
+  } catch (err) {
+    const info = classifyAiError(err);
+    console.warn("[ai-web-search] call failed", { feature, provider: "gemini", ...info });
+    const code = info.kind === "busy" ? ("rate_limited" as const) : ("ai_unavailable" as const);
+    await usage(0, 0, code, Date.now() - startedAt, redacted.count);
+    return fail(code, info.kind === "busy" ? "The web search is busy or its daily limit is used up. Try again later." : "The web could not be searched right now. Try again in a moment.");
+  } finally {
+    releaseConcurrencySlot(ctx.institution.id, "cloud");
+  }
+}
+
 // D31/D32/GU-05 — the streaming counterpart to `runStructured`, for a
 // multi-turn tool-calling agent (not a one-shot structured object). Same
 // gate order (permission → policy plan → quota → concurrency → provider),

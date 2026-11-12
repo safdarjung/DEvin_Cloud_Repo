@@ -48,6 +48,8 @@ const REVIEWED_AGGREGATES = [
   "attendance.attendanceTodaySummary",
   "attendance.todayBySection",
   "people.enrolmentCounts",
+  "timetable.todayFor",
+  "exams.sectionScoreBands",
   "finance.listTermOptions",
   "finance.defaulterCounts",
   "attendance.sectionsBelowThreshold",

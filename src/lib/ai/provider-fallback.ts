@@ -46,7 +46,8 @@ export interface CloudPlanInput {
   mode: "local" | "cloud";
   /** The routing pick (pickAgentProvider). */
   preferred: AgentProvider;
-  keys: { groq: boolean; gemini: boolean; zai: boolean };
+  // nim optional: absent means no NVIDIA key (older callers and tests list only the first three).
+  keys: { groq: boolean; gemini: boolean; zai: boolean; nim?: boolean };
   /** Estimated whole request; picks Z.ai's one retry. Omitted: treated as too big for Groq. */
   requestTokens?: number;
 }
@@ -58,8 +59,8 @@ export interface CloudPlan {
   last?: AgentProvider | null;
 }
 
-/** Owner decision 2026-11-11 (D53, amended): Gemini answers first, Groq is the backup, Z.ai the second backup. */
-const CLOUD_ORDER = ["gemini", "groq", "zai"] as const;
+/** Owner decision 2026-11-12: NVIDIA NIM answers first; then Gemini, Groq (D53) and Z.ai as backups. */
+const CLOUD_ORDER = ["nim", "gemini", "groq", "zai"] as const;
 
 /** Keyed providers in order; Groq is skipped as a backup for a request above its ceiling. */
 function orderedPlan(keys: CloudPlanInput["keys"], fits: (p: AgentProvider) => boolean, backupFits: (p: AgentProvider) => boolean): CloudPlan | null {
@@ -95,7 +96,12 @@ export function structuredCloudPlan(keys: CloudPlanInput["keys"], requestTokens:
 }
 
 export function configuredCloudKeys(): CloudPlanInput["keys"] {
-  return { groq: Boolean(process.env.GROQ_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY), zai: Boolean(process.env.ZAI_API_KEY) };
+  return {
+    groq: Boolean(process.env.GROQ_API_KEY),
+    gemini: Boolean(process.env.GEMINI_API_KEY),
+    zai: Boolean(process.env.ZAI_API_KEY),
+    nim: Boolean(process.env.NVIDIA_API_KEY),
+  };
 }
 
 /** AI-drawn pictures (/image) are billed per picture and need a Gemini plan with image output: off until the owner turns them on. */
@@ -133,7 +139,7 @@ type WrappedModel = ReturnType<typeof wrapLanguageModel>;
 // is accepted. Gemini answers 400 INVALID_ARGUMENT to nested arrays bounded by
 // maxItems (the website page draft schema, 2026-11-11); Groq takes everything
 // with strictJsonSchema off. Z.ai gets the schema as prompt text (schemaRules), never as a schema.
-const UNSUPPORTED_SCHEMA_KEYS: Record<AgentProvider, readonly string[]> = { groq: [], gemini: ["maxItems"], zai: [] };
+const UNSUPPORTED_SCHEMA_KEYS: Record<AgentProvider, readonly string[]> = { groq: [], gemini: ["maxItems"], zai: [], nim: [] };
 
 export function sanitizeSchemaFor(provider: AgentProvider, schema: JSONSchema7): JSONSchema7 {
   const drop = UNSUPPORTED_SCHEMA_KEYS[provider];
@@ -175,6 +181,7 @@ const FACTORY: Record<AgentProvider, { id: () => string; get: () => Promise<Lang
   groq: { id: () => providers.groqModelId(), get: () => providers.getGroqModel() },
   gemini: { id: () => providers.geminiModelId(), get: () => providers.getGeminiModel() },
   zai: { id: () => providers.zaiModelId(), get: () => providers.getZaiModel() },
+  nim: { id: () => providers.nimModelId(), get: () => providers.getNimModel() },
 };
 
 export function agentModelId(provider: AgentProvider): string {

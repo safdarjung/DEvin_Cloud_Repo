@@ -195,7 +195,7 @@ function Profile({ collapsed, user }: { collapsed: boolean; user: SidebarUser })
 }
 
 const footerBtn =
-  "grid size-10 flex-1 place-items-center rounded-none text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-white " +
+  "grid h-10 place-items-center rounded-none text-sidebar-foreground transition-colors duration-150 hover:bg-sidebar-accent hover:text-white " +
   focusRing;
 
 function Footer({
@@ -216,12 +216,14 @@ function Footer({
       <TooltipContent side={collapsed ? "right" : "top"}>{label}</TooltipContent>
     </Tooltip>
   );
+  // Stacked when collapsed: each button keeps its height (flex-1 in a column shrank them to nothing, so they overlapped).
+  const btn = cn(footerBtn, collapsed ? "w-full" : "flex-1");
   return (
     <div className={cn("flex shrink-0 bg-black/15", collapsed ? "flex-col" : "flex-row")}>
       {user.settingsHref &&
         wrap(
           "Settings",
-          <Link href={user.settingsHref} onClick={onNavigate} aria-label="Settings" className={footerBtn}>
+          <Link href={user.settingsHref} onClick={onNavigate} aria-label="Settings" className={btn}>
             <Settings className="size-[18px]" aria-hidden />
           </Link>,
         )}
@@ -233,15 +235,15 @@ function Footer({
             onClick={onToggle}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-expanded={!collapsed}
-            className={footerBtn}
+            className={btn}
           >
             {collapsed ? <PanelLeftOpen className="size-[18px]" aria-hidden /> : <PanelLeftClose className="size-[18px]" aria-hidden />}
           </button>,
         )}
-      <form action="/logout" method="post" className="flex flex-1">
+      <form action="/logout" method="post" className={collapsed ? "flex w-full" : "flex flex-1"}>
         {wrap(
           "Log out",
-          <button type="submit" aria-label="Log out" className={footerBtn}>
+          <button type="submit" aria-label="Log out" className={cn(btn, "w-full")}>
             <LogOut className="size-[18px]" aria-hidden />
           </button>,
         )}

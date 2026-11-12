@@ -748,16 +748,24 @@ export async function examGradeDistribution(ctx: TenantContext, examId?: string)
     examName = exam.name;
   }
 
-  const { data, error } = await supabase
-    .from("results")
-    .select("grade")
-    .eq("institution_id", ctx.institution.id)
-    .eq("exam_id", resolvedExamId)
-    .is("superseded_by", null);
-  if (error) throw error;
+  // Paged: one PostgREST response stops at 1,000 rows, which capped a 3,024-student exam at "1,000".
+  const data: { grade: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error } = await supabase
+      .from("results")
+      .select("id, grade")
+      .eq("institution_id", ctx.institution.id)
+      .eq("exam_id", resolvedExamId)
+      .is("superseded_by", null)
+      .order("id")
+      .range(from, from + 999);
+    if (error) throw error;
+    data.push(...(page ?? []));
+    if (!page || page.length < 1000) break;
+  }
 
   const distribution: Record<string, number> = {};
-  for (const row of data ?? []) {
+  for (const row of data) {
     distribution[row.grade] = (distribution[row.grade] ?? 0) + 1;
   }
 
@@ -795,4 +803,86 @@ export async function upcomingExamsForStudent(
     scheduledAt: r.scheduled_at,
     durationMinutes: r.duration_minutes,
   }));
+}
+
+
+export interface SectionScoreBand {
+  /** e.g. "X-A". */
+  section: string;
+  grade: string;
+  /** Students in this section with a result in the exam. */
+  students: number;
+  /** Of them, how many scored below the threshold. */
+  below: number;
+  averagePercent: number;
+}
+
+/**
+ * One exam's results class by class: how many students scored below a threshold (default 70%) and the
+ * average, for the latest published exam unless one is named. Counts only; sections the caller cannot
+ * see results for are left out (a teacher sees their own), never shown as zero. Paged past 1,000 rows.
+ */
+export async function sectionScoreBands(ctx: TenantContext, opts: { examId?: string; belowPercent?: number } = {}): Promise<{ exam: string; threshold: number; sections: SectionScoreBand[] } | null> {
+  const supabase = await createClient();
+  const threshold = opts.belowPercent ?? 70;
+  const examQuery = supabase.from("exams").select("id, name").eq("institution_id", ctx.institution.id);
+  const { data: exam, error: examError } = opts.examId
+    ? await examQuery.eq("id", opts.examId).maybeSingle()
+    : await examQuery.eq("status", "published").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (examError) throw examError;
+  if (!exam) return null;
+
+  const pct = new Map<string, number>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("results")
+      .select("id, student_id, percentage")
+      .eq("institution_id", ctx.institution.id)
+      .eq("exam_id", exam.id)
+      .is("superseded_by", null)
+      .order("id")
+      .range(from, from + 999);
+    if (error) throw error;
+    for (const r of data ?? []) if (r.percentage !== null) pct.set(r.student_id, Number(r.percentage));
+    if (!data || data.length < 1000) break;
+  }
+  const { data: year, error: yearError } = await supabase.from("academic_years").select("id").eq("institution_id", ctx.institution.id).eq("is_current", true).maybeSingle();
+  if (yearError) throw yearError;
+  const sectionOf = new Map<string, string>();
+  for (let from = 0; year; from += 1000) {
+    const { data, error } = await supabase
+      .from("enrolments")
+      .select("id, student_id, class_section_id")
+      .eq("institution_id", ctx.institution.id)
+      .eq("academic_year_id", year.id)
+      .eq("status", "active")
+      .order("id")
+      .range(from, from + 999);
+    if (error) throw error;
+    for (const r of data ?? []) sectionOf.set(r.student_id, r.class_section_id);
+    if (!data || data.length < 1000) break;
+  }
+  const bySection = new Map<string, number[]>();
+  for (const [student, p] of pct) {
+    const sec = sectionOf.get(student);
+    if (sec) bySection.set(sec, [...(bySection.get(sec) ?? []), p]);
+  }
+  if (bySection.size === 0) return { exam: exam.name, threshold, sections: [] };
+  const { data: sections, error } = await supabase.from("class_sections").select("id, name, grades(code, display_name, sort_key)").in("id", [...bySection.keys()]);
+  if (error) throw error;
+  type G = { code: string; display_name: string; sort_key: number } | null;
+  return {
+    exam: exam.name,
+    threshold,
+    sections: (sections ?? [])
+      .map((s) => ({ g: s.grades as G, name: s.name, scores: bySection.get(s.id) ?? [] }))
+      .sort((a, b) => (a.g?.sort_key ?? 0) - (b.g?.sort_key ?? 0) || a.name.localeCompare(b.name))
+      .map((x) => ({
+        section: `${x.g?.code ?? "?"}-${x.name}`,
+        grade: x.g?.display_name ?? "",
+        students: x.scores.length,
+        below: x.scores.filter((v) => v < threshold).length,
+        averagePercent: Math.round((x.scores.reduce((a, b) => a + b, 0) / Math.max(1, x.scores.length)) * 10) / 10,
+      })),
+  };
 }

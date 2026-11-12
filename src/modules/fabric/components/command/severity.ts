@@ -18,4 +18,8 @@ const HREF_FALLBACK: Record<string, string> = {
   "/fabric/staff": "/fabric/operations",
 };
 
-export const resolveHref = (base: string, href: string): string => `${base}${HREF_FALLBACK[href] ?? href}`;
+/** A path inside the school ("/finance") gets the school's base; a link that already starts with it is kept (insight links do). */
+export const resolveHref = (base: string, href: string): string => {
+  const path = HREF_FALLBACK[href] ?? href;
+  return path === base || path.startsWith(`${base}/`) || path.startsWith(`${base}?`) ? path : `${base}${path}`;
+};

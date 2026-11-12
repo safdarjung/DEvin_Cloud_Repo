@@ -5,11 +5,12 @@
 // those who struggle and a stretch, and the usual mistakes. Copy, Print, or Save it to the teacher's
 // lesson plans through the approval card (the card checks the class and subject before anything is saved).
 import { useState } from "react";
-import { Check, ClipboardList, Copy, Printer, Save } from "lucide-react";
+import { Check, ClipboardList, Copy, ExternalLink, Globe, Library, Loader2, Printer, Save } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
-import type { AiMeta, LessonPlanDoc } from "@/modules/ai/explain/schemas";
+import type { AiMeta, LessonPlanDoc, LessonResource } from "@/modules/ai/explain/schemas";
+import { runLessonResources } from "./api";
 
 export type LessonPlanResult = { plan: LessonPlanDoc } & AiMeta;
 
@@ -25,7 +26,7 @@ function spans(phases: LessonPlanDoc["phases"]): string[] {
   });
 }
 
-export function lessonPlanText(plan: LessonPlanDoc): string {
+export function lessonPlanText(plan: LessonPlanDoc, chosen: readonly LessonResource[] = []): string {
   const when = spans(plan.phases);
   return [
     plan.title,
@@ -47,6 +48,8 @@ export function lessonPlanText(plan: LessonPlanDoc): string {
     plan.misconceptions.length ? "\nCommon mistakes" : "",
     ...plan.misconceptions.map((m) => `- ${m}`),
     plan.homework ? `\nHomework: ${plan.homework}` : "",
+    chosen.length ? "\nResources" : "",
+    ...chosen.map((r) => `- ${r.title}: ${r.url}`),
   ]
     .filter((l) => l !== undefined)
     .join("\n")
@@ -56,13 +59,13 @@ export function lessonPlanText(plan: LessonPlanDoc): string {
 
 const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-function printPlan(plan: LessonPlanDoc) {
+function printPlan(plan: LessonPlanDoc, chosen: readonly LessonResource[]) {
   const w = window.open("", "_blank", "width=820,height=1000");
   if (!w) return;
   // Everything the model wrote is escaped: the print page renders text, never markup from the plan.
-  const body = esc(lessonPlanText(plan))
+  const body = esc(lessonPlanText(plan, chosen))
     .split("\n")
-    .map((l, i) => (i === 0 ? `<h1>${l}</h1>` : /^(Objectives|Lesson|On the board|Exit questions|Common mistakes)$/.test(l) ? `<h2>${l}</h2>` : `<p>${l || "&nbsp;"}</p>`))
+    .map((l, i) => (i === 0 ? `<h1>${l}</h1>` : /^(Objectives|Lesson|On the board|Exit questions|Common mistakes|Resources)$/.test(l) ? `<h2>${l}</h2>` : `<p>${l || "&nbsp;"}</p>`))
     .join("");
   w.document.write(
     `<!doctype html><html><head><meta charset="utf-8"><title>${esc(plan.title)}</title><style>body{font:14px/1.5 system-ui,sans-serif;margin:32px;color:#111}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:18px 0 4px;border-bottom:1px solid #ddd}p{margin:2px 0;white-space:pre-wrap}</style></head><body>${body}</body></html>`,
@@ -72,11 +75,28 @@ function printPlan(plan: LessonPlanDoc) {
   w.print();
 }
 
-export function LessonPlanCard({ result, onSave, saving }: { result: LessonPlanResult; onSave?: () => void; saving?: boolean }) {
+export function LessonPlanCard({ result, institutionSlug, onSave, saving }: { result: LessonPlanResult; institutionSlug: string; onSave?: (chosen: readonly LessonResource[]) => void; saving?: boolean }) {
   const { plan } = result;
   const [copied, setCopied] = useState(false);
   const [showAnswers, setShowAnswers] = useState(false);
   const when = spans(plan.phases);
+  // Resources: the school's own or the web; everything found starts ticked (auto-select) and can be unticked.
+  const [found, setFound] = useState<LessonResource[]>([]);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [looking, setLooking] = useState<"school" | "web" | null>(null);
+  const [note, setNote] = useState("");
+  const chosen = found.filter((r) => picked.has(r.url));
+  async function look(source: "school" | "web") {
+    setLooking(source);
+    setNote("");
+    const res = await runLessonResources({ institutionSlug, topic: plan.title.split(":")[0]!.trim(), classLabel: plan.classLabel, source });
+    setLooking(null);
+    if (!res.ok) return setNote(res.error.message);
+    const fresh = res.data.resources.filter((r) => !found.some((f) => f.url === r.url));
+    setFound((xs) => [...xs, ...fresh]);
+    setPicked((p) => new Set([...p, ...fresh.map((r) => r.url)]));
+    setNote(res.data.note);
+  }
 
   return (
     <section aria-label={`Lesson plan: ${plan.title}`} className="space-y-4 overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
@@ -196,6 +216,50 @@ export function LessonPlanCard({ result, onSave, saving }: { result: LessonPlanR
           </div>
         )}
 
+        <div className="space-y-2 rounded-xl border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-sm font-semibold">Resources for this lesson</h4>
+            <div className="flex flex-wrap gap-1.5">
+              <Button type="button" size="sm" variant="outline" disabled={looking !== null} onClick={() => void look("school")}>
+                {looking === "school" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Library className="size-3.5" aria-hidden />} From our school
+              </Button>
+              <Button type="button" size="sm" variant="outline" disabled={looking !== null} onClick={() => void look("web")}>
+                {looking === "web" ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <Globe className="size-3.5" aria-hidden />} Find on the internet
+              </Button>
+            </div>
+          </div>
+          {found.length > 0 && (
+            <ul className="space-y-1.5">
+              {found.map((r) => (
+                <li key={r.url} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 size-4 shrink-0"
+                    aria-label={`Use ${r.title}`}
+                    checked={picked.has(r.url)}
+                    onChange={(e) => setPicked((p) => {
+                      const n = new Set(p);
+                      if (e.target.checked) n.add(r.url);
+                      else n.delete(r.url);
+                      return n;
+                    })}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline">
+                      {r.title}
+                      <ExternalLink className="size-3 shrink-0" aria-hidden />
+                    </a>
+                    <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{r.source === "school" ? "School" : r.kind}</span>
+                    {r.why && <span className="block text-xs text-muted-foreground">{r.why}</span>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {note && <p className="text-xs text-muted-foreground">{note}</p>}
+          {found.length === 0 && !note && <p className="text-xs text-muted-foreground">Add your school&apos;s resources or find free ones on the internet. Ticked ones go into Copy, Print and the saved plan.</p>}
+        </div>
+
         <div className="grid gap-2 text-sm sm:grid-cols-2">
           {plan.materials.length > 0 && (
             <p>
@@ -214,7 +278,7 @@ export function LessonPlanCard({ result, onSave, saving }: { result: LessonPlanR
 
       <footer className="flex flex-wrap items-center gap-2 border-t bg-muted/30 px-4 py-3">
         {onSave && (
-          <Button type="button" size="sm" disabled={saving} onClick={onSave}>
+          <Button type="button" size="sm" disabled={saving} onClick={() => onSave(chosen)}>
             <Save className="size-3.5" aria-hidden /> {saving ? "Opening…" : "Save to my lesson plans"}
           </Button>
         )}
@@ -223,7 +287,7 @@ export function LessonPlanCard({ result, onSave, saving }: { result: LessonPlanR
           size="sm"
           variant="outline"
           onClick={() => {
-            void navigator.clipboard?.writeText(lessonPlanText(plan)).then(() => {
+            void navigator.clipboard?.writeText(lessonPlanText(plan, chosen)).then(() => {
               setCopied(true);
               setTimeout(() => setCopied(false), 1600);
             });
@@ -231,7 +295,7 @@ export function LessonPlanCard({ result, onSave, saving }: { result: LessonPlanR
         >
           {copied ? <Check className="size-3.5" aria-hidden /> : <Copy className="size-3.5" aria-hidden />} {copied ? "Copied" : "Copy"}
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => printPlan(plan)}>
+        <Button type="button" size="sm" variant="outline" onClick={() => printPlan(plan, chosen)}>
           <Printer className="size-3.5" aria-hidden /> Print
         </Button>
         <p className="w-full text-[11px] text-muted-foreground">AI draft from the CBSE/NCERT syllabus. Check facts and experiments before you teach it.</p>

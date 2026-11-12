@@ -208,3 +208,13 @@ describe("regressions: AI tools on a cloud-only host", () => {
     expect(refused).toEqual([]);
   });
 });
+
+describe("NVIDIA NIM first (owner, 2026-11-12)", () => {
+  it("answers first when its key is set, with Gemini and Groq as the retries", async () => {
+    const { structuredCloudPlan, cloudProviderPlan } = await import("@/lib/ai/provider-fallback");
+    const keys = { groq: true, gemini: true, zai: true, nim: true };
+    expect(structuredCloudPlan(keys, 1000)).toEqual({ primary: "nim", fallback: "gemini", last: "groq" });
+    expect(cloudProviderPlan({ mode: "cloud", preferred: "groq", keys, requestTokens: 1000 })).toEqual({ primary: "nim", fallback: "gemini", last: "groq" });
+    expect(structuredCloudPlan({ ...keys, nim: false }, 1000)).toEqual({ primary: "gemini", fallback: "groq", last: "zai" });
+  });
+});
