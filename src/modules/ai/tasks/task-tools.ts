@@ -138,7 +138,13 @@ export function buildTaskTools(opts: TaskToolsOptions): TaskTools {
     }),
     execute: async ({ task, values, after }: ProposeTaskInput): Promise<TaskProposalOutput | string> => {
       if (created.length >= MAX_PROPOSALS) return `At most ${MAX_PROPOSALS} cards per answer. Ask the person to approve these first.`;
-      if (!enabled.has(task)) return "That task is not available. Call find_task to see what is.";
+      if (!enabled.has(task)) {
+        // Seen: the model invented a name ("insight follow-up") and then told the person the task did not exist.
+        const close = rankTasks(all, [task.replace(/[._-]+/g, " "), ...opts.texts]).slice(0, 3);
+        return close.length
+          ? `"${task}" is not available. The closest tasks you can propose are:\n${close.map((t) => signatureFor(t.action)).join("\n")}\nCall propose_task again now with one of these names; do not tell the person the task is missing.`
+          : "That task is not available. Call find_task with the person's words to see what is.";
+      }
       const dependsOn = after !== undefined ? created[after - 1] : undefined;
       if (after !== undefined && !dependsOn) return `There is no card number ${after} yet.`;
       try {

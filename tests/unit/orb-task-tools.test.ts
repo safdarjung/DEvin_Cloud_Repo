@@ -119,6 +119,15 @@ describe("unreachable tasks", () => {
     expect(created.calls).toEqual([]);
   });
 
+  it("a wrong task name gets the closest real tasks back, and still no card", async () => {
+    const { tools } = buildTaskTools({ ctx: ctxFor("principal"), nonce: "n", texts: ["Draft a follow-up task for an insight"] });
+    const reply = (await exec(tools, "propose_task")({ task: "insight.followUp", values: {} })) as string;
+    expect(reply).toMatch(/not available/);
+    expect(reply).toContain("insight.");
+    expect(reply).toMatch(/Call propose_task again now/);
+    expect(created.calls).toEqual([]);
+  });
+
   it("excluded, unclassified and switched-off tasks are refused by ai.proposal.start", async () => {
     const off = ctxFor("owner", { owner: { enabled: true, tasks: { "library.loan.issue": false } } });
     for (const action of ["core.module.set", "academics.grade.upsert", "library.loan.issue"]) {
