@@ -79,6 +79,22 @@ describe("systemPromptFor", () => {
     expect(prompt).toContain("never another student, staff member, or school-wide data");
   });
 
+  it("a guardian of two, no child picked, is told to answer for each child by name", () => {
+    const prompt = systemPromptFor({
+      role: "guardian",
+      nonce: NONCE,
+      mode: "cloud",
+      capabilities: [],
+      instructions: "",
+      children: [{ id: "id-ananya", name: "Ananya Sharma" }, { id: "id-aarav", name: "Aarav Sharma" }],
+    });
+    expect(prompt).toContain("guardian of 2 children");
+    expect(prompt).toContain("Ananya Sharma (student id id-ananya)");
+    expect(prompt).toContain("Aarav Sharma (student id id-aarav)");
+    expect(prompt).toContain("answer child by child");
+    expect(prompt).toContain("Never another student");
+  });
+
   it("lists each enabled chat_tool capability by label, in order, and skips task-kind capabilities", () => {
     const capabilities: CapabilityKey[] = ["attendance_overview", "navigate", "quiz_generator"];
     const prompt = systemPromptFor({ role: "owner", nonce: NONCE, mode: "local", capabilities, instructions: "" });

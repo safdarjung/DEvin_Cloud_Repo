@@ -141,6 +141,7 @@ export const CAPABILITY_KEYS = [
   "weak_area_plan",
   "study_language",
   "exam_prep",
+  "my_assignments",
   // Guardian child reads (a student id the guardian's own permissions pass)
   "child_attendance",
   "child_results",
@@ -428,14 +429,14 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
   },
   attendance_pattern: {
     key: "attendance_pattern",
-    label: "Student attendance pattern",
-    description: "Get a taught student's attendance pattern for the current term.",
+    label: "Student attendance pattern and class absentees",
+    description: "Get a taught student's attendance pattern for the current term, or who was absent in a taught class on a day.",
     kind: "chat_tool",
     roles: ["teacher"],
     permission: "attendance.read",
     module: "ai_teacher",
     data: "personal",
-    tools: ["getAttendancePattern"],
+    tools: ["getAttendancePattern", "getSectionAbsentees"],
   },
   exam_results: {
     key: "exam_results",
@@ -792,6 +793,19 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     data: "own",
     queries: ["exams.getMyPapers"],
     instruction: "Suggest what to revise and link Practice.",
+  },
+  // Seen 2026-11-13: "my open assignments" got "no tool". Own assignments with this student's submission state.
+  my_assignments: {
+    key: "my_assignments",
+    label: "My assignments and homework",
+    description: "The student's own published assignments and homework: due date and whether each is submitted, late or graded.",
+    kind: "chat_tool",
+    roles: ["student"],
+    permission: "ai.study",
+    module: "assignments",
+    data: "own",
+    queries: ["academics.mySubmissions"],
+    instruction: "Open assignments are only those with state not_submitted; never list a submitted or graded one as open. Soonest due first.",
   },
 
   // ---- Guardian chat capabilities (P3) --------------------------------

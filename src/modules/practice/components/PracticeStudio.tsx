@@ -25,6 +25,19 @@ const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 // Codes where the model path itself is down or refused: explain, never fake questions.
 const AI_DOWN: ReadonlySet<ErrorCode> = new Set(["ai_unavailable", "ai_policy_blocked", "ai_invalid_output", "dependency_failed"]);
 
+const SUPERSCRIPT: Record<string, string> = {
+  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+  "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", n: "ⁿ", i: "ⁱ", x: "ˣ", y: "ʸ",
+};
+
+/** Model text writes powers as "2x^2" or "x^{n+1}": shown as "2x²", "xⁿ⁺¹". A power with no superscript form stays as typed. */
+export function withSuperscripts(text: string): string {
+  return text.replace(/\^(?:\{([^{}]{1,8})\}|(-?\d+|[nixy]))/g, (whole, braced: string | undefined, bare: string | undefined) => {
+    const power = (braced ?? bare ?? "").replace(/\s+/g, "");
+    return [...power].every((c) => c in SUPERSCRIPT) ? [...power].map((c) => SUPERSCRIPT[c]).join("") : whole;
+  });
+}
+
 type Phase =
   | { kind: "setup" }
   | { kind: "generating" }
@@ -181,7 +194,7 @@ export function PracticeStudio({
           {questions.map((q, qi) => (
             <fieldset key={qi} className="rounded-xl border p-4">
               <legend className="px-1 text-sm font-medium">
-                <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {q.stem}
+                <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {withSuperscripts(q.stem)}
               </legend>
               <div className="mt-2 space-y-1">
                 {q.options.map((opt, oi) => (
@@ -193,7 +206,7 @@ export function PracticeStudio({
                       checked={answers[qi] === oi}
                       onChange={() => setPhase({ ...phase, answers: answers.map((a, i) => (i === qi ? oi : a)) })}
                     />
-                    <span>{opt}</span>
+                    <span>{withSuperscripts(opt)}</span>
                   </label>
                 ))}
               </div>
@@ -236,14 +249,14 @@ export function PracticeStudio({
               return (
                 <li key={qi} className="rounded-xl border p-4">
                   <p className="text-sm font-medium">
-                    <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {q.stem}
+                    <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {withSuperscripts(q.stem)}
                   </p>
                   <p className={`mt-1 text-xs font-medium ${right ? "" : "text-destructive"}`}>{right ? "Correct" : picked === null ? "Skipped" : "Incorrect"}</p>
                   {!right && (
                     <div className="mt-2 space-y-1 text-sm">
-                      {picked !== null && <p className="text-muted-foreground">Your answer: {q.options[picked]}</p>}
-                      <p>Correct answer: {q.options[q.answerIndex]}</p>
-                      {q.explanation && <p className="text-muted-foreground">{q.explanation}</p>}
+                      {picked !== null && <p className="text-muted-foreground">Your answer: {withSuperscripts(q.options[picked] ?? "")}</p>}
+                      <p>Correct answer: {withSuperscripts(q.options[q.answerIndex] ?? "")}</p>
+                      {q.explanation && <p className="text-muted-foreground">{withSuperscripts(q.explanation)}</p>}
                     </div>
                   )}
                 </li>

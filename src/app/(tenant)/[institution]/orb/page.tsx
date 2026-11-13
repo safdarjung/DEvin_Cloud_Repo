@@ -41,9 +41,8 @@ export default async function OrbPage({
   let chat: OrbChat | null = null;
   if (aiOn) {
     if (role === "guardian") {
-      // Guardian chat is child-scoped; the kernel re-checks this id belongs to them.
-      const child = (await listMyChildren(ctx))[0];
-      if (child) chat = { endpoint: "/api/ai/agent/assistant", studentId: child.id };
+      // Guardian chat is child-scoped: no id sent, so the kernel covers every linked child (re-checked there).
+      if ((await listMyChildren(ctx)).length > 0) chat = { endpoint: "/api/ai/agent/assistant" };
     } else {
       chat = { endpoint: `/api/ai/agent/${role === "teacher" ? "teacher" : role === "student" ? "student" : "assistant"}` };
     }

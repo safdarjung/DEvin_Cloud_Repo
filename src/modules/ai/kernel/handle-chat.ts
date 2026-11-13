@@ -127,9 +127,10 @@ function redactScoped(scoped: ScopedExtras): { scoped: ScopedExtras; redactions:
 
 // Guardian defense in depth: RLS already scopes these registry queries to
 // the guardian's own children, but the model is never given a free-form
-// `studentId` to begin with — every call is rebound to the one verified
-// child before it reaches the query, regardless of what the model sent.
-function bindStudentId(tools: ToolSet, studentId: string): ToolSet {
+// `studentId` — one verified child: every call is rebound to it, whatever the
+// model sent; several (a guardian of two): the id must be one of them, else
+// the tool refuses before any query runs.
+function bindStudentId(tools: ToolSet, allowed: readonly string[]): ToolSet {
   const bound: Record<string, unknown> = {};
   for (const [name, toolDef] of Object.entries(tools)) {
     const execute = (toolDef as { execute?: (input: unknown, ...rest: unknown[]) => unknown }).execute;
@@ -144,7 +145,10 @@ function bindStudentId(tools: ToolSet, studentId: string): ToolSet {
             // without one (messaging.send) would reject an added key.
             execute: (input: unknown, ...rest: unknown[]) => {
               const fields = (input ?? {}) as Record<string, unknown>;
-              return execute(takesId || "studentId" in fields ? { ...fields, studentId } : fields, ...rest);
+              if (!takesId && !("studentId" in fields)) return execute(fields, ...rest);
+              const studentId = allowed.length === 1 ? allowed[0] : allowed.find((id) => id === fields.studentId);
+              if (!studentId) return "Pass studentId: one of this guardian's children listed in your instructions. Call once per child.";
+              return execute({ ...fields, studentId }, ...rest);
             },
           }
         : toolDef;
@@ -186,6 +190,8 @@ export interface ChatToolsetInput {
   onSource?: (query: string, params: unknown) => void;
   /** Guardian only: every tool's studentId is pinned to this verified child. */
   childId?: string;
+  /** Guardian of several children (none picked): a tool's studentId must be one of these verified ids. */
+  childIds?: readonly string[];
   /** Recent user texts: the file-attach draft tool rides along only when they mention an upload. */
   texts?: readonly string[];
 }
@@ -211,7 +217,8 @@ export async function buildChatToolset(ctx: TenantContext, input: ChatToolsetInp
   let tools: ToolSet = { ...readTools, ...draftTools };
   // A student's own records: the model never knows the student's id (seen: it sent none, or a zero uuid, and got nothing back).
   const ownId = childId ?? (personaRole === "student" && ctx.membership.role === "student" ? ctx.membership.studentId : null);
-  if (ownId) tools = bindStudentId(tools, ownId);
+  const allowedIds = ownId ? [ownId] : input.childIds;
+  if (allowedIds?.length) tools = bindStudentId(tools, allowedIds);
 
   const toolNames = new Set(capabilities.flatMap((key) => CAPABILITIES[key].tools ?? []));
   if (toolNames.has("navigate")) {
@@ -347,16 +354,20 @@ export async function handleAiChat(request: Request): Promise<Response> {
     return apiResponse(fail("ai_unavailable", isPreview ? "This AI feature is turned off for that role." : "This AI feature is turned off for your role."));
   }
 
+  // Guardian: a picked child pins the chat to it; none picked covers every linked child (one: pinned the same way).
   let childId: string | undefined;
+  let children: Awaited<ReturnType<typeof listMyChildren>> = [];
   if (role === "guardian" && !isPreview) {
-    if (!input.studentId) {
-      return apiResponse(fail("validation_failed", "A child must be selected.", { studentId: ["Required"] }));
+    children = await listMyChildren(ctx);
+    if (input.studentId) {
+      const match = children.find((child) => child.id === input.studentId);
+      if (!match) return apiResponse(fail("forbidden", "That student is not one of your children."));
+      children = [match];
     }
-    const children = await listMyChildren(ctx);
-    const match = children.find((child) => child.id === input.studentId);
-    if (!match) return apiResponse(fail("forbidden", "That student is not one of your children."));
-    childId = match.id;
+    if (children.length === 0) return apiResponse(fail("forbidden", "No child is linked to your account."));
+    if (children.length === 1) childId = children[0]!.id;
   }
+  const childIds = childId ? undefined : children.map((child) => child.id);
 
   const strippedMessages = stripToText(input.messages);
   if (strippedMessages.length === 0) {
@@ -373,7 +384,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
 
   const nonce = crypto.randomUUID();
   const sources = createSourceLog();
-  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, nonce, onSource: sources.add, childId, texts: recentUserTexts(strippedMessages) });
+  const { tools, groups } = await buildChatToolset(ctx, { personaRole, capabilities, nonce, onSource: sources.add, childId, childIds, texts: recentUserTexts(strippedMessages) });
 
   // 0140: a student's chosen study scope adds server-built context and one small tool group.
   let scoped: ScopedExtras | null = null;
@@ -405,6 +416,7 @@ export async function handleAiChat(request: Request): Promise<Response> {
     instructions: roleConfig.instructions,
     studentPrefs: studentPrefs ? { skills: studentPrefs.skills, style: studentPrefs.style } : undefined,
     childId,
+    children: children.map((child) => ({ id: child.id, name: [child.firstName, child.lastName].filter(Boolean).join(" ") })),
   });
   // The model has no clock: "yesterday", "this week" and date-taking tools were guessed (audit 2026-11-12).
   const today = todayInInstitutionTimezone(ctx);

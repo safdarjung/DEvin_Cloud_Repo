@@ -383,6 +383,27 @@ describe("guardian chat: every student id is pinned to the verified child", () =
     expect(String(out)).not.toMatch(/Query failed/);
   });
 
+  it("a guardian of two gets each child's own record, and never a child they are not linked to", async () => {
+    const a = A.institutionId;
+    const guardianId = (await sql`select guardian_id from public.memberships where institution_id = ${a} and user_id = ${A.users.guardian.id}`)[0]!
+      .guardian_id as string;
+    await sql`insert into public.guardian_students (institution_id, guardian_id, student_id, relationship, is_primary) values (${a}, ${guardianId}, ${ids.aaravi}, 'father', false)`;
+    try {
+      const ctx = await as("guardian");
+      const { tools } = await buildChatToolset(ctx, { personaRole: "guardian", capabilities: ["child_attendance"], nonce: "g", childIds: [ids.aarav, ids.aaravi] });
+      for (const child of [ids.aarav, ids.aaravi]) {
+        expect(data<{ studentId: string }>(await run(tools, "attendance_getStudentAttendanceSummary", { studentId: child, termId: ids.term2 })).studentId).toBe(child);
+      }
+      for (const other of [ids.rohan, ids.bStudent, undefined]) {
+        const out = String(await run(tools, "attendance_getStudentAttendanceSummary", { studentId: other, termId: ids.term2 }));
+        expect(out).toMatch(/one of this guardian's children/);
+        expect(out).not.toContain(ids.rohan);
+      }
+    } finally {
+      await sql`delete from public.guardian_students where institution_id = ${a} and guardian_id = ${guardianId} and student_id = ${ids.aaravi}`;
+    }
+  });
+
   it("a guardian's direct directory search never shows other families' children", async () => {
     const out = data<{ students: { id: string }[] }>(await run(await readTools("guardian"), "people_listStudents", { query: "Rohan", page: 1 }));
     expect(out.students).toEqual([]);

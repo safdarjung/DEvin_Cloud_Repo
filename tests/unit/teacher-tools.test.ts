@@ -16,6 +16,8 @@ const canGenerateQuizForUnitMock = vi.fn();
 const canDraftRemarkForResultMock = vi.fn();
 const runStructuredMock = vi.fn();
 const listStudentAssignmentsMock = vi.fn();
+const listTeachableSectionsMock = vi.fn();
+const getSessionMock = vi.fn();
 
 vi.mock("@/modules/people/queries", () => ({
   listStudents: listStudentsMock,
@@ -24,9 +26,19 @@ vi.mock("@/modules/people/queries", () => ({
 }));
 vi.mock("@/modules/attendance/queries", () => ({
   getSectionAttendancePatterns: getSectionAttendancePatternsMock,
+  getSession: getSessionMock,
+  getAttendanceSettings: () => ({
+    statuses: [
+      { code: "P", label: "Present", countsPresent: 1, inDenominator: true },
+      { code: "H", label: "Half day", countsPresent: 0.5, inDenominator: true },
+      { code: "L", label: "Late", countsPresent: 1, inDenominator: true },
+      { code: "A", label: "Absent", countsPresent: 0, inDenominator: true },
+    ],
+  }),
 }));
 vi.mock("@/modules/academics/assignments.queries", () => ({
   listStudentAssignments: listStudentAssignmentsMock,
+  listTeachableSections: listTeachableSectionsMock,
 }));
 vi.mock("@/modules/ai/quiz-scope", () => ({ canGenerateQuizForUnit: canGenerateQuizForUnitMock }));
 vi.mock("@/modules/ai/remark-scope", () => ({ canDraftRemarkForResult: canDraftRemarkForResultMock }));
@@ -79,7 +91,7 @@ function fakeSupabase(tables: TableData) {
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn(async () => fakeSupabase({})) }));
 
-const { teacherTools } = await import("@/modules/ai/agent/teacher-tools");
+const { teacherTools, sectionKey } = await import("@/modules/ai/agent/teacher-tools");
 const serverClient = await import("@/lib/supabase/server");
 
 function baseCtx(): TenantContext {
@@ -207,6 +219,51 @@ describe("teacherTools", () => {
       const tools = await teacherTools(baseCtx());
       const result = await tools.getAttendancePattern.execute!({ studentId: "s1" }, { toolCallId: "1", messages: [], context: {} });
       expect(result).toEqual({ presentCount: 40, absentCount: 2, lateCount: 1, recentAbsentDayOffsets: [3] });
+    });
+  });
+
+  describe("getSectionAbsentees", () => {
+    const opts = { toolCallId: "1", messages: [], context: {} };
+    const row = (name: string, rollNo: number, status: string | null) => ({ studentId: name, name, rollNo, recordId: status ? "r" : null, status, note: "private note" });
+
+    it("reads the class labels a teacher types as the register label", () => {
+      for (const raw of ["VI-A", "6A", "6 a", "class 6-A", "vi a"]) expect(sectionKey(raw)).toBe("VI-A");
+      expect(sectionKey("XI-B")).toBe("XI-B");
+    });
+
+    it("names the absent and half-day students of a taught class, without notes", async () => {
+      listTeachableSectionsMock.mockResolvedValueOnce([{ id: "sec6a", label: "VI-A", gradeId: "g6" }]);
+      getSessionMock.mockResolvedValueOnce({
+        section: { id: "sec6a", label: "VI-A", classTeacherId: "staff-1" },
+        date: "2026-11-12",
+        session: { id: "sess", status: "submitted", submittedAt: null },
+        students: [row("Aarav", 1, "P"), row("Diya", 2, "A"), row("Kabir", 3, "H"), row("Meera", 4, "L"), row("Ravi", 5, null)],
+      });
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getSectionAbsentees.execute!({ section: "6A", date: "2026-11-12" }, opts);
+      expect(getSessionMock).toHaveBeenCalledWith(expect.anything(), "sec6a", "2026-11-12");
+      expect(result).toEqual({
+        section: "VI-A",
+        date: "2026-11-12",
+        marked: 4,
+        absent: [{ name: "Diya", rollNo: 2, status: "Absent" }, { name: "Kabir", rollNo: 3, status: "Half day" }],
+      });
+    });
+
+    it("refuses a class the teacher does not teach, before reading any register", async () => {
+      getSessionMock.mockClear();
+      listTeachableSectionsMock.mockResolvedValueOnce([{ id: "sec6a", label: "VI-A", gradeId: "g6" }]);
+      const tools = await teacherTools(baseCtx());
+      const result = await tools.getSectionAbsentees.execute!({ section: "VIII-B", date: "2026-11-12" }, opts);
+      expect(result).toMatch(/not one you teach/);
+      expect(getSessionMock).not.toHaveBeenCalled();
+    });
+
+    it("says so when no register was taken that day", async () => {
+      listTeachableSectionsMock.mockResolvedValueOnce([{ id: "sec6a", label: "VI-A", gradeId: "g6" }]);
+      getSessionMock.mockResolvedValueOnce({ section: { id: "sec6a", label: "VI-A", classTeacherId: null }, date: "2026-11-08", session: null, students: [] });
+      const tools = await teacherTools(baseCtx());
+      expect(await tools.getSectionAbsentees.execute!({ section: "VI-A", date: "2026-11-08" }, opts)).toBe("No attendance register was taken for VI-A on 2026-11-08.");
     });
   });
 

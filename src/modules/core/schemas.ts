@@ -364,7 +364,8 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
     // turns/student/day leaves room for several students concurrently
     // without one student alone exhausting the institution's quota.
     // Revisit from measured usage once a real school pilots this.
-    student_daily_token_quota: 20000,
+    // 2026-11-13: a tool-using orb turn costs ~4–8k tokens, so 20,000 was ~3–5 messages; ~15–25 now.
+    student_daily_token_quota: 100000,
   },
   communication: { languages: ["en", "hi"], sms_sender: "SJCDEM" },
   features: { teacher_ai_agent: true },

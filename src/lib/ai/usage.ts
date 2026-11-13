@@ -93,7 +93,8 @@ function roleDailyTokenQuota(ctx: TenantContext): number | null {
 // local AI for the rest of the day. Checked in addition to, never instead
 // of, the institution-wide quota above.
 // "image": each picture is billed, so every person (any role) has the same per-user daily
-// ceiling on it (about 14 pictures at the default 20,000 tokens).
+// ceiling on it (about 14 pictures at 20,000 tokens), kept there when the chat default rose to 100,000.
+const IMAGE_DAILY_TOKEN_CAP = 20_000;
 const STUDENT_QUOTA_FEATURES = new Set(["student_study", "practice_quiz", "image", "file_ask"]);
 
 export async function checkLimits(ctx: TenantContext, feature: string): Promise<LimitsResult> {
@@ -123,7 +124,8 @@ export async function checkLimits(ctx: TenantContext, feature: string): Promise<
 
   if (
     STUDENT_QUOTA_FEATURES.has(feature) &&
-    (await tokensSince({ p_user_id: ctx.user.id, p_feature: feature })) >= settings.student_daily_token_quota
+    (await tokensSince({ p_user_id: ctx.user.id, p_feature: feature })) >=
+      (feature === "image" ? Math.min(settings.student_daily_token_quota, IMAGE_DAILY_TOKEN_CAP) : settings.student_daily_token_quota)
   ) {
     return { ok: false, code: "quota_exceeded" };
   }

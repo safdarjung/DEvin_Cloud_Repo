@@ -20,6 +20,8 @@ export interface SystemPromptInput {
   studentPrefs?: { skills: readonly StudentSkill[]; style: StudentStyle };
   /** Guardian only — the one child this conversation is scoped to. */
   childId?: string;
+  /** Guardian only — every linked child in scope (several when none was picked). */
+  children?: readonly { id: string; name: string }[];
 }
 
 const MODE_LINE: Record<SystemPromptInput["mode"], string> = {
@@ -49,11 +51,20 @@ function baseRules(nonce: string, mode: SystemPromptInput["mode"], role: Role): 
   );
 }
 
-function personaFor(role: Role, studentPrefs: SystemPromptInput["studentPrefs"], childId: string | undefined): string {
+function personaFor(role: Role, studentPrefs: SystemPromptInput["studentPrefs"], childId: string | undefined, children: SystemPromptInput["children"] = []): string {
   if (role === "student") {
     const prefs = studentPrefs ?? { skills: [], style: { notesDensity: "standard", notesFormat: "bullets", language: "en" } as StudentStyle };
     // Seen on the demo: "I don't have your student ID loaded". The student's own tools are already scoped to them.
     return `${composeStudentInstructions(prefs.skills, prefs.style)} You are signed in as this student: tools about their own units, weak areas, results and plans need no id, so call them directly instead of asking.`;
+  }
+  if (role === "guardian" && children.length > 1) {
+    // Seen 2026-11-13: a guardian of two got attendance and invoices for the first child only, with no name.
+    return (
+      `You are this school's assistant for a guardian of ${children.length} children: ` +
+      `${children.map((c) => `${c.name} (student id ${c.id})`).join(", ")}. ` +
+      "A question that does not name one child is about every child: call each tool once per child with that child's student id, " +
+      "then answer child by child, starting each part with the child's first name. Never another student, staff member, or school-wide data."
+    );
   }
   if (role === "guardian") {
     return (
@@ -110,7 +121,7 @@ function schoolInstructionsBlock(instructions: string, nonce: string): string | 
 }
 
 export function systemPromptFor(input: SystemPromptInput): string {
-  const parts = [baseRules(input.nonce, input.mode, input.role), personaFor(input.role, input.studentPrefs, input.childId)];
+  const parts = [baseRules(input.nonce, input.mode, input.role), personaFor(input.role, input.studentPrefs, input.childId, input.children)];
   const capLines = capabilityLines(input.capabilities);
   if (capLines) parts.push(capLines);
   const instrLines = instructionLines(input.capabilities);

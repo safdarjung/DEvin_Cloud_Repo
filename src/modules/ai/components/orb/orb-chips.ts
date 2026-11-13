@@ -47,6 +47,7 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   weak_area_plan: ["create", "Make a one-week study plan for my weakest units."],
   study_language: ["ask", "Explain photosynthesis in Hindi, in simple words."],
   exam_prep: ["ask", "What should I revise first for my upcoming exams?"],
+  my_assignments: ["ask", "Which of my assignments are still open, and when are they due?"],
   child_attendance: ["ask", "How has my child's attendance been this term?"],
   child_results: ["ask", "Show my child's latest exam results."],
   child_fees: ["ask", "Show my child's invoices and anything still unpaid."],

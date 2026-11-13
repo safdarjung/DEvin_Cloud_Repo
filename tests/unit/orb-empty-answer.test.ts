@@ -15,6 +15,23 @@ describe("answerShows", () => {
     expect(answerShows([{ type: "text", text: "  \n" } as Parts[number]])).toBe(false);
   });
 
+  it("a leaked, malformed tool call as text counts as nothing (seen 2026-11-13 on a student chip)", () => {
+    for (const text of [
+      "(function kinases_functions最 Burke function",
+      'functions.mastery_gapsForStudent({"studentId": "x"})',
+      '{"name": "propose_task", "arguments": {}}',
+      'Let me check.<tool_call>{"name":"x"}</tool_call>',
+    ]) {
+      expect(answerShows([{ type: "text", text } as Parts[number]])).toBe(false);
+    }
+  });
+
+  it("prose that mentions functions is still an answer", () => {
+    for (const text of ["A function maps each x to one y.", "(f ∘ g)(x) means apply g first.", "Function notation: f(x) = 2x + 1"]) {
+      expect(answerShows([{ type: "text", text } as Parts[number]])).toBe(true);
+    }
+  });
+
   it("text, a pending tool line, or a navigate link count as an answer", () => {
     expect(answerShows([{ type: "text", text: "Day 1: fractions" } as Parts[number]])).toBe(true);
     expect(answerShows([{ type: "tool-x", toolCallId: "c", state: "input-available", input: {} } as unknown as Parts[number]])).toBe(true);

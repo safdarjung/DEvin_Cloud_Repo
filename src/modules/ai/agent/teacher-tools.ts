@@ -12,11 +12,12 @@ import { tool } from "ai";
 import { unitSearchWords, unitTitleScore } from "./unit-match";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { uuid } from "@/lib/schemas/common";
+import { isoDate, uuid } from "@/lib/schemas/common";
 import type { TenantContext } from "@/lib/auth/types";
 import { listStudents, getStudentProfile, getCurrentTermId } from "@/modules/people/queries";
-import { getSectionAttendancePatterns } from "@/modules/attendance/queries";
-import { listStudentAssignments } from "@/modules/academics/assignments.queries";
+import { getAttendanceSettings, getSectionAttendancePatterns, getSession } from "@/modules/attendance/queries";
+import { absentStatusCodes } from "@/modules/attendance/absentees";
+import { listStudentAssignments, listTeachableSections } from "@/modules/academics/assignments.queries";
 import { managesWholeSection } from "@/modules/academics/teacher-scope";
 import { canGenerateQuizForUnit } from "@/modules/ai/quiz-scope";
 import { canDraftRemarkForResult } from "@/modules/ai/remark-scope";
@@ -145,6 +146,40 @@ async function listMyUnitsImpl(
     }));
 }
 
+const SECTION_ROMAN = ["", "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+
+/** "VI-A", "6A", "class 6 a", "vi a" all become "VI-A" (the register label); anything else is returned upper-cased. */
+export function sectionKey(raw: string): string {
+  const t = raw.trim().toUpperCase().replace(/^(CLASS|GRADE|STD)\.?\s*/, "");
+  const m = /^(\d{1,2}|[IVX]+)\s*-?\s*([A-Z])$/.exec(t);
+  if (!m) return t;
+  const grade = /^\d+$/.test(m[1]!) ? SECTION_ROMAN[Number(m[1])] ?? m[1]! : m[1]!;
+  return `${grade}-${m[2]}`;
+}
+
+/**
+ * Who was absent in one class on one day, for a class this teacher teaches (seen 2026-11-13: "who was absent
+ * in VI-A" got "I can't give names"). Names, roll numbers and status label only; never the register's notes.
+ */
+async function sectionAbsenteesImpl(ctx: TenantContext, section: string, date: string) {
+  const want = sectionKey(section);
+  const match = (await listTeachableSections(ctx)).find((s) => sectionKey(s.label) === want);
+  if (!match) return "That class is not one you teach, or its name was not recognised. Use the class as on the register, e.g. VI-A.";
+  const register = await getSession(ctx, match.id, date);
+  if (!register?.session) return `No attendance register was taken for ${match.label} on ${date}.`;
+  const { statuses } = getAttendanceSettings(ctx);
+  const absent = new Set(absentStatusCodes(statuses));
+  const label = new Map(statuses.map((s) => [s.code, s.label]));
+  return {
+    section: match.label,
+    date,
+    marked: register.students.filter((s) => s.status).length,
+    absent: register.students
+      .filter((s) => s.status && absent.has(s.status))
+      .map((s) => ({ name: s.name, rollNo: s.rollNo, status: label.get(s.status!) ?? s.status })),
+  };
+}
+
 /** Builds the full tool set for this authenticated teacher's turn, sharing one RLS-scoped client. */
 export async function teacherTools(ctx: TenantContext) {
   const supabase = await createClient();
@@ -229,6 +264,20 @@ export async function teacherTools(ctx: TenantContext) {
           };
         } catch (err) {
           return toolErrorMessage("getAttendancePattern", err);
+        }
+      },
+    }),
+
+    getSectionAbsentees: tool({
+      description:
+        "Who was absent (or on a half day) in a class this teacher teaches on one day: names and roll numbers. " +
+        "section is the class as on the register, e.g. VI-A; date is YYYY-MM-DD.",
+      inputSchema: z.object({ section: z.string().trim().min(1).max(30), date: isoDate }),
+      execute: async ({ section, date }) => {
+        try {
+          return await sectionAbsenteesImpl(ctx, section, date);
+        } catch (err) {
+          return toolErrorMessage("getSectionAbsentees", err);
         }
       },
     }),

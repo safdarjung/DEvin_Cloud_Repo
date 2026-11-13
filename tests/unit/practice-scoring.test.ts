@@ -70,3 +70,17 @@ describe("subjectAverages", () => {
     expect(subjectAverages([{ subjectId: "m", score: 0, maxScore: 0 }])).toEqual([]);
   });
 });
+
+describe("withSuperscripts (practice quiz display)", async () => {
+  const { withSuperscripts } = await import("@/modules/practice/components/PracticeStudio");
+
+  it("shows the model's caret powers as superscripts", () => {
+    expect(withSuperscripts("Factorise 2x^2 - 4x")).toBe("Factorise 2x² - 4x");
+    expect(withSuperscripts("x^{n+1} and 2^10 and a^-1")).toBe("xⁿ⁺¹ and 2¹⁰ and a⁻¹");
+  });
+
+  it("leaves text with no caret, or a power with no superscript form, as typed", () => {
+    expect(withSuperscripts("x(x-2)")).toBe("x(x-2)");
+    expect(withSuperscripts("e^{ab}")).toBe("e^{ab}");
+  });
+});

@@ -45,4 +45,11 @@ describe("InstitutionSettingsSchema", () => {
       expect(() => InstitutionSettingsSchema.parse(broken), key).toThrow();
     }
   });
+
+  it("gives a student a usable daily AI allowance by default (~20 tool-using turns, not ~5)", () => {
+    expect(DEFAULT_INSTITUTION_SETTINGS.ai.student_daily_token_quota).toBe(100_000);
+    const atCap = structuredClone(DEFAULT_INSTITUTION_SETTINGS);
+    atCap.ai.student_daily_token_quota = 10_000_000;
+    expect(() => InstitutionSettingsSchema.parse(atCap)).not.toThrow();
+  });
 });
