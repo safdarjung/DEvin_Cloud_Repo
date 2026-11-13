@@ -221,7 +221,9 @@ describe("handleAiChat — role/guardian acceptance (ai-roles T4)", () => {
     }
   }, 30_000);
 
-  it("guardian: no studentId at all is a validation error, never reaching the model", async () => {
+  // 2026-11-13: no studentId now covers every linked child (orb fix); a guardian
+  // with no linked child is refused before the model.
+  it("guardian with no linked child and no studentId is forbidden, never reaching the model", async () => {
     const inst: TestInstitution = await createTestInstitution("ai-chat-roles-guardian-missing");
     try {
       await enableRoleChat(inst.institutionId, "guardian");
@@ -229,8 +231,8 @@ describe("handleAiChat — role/guardian acceptance (ai-roles T4)", () => {
       scriptModel(textStep("should never run"));
 
       const res = await assistantPost(chatRequest(inst.slug, "How is my child doing?"));
-      expect(res.status).toBe(422);
-      expect((await res.json()).error.code).toBe("validation_failed");
+      expect(res.status).toBe(403);
+      expect((await res.json()).error.code).toBe("forbidden");
       expect(providers.getLocalModel).not.toHaveBeenCalled();
     } finally {
       setActingClient(null);

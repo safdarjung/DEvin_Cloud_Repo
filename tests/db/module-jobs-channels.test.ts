@@ -76,6 +76,25 @@ async function createUnlinkedStaff(institutionId: string): Promise<string> {
   return row.id as string;
 }
 
+// The queue is shared with every other test and the dev server: claim until this
+// institution's job comes up, and put anyone else's back untouched.
+async function claimOwnJob(ports: ReturnType<typeof createRunnerPorts>, institutionId: string) {
+  const skipped: { id: string; runAfter: string }[] = [];
+  try {
+    for (let i = 0; i < 500; i += 1) {
+      const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
+      if (!job || job.institution_id === institutionId) return job;
+      // Park it in the future so the next claim moves on; restored below.
+      skipped.push({ id: job.id, runAfter: job.run_after });
+      await sql`update public.jobs set status = 'queued', locked_at = null, locked_by = null,
+        attempts = greatest(attempts - 1, 0), run_after = now() + interval '1 day' where id = ${job.id}::uuid`;
+    }
+    return null;
+  } finally {
+    for (const s of skipped) await sql`update public.jobs set run_after = ${s.runAfter}::timestamptz where id = ${s.id}::uuid`;
+  }
+}
+
 function stubResendFetch() {
   const real = globalThis.fetch;
   return vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
@@ -95,7 +114,7 @@ describe("JOB_MODULES gate in the runner (MOD-T11)", () => {
     await setModule(inst.institutionId, "announcements", false);
 
     const ports = withoutSweeps(createRunnerPorts(admin));
-    const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
+    const job = await claimOwnJob(ports, inst.institutionId);
     expect(job?.type).toBe("notify.announcement");
     if (!job) return;
     await expect(ports.dispatch(job)).resolves.toBeUndefined();
@@ -116,7 +135,7 @@ describe("JOB_MODULES gate in the runner (MOD-T11)", () => {
     await publishRoleAnnouncement(inst, "teacher");
 
     const ports = withoutSweeps(createRunnerPorts(admin));
-    const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
+    const job = await claimOwnJob(ports, inst.institutionId);
     expect(job?.type).toBe("notify.announcement");
     if (!job) return;
     await ports.dispatch(job);
@@ -139,7 +158,7 @@ describe("JOB_MODULES gate in the runner (MOD-T11)", () => {
     await sql`select app.enqueue_job(${inst.institutionId}::uuid, 'notify.attendance_absence', ${sql.json({ record_id: crypto.randomUUID() })}, ${key})`;
 
     const ports = withoutSweeps(createRunnerPorts(admin));
-    const job = await ports.claimJob(`mod-t11-${crypto.randomUUID()}`);
+    const job = await claimOwnJob(ports, inst.institutionId);
     expect(job?.idempotency_key).toBe(key);
     if (!job) return;
     await expect(ports.dispatch(job)).resolves.toBeUndefined();
