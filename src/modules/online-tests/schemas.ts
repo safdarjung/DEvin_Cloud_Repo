@@ -70,11 +70,11 @@ export const AttemptStartSchema = z
   })
   .strict();
 
-/** Answer shapes: text (mcq option, true/false, A-D, written answer), number, or a list (multi_select, fill_blank, match). */
+/** Answer shapes: text (mcq option, true/false, A-D, written answer), number, or a list (multi_select, fill_blank, match). A null in a match list is an unmatched pair: app.mark_test_item (0150) marks a partial match wrong and an all-null one unanswered. */
 export const AnswerSchema = z.union([
   z.string().max(8000),
   z.number().finite(),
-  z.array(z.union([z.string().max(500), z.number().int().min(0).max(99)])).max(20),
+  z.array(z.union([z.string().max(500), z.number().int().min(0).max(99), z.null()])).max(20),
 ]);
 export type Answer = z.infer<typeof AnswerSchema>;
 

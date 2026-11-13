@@ -62,3 +62,14 @@ export function sectionMarks(items: readonly MarkedItem[], chooseCount: number |
   const kept = chooseCount === null ? values : values.slice(0, chooseCount);
   return Math.round(kept.reduce((sum, m) => sum + m, 0) * 100) / 100;
 }
+
+/** Blueprint section index -> paper section, matched by trimmed case-insensitive title (each paper section claimed once, in order). Never by position: hand-added or reordered sections would misalign. */
+export function mapSectionsByTitle<S extends { id: string; title: string }>(blueprint: { sections: { title: string }[] }, sections: S[]): (S | undefined)[] {
+  const key = (t: string) => t.trim().toLowerCase();
+  const claimed = new Set<string>();
+  return blueprint.sections.map((b) => {
+    const hit = sections.find((s) => !claimed.has(s.id) && key(s.title) === key(b.title));
+    if (hit) claimed.add(hit.id);
+    return hit;
+  });
+}

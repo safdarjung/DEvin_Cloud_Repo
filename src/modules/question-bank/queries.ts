@@ -7,7 +7,11 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
-import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
+import { listCurriculumUnitsForGrades, listTeachableSections } from "@/modules/academics/assignments.queries";
+import { listTopics } from "@/modules/academics/curriculum.queries";
+import { managesWholeSection } from "@/modules/academics/teacher-scope";
+import type { PairMeta } from "@/modules/question-bank/components/question-meta";
+import { textbooksForGrade } from "@/modules/textbooks/queries";
 import type {
   Difficulty,
   PaperDraftInput,
@@ -34,6 +38,8 @@ export interface QuestionBankItem {
   answerKey: unknown;
   marks: number;
   isActive: boolean;
+  /** Students may see it in self-practice (0151). */
+  practiceAllowed: boolean;
   status: QuestionStatus;
   origin: QuestionOrigin;
   aiModel: string | null;
@@ -61,7 +67,7 @@ export interface QuestionListResult {
 }
 
 const QUESTION_SELECT =
-  "id, subject_id, grade_id, curriculum_unit_id, curriculum_topic_id, type, difficulty, body, options, answer, answer_key, marks, is_active, status, origin, ai_model, explanation, marking_scheme, learning_outcome, source_subject_textbook_id, source_chapter_no, source_page, version, parent_question_id, stem_question_id, reviewed_by, reviewed_at, review_note, created_by, updated_at, subjects(name), grades(code), curriculum_units(title), curriculum_topics(title)";
+  "id, subject_id, grade_id, curriculum_unit_id, curriculum_topic_id, type, difficulty, body, options, answer, answer_key, marks, is_active, practice_allowed, status, origin, ai_model, explanation, marking_scheme, learning_outcome, source_subject_textbook_id, source_chapter_no, source_page, version, parent_question_id, stem_question_id, reviewed_by, reviewed_at, review_note, created_by, updated_at, subjects(name), grades(code), curriculum_units(title), curriculum_topics(title)";
 
 type ServerClient = Awaited<ReturnType<typeof createClient>>;
 const selectQuestions = (supabase: ServerClient) => supabase.from("question_bank").select(QUESTION_SELECT, { count: "exact" });
@@ -88,6 +94,7 @@ function toItem(row: QuestionRow): QuestionBankItem {
       answerKey: row.answer_key,
       marks: row.marks as number,
       isActive: row.is_active as boolean,
+      practiceAllowed: row.practice_allowed,
       status: row.status as QuestionStatus,
       origin: row.origin as QuestionOrigin,
       aiModel: row.ai_model,
@@ -144,26 +151,34 @@ export interface TeachingPair {
   subjectName: string;
 }
 
-/** Distinct (grade, subject) pairs the caller may author questions for: their taught sections' grades x subjects (owner/principal: all). Question approvers without classes (exam controller) get every pair the school teaches: RLS lets them write school-wide. */
+/** Distinct (grade, subject) pairs the caller may author questions and papers for. Owner/principal get every grade with a section x every subject; approvers (incl. exam controller) also every pair the school teaches: RLS lets them write school-wide. A teacher gets only their subject_assignments pairs, the same set the bank (0073) and paper (0149) RLS accepts; a class teacher's all-subjects reach (diary, lesson plans) does not apply here. */
 export async function listTeachingPairs(ctx: TenantContext): Promise<TeachingPair[]> {
   const supabase = await createClient();
-  const sections = await listTeachableSections(ctx);
-  const subjectLists = await Promise.all(sections.map((s) => listSectionSubjects(ctx, s.id)));
-
+  const isApprover = hasPermission(ctx, "question.approve");
   const pairs = new Map<string, { gradeId: string; subjectId: string; subjectName: string }>();
-  sections.forEach((section, i) => {
-    for (const subject of subjectLists[i]) pairs.set(`${section.gradeId}:${subject.id}`, { gradeId: section.gradeId, subjectId: subject.id, subjectName: subject.name });
-  });
-  if (hasPermission(ctx, "question.approve")) {
-    const { data, error } = await supabase
-      .from("subject_assignments")
-      .select("subject_id, subjects(name), class_sections(grade_id)")
-      .eq("institution_id", ctx.institution.id);
-    if (error) throw error;
-    for (const row of data ?? []) {
-      const gradeId = (row.class_sections as { grade_id: string } | null)?.grade_id;
-      if (gradeId) pairs.set(`${gradeId}:${row.subject_id}`, { gradeId, subjectId: row.subject_id, subjectName: (row.subjects as { name: string } | null)?.name ?? "" });
+  if (isApprover && managesWholeSection(ctx, null)) {
+    // Owner/principal: every grade that has a section x every subject (3 queries, not one per section).
+    const [sections, subjects] = await Promise.all([
+      listTeachableSections(ctx),
+      supabase.from("subjects").select("id, name").eq("institution_id", ctx.institution.id),
+    ]);
+    if (subjects.error) throw subjects.error;
+    for (const gradeId of new Set(sections.map((s) => s.gradeId))) {
+      for (const subject of subjects.data ?? []) pairs.set(`${gradeId}:${subject.id}`, { gradeId, subjectId: subject.id, subjectName: subject.name });
     }
+  } else if (!ctx.membership.staffId) {
+    return [];
+  }
+  let assigned = supabase
+    .from("subject_assignments")
+    .select("subject_id, subjects(name), class_sections(grade_id)")
+    .eq("institution_id", ctx.institution.id);
+  if (!isApprover) assigned = assigned.eq("teacher_id", ctx.membership.staffId!);
+  const { data, error: assignedError } = await assigned;
+  if (assignedError) throw assignedError;
+  for (const row of data ?? []) {
+    const gradeId = (row.class_sections as { grade_id: string } | null)?.grade_id;
+    if (gradeId) pairs.set(`${gradeId}:${row.subject_id}`, { gradeId, subjectId: row.subject_id, subjectName: (row.subjects as { name: string } | null)?.name ?? "" });
   }
   if (pairs.size === 0) return [];
   const { data: grades, error } = await supabase
@@ -177,6 +192,27 @@ export async function listTeachingPairs(ctx: TenantContext): Promise<TeachingPai
     .map((p) => ({ ...p, gradeCode: gradeById.get(p.gradeId)?.code ?? "?", sort: gradeById.get(p.gradeId)?.sort_key ?? 0 }))
     .sort((a, b) => a.sort - b.sort || a.subjectName.localeCompare(b.subjectName))
     .map(({ gradeId, gradeCode, subjectId, subjectName }) => ({ gradeId, gradeCode, subjectId, subjectName }));
+}
+
+/** Units, topics and books for each pair in a fixed handful of queries (was three per pair: hundreds for leadership, a slow page and refresh). */
+export async function listPairMeta(ctx: TenantContext, pairs: TeachingPair[]): Promise<PairMeta[]> {
+  const gradeIds = [...new Set(pairs.map((p) => p.gradeId))];
+  const [units, topics, bookLists] = await Promise.all([
+    listCurriculumUnitsForGrades(ctx, gradeIds),
+    pairs.length ? listTopics(ctx, {}) : Promise.resolve([]),
+    Promise.all(gradeIds.map((g) => textbooksForGrade(ctx, g))),
+  ]);
+  const books = new Map(gradeIds.map((g, i) => [g, bookLists[i]]));
+  const unitPair = new Map(units.map((u) => [u.id, `${u.gradeId}:${u.subjectId}`]));
+  return pairs.map((p) => {
+    const key = `${p.gradeId}:${p.subjectId}`;
+    return {
+      ...p,
+      units: units.filter((u) => u.gradeId === p.gradeId && u.subjectId === p.subjectId).map((u) => ({ id: u.id, title: u.title })),
+      topics: topics.filter((t) => unitPair.get(t.curriculumUnitId) === key).map((t) => ({ id: t.id, unitId: t.curriculumUnitId, parentId: t.parentId, title: t.title })),
+      books: (books.get(p.gradeId)?.[p.subjectId] ?? []).map((b) => ({ id: b.id, title: b.title })),
+    };
+  });
 }
 
 export interface PaperDraftQuestion {

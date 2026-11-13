@@ -6,6 +6,7 @@ import { BookOpen, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { isSafeHttpsUrl } from "@/modules/resources/schemas";
 import type { BookView, UnitChapterView } from "@/modules/textbooks/queries";
+import { BookChapterSummary } from "./BookChapterSummary";
 import { SchoolPdfButton } from "./SchoolCopy";
 
 const EXT = { target: "_blank", rel: "noopener noreferrer" } as const;
@@ -24,7 +25,8 @@ function ChapterLink({ book, no, title, url, kind }: { book: BookView; no: numbe
 }
 
 /** One book: title, source line, full-book link and a collapsible chapter list. */
-export function BookCard({ book }: { book: BookView }) {
+/** summarySlug: show a "Chapter summary" picker (only for books whose text the school holds; NCERT link-only books have none). */
+export function BookCard({ book, summarySlug }: { book: BookView; summarySlug?: string }) {
   const bookHref = safe(book.bookUrl);
   const schoolHref = safe(book.schoolUrl);
   return (
@@ -70,16 +72,19 @@ export function BookCard({ book }: { book: BookView }) {
           </ol>
         </details>
       )}
+      {summarySlug && book.meta.rightsStatus !== "link_only" && (
+        <BookChapterSummary institutionSlug={summarySlug} textbookId={book.id} bookTitle={book.title} chapters={book.chapters} />
+      )}
     </div>
   );
 }
 
-export function BookList({ books, empty = "No textbook set for this subject yet." }: { books: BookView[]; empty?: string }) {
+export function BookList({ books, empty = "No textbook set for this subject yet.", summarySlug }: { books: BookView[]; empty?: string; summarySlug?: string }) {
   if (books.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
     <div className="grid gap-2">
       {books.map((b) => (
-        <BookCard key={b.id} book={b} />
+        <BookCard key={b.id} book={b} summarySlug={summarySlug} />
       ))}
     </div>
   );

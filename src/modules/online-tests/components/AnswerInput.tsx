@@ -18,7 +18,7 @@ export const blankCount = (body: string) => Math.max(1, body.match(BLANK)?.lengt
 export function isAnswered(a: Answer | null | undefined): boolean {
   if (a === null || a === undefined) return false;
   if (typeof a === "string") return a.trim() !== "";
-  if (Array.isArray(a)) return a.some((x) => (typeof x === "string" ? x.trim() !== "" : true));
+  if (Array.isArray(a)) return a.some((x) => (typeof x === "string" ? x.trim() !== "" : x !== null));
   return true;
 }
 
@@ -32,7 +32,7 @@ interface Props {
 
 export function AnswerInput({ item, value, onChange }: Props) {
   const { type, options } = item;
-  const [partial, setPartial] = useState<(number | "")[]>(() => (type === "match" && Array.isArray(value) ? (value as number[]) : []));
+  const [partial, setPartial] = useState<(number | "")[]>(() => (type === "match" && Array.isArray(value) ? value.map((x) => (typeof x === "number" ? x : "")) : []));
   const list = Array.isArray(options) ? (options as string[]) : [];
 
   if (type === "mcq") {
@@ -148,9 +148,9 @@ export function AnswerInput({ item, value, onChange }: Props) {
                 const next = [...partial];
                 next[i] = e.target.value === "" ? "" : Number(e.target.value);
                 setPartial(next);
-                // Saved only when every pair is chosen; a half-finished match is kept on screen, not sent.
-                const full = left.map((_, j) => next[j]);
-                if (full.every((x) => typeof x === "number")) onChange(full as number[]);
+                // Autosaved as chosen; an unmatched pair is null (marked wrong while any pair is left), none chosen is no answer.
+                const pairs = left.map((_, j) => (typeof next[j] === "number" ? (next[j] as number) : null));
+                onChange(pairs.some((x) => x !== null) ? pairs : null);
               }}
             >
               <option value="">Choose...</option>
@@ -158,6 +158,9 @@ export function AnswerInput({ item, value, onChange }: Props) {
             </select>
           </label>
         ))}
+        {left.some((_, i) => typeof partial[i] === "number") && left.some((_, i) => typeof partial[i] !== "number") && (
+          <p role="status" className="text-xs text-warning" data-testid="match-incomplete">Incomplete: match every item. A partly matched question is marked wrong.</p>
+        )}
       </div>
     );
   }

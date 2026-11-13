@@ -14,6 +14,7 @@ const FABRIC_HREFS = [
 ];
 // features-18 pages held by owner, principal and admin (ROLES.md nav gates).
 const F18_LEADERS = [
+  "/learning-insights",
   "/students/lifecycle", "/exams/seating", "/behaviour", "/health", "/clubs", "/finance/concessions", "/finance/expenses",
   "/staff", "/library", "/visitors", "/certificates", "/hostel", "/labs", "/canteen", "/inventory", "/alumni", "/helpdesk", "/forms", "/documents",
   "/achievements", "/safety", "/compliance", "/resources", "/duties",
@@ -103,9 +104,9 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
   accountant: ["/dashboard", "/students", "/finance", "/finance/ledger", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant",
     "/clubs", "/finance/fee-plans", "/finance/concessions", "/finance/expenses", "/payroll", "/staff", "/canteen", "/inventory", "/safety", "/compliance", "/resources", "/duties", "/textbooks/search"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/assistant",
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/learning-insights", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/assistant",
     "/exams/seating", "/clubs", "/staff", "/safety", "/resources", "/duties", "/textbooks/search"],
-  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/messages",
+  teacher: ["/today", "/learning-insights", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/messages",
     "/behaviour", "/clubs", "/labs", "/staff", "/visitors", "/helpdesk", "/forms", "/achievements", "/safety", "/resources", "/duties", "/study-studio", "/textbooks", "/textbooks/search"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.

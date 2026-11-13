@@ -210,6 +210,23 @@ export async function listCurriculumUnits(
   return data ?? [];
 }
 
+/** Every curriculum unit of these grades, one query (pickers covering many grade x subject pairs). */
+export async function listCurriculumUnitsForGrades(
+  ctx: TenantContext,
+  gradeIds: string[],
+): Promise<(CurriculumUnitOption & { gradeId: string; subjectId: string })[]> {
+  if (gradeIds.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("curriculum_units")
+    .select("id, title, sequence, grade_id, subject_id")
+    .eq("institution_id", ctx.institution.id)
+    .in("grade_id", gradeIds)
+    .order("sequence", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((u) => ({ id: u.id, title: u.title, sequence: u.sequence, gradeId: u.grade_id, subjectId: u.subject_id }));
+}
+
 export interface SectionOption {
   id: string;
   label: string;
@@ -290,7 +307,7 @@ export async function listSectionSubjects(ctx: TenantContext, classSectionId: st
   return data ?? [];
 }
 
-/** listTeachableSections with grade-qualified labels ("VI-A"), same convention as the register and coverage views. */
+/** listTeachableSections ordered by grade (sort_key). Labels are already grade-qualified ("VI-A") by listTeachableSections; never prefix again. */
 export async function listLabelledTeachableSections(ctx: TenantContext): Promise<SectionOption[]> {
   const sections = await listTeachableSections(ctx);
   if (sections.length === 0) return sections;
@@ -303,7 +320,7 @@ export async function listLabelledTeachableSections(ctx: TenantContext): Promise
   if (error) throw error;
   const grade = new Map((data ?? []).map((g) => [g.id, g]));
   return sections
-    .map((s) => ({ ...s, label: `${grade.get(s.gradeId)?.code ?? "?"}-${s.label}`, sort: grade.get(s.gradeId)?.sort_key ?? 0 }))
+    .map((s) => ({ ...s, sort: grade.get(s.gradeId)?.sort_key ?? 0 }))
     .sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label))
     .map(({ id, label, gradeId }) => ({ id, label, gradeId }));
 }

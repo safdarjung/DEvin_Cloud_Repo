@@ -1,8 +1,11 @@
 import "server-only";
 // 0148 / Phase 2 (15-learning-exam-system-plan.md) — a chapter summary from
 // the book's extracted text only, each key point citing a page that was
-// actually retrieved (otherwise the page is dropped). Returned, never stored:
-// study materials have no slot for a staff-side book summary.
+// actually retrieved (otherwise the page is dropped). Returned, never stored.
+// Students (ai.study, ai_student module) and staff (academics.read) for books
+// they can read: content_chunks RLS (0148) scopes retrieval through the
+// user client, so a book outside the caller's reach yields no text. Guardians
+// are refused (they lack ai.study and are not staff).
 import { fail, ok, type ActionResult } from "@/lib/actions/result";
 import { runStructured } from "@/lib/ai/gateway";
 import { createClient } from "@/lib/supabase/server";
@@ -20,7 +23,7 @@ import {
   type ChapterSummaryRequest,
 } from "@/modules/content/grounding";
 import { findChunks } from "@/modules/content/queries";
-import { listTeachingPairs } from "@/modules/question-bank/queries";
+import type { TenantContext } from "@/lib/auth/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,12 +42,16 @@ export interface ChapterSummaryResponse {
   model: string | null;
 }
 
+/** Students and guardians take the learner gate (ai.study); guardians lack it, so they are refused. */
+const learner = (ctx: TenantContext) => ctx.membership.role === "student" || ctx.membership.role === "guardian";
+
 export const POST = aiTaskRoute<ChapterSummaryRequest, ChapterSummaryResponse>({
   route: "chapter-summary",
   schema: ChapterSummaryRequestSchema,
   maxBodyBytes: 4 * 1024,
-  permission: "question.manage",
-  capability: "question_paper_builder",
+  permission: (ctx) => (learner(ctx) ? "ai.study" : "academics.read"),
+  capability: (ctx) => (learner(ctx) ? "study_studio" : "question_paper_builder"),
+  module: (ctx) => (learner(ctx) ? "ai_student" : "ai_teacher"),
   run: async (ctx, input): Promise<ActionResult<ChapterSummaryResponse>> => {
     const supabase = await createClient();
     const { data: book, error } = await supabase
@@ -54,8 +61,7 @@ export const POST = aiTaskRoute<ChapterSummaryRequest, ChapterSummaryResponse>({
       .eq("institution_id", ctx.institution.id)
       .maybeSingle();
     if (error) throw error;
-    const pair = book && (await listTeachingPairs(ctx)).some((p) => p.gradeId === book.grade_id && p.subjectId === book.subject_id);
-    if (!book || !pair) return fail("not_found", "Book not found among the subjects you teach.");
+    if (!book) return fail("not_found", "Book not found.");
 
     const rows = await findChunks(ctx, { subjectTextbookId: book.id, chapterNos: [input.chapterNo], q: null, limit: CHAPTER_CHUNK_LIMIT });
     const chunks = selectContext(rows);
@@ -67,6 +73,7 @@ export const POST = aiTaskRoute<ChapterSummaryRequest, ChapterSummaryResponse>({
       ctx,
       feature: "chapter_summary",
       agentCloud: ctx.institution.ai_policy !== "local_only", // never under local_only (rule 6); textbook text only, no student data; redacted on the cloud path
+      permission: learner(ctx) ? "ai.study" : "ai.generate",
       schema: ChapterSummaryGenerationSchema,
       instructions: CHAPTER_SUMMARY_INSTRUCTIONS,
       prompt: buildChapterSummaryPrompt({ bookTitle: book.custom_title ?? "Textbook", chapterNo: input.chapterNo, chapterTitle, chunks }),

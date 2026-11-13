@@ -83,7 +83,7 @@ test("create, take, resume, submit, mark, publish and see the result", async ({ 
   const paperValue = await page.locator("select[aria-label='Question paper'] option", { hasText: paperTitle }).getAttribute("value");
   await page.getByLabel("Question paper").selectOption(paperValue!);
   await page.getByLabel("Title", { exact: true }).fill(testTitle);
-  await page.getByRole("checkbox", { name: /^Class X-(X-)?A$/ }).check(); // the section label is double-prefixed today (X-X-A)
+  await page.getByRole("checkbox", { name: "Class X-A", exact: true }).check();
   await page.getByLabel("Opens at").fill(local(-2));
   await page.getByLabel("Closes at").fill(local(180));
   await page.getByLabel("Duration").fill("30");

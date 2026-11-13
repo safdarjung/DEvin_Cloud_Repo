@@ -14,6 +14,7 @@ import type { AttemptPaper } from "@/modules/online-tests/queries";
 import type { Answer } from "@/modules/online-tests/schemas";
 import { createClient } from "@/lib/supabase/client";
 import { AnswerInput, isAnswered } from "./AnswerInput";
+import { markDocumentTimingUsed, responseAt } from "./runner-clock";
 import { fmtNum } from "./test-ui";
 
 type Entry = { answer: Answer | null; flagged: boolean };
@@ -42,9 +43,10 @@ export function ExamRunner({ slug, paper }: { slug: string; paper: AttemptPaper 
   const attemptId = paper.attempt.id;
   const flat = useMemo(() => paper.sections.flatMap((s) => s.items.map((it) => ({ ...it, section: s }))), [paper]);
 
-  // Monotonic end time: immune to device clock changes.
+  // Monotonic end time from (deadline - serverNow), counted from when the server answered, not from hydration; immune to device clock changes.
   const startMs = Date.parse(paper.attempt.deadline) - Date.parse(paper.attempt.serverNow);
-  const [endAt] = useState(() => performance.now() + startMs);
+  const [endAt] = useState(() => (typeof window === "undefined" ? 0 : responseAt()) + startMs);
+  useEffect(markDocumentTimingUsed, []);
   const [remaining, setRemaining] = useState(startMs);
 
   const [entries, setEntries] = useState<Record<string, Entry>>(() => {

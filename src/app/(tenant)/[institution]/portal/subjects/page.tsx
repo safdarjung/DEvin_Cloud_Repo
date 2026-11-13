@@ -6,6 +6,7 @@ import { BarList } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { isModuleEnabled } from "@/lib/modules/catalog";
+import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
 import { listPortalSubjects } from "@/modules/academics/portal-subjects.queries";
 import { SubjectCurriculum } from "@/modules/academics/components/SubjectCurriculum";
@@ -40,6 +41,7 @@ export default async function PortalSubjectsPage({
   const subjects = sectionId ? await listPortalSubjects(ctx, sectionId) : null;
   const isStudent = ctx.membership.role === "student";
   const canStudy = hasPermission(ctx, "ai.study") && isModuleEnabled(ctx, "ai_student");
+  const canSummarise = canStudy && isAiCapabilityEnabled(ctx, "study_studio");
   const books = sectionId ? await textbooksForSection(ctx, sectionId) : { gradeId: null, bySubject: {} };
   const [chapters, classFiles, shelf] = await Promise.all([
     loadUnitChapters(ctx, (subjects ?? []).flatMap((s) => s.units.map((u) => u.id))),
@@ -54,7 +56,7 @@ export default async function PortalSubjectsPage({
       <div key={sub.id} className="mt-4 space-y-4 border-t border-border pt-3">
         <section aria-label={`${sub.name} textbooks`} className="space-y-2">
           <h3 className="text-sm font-semibold">Textbooks</h3>
-          <BookList books={books.bySubject[sub.id] ?? []} empty="Your school has not set a textbook for this subject yet." />
+          <BookList books={books.bySubject[sub.id] ?? []} empty="Your school has not set a textbook for this subject yet." summarySlug={isStudent && canSummarise ? institutionSlug : undefined} />
         </section>
         <MaterialsPanel
           institutionSlug={institutionSlug}

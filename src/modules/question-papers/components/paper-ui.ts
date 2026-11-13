@@ -18,9 +18,15 @@ export const PAPER_STATUS_VARIANT: Record<PaperStatus, "secondary" | "warning" |
   archived: "outline",
 };
 
-/** Unwraps an ActionResult; shows one toast and returns null on failure. */
+/** Unwraps an ActionResult; shows one toast and returns null on failure (including a rejected call: network, server crash). */
 export async function run<T>(result: Promise<ActionResult<T>>): Promise<T | null> {
-  const r = await result;
+  let r: ActionResult<T>;
+  try {
+    r = await result;
+  } catch {
+    toast.error("Could not reach the server. Check your connection and try again.");
+    return null;
+  }
   if (!r.ok) {
     toast.error(actionErrorMessage(r.error));
     return null;

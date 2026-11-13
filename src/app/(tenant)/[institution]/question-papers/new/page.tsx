@@ -3,15 +3,12 @@ import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requireModule, requirePermission } from "@/lib/auth/require";
-import { listCurriculumUnits, listLabelledTeachableSections } from "@/modules/academics/assignments.queries";
-import { listTopics } from "@/modules/academics/curriculum.queries";
+import { listLabelledTeachableSections } from "@/modules/academics/assignments.queries";
 import { listExams } from "@/modules/exams/queries";
 import { listAcademicYears } from "@/modules/finance/queries";
-import { listTeachingPairs } from "@/modules/question-bank/queries";
-import type { PairMeta } from "@/modules/question-bank/components/question-meta";
+import { listCollectionItems, listCollections, listPairMeta, listTeachingPairs } from "@/modules/question-bank/queries";
 import { NewPaperWizard } from "@/modules/question-papers/components/NewPaperWizard";
 import { listTemplates } from "@/modules/question-papers/queries";
-import { textbooksForGrade } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "New question paper" };
 
@@ -30,20 +27,19 @@ export default async function NewQuestionPaperPage({ params }: { params: Promise
       </div>
     );
   }
-  const [years, sections, exams, templates, unitLists, topicLists, bookLists] = await Promise.all([
+  const [years, sections, exams, templates, meta, collections] = await Promise.all([
     listAcademicYears(ctx),
     listLabelledTeachableSections(ctx),
     listExams(ctx),
     listTemplates(ctx, {}),
-    Promise.all(pairs.map((p) => listCurriculumUnits(ctx, { gradeId: p.gradeId, subjectId: p.subjectId }))),
-    Promise.all(pairs.map((p) => listTopics(ctx, { gradeId: p.gradeId, subjectId: p.subjectId }))),
-    Promise.all(pairs.map((p) => textbooksForGrade(ctx, p.gradeId))),
+    listPairMeta(ctx, pairs),
+    listCollections(ctx),
   ]);
-  const meta: PairMeta[] = pairs.map((p, i) => ({
-    ...p,
-    units: unitLists[i].map((u) => ({ id: u.id, title: u.title })),
-    topics: topicLists[i].map((t) => ({ id: t.id, unitId: t.curriculumUnitId, parentId: t.parentId, title: t.title })),
-    books: (bookLists[i][p.subjectId] ?? []).map((b) => ({ id: b.id, title: b.title })),
+  const collectionItems = await Promise.all(collections.map((c) => listCollectionItems(ctx, c.id)));
+  const collectionSources = collections.map((c, i) => ({
+    id: c.id,
+    name: c.name,
+    questions: collectionItems[i].flatMap((it) => (it.question ? [{ id: it.question.id, gradeId: it.question.gradeId, subjectId: it.question.subjectId, type: it.question.type, marks: it.question.marks }] : [])),
   }));
 
   return (
@@ -56,6 +52,7 @@ export default async function NewQuestionPaperPage({ params }: { params: Promise
         sections={sections}
         exams={exams.map((e) => ({ id: e.id, name: e.name }))}
         templates={templates}
+        collections={collectionSources}
       />
     </div>
   );

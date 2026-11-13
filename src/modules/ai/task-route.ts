@@ -59,12 +59,15 @@ export interface AiTaskRouteOptions<I extends { institutionSlug: string }, O> {
   route: string;
   schema: z.ZodType<I>;
   maxBodyBytes: number;
-  permission: Permission;
-  capability: CapabilityKey;
+  /** A function when the gate depends on the caller's role (a route open to students and staff). */
+  permission: Permission | ((ctx: TenantContext) => Permission);
+  capability: CapabilityKey | ((ctx: TenantContext) => CapabilityKey);
   /** AI module the route needs; staff routes use the default, student routes pass "ai_student". */
-  module?: ModuleKey;
+  module?: ModuleKey | ((ctx: TenantContext) => ModuleKey);
   run: (ctx: TenantContext, input: I) => Promise<ActionResult<O>>;
 }
+
+const byRole = <T extends string>(v: T | ((ctx: TenantContext) => T), ctx: TenantContext): T => (typeof v === "function" ? v(ctx) : v);
 
 export function aiTaskRoute<I extends { institutionSlug: string }, O>(opts: AiTaskRouteOptions<I, O>) {
   return async function POST(request: Request): Promise<NextResponse> {
@@ -89,13 +92,13 @@ export function aiTaskRoute<I extends { institutionSlug: string }, O>(opts: AiTa
     }
 
     try {
-      requirePermission(ctx, opts.permission);
+      requirePermission(ctx, byRole(opts.permission, ctx));
     } catch (err) {
       if (err instanceof AppError) return json(fail(err.code, err.message, err.fieldErrors));
       throw err;
     }
-    if (!isModuleEnabled(ctx, opts.module ?? "ai_teacher")) return json(fail("ai_unavailable", "AI features are not available for your institution."));
-    if (!isAiCapabilityEnabled(ctx, opts.capability)) return json(fail("ai_unavailable", "This AI feature is turned off for your role."));
+    if (!isModuleEnabled(ctx, byRole(opts.module ?? "ai_teacher", ctx))) return json(fail("ai_unavailable", "AI features are not available for your institution."));
+    if (!isAiCapabilityEnabled(ctx, byRole(opts.capability, ctx))) return json(fail("ai_unavailable", "This AI feature is turned off for your role."));
 
     try {
       return json(await opts.run(ctx, parsed.data));

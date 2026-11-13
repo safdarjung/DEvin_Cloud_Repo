@@ -57,16 +57,19 @@ export function PracticeStudio({
   institutionSlug,
   studentId,
   subjects,
+  initialUnitId,
 }: {
   institutionSlug: string;
   studentId: string;
   subjects: StudioSubject[];
+  initialUnitId?: string;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const withUnits = subjects.filter((s) => s.units.length > 0);
-  const [subjectId, setSubjectId] = useState(withUnits[0]?.id ?? "");
-  const [unitId, setUnitId] = useState(withUnits[0]?.units[0]?.id ?? "");
+  const start0 = withUnits.find((s) => s.units.some((u) => u.id === initialUnitId)) ?? withUnits[0];
+  const [subjectId, setSubjectId] = useState(start0?.id ?? "");
+  const [unitId, setUnitId] = useState(start0?.units.find((u) => u.id === initialUnitId)?.id ?? start0?.units[0]?.id ?? "");
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [count, setCount] = useState<number>(5);
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });

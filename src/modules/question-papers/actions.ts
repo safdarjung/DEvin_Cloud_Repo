@@ -16,7 +16,7 @@ import type { TenantContext } from "@/lib/auth/types";
 import type { Json } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/server";
 import { QuestionCreateSchema, questionShapeColumns, type QuestionShape } from "@/modules/question-bank/schemas";
-import { seededShuffle, slots } from "@/modules/question-papers/paper-math";
+import { mapSectionsByTitle, seededShuffle, slots } from "@/modules/question-papers/paper-math";
 import {
   AddItemsFromBankSchema,
   AddManualItemSchema,
@@ -178,8 +178,9 @@ function snapshotFromShape(q: QuestionShape) {
   };
 }
 
+/** Inserts every blueprint section, positioned from `from`; returns their ids in blueprint order. */
 async function sectionsFromBlueprint(db: Db, ctx: TenantContext, paperId: string, blueprint: Blueprint, from: number) {
-  const rows = blueprint.sections.slice(from).map((s, i) => ({
+  const rows = blueprint.sections.map((s, i) => ({
     institution_id: ctx.institution.id,
     paper_id: paperId,
     title: s.title,
@@ -187,9 +188,10 @@ async function sectionsFromBlueprint(db: Db, ctx: TenantContext, paperId: string
     choose_count: s.chooseCount ?? null,
     position: from + i,
   }));
-  if (!rows.length) return;
-  const { error } = await db.from("question_paper_sections").insert(rows);
+  if (!rows.length) return [];
+  const { data, error } = await db.from("question_paper_sections").insert(rows).select("id, position");
   if (error) throwMapped(error);
+  return [...data].sort((a, b) => a.position - b.position).map((r) => r.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -245,10 +247,13 @@ export const createPaper = defineAction({
       })
       .select("id")
       .single();
+    // 42501 here is the 0149 insert policy: a teacher outside their taught (grade, subject, year).
+    if (error?.code === "42501") throw new AppError("forbidden", "You can set papers only for a subject you teach in this class and academic year.");
     if (error) throwMapped(error);
-    if (blueprint) await sectionsFromBlueprint(db, ctx, data.id, blueprint, 0);
+    const sectionIds = blueprint ? await sectionsFromBlueprint(db, ctx, data.id, blueprint, 0) : [];
     await audit(ctx, { action: "question_paper.create", entityType: "question_paper", entityId: data.id, after: { title: input.title } });
-    return { id: data.id };
+    /** sectionIds[i] is blueprint section i. */
+    return { id: data.id, sectionIds };
   },
 });
 
@@ -648,17 +653,20 @@ export const applyTemplate = defineAction({
       .maybeSingle();
     if (e) throwMapped(e);
     requireRow(data, "Paper");
-    // Adds only the blueprint sections the paper does not have yet (matched by position).
-    const { count, error: ce } = await db.from("question_paper_sections").select("id", { count: "exact", head: true }).eq("paper_id", paperId);
+    // Adds only the blueprint sections the paper does not have yet (matched by title).
+    const { data: have, error: ce } = await db.from("question_paper_sections").select("id, title").eq("paper_id", paperId).order("position").order("id");
     if (ce) throwMapped(ce);
-    await sectionsFromBlueprint(db, ctx, paperId, t.blueprint as Blueprint, count ?? 0);
+    const bp = t.blueprint as Blueprint;
+    const mapped = mapSectionsByTitle(bp, have);
+    await sectionsFromBlueprint(db, ctx, paperId, { ...bp, sections: bp.sections.filter((_, i) => !mapped[i]) }, await nextPosition(db, "question_paper_sections", paperId));
     await audit(ctx, { action: "question_paper.template.apply", entityType: "question_paper", entityId: paperId, after: { templateId } });
     return { paperId };
   },
 });
 
 export interface GenerationGap {
-  sectionId: string;
+  /** null: no paper section has this blueprint section's title, so nothing was filled for it. */
+  sectionId: string | null;
   sectionTitle: string;
   type: string;
   marks: number;
@@ -686,7 +694,8 @@ export const generatePaperFromTemplate = defineAction({
 
     const { count, error: ce } = await db.from("question_paper_sections").select("id", { count: "exact", head: true }).eq("paper_id", id);
     if (ce) throwMapped(ce);
-    await sectionsFromBlueprint(db, ctx, id, blueprint, count ?? 0);
+    // A paper with no sections gets the blueprint's; otherwise sections are matched by title and never created here.
+    if (!count) await sectionsFromBlueprint(db, ctx, id, blueprint, 0);
     const [sectionsRes, itemsRes] = await Promise.all([
       db.from("question_paper_sections").select("id, title").eq("paper_id", id).order("position").order("id"),
       db.from("question_paper_items").select("id, section_id, type, marks, choice_group, source_question_id, position").eq("paper_id", id).order("position").order("id"),
@@ -697,8 +706,15 @@ export const generatePaperFromTemplate = defineAction({
 
     const gaps: GenerationGap[] = [];
     const added: string[] = [];
+    const mapped = mapSectionsByTitle(blueprint, sectionsRes.data);
     for (const [si, bpSection] of blueprint.sections.entries()) {
-      const section = sectionsRes.data[si];
+      const section = mapped[si];
+      if (!section) {
+        for (const row of bpSection.rows) {
+          gaps.push({ sectionId: null, sectionTitle: bpSection.title, type: row.type, marks: row.marks, difficulty: row.difficulty ?? null, missing: row.count });
+        }
+        continue;
+      }
       const existing = slots(
         itemsRes.data.filter((i) => i.section_id === section.id).map((i) => ({ ...i, marks: Number(i.marks), choiceGroup: i.choice_group })),
       ).map((slot) => slot[0]);

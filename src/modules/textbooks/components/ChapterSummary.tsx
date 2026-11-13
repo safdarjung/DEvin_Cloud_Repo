@@ -1,7 +1,7 @@
 "use client";
 
 // Chapter summary from the book's read text: key points with the page to open.
-// The route is staff-only today (question.manage); it returns the summary and stores nothing.
+// Staff (academics.read) and students (ai.study) for books they can read; it returns the summary and stores nothing.
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { postAiTask } from "@/modules/ai/components/ai-task-fetch";

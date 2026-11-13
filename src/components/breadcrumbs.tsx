@@ -82,6 +82,7 @@ export const PAGE_PATHS = new Set([
   "jobs",
   "labs",
   "lesson-plans",
+  "learning-insights",
   "library",
   "me",
   "messages",

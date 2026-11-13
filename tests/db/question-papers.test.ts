@@ -12,6 +12,7 @@ import {
   generatePaperFromTemplate,
   newPaperRevision,
   publishPaper,
+  reorderSections,
   replaceItem,
   returnPaperToDraft,
   setChoiceGroup,
@@ -21,7 +22,10 @@ import {
   updateSection,
 } from "@/modules/question-papers/actions";
 import { questionPapersValidateQuery, questionPapersWhereUsedQuery } from "@/modules/question-papers/query-defs";
-import { callAs, closeActionsHelper } from "../helpers/actions";
+import { listLabelledTeachableSections } from "@/modules/academics/assignments.queries";
+import { listTeachingPairs } from "@/modules/question-bank/queries";
+import { buildContext, callAs, closeActionsHelper } from "../helpers/actions";
+import { setActingClient } from "../helpers/server-client-mock";
 import {
   closeFactoriesHelper,
   createAcademicYear,
@@ -432,5 +436,61 @@ describe("question papers — security review fixes", () => {
       title: "Forged revision", total_marks: 6, revision_of_id: paperId, created_by: base.teacherUserId,
     });
     expect(error?.message).toBe("code:forbidden");
+  });
+});
+
+describe("question papers — wizard pairs, labels and blueprint mapping", () => {
+  async function asRole<T>(role: "teacher" | "principal", fn: (ctx: Awaited<ReturnType<typeof buildContext>>) => Promise<T>): Promise<T> {
+    const ctx = await buildContext(inst, role);
+    setActingClient(inst.clientAs(role) as never);
+    try {
+      return await fn(ctx);
+    } finally {
+      setActingClient(null);
+    }
+  }
+
+  it("a class teacher is offered only subjects they teach, and every offered pair can create a paper", async () => {
+    const [teacher] = await sql`select staff_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'`;
+    const grade7 = await createGrade(inst.institutionId, { code: "VII", sortKey: 7 });
+    const section7 = await createClassSection(inst.institutionId, grade7, base.yearId, { name: "A", classTeacherId: teacher.staff_id as string });
+    await createSubjectAssignment(inst.institutionId, section7, base.science, teacher.staff_id as string);
+
+    const pairs = await asRole("teacher", (ctx) => listTeachingPairs(ctx));
+    const keys = pairs.map((p) => `${p.gradeId}:${p.subjectId}`).sort();
+    // Class teacher of VII-A, but teaches only Science there: VII Mathematics is not offered (RLS 0149 would refuse it).
+    expect(keys).toEqual([`${base.gradeId}:${base.math}`, `${grade7}:${base.science}`].sort());
+    for (const p of pairs) {
+      must(await callAs(inst, "teacher", createPaper, { academicYearId: base.yearId, gradeId: p.gradeId, subjectId: p.subjectId, title: `Pair ${p.gradeCode}`, totalMarks: 5 }));
+    }
+    const refused = await callAs(inst, "teacher", createPaper, { academicYearId: base.yearId, gradeId: grade7, subjectId: base.math, title: "Untaught", totalMarks: 5 });
+    expect(refused).toMatchObject({ ok: false, error: { code: "forbidden", message: expect.stringContaining("subject you teach") } });
+
+    const sections = await asRole("teacher", (ctx) => listLabelledTeachableSections(ctx));
+    expect(sections.map((x) => x.label)).toEqual(["VI-A", "VII-A"]);
+  });
+
+  it("generate maps blueprint sections by title: a hand-added first section stays empty, a renamed one is a gap", async () => {
+    await Promise.all([mcq(), mcq()]);
+    const made = must(
+      await callAs(inst, "principal", createPaper, {
+        academicYearId: base.yearId, gradeId: base.gradeId, subjectId: base.math, title: "Mapped paper", totalMarks: 4,
+        blueprint: { sections: [{ title: "Section A", rows: [{ type: "mcq", count: 2, marks: 1 }] }, { title: "Section B", rows: [{ type: "short_answer", count: 1, marks: 2 }] }] },
+      }),
+    );
+    expect(made.sectionIds).toHaveLength(2);
+    const [secA, secB] = made.sectionIds;
+    const { id: warm } = must(await callAs(inst, "principal", addSection, { paperId: made.id, title: "Warm-up" }));
+    must(await callAs(inst, "principal", reorderSections, { paperId: made.id, sectionIds: [warm, secA, secB] }));
+    must(await callAs(inst, "principal", updateSection, { id: secB, title: "Part B" }));
+
+    const gen = must(await callAs(inst, "principal", generatePaperFromTemplate, { id: made.id }));
+    const placed = await sql`select section_id, type from public.question_paper_items where paper_id = ${made.id}`;
+    expect(placed).toHaveLength(2);
+    expect(placed.every((r) => r.section_id === secA && r.type === "mcq")).toBe(true);
+    expect(gen.gaps).toEqual([expect.objectContaining({ sectionId: null, sectionTitle: "Section B", type: "short_answer", missing: 1 })]);
+    // No duplicate "Section B" was created.
+    const [{ n }] = await sql`select count(*)::int n from public.question_paper_sections where paper_id = ${made.id}`;
+    expect(n).toBe(3);
   });
 });

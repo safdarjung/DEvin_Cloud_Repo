@@ -21,11 +21,12 @@ export type PracticeQuestion = z.infer<typeof PracticeQuestionSchema>;
 
 // Answer shape per item type, as app.mark_test_item (0150) reads it: option
 // text (mcq, true_false, assertion_reason), array (multi_select, fill_blank,
-// match), number or text (numerical); null = skipped. Keys stay on the server.
+// match), number or text (numerical); null = skipped, a null inside a match
+// list = an unmatched pair (marked wrong). Keys stay on the server.
 const PracticeAnswerSchema = z.union([
   z.string().max(500),
   z.number().finite(),
-  z.array(z.union([z.string().max(200), z.number().finite()])).max(10),
+  z.array(z.union([z.string().max(200), z.number().finite(), z.null()])).max(10),
   z.null(),
 ]);
 

@@ -6,6 +6,11 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { upcomingExamsForStudent } from "@/modules/exams/queries";
+import { ProgressChart } from "@/modules/learning/components/ProgressChart";
+import { WeakAreaList } from "@/modules/learning/components/WeakAreaList";
+import { myProgress, myWeakTopics } from "@/modules/learning/queries";
+import { listPortalSubjects } from "@/modules/academics/portal-subjects.queries";
+import { getStudentProfile } from "@/modules/people/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { istDay } from "@/modules/practice/scoring";
@@ -38,6 +43,17 @@ export default async function PortalStudyProgressPage({ params, searchParams }: 
     mockAttempts(ctx, selection.studentId),
     studentQuestions(ctx, selection.studentId, 10),
   ]);
+  const canLearn = hasPermission(ctx, "mastery.read") && isModuleEnabled(ctx, "mastery");
+  const profile = canLearn ? await getStudentProfile(ctx, selection.studentId) : null;
+  const sectionId = profile?.enrolment?.classSectionId;
+  const [weakTopics, weeks, subjectList] = canLearn
+    ? await Promise.all([
+        myWeakTopics(ctx, { studentId: selection.studentId }),
+        myProgress(ctx, { studentId: selection.studentId }),
+        sectionId ? listPortalSubjects(ctx, sectionId) : Promise.resolve([]),
+      ])
+    : [null, [], []];
+  const subjectNames = Object.fromEntries(subjectList.map((s) => [s.id, s.name]));
   const planDone = plan ? plan.items.filter((i) => i.done).length : 0;
   const todayItems = plan ? plan.items.filter((i) => i.day === today) : [];
 
@@ -139,6 +155,17 @@ export default async function PortalStudyProgressPage({ params, searchParams }: 
           )}
         </section>
       </div>
+
+      {weakTopics && (
+        <section aria-labelledby="sp-learn" className="mt-6 space-y-4">
+          <div>
+            <h3 id="sp-learn" className="text-sm font-semibold">Weak topics from questions</h3>
+            <p className="text-sm text-muted-foreground">Based on practice quizzes and released online tests. Practice doesn&apos;t affect marks.</p>
+          </div>
+          <WeakAreaList areas={weakTopics.areas.slice(0, 6)} subjectNames={subjectNames} readOnly />
+          <ProgressChart weeks={weeks} />
+        </section>
+      )}
 
       <section aria-labelledby="sp-q" className="mt-6 space-y-2">
         <h3 id="sp-q" className="text-sm font-semibold">Questions to teachers</h3>

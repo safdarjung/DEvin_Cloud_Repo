@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { arrangeSet, renderPaperHtml } from "@/modules/question-papers/html";
-import { sectionMarks, seededShuffle } from "@/modules/question-papers/paper-math";
+import { mapSectionsByTitle, sectionMarks, seededShuffle } from "@/modules/question-papers/paper-math";
 import type { PaperDetail, PaperItem } from "@/modules/question-papers/queries";
 import { BlueprintSchema } from "@/modules/question-papers/schemas";
 
@@ -154,5 +154,19 @@ describe("BlueprintSchema", () => {
     const bp = { sections: [{ title: "A", chooseCount: 4, rows: [{ type: "mcq", count: 5, marks: 1, difficulty: "easy" }] }], difficultyMix: { easy: 40 } };
     expect(BlueprintSchema.safeParse(bp).success).toBe(true);
     expect(BlueprintSchema.safeParse({ ...bp, board: "CBSE" }).success).toBe(false);
+  });
+});
+
+describe("mapSectionsByTitle", () => {
+  it("maps blueprint sections to paper sections by title, not position; a missing title stays unmapped", () => {
+    const bp = { sections: [{ title: "Section A" }, { title: "Section B" }, { title: "Section C" }] };
+    // A hand-added section sits first; Section C was renamed.
+    const paper = [{ id: "x", title: "Warm-up" }, { id: "b", title: "section b " }, { id: "a", title: "Section A" }, { id: "c", title: "Part C" }];
+    expect(mapSectionsByTitle(bp, paper).map((s) => s?.id)).toEqual(["a", "b", undefined]);
+  });
+
+  it("two blueprint sections with one title claim two different paper sections", () => {
+    const bp = { sections: [{ title: "MCQ" }, { title: "MCQ" }] };
+    expect(mapSectionsByTitle(bp, [{ id: "1", title: "MCQ" }, { id: "2", title: "MCQ" }]).map((s) => s?.id)).toEqual(["1", "2"]);
   });
 });

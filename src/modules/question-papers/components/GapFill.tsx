@@ -38,6 +38,8 @@ export function GapFill({
 
   async function fill(index: number) {
     const gap = gaps[index];
+    if (!gap.sectionId) return;
+    const sectionId = gap.sectionId;
     setBusy(index);
     setNote(null);
     const res = await postAiTask<GenResponse>("/api/ai/questions-generate", {
@@ -73,7 +75,7 @@ export function GapFill({
     }
     let added = 0;
     if (ids.length) {
-      const r = await addItemsFromBank(institutionSlug, { sectionId: gap.sectionId, questionIds: ids });
+      const r = await addItemsFromBank(institutionSlug, { sectionId, questionIds: ids });
       if (r.ok) added = r.data.itemIds.length;
       else toast.error(actionErrorMessage(r.error));
     }
@@ -90,11 +92,17 @@ export function GapFill({
       <ul className="space-y-1.5">
         {gaps.map((g, i) => {
           const can = GROUNDED.includes(g.type);
+          const desc = `${g.sectionTitle}: ${g.missing} × ${typeLabel(g.type as QuestionType)}, ${g.marks} mark${g.marks === 1 ? "" : "s"}${g.difficulty ? `, ${g.difficulty}` : ""}`;
+          if (!g.sectionId) {
+            return (
+              <li key={`none-${g.sectionTitle}-${g.type}-${g.marks}-${i}`} className="text-sm" data-testid="gap-unmapped">
+                {desc} <span className="text-muted-foreground">(no section titled &ldquo;{g.sectionTitle}&rdquo; in this paper: add or rename a section, then fill again)</span>
+              </li>
+            );
+          }
           return (
             <li key={`${g.sectionId}-${g.type}-${g.marks}-${i}`} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span>
-                {g.sectionTitle}: {g.missing} × {typeLabel(g.type as QuestionType)}, {g.marks} mark{g.marks === 1 ? "" : "s"}{g.difficulty ? `, ${g.difficulty}` : ""}
-              </span>
+              <span>{desc}</span>
               <Button size="sm" variant="outline" disabled={!can || busy !== null} onClick={() => fill(i)} title={can ? undefined : "AI cannot write this type; add it by hand."}>
                 {busy === i ? "Writing…" : can ? "Fill gaps with AI" : "Add by hand"}
               </Button>

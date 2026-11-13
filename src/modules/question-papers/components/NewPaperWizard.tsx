@@ -12,13 +12,14 @@ import { Textarea } from "@/components/ui/textarea";
 import type { PairMeta } from "@/modules/question-bank/components/question-meta";
 import { DIFFICULTIES, TYPES, pairKey } from "@/modules/question-bank/components/question-meta";
 import type { QuestionType } from "@/modules/question-bank/schemas";
-import { createPaper, generatePaperFromTemplate, saveTemplate, type GenerationGap } from "@/modules/question-papers/actions";
+import { addItemsFromBank, createPaper, generatePaperFromTemplate, saveTemplate, type GenerationGap } from "@/modules/question-papers/actions";
 import type { PaperTemplate } from "@/modules/question-papers/queries";
 import type { Blueprint } from "@/modules/question-papers/schemas";
 import { GapFill } from "./GapFill";
 import { SELECT_CLASS, fmtMarks, parseChapters, run } from "./paper-ui";
 
 interface Row { type: QuestionType; count: string; marks: string; difficulty: string }
+export interface CollectionSource { id: string; name: string; questions: { id: string; gradeId: string; subjectId: string; type: QuestionType; marks: number }[] }
 interface Sec { title: string; chooseCount: string; rows: Row[] }
 
 const STEPS = ["Class and exam", "Source", "Blueprint", "Generate"] as const;
@@ -55,6 +56,7 @@ export function NewPaperWizard({
   sections: classSections,
   exams,
   templates,
+  collections,
 }: {
   institutionSlug: string;
   pairs: PairMeta[];
@@ -62,6 +64,7 @@ export function NewPaperWizard({
   sections: { id: string; label: string; gradeId: string }[];
   exams: { id: string; name: string }[];
   templates: PaperTemplate[];
+  collections: CollectionSource[];
 }) {
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -77,6 +80,7 @@ export function NewPaperWizard({
   const [chapters, setChapters] = useState("");
   const [unitIds, setUnitIds] = useState<string[]>([]);
   const [topicIds, setTopicIds] = useState<string[]>([]);
+  const [collectionId, setCollectionId] = useState("");
   // 3
   const [templateId, setTemplateId] = useState("");
   const [title, setTitle] = useState("");
@@ -96,6 +100,9 @@ export function NewPaperWizard({
   const total = totalText === "" ? computed : Number(totalText);
   const pairTemplates = useMemo(() => templates.filter((t) => (!t.gradeId || t.gradeId === pair.gradeId) && (!t.subjectId || t.subjectId === pair.subjectId)), [templates, pair]);
   const gradeSections = classSections.filter((s) => s.gradeId === pair.gradeId);
+  const pairCollections = collections
+    .map((c) => ({ ...c, questions: c.questions.filter((q) => q.gradeId === pair.gradeId && q.subjectId === pair.subjectId) }))
+    .filter((c) => c.questions.length > 0);
 
   const patchSec = (i: number, patch: Partial<Sec>) => setSecs((all) => all.map((s, k) => (k === i ? { ...s, ...patch } : s)));
   const patchRow = (i: number, j: number, patch: Partial<Row>) => setSecs((all) => all.map((s, k) => (k === i ? { ...s, rows: s.rows.map((r, m) => (m === j ? { ...r, ...patch } : r)) } : s)));
@@ -157,6 +164,17 @@ export function NewPaperWizard({
       }),
     );
     if (!made) return setBusy(false);
+    const picked = pairCollections.find((c) => c.id === collectionId);
+    if (picked && made.sectionIds.length) {
+      // Each collection question goes to the first blueprint section with a row of its type and marks (else the first section); generation then only fills what is left.
+      const bySection = new Map<string, string[]>();
+      for (const q of picked.questions) {
+        const i = bp.sections.findIndex((s) => s.rows.some((r) => r.type === q.type && r.marks === q.marks));
+        const sid = made.sectionIds[Math.max(i, 0)];
+        bySection.set(sid, [...(bySection.get(sid) ?? []), q.id]);
+      }
+      for (const [sid, questionIds] of bySection) await run(addItemsFromBank(institutionSlug, { sectionId: sid, questionIds }));
+    }
     if (saveAs.trim()) {
       const saved = await run(saveTemplate(institutionSlug, { name: saveAs.trim(), gradeId: pair.gradeId, subjectId: pair.subjectId, examType: examType || null, durationMinutes: Number(duration) || null, instructions: instructions.trim() || null, blueprint: bp }));
       if (saved) toast.success("Template saved.");
@@ -194,7 +212,7 @@ export function NewPaperWizard({
           {step === 0 && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Class and subject">
-                <select aria-label="Class and subject" className={SELECT_CLASS} value={pairIdx} onChange={(e) => { setPairIdx(Number(e.target.value)); setSectionId(""); setUnitIds([]); setTopicIds([]); setBookId(""); }}>
+                <select aria-label="Class and subject" className={SELECT_CLASS} value={pairIdx} onChange={(e) => { setPairIdx(Number(e.target.value)); setSectionId(""); setUnitIds([]); setTopicIds([]); setBookId(""); setCollectionId(""); }}>
                   {pairs.map((p, i) => <option key={pairKey(p.gradeId, p.subjectId)} value={i}>{p.gradeCode} {p.subjectName}</option>)}
                 </select>
               </Field>
@@ -239,6 +257,12 @@ export function NewPaperWizard({
                   <Input aria-label="Chapters" value={chapters} onChange={(e) => setChapters(e.target.value)} placeholder="1, 3-5" />
                 </Field>
               </div>
+              <Field label="Question collection (optional)" hint="Its questions for this class and subject go into the paper first; the bank fills the rest.">
+                <select aria-label="Question collection" className={SELECT_CLASS} value={collectionId} onChange={(e) => setCollectionId(e.target.value)}>
+                  <option value="">None</option>
+                  {pairCollections.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.questions.length})</option>)}
+                </select>
+              </Field>
               <fieldset className="space-y-1">
                 <legend className="text-sm font-medium">Curriculum units</legend>
                 <div className="flex flex-wrap gap-2">

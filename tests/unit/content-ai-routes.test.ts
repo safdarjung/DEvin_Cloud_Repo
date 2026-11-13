@@ -192,8 +192,34 @@ describe("POST /api/ai/chapter-summary", () => {
     expect(m.runStructured).not.toHaveBeenCalled();
   });
 
-  it("another school's or an untaught book is not found", async () => {
+  it("another school's book is not found", async () => {
     bookRow(null);
     expect((await summary.POST(post("/api/ai/chapter-summary", { institutionSlug: "demo", subjectTextbookId: BOOK, chapterNo: 1 }))).status).toBe(404);
+  });
+
+  it("a student summarises a book they can read, through ai.study", async () => {
+    m.getTenantContext.mockResolvedValue(fakeCtx("student"));
+    bookRow({ id: BOOK, grade_id: GRADE, subject_id: SUBJECT, custom_title: "Science 7", chapter_titles: {} });
+    m.findChunks.mockResolvedValueOnce([chunk(14, LEAF), chunk(15, ROOT)]);
+    m.runStructured.mockResolvedValueOnce(ok({ data: { summary: "Plants make food.", keyPoints: [] }, provider: "cloud", model: "gemini-test", fallback: false }));
+    const res = await summary.POST(post("/api/ai/chapter-summary", { institutionSlug: "demo", subjectTextbookId: BOOK, chapterNo: 1 }));
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.summary).toBe("Plants make food.");
+    expect((m.runStructured.mock.calls[0][0] as { permission: string }).permission).toBe("ai.study");
+  });
+
+  it("a student whose RLS hides the book's text gets no summary and no model call", async () => {
+    m.getTenantContext.mockResolvedValue(fakeCtx("student"));
+    bookRow({ id: BOOK, grade_id: GRADE, subject_id: SUBJECT, custom_title: "Science 7", chapter_titles: {} });
+    m.findChunks.mockResolvedValueOnce([]);
+    const { data } = await (await summary.POST(post("/api/ai/chapter-summary", { institutionSlug: "demo", subjectTextbookId: BOOK, chapterNo: 1 }))).json();
+    expect(data.summary).toBeNull();
+    expect(m.runStructured).not.toHaveBeenCalled();
+  });
+
+  it("a guardian is refused", async () => {
+    m.getTenantContext.mockResolvedValue(fakeCtx("guardian"));
+    expect((await summary.POST(post("/api/ai/chapter-summary", { institutionSlug: "demo", subjectTextbookId: BOOK, chapterNo: 1 }))).status).toBe(403);
+    expect(m.runStructured).not.toHaveBeenCalled();
   });
 });

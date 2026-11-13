@@ -2,15 +2,11 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requireModule, requirePermission } from "@/lib/auth/require";
-import { listCurriculumUnits } from "@/modules/academics/assignments.queries";
-import { listTopics } from "@/modules/academics/curriculum.queries";
 import { QuestionPaperBuilder } from "@/modules/ai/components/QuestionPaperBuilder";
 import { aiTaskOn } from "@/modules/ai/task-route";
 import { QuestionBankView } from "@/modules/question-bank/components/QuestionBankView";
-import type { PairMeta } from "@/modules/question-bank/components/question-meta";
-import { listCollectionItems, listCollections, listQuestions, listTeachingPairs } from "@/modules/question-bank/queries";
+import { listCollectionItems, listCollections, listPairMeta, listQuestions, listTeachingPairs } from "@/modules/question-bank/queries";
 import { QuestionListSchema } from "@/modules/question-bank/schemas";
-import { textbooksForGrade } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Question bank" };
 
@@ -48,18 +44,10 @@ export default async function QuestionBankPage({ params, searchParams }: { param
   const queue = queueLists.flatMap((r) => r.items);
   const stems = stemLists.flatMap((r) => r.items);
 
-  const [unitLists, topicLists, bookLists, collectionLists] = await Promise.all([
-    Promise.all(pairs.map((p) => listCurriculumUnits(ctx, { gradeId: p.gradeId, subjectId: p.subjectId }))),
-    Promise.all(pairs.map((p) => listTopics(ctx, { gradeId: p.gradeId, subjectId: p.subjectId }))),
-    Promise.all(pairs.map((p) => textbooksForGrade(ctx, p.gradeId))),
+  const [meta, collectionLists] = await Promise.all([
+    listPairMeta(ctx, pairs),
     Promise.all(collections.map((c) => listCollectionItems(ctx, c.id))),
   ]);
-  const meta: PairMeta[] = pairs.map((p, i) => ({
-    ...p,
-    units: unitLists[i].map((u) => ({ id: u.id, title: u.title })),
-    topics: topicLists[i].map((t) => ({ id: t.id, unitId: t.curriculumUnitId, parentId: t.parentId, title: t.title })),
-    books: (bookLists[i][p.subjectId] ?? []).map((b) => ({ id: b.id, title: b.title })),
-  }));
 
   const filterTopics = meta.flatMap((p) => p.topics.map((t) => ({ value: t.id, label: `${p.gradeCode} ${p.subjectName}: ${t.title}` })));
 

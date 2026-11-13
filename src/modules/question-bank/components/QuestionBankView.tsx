@@ -13,13 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { BarList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
-import { approveQuestion, archiveQuestion, duplicateQuestion, rejectQuestion, submitForReview } from "@/modules/question-bank/actions";
+import { approveQuestion, archiveQuestion, duplicateQuestion, rejectQuestion, setPracticeAllowed, submitForReview } from "@/modules/question-bank/actions";
 import type { CollectionItem, NearDuplicate, QuestionBankItem, QuestionCollection } from "@/modules/question-bank/queries";
 import { QuestionOriginSchema, QuestionStatusSchema } from "@/modules/question-bank/schemas";
 import { AddToCollectionDialog, CollectionsPanel } from "./CollectionsPanel";
 import { GenerateFromTextbook } from "./GenerateFromTextbook";
 import { ExportDialog, ImportDialog } from "./ImportExport";
 import { QuestionForm } from "./QuestionForm";
+import { WhereUsed } from "./WhereUsed";
 import { DIFFICULTIES, ORIGIN_LABEL, STATUS_LABEL, STATUS_VARIANT, TYPES, typeLabel, type PairMeta } from "./question-meta";
 
 const ALL = "all";
@@ -132,6 +133,7 @@ export function QuestionBankView({
               <span className="capitalize">{q.difficulty}</span>
               <span className="tabular-nums">{q.marks} marks</span>
               {q.topicTitle && <span>Topic: {q.topicTitle}</span>}
+              {!q.practiceAllowed && <Badge variant="outline">Hidden from practice</Badge>}
               {q.version > 1 && <span className="tabular-nums">v{q.version}</span>}
             </div>
             {queueMode && (
@@ -153,6 +155,12 @@ export function QuestionBankView({
             )}
             {q.status !== "archived" && (
               <Button size="sm" variant="outline" disabled={pending} onClick={() => { setEditing(q); setFormOpen(true); }}>Edit</Button>
+            )}
+            {!queueMode && <WhereUsed institutionSlug={institutionSlug} questionId={q.id} />}
+            {!queueMode && (
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setPracticeAllowed(institutionSlug, { id: q.id, practiceAllowed: !q.practiceAllowed }), q.practiceAllowed ? "Hidden from student practice" : "Allowed in student practice")}>
+                {q.practiceAllowed ? "Hide from practice" : "Allow in practice"}
+              </Button>
             )}
             {!queueMode && (
               <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => duplicateQuestion(institutionSlug, { id: q.id }), "Copied as a new draft")}>Duplicate</Button>
