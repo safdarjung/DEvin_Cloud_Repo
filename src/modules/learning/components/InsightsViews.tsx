@@ -1,5 +1,5 @@
 import { EmptyState } from "@/components/states";
-import type { TestAnalytics } from "@/modules/online-tests/marking";
+import type { NamedGroupStat, SectionTestAnalytics } from "@/modules/learning/queries";
 import type { GapRow, RevisionStudent } from "@/modules/learning/recommend";
 import { WEAK_PERCENT } from "@/modules/learning/recommend";
 
@@ -56,7 +56,7 @@ export function GapsView({ units, topics }: { units: GapRow[]; topics: GapRow[] 
 }
 
 export function RevisionView({ students }: { students: RevisionStudent[] }) {
-  if (students.length === 0) return <EmptyState title="Nobody needs revision" description="No student is below the threshold with enough question data." />;
+  if (students.length === 0) return <EmptyState title="Nobody needs revision" description="No student is below the threshold with enough question data or a confident mastery score." />;
   return (
     <ul className="grid gap-3 md:grid-cols-2" data-testid="revision-list">
       {students.map((s) => (
@@ -76,7 +76,35 @@ export function RevisionView({ students }: { students: RevisionStudent[] }) {
   );
 }
 
-export function TestQuestionsView({ data }: { data: TestAnalytics }) {
+function TopicRollup({ groups }: { groups: NamedGroupStat[] }) {
+  if (groups.length === 0) return null;
+  return (
+    <div className="overflow-x-auto rounded-xl border">
+      <table className="w-full min-w-[24rem] text-sm" data-testid="test-topics">
+        <caption className="sr-only">Average per topic in this test, weakest first</caption>
+        <thead className="border-b bg-muted/40">
+          <tr>
+            <th scope="col" className={th}>Topic</th>
+            <th scope="col" className={`${th} text-right`}>Average</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...groups].sort((a, b) => a.averagePercent - b.averagePercent).map((g) => (
+            <tr key={g.id} className="border-b last:border-0">
+              <th scope="row" className={`${td} text-left font-normal`}>
+                {g.title}
+                {g.unitTitle && <span className="block text-xs text-muted-foreground">{g.unitTitle}</span>}
+              </th>
+              <td className={`${td} text-right tabular-nums font-medium ${heat(g.averagePercent)}`}>{pctText(g.averagePercent)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function TestQuestionsView({ data }: { data: SectionTestAnalytics }) {
   if (data.questions.length === 0) return <EmptyState title="No questions" />;
   const hardest = new Set(data.hardest);
   return (
@@ -84,6 +112,7 @@ export function TestQuestionsView({ data }: { data: TestAnalytics }) {
       <p className="text-sm text-muted-foreground tabular-nums">
         {data.submitted} submitted · {data.evaluated} evaluated{data.average !== null ? ` · average ${data.average}` : ""}
       </p>
+      <TopicRollup groups={data.topics} />
       <div className="overflow-x-auto rounded-xl border">
         <table className="w-full min-w-[36rem] text-sm">
           <caption className="sr-only">Question-wise results with common wrong answers</caption>
@@ -104,6 +133,7 @@ export function TestQuestionsView({ data }: { data: TestAnalytics }) {
                   <td className={td}>
                     {clip(q.body)}
                     {hardest.has(q.key) && <span className="ml-2 rounded bg-destructive/15 px-1.5 py-0.5 text-xs text-destructive">hardest</span>}
+                    {(q.unitTitle || q.topicTitle) && <span className="block text-xs text-muted-foreground">{[q.unitTitle, q.topicTitle].filter(Boolean).join(" · ")}</span>}
                   </td>
                   <td className={`${td} text-right tabular-nums font-medium ${heat(p)}`}>{pctText(p)}</td>
                   <td className={td}>

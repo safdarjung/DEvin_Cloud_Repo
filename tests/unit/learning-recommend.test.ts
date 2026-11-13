@@ -110,12 +110,16 @@ describe("sectionGaps", () => {
     expect(gaps.units).toEqual([expect.objectContaining({ unitId: "u1", students: 2, averagePercent: 62.5, weakStudents: 1, masteryAverage: null })]);
   });
 
-  it("adds the mastery average per unit", () => {
-    const gaps = sectionGaps([], [
+  it("counts confident mastery as unit evidence, like the revision list does", () => {
+    const mastery: MasteryRow[] = [
       { studentId: "a", subjectId: "s1", unitId: "u2", score: 0.5, confidence: 1, markCount: 1, submissionCount: 0, testCount: 0 },
       { studentId: "b", subjectId: "s1", unitId: "u2", score: 0.7, confidence: 1, markCount: 1, submissionCount: 0, testCount: 0 },
-    ], names);
-    expect(gaps.units).toEqual([expect.objectContaining({ unitId: "u2", masteryAverage: 60, students: 0, averagePercent: null })]);
+      { studentId: "c", subjectId: "s1", unitId: "u2", score: 0.1, confidence: 0.2, markCount: 1, submissionCount: 0, testCount: 0 },
+    ];
+    const gaps = sectionGaps([], mastery, names);
+    expect(gaps.units).toEqual([expect.objectContaining({ unitId: "u2", masteryAverage: 43.3, students: 2, averagePercent: 60, weakStudents: 1 })]);
+    const revision = revisionList([], mastery, names, new Map());
+    expect(revision.filter((s) => s.areas.some((a) => a.unitId === "u2")).length).toBe(gaps.units[0]!.weakStudents);
   });
 });
 

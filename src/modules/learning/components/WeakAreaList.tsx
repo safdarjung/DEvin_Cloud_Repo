@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/states";
 import type { WeakArea } from "@/modules/learning/recommend";
+import { ChapterSummary } from "@/modules/textbooks/components/ChapterSummary";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
 
@@ -12,6 +13,9 @@ export interface WeakAreaListProps {
   /** Portal base for the practice page, e.g. /demo/portal; student view only. */
   portalBase?: string;
   chapterUrls?: Record<string, string>;
+  /** Unit id -> its chapter in a book whose text the school holds (student view: AI summary). */
+  chapterSummaries?: Record<string, { textbookId: string; chapterNo: number }>;
+  institutionSlug?: string;
 }
 
 const evidenceText = (a: WeakArea) => {
@@ -26,7 +30,7 @@ const evidenceText = (a: WeakArea) => {
 
 const linkClass = "inline-flex min-h-10 items-center rounded-md border px-3 text-sm hover:bg-muted";
 
-export function WeakAreaList({ areas, readOnly, subjectNames, portalBase, chapterUrls = {} }: WeakAreaListProps) {
+export function WeakAreaList({ areas, readOnly, subjectNames, portalBase, chapterUrls = {}, chapterSummaries = {}, institutionSlug }: WeakAreaListProps) {
   if (areas.length === 0) {
     return <EmptyState title="No weak topics yet" description="Do a practice quiz or an online test and the topics that need work show here." />;
   }
@@ -35,6 +39,7 @@ export function WeakAreaList({ areas, readOnly, subjectNames, portalBase, chapte
       {areas.map((a) => {
         const practiceHref = `${portalBase}/practice?unit=${a.unitId}${a.topicId ? `&topic=${a.topicId}` : ""}&mode=${a.next.practice}#practice`;
         const chapter = chapterUrls[a.next.summaryUnitId];
+        const summary = institutionSlug ? chapterSummaries[a.next.summaryUnitId] : undefined;
         return (
           <li key={`${a.unitId}-${a.topicId ?? "unit"}`} className="rounded-xl border bg-card p-4">
             <div className="flex items-start justify-between gap-3">
@@ -51,12 +56,17 @@ export function WeakAreaList({ areas, readOnly, subjectNames, portalBase, chapte
                 <Link href={practiceHref} className={`${linkClass} bg-foreground text-background hover:bg-foreground/90`}>
                   Practice now{a.next.practice === "bank" ? ` (${a.next.bankQuestions} ${a.next.bankQuestions === 1 ? "question" : "questions"})` : " (AI quiz)"}
                 </Link>
-                {chapter && (
+                {!summary && chapter && (
                   <a href={chapter} target="_blank" rel="noopener noreferrer" className={linkClass}>Read chapter</a>
                 )}
                 <Link href={`${portalBase}/study/search?q=${encodeURIComponent(a.next.searchQuery)}`} className={linkClass}>
                   Search textbook
                 </Link>
+              </div>
+            )}
+            {!readOnly && portalBase && summary && institutionSlug && (
+              <div className="mt-3">
+                <ChapterSummary institutionSlug={institutionSlug} textbookId={summary.textbookId} chapterNo={summary.chapterNo} label="Read summary" />
               </div>
             )}
           </li>

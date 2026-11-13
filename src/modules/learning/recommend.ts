@@ -106,6 +106,13 @@ function groupBy<T>(rows: readonly T[], key: (r: T) => string): Map<string, T[]>
 
 const confident = (m: MasteryRow | undefined) => (m && m.confidence >= MIN_MASTERY_CONFIDENCE ? m : undefined);
 
+/** A student's unit percent: confident mastery first, else question data with at least `minItems` questions. */
+function unitPercent(t: Totals, m: MasteryRow | undefined, minItems = MIN_QUESTIONS): number | null {
+  const c = confident(m);
+  if (c) return pct(c.score, 1);
+  return t.items >= minItems && t.maxMarks > 0 ? pct(t.awarded, t.maxMarks) : null;
+}
+
 function bankFor(counts: readonly BankCount[], names: LearningNames, unitId: string, topicId: string | null): number {
   return counts
     .filter((c) => c.unitId === unitId)
@@ -153,8 +160,8 @@ export function weakAreas(
   for (const unitId of unitIds) {
     if (unitsWithWeakTopic.has(unitId)) continue;
     const t = sum(byUnit.get(unitId) ?? []);
-    const m = confident(masteryByUnit.get(unitId));
-    const percent = m ? pct(m.score, 1) : t.items >= MIN_QUESTIONS && t.maxMarks > 0 ? pct(t.awarded, t.maxMarks) : null;
+    const m = masteryByUnit.get(unitId);
+    const percent = unitPercent(t, m);
     if (percent === null || percent >= WEAK_PERCENT) continue;
     const subjectId = byUnit.get(unitId)?.[0]?.subjectId ?? m?.subjectId ?? names.units.get(unitId)?.subjectId ?? "";
     out.push(area(unitId, subjectId, null, percent, t));
@@ -170,27 +177,40 @@ export interface GapRow {
   unitTitle: string;
   topicId: string | null;
   topicTitle: string | null;
-  /** Students with question data here. */
+  /** Students with evidence here: question data, or (units) a confident mastery snapshot. */
   students: number;
-  /** Mean of the students' percents; null without question data. */
+  /** Mean of the students' percents; null without evidence. */
   averagePercent: number | null;
-  /** Students with enough questions and a percent below WEAK_PERCENT. */
+  /** Students below WEAK_PERCENT by the revision-list rule (enough questions or confident mastery). */
   weakStudents: number;
   /** Units only: mean mastery score of the section, percent. */
   masteryAverage: number | null;
 }
 
-function gap(rowsByStudent: Map<string, TopicRow[]>, unitId: string, topicId: string | null, names: LearningNames, masteryAverage: number | null): GapRow {
-  const per = [...rowsByStudent.values()].map(sum).filter((t) => t.maxMarks > 0);
-  const percents = per.map((t) => pct(t.awarded, t.maxMarks));
+// Per student: the unit percent rule of weakAreas (mastery only for units), so a
+// gap's weak students are exactly the revision list's students for that area.
+function gap(
+  rowsByStudent: Map<string, TopicRow[]>,
+  masteryByStudent: ReadonlyMap<string, MasteryRow>,
+  unitId: string,
+  topicId: string | null,
+  names: LearningNames,
+  masteryAverage: number | null,
+): GapRow {
+  const per = [...new Set([...rowsByStudent.keys(), ...masteryByStudent.keys()])].map((s) => {
+    const t = sum(rowsByStudent.get(s) ?? []);
+    const m = masteryByStudent.get(s);
+    return { shown: unitPercent(t, m, 1), weak: unitPercent(t, m) };
+  });
+  const percents = per.flatMap((p) => (p.shown === null ? [] : [p.shown]));
   return {
     unitId,
     unitTitle: names.units.get(unitId)?.title ?? "",
     topicId,
     topicTitle: topicId ? (names.topics.get(topicId)?.title ?? null) : null,
-    students: per.length,
+    students: percents.length,
     averagePercent: percents.length ? Math.round((percents.reduce((a, b) => a + b, 0) / percents.length) * 10) / 10 : null,
-    weakStudents: per.filter((t) => t.items >= MIN_QUESTIONS && pct(t.awarded, t.maxMarks) < WEAK_PERCENT).length,
+    weakStudents: per.filter((p) => p.weak !== null && p.weak < WEAK_PERCENT).length,
     masteryAverage,
   };
 }
@@ -205,10 +225,10 @@ export function sectionGaps(rows: readonly TopicRow[], mastery: readonly Mastery
   const units = [...new Set([...rowsByUnit.keys(), ...masteryByUnit.keys()])].map((unitId) => {
     const ms = masteryByUnit.get(unitId) ?? [];
     const masteryAverage = ms.length ? Math.round((ms.reduce((s, m) => s + m.score, 0) / ms.length) * 1000) / 10 : null;
-    return gap(groupBy(rowsByUnit.get(unitId) ?? [], (r) => r.studentId), unitId, null, names, masteryAverage);
+    return gap(groupBy(rowsByUnit.get(unitId) ?? [], (r) => r.studentId), new Map(ms.map((m) => [m.studentId, m])), unitId, null, names, masteryAverage);
   });
   const topics = [...groupBy(rows.filter((r) => r.topicId !== null), (r) => `${r.unitId}|${r.topicId}`).values()].map((rs) =>
-    gap(groupBy(rs, (r) => r.studentId), rs[0]!.unitId, rs[0]!.topicId, names, null),
+    gap(groupBy(rs, (r) => r.studentId), new Map(), rs[0]!.unitId, rs[0]!.topicId, names, null),
   );
   return { units: units.sort(byWeakness), topics: topics.sort(byWeakness) };
 }

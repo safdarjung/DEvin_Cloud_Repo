@@ -15,7 +15,7 @@ import type { PracticeItem, PracticeSubmitResult } from "@/modules/practice/sche
 export interface BankSubject {
   id: string;
   name: string;
-  units: { id: string; title: string; available: number }[];
+  units: { id: string; title: string; available: number; topics: { id: string; title: string; available: number }[] }[];
 }
 
 type Difficulty = "any" | "easy" | "medium" | "hard";
@@ -191,13 +191,18 @@ export function BankPractice({
         <select id="bank-unit" className={selectClass} value={unitId} onChange={(e) => { setUnitId(e.target.value); setTopicId(undefined); }}>
           {subject?.units.map((u) => <option key={u.id} value={u.id}>{u.title} ({u.available} {u.available === 1 ? "question" : "questions"})</option>)}
         </select>
-        {topicId && (
-          <p className="text-xs text-muted-foreground">
-            Focused on one weak topic in this chapter.{" "}
-            <button type="button" className="underline underline-offset-4" onClick={() => setTopicId(undefined)}>Use the whole chapter</button>
-          </p>
-        )}
       </div>
+      {(Boolean(unit?.topics.length) || Boolean(topicId)) && (
+        <div className="grid gap-1.5">
+          <label htmlFor="bank-topic" className="text-xs text-muted-foreground">Topic</label>
+          <select id="bank-topic" className={selectClass} value={topicId ?? ""} onChange={(e) => setTopicId(e.target.value || undefined)}>
+            <option value="">Whole chapter</option>
+            {/* A weak topic from "Where to focus" may hold its questions in subtopics, so it is not always in the list. */}
+            {topicId && !unit?.topics.some((t) => t.id === topicId) && <option value={topicId}>Your weak topic</option>}
+            {unit?.topics.map((t) => <option key={t.id} value={t.id}>{t.title} ({t.available} {t.available === 1 ? "question" : "questions"})</option>)}
+          </select>
+        </div>
+      )}
       <div className="grid gap-1.5">
         <span className="text-xs text-muted-foreground">Difficulty</span>
         <div className="flex flex-wrap gap-2">{DIFFICULTIES.map((d) => <Choice key={d} label={d} selected={difficulty === d} onClick={() => setDifficulty(d)} />)}</div>

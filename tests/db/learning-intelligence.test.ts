@@ -3,7 +3,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase/server", () => import("../helpers/server-client-mock"));
 
-import { learningMyWeakTopicsQuery, learningSectionGapsQuery } from "@/modules/learning/query-defs";
+import {
+  learningMyWeakTopicsQuery,
+  learningPracticeBankCountsQuery,
+  learningRevisionListQuery,
+  learningSectionGapsQuery,
+  learningTestQuestionsQuery,
+} from "@/modules/learning/query-defs";
 import { callAs, closeActionsHelper } from "../helpers/actions";
 import {
   closeFactoriesHelper,
@@ -382,6 +388,41 @@ describe("learning analytics scope (0151)", () => {
     if (gaps.ok) expect(gaps.data.units[0]).toMatchObject({ unitId: fx.unitId, unitTitle: "Fractions" });
     const denied = await callAs(inst, "teacher", learningSectionGapsQuery, { classSectionId: fx.sectionB, subjectId: fx.subjectId });
     expect(!denied.ok && denied.error.code).toBe("forbidden");
+  });
+});
+
+describe("section gaps agree with the revision list (0152)", () => {
+  it("a chapter known only from confident mastery shows its average and the same weak students the revision list names", async () => {
+    const id = inst.institutionId;
+    const [unit] = await sql`insert into public.curriculum_units (institution_id, subject_id, grade_id, title, sequence)
+      values (${id}, ${fx.subjectId}, ${fx.gradeId}, 'Mastery only', 9) returning id`;
+    await sql`insert into public.mastery_snapshots (institution_id, academic_year_id, student_id, class_section_id, subject_id, curriculum_unit_id, score, confidence, mark_count, evidence, detector_version, computed_at)
+      values (${id}, ${fx.yearId}, ${fx.studentId}, ${fx.sectionA}, ${fx.subjectId}, ${unit.id}, 0.3, 0.5, 2, '[{"kind":"mark"}]'::jsonb, 'test', now())`;
+
+    const input = { classSectionId: fx.sectionA, subjectId: fx.subjectId };
+    const gaps = await callAs(inst, "teacher", learningSectionGapsQuery, input);
+    const revision = await callAs(inst, "teacher", learningRevisionListQuery, input);
+    expect(gaps.ok && revision.ok, JSON.stringify([gaps, revision])).toBe(true);
+    if (!gaps.ok || !revision.ok) return;
+    const row = gaps.data.units.find((u) => u.unitId === unit.id);
+    expect(row).toMatchObject({ students: 1, averagePercent: 30, weakStudents: 1, masteryAverage: 30 });
+    const named = revision.data.filter((s) => s.areas.some((a) => a.unitId === unit.id));
+    expect(named.map((s) => s.studentId)).toEqual([fx.studentId]);
+    expect(named.length).toBe(row!.weakStudents);
+  });
+
+  it("bank counts and test questions carry chapter and topic names", async () => {
+    await bankQuestion();
+    const counts = await callAs(inst, "student", learningPracticeBankCountsQuery, {});
+    expect(counts.ok, JSON.stringify(counts)).toBe(true);
+    if (counts.ok) expect(counts.data.find((c) => c.topicId === fx.topicId)).toMatchObject({ unitId: fx.unitId, topicTitle: "Adding fractions" });
+
+    const test = await callAs(inst, "teacher", learningTestQuestionsQuery, { testId: fx.testId, classSectionId: fx.sectionA });
+    expect(test.ok, JSON.stringify(test)).toBe(true);
+    if (!test.ok) return;
+    expect(test.data.questions.map((q) => [q.unitTitle, q.topicTitle])).toEqual([["Fractions", "Adding fractions"], ["Fractions", null]]);
+    expect(test.data.topics).toEqual([expect.objectContaining({ id: fx.topicId, title: "Adding fractions", unitTitle: "Fractions", averagePercent: 0 })]);
+    expect(test.data.chapters).toEqual([expect.objectContaining({ id: fx.unitId, title: "Fractions" })]);
   });
 });
 

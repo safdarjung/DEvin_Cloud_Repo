@@ -14,7 +14,7 @@ interface Summary {
   note: string | null;
 }
 
-export function ChapterSummary({ institutionSlug, textbookId, chapterNo }: { institutionSlug: string; textbookId: string; chapterNo: number }) {
+export function ChapterSummary({ institutionSlug, textbookId, chapterNo, label }: { institutionSlug: string; textbookId: string; chapterNo: number; label?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Summary | null>(null);
@@ -31,7 +31,7 @@ export function ChapterSummary({ institutionSlug, textbookId, chapterNo }: { ins
   return (
     <section aria-label={`Chapter ${chapterNo} summary`} className="space-y-2 rounded-md border border-dashed p-3 text-sm">
       <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run()}>
-        {busy ? "Summarising…" : `Summarise chapter ${chapterNo}`}
+        {busy ? "Summarising…" : (label ?? `Summarise chapter ${chapterNo}`)}
       </Button>
       {error && <p role="alert" className="text-destructive">{error}</p>}
       {result?.note && <p role="status" className="text-muted-foreground">{result.note}</p>}

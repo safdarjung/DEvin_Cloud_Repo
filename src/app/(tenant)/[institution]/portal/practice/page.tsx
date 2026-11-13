@@ -14,7 +14,7 @@ import { resolvePortalSelection } from "@/modules/people/portal";
 import { getStudentProfile } from "@/modules/people/queries";
 import { PracticeHistory } from "@/modules/practice/components/PracticeHistory";
 import { myPracticeAttempts, practiceProgress, STREAK_WINDOW_DAYS } from "@/modules/practice/queries";
-import { unitChapters } from "@/modules/textbooks/queries";
+import { searchableBooks, unitChapters } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Learning & Practice" };
 
@@ -48,17 +48,38 @@ export default async function PortalPracticePage({
     canLearn ? myProgress(ctx, { studentId: selection.studentId }) : Promise.resolve([]),
     canLearn ? practiceBankCounts(ctx, { studentId: selection.studentId }) : Promise.resolve([]),
   ]);
-  const chapters = await unitChapters(ctx, weak.areas.map((a) => a.next.summaryUnitId));
+  const [chapters, heldBooks] = await Promise.all([
+    unitChapters(ctx, weak.areas.map((a) => a.next.summaryUnitId)),
+    weak.areas.length ? searchableBooks(ctx) : Promise.resolve([]),
+  ]);
   const chapterUrls = Object.fromEntries(Object.entries(chapters).flatMap(([id, c]) => (c.url ? [[id, c.url]] : [])));
+  // "Read summary" only where the school holds the book's text; elsewhere the chapter link stays.
+  const held = new Set(heldBooks.map((b) => b.id));
+  const chapterSummaries = Object.fromEntries(
+    Object.entries(chapters).flatMap(([id, c]) => (held.has(c.textbookId) ? [[id, { textbookId: c.textbookId, chapterNo: c.chapterNo }]] : [])),
+  );
   const subjectNames = Object.fromEntries((subjects ?? []).map((s) => [s.id, s.name]));
   const portalBase = `/${institutionSlug}/portal`;
 
   const perUnit = new Map<string, number>();
-  for (const c of counts) perUnit.set(c.unitId, (perUnit.get(c.unitId) ?? 0) + c.available);
+  const perTopic = new Map<string, { id: string; unitId: string; title: string; available: number }>();
+  for (const c of counts) {
+    perUnit.set(c.unitId, (perUnit.get(c.unitId) ?? 0) + c.available);
+    if (!c.topicId || !c.topicTitle) continue;
+    const t = perTopic.get(c.topicId);
+    perTopic.set(c.topicId, { id: c.topicId, unitId: c.unitId, title: c.topicTitle, available: (t?.available ?? 0) + c.available });
+  }
   const bankSubjects = (subjects ?? []).map((s) => ({
     id: s.id,
     name: s.name,
-    units: s.units.filter((u) => (perUnit.get(u.id) ?? 0) > 0).map((u) => ({ id: u.id, title: u.title, available: perUnit.get(u.id) ?? 0 })),
+    units: s.units
+      .filter((u) => (perUnit.get(u.id) ?? 0) > 0)
+      .map((u) => ({
+        id: u.id,
+        title: u.title,
+        available: perUnit.get(u.id) ?? 0,
+        topics: [...perTopic.values()].filter((t) => t.unitId === u.id).map(({ id, title, available }) => ({ id, title, available })),
+      })),
   }));
   const hasBank = bankSubjects.some((s) => s.units.length > 0);
   const mode = allParams.mode === "ai" || (allParams.mode !== "bank" && !hasBank) ? "ai" : "bank";
@@ -76,7 +97,7 @@ export default async function PortalPracticePage({
       {canLearn && (
         <section aria-labelledby="lp-weak" className="mb-8 space-y-3">
           <h3 id="lp-weak" className="text-base font-semibold tracking-tight">Where to focus</h3>
-          <WeakAreaList areas={weak.areas.slice(0, 6)} subjectNames={subjectNames} portalBase={portalBase} chapterUrls={chapterUrls} />
+          <WeakAreaList areas={weak.areas.slice(0, 6)} subjectNames={subjectNames} portalBase={portalBase} chapterUrls={chapterUrls} institutionSlug={institutionSlug} chapterSummaries={chapterSummaries} />
         </section>
       )}
 

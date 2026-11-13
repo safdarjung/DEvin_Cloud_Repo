@@ -7,7 +7,7 @@ import "server-only";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
-import { computeAnalytics, snapshotItems, type TestAnalytics } from "@/modules/online-tests/marking";
+import { computeAnalytics, snapshotItems, type GroupStat, type QuestionStat, type TestAnalytics } from "@/modules/online-tests/marking";
 import {
   revisionList,
   sectionGaps,
@@ -144,6 +144,8 @@ export async function myProgress(ctx: TenantContext, input: MyLearningInput): Pr
 
 export interface PracticeBankCount extends BankCount {
   subjectId: string;
+  /** null when the questions carry no topic, or the topic is not readable. */
+  topicTitle: string | null;
   difficulty: string;
 }
 
@@ -153,9 +155,16 @@ export async function practiceBankCounts(ctx: TenantContext, input: MyLearningIn
   const db = await createClient();
   const { data, error } = await db.rpc("practice_bank_counts", { p_student_id: studentId });
   if (error) throwMapped(error);
-  return (data ?? [])
-    .filter((c) => !input.subjectId || c.subject_id === input.subjectId)
-    .map((c) => ({ subjectId: c.subject_id, unitId: c.unit_id, topicId: c.topic_id, difficulty: c.difficulty, available: c.available }));
+  const rows = (data ?? []).filter((c) => !input.subjectId || c.subject_id === input.subjectId);
+  const names = await loadNames(db, ctx, rows.filter((c) => c.topic_id).map((c) => c.unit_id));
+  return rows.map((c) => ({
+    subjectId: c.subject_id,
+    unitId: c.unit_id,
+    topicId: c.topic_id,
+    topicTitle: c.topic_id ? (names.topics.get(c.topic_id)?.title ?? null) : null,
+    difficulty: c.difficulty,
+    available: c.available,
+  }));
 }
 
 // ── Teacher / leadership ──
@@ -192,8 +201,27 @@ export async function revisionListQuery(ctx: TenantContext, input: SectionSubjec
   return revisionList(rows, mastery, names, studentNames);
 }
 
-/** Question-wise performance and common wrong answers of one test in one section. */
-export async function testSectionQuestions(_ctx: TenantContext, input: TestSectionInput): Promise<TestAnalytics> {
+export interface SectionQuestionStat extends QuestionStat {
+  unitId: string | null;
+  unitTitle: string | null;
+  topicId: string | null;
+  topicTitle: string | null;
+}
+
+export interface NamedGroupStat extends GroupStat {
+  title: string;
+  /** Topics only: the chapter the topic belongs to. */
+  unitTitle: string | null;
+}
+
+export interface SectionTestAnalytics extends TestAnalytics {
+  questions: SectionQuestionStat[];
+  chapters: NamedGroupStat[];
+  topics: NamedGroupStat[];
+}
+
+/** Question-wise performance and common wrong answers of one test in one section, with chapter and topic names. */
+export async function testSectionQuestions(ctx: TenantContext, input: TestSectionInput): Promise<SectionTestAnalytics> {
   const db = await createClient();
   const { data, error } = await db.rpc("learning_test_section_rows", { p_test_id: input.testId, p_class_section_id: input.classSectionId });
   if (error) throwMapped(error);
@@ -203,9 +231,27 @@ export async function testSectionQuestions(_ctx: TenantContext, input: TestSecti
     responses: { attemptId: string; itemKey: string; answer: unknown; autoMarks: number | null; teacherMarks: number | null }[];
   };
   const num = (v: number | null) => (v === null ? null : Number(v));
-  return computeAnalytics(
-    snapshotItems(raw.snapshot),
+  const items = snapshotItems(raw.snapshot);
+  const stats = computeAnalytics(
+    items,
     raw.attempts.map((a) => ({ ...a, totalScore: num(a.totalScore) })),
     raw.responses.map((r) => ({ ...r, autoMarks: num(r.autoMarks), teacherMarks: num(r.teacherMarks) })),
   );
+  const names = await loadNames(db, ctx, items.flatMap((i) => (i.curriculumUnitId ? [i.curriculumUnitId] : [])));
+  const unitTitle = (id: string | null) => (id ? (names.units.get(id)?.title ?? null) : null);
+  const byKey = new Map(items.map((i) => [i.key, i]));
+  return {
+    ...stats,
+    questions: stats.questions.map((q) => {
+      const item = byKey.get(q.key);
+      const unitId = item?.curriculumUnitId ?? null;
+      const topicId = item?.curriculumTopicId ?? null;
+      return { ...q, unitId, unitTitle: unitTitle(unitId), topicId, topicTitle: topicId ? (names.topics.get(topicId)?.title ?? null) : null };
+    }),
+    chapters: stats.chapters.map((c) => ({ ...c, title: unitTitle(c.id) ?? "Chapter", unitTitle: null })),
+    topics: stats.topics.map((t) => {
+      const topic = names.topics.get(t.id);
+      return { ...t, title: topic?.title ?? "Topic", unitTitle: unitTitle(topic?.unitId ?? null) };
+    }),
+  };
 }
