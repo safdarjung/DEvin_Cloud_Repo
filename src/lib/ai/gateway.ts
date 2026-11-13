@@ -286,6 +286,8 @@ const FILE_TIMEOUT_MS = 90_000;
 export async function runStructuredFile<T>(input: RunStructuredFileInput<T>): Promise<ActionResult<RunStructuredOutput<T>>> {
   const { ctx, feature, schema, instructions, prompt, denyNames, maxOutputTokens, permission = "ai.generate", file } = input;
   if (!hasPermission(ctx, permission)) return fail("forbidden", "You do not have permission to use AI features.");
+  // Rule 6: the only file reader is a cloud model; local_only never sends a file out.
+  if (ctx.institution.ai_policy === "local_only") return fail("ai_policy_blocked", "This school keeps AI on its own server, so AI cannot read files.");
 
   const gate = fileReadGate({
     geminiKey: configuredCloudKeys().gemini,

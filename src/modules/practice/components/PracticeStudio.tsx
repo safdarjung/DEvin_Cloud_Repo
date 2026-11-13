@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { describeActionError } from "@/lib/action-error";
 import type { ErrorCode } from "@/lib/actions/result";
-import { submitPracticeAttempt } from "@/modules/practice/actions";
-import type { PracticeQuestion } from "@/modules/practice/schemas";
-import { scoreAttempt } from "@/modules/practice/scoring";
+import { submitPracticeSession } from "@/modules/practice/actions";
+import type { PracticeItem, PracticeItemResult } from "@/modules/practice/schemas";
+import { withSuperscripts } from "@/lib/superscript";
 
 export interface StudioSubject {
   id: string;
@@ -25,25 +25,15 @@ const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 // Codes where the model path itself is down or refused: explain, never fake questions.
 const AI_DOWN: ReadonlySet<ErrorCode> = new Set(["ai_unavailable", "ai_policy_blocked", "ai_invalid_output", "dependency_failed"]);
 
-const SUPERSCRIPT: Record<string, string> = {
-  "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
-  "+": "⁺", "-": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", n: "ⁿ", i: "ⁱ", x: "ˣ", y: "ʸ",
-};
-
-/** Model text writes powers as "2x^2" or "x^{n+1}": shown as "2x²", "xⁿ⁺¹". A power with no superscript form stays as typed. */
-export function withSuperscripts(text: string): string {
-  return text.replace(/\^(?:\{([^{}]{1,8})\}|(-?\d+|[nixy]))/g, (whole, braced: string | undefined, bare: string | undefined) => {
-    const power = (braced ?? bare ?? "").replace(/\s+/g, "");
-    return [...power].every((c) => c in SUPERSCRIPT) ? [...power].map((c) => SUPERSCRIPT[c]).join("") : whole;
-  });
-}
-
 type Phase =
   | { kind: "setup" }
   | { kind: "generating" }
   | { kind: "unavailable"; code: ErrorCode }
-  | { kind: "taking"; questions: PracticeQuestion[]; answers: (number | null)[]; model: string }
-  | { kind: "result"; questions: PracticeQuestion[]; answers: (number | null)[]; score: number; maxScore: number };
+  | { kind: "taking"; sessionId: string; questions: PracticeItem[]; answers: (number | null)[]; model: string }
+  | { kind: "result"; questions: PracticeItem[]; results: PracticeItemResult[]; score: number; maxScore: number };
+
+// AI practice questions are 4-option MCQs; the key stays on the server (0151).
+const optionsOf = (q: PracticeItem): string[] => (Array.isArray(q.options) ? q.options.map(String) : []);
 
 const selectClass =
   "h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
@@ -110,7 +100,7 @@ export function PracticeStudio({
         body: JSON.stringify({ institutionSlug, unitId, difficulty: level, count }),
       });
       const body = (await res.json()) as
-        | { ok: true; data: { questions: PracticeQuestion[]; model: string } }
+        | { ok: true; data: { sessionId: string; questions: PracticeItem[]; model: string } }
         | { ok: false; error: { code: ErrorCode; message: string; fieldErrors?: Record<string, string[]> } };
       if (!body.ok) {
         if (AI_DOWN.has(body.error.code)) {
@@ -121,21 +111,28 @@ export function PracticeStudio({
         }
         return;
       }
-      setPhase({ kind: "taking", questions: body.data.questions, answers: body.data.questions.map(() => null), model: body.data.model });
+      setPhase({
+        kind: "taking",
+        sessionId: body.data.sessionId,
+        questions: body.data.questions,
+        answers: body.data.questions.map(() => null),
+        model: body.data.model,
+      });
     } catch {
       toast.error("Could not reach the server. Check your connection and try again.");
       setPhase({ kind: "setup" });
     }
   }
 
-  function submit(questions: PracticeQuestion[], answers: (number | null)[]) {
+  function submit(sessionId: string, questions: PracticeItem[], answers: (number | null)[]) {
     start(async () => {
-      const res = await submitPracticeAttempt(institutionSlug, { studentId, curriculumUnitId: unitId, difficulty, questions, answers });
+      const picked = answers.map((a, i) => (a === null ? null : (optionsOf(questions[i]!)[a] ?? null)));
+      const res = await submitPracticeSession(institutionSlug, { sessionId, answers: picked });
       if (!res.ok) {
         toast.error(describeActionError(res.error));
         return;
       }
-      setPhase({ kind: "result", questions, answers, score: res.data.score, maxScore: res.data.maxScore });
+      setPhase({ kind: "result", questions, results: res.data.results, score: res.data.score, maxScore: res.data.maxScore });
       router.refresh();
     });
   }
@@ -177,14 +174,14 @@ export function PracticeStudio({
   }
 
   if (phase.kind === "taking") {
-    const { questions, answers } = phase;
+    const { sessionId, questions, answers } = phase;
     const answered = answers.filter((a) => a !== null).length;
     return (
       <FadeIn>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            submit(questions, answers);
+            submit(sessionId, questions, answers);
           }}
           className="space-y-4"
         >
@@ -194,10 +191,10 @@ export function PracticeStudio({
           {questions.map((q, qi) => (
             <fieldset key={qi} className="rounded-xl border p-4">
               <legend className="px-1 text-sm font-medium">
-                <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {withSuperscripts(q.stem)}
+                <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {withSuperscripts(q.body)}
               </legend>
               <div className="mt-2 space-y-1">
-                {q.options.map((opt, oi) => (
+                {optionsOf(q).map((opt, oi) => (
                   <label key={oi} className="flex min-h-10 cursor-pointer items-start gap-3 rounded-md px-2 py-2 text-sm hover:bg-muted has-[:checked]:bg-muted">
                     <input
                       type="radio"
@@ -227,9 +224,7 @@ export function PracticeStudio({
   }
 
   if (phase.kind === "result") {
-    const { questions, answers, score, maxScore } = phase;
-    // Preview score only decides the Try harder suggestion; the saved score is the server's.
-    const shown = scoreAttempt(questions, answers);
+    const { questions, results, score, maxScore } = phase;
     const strong = maxScore > 0 && score / maxScore >= 0.8 && difficulty !== "hard";
     const harder: Difficulty = difficulty === "easy" ? "medium" : "hard";
     return (
@@ -240,23 +235,23 @@ export function PracticeStudio({
             <p className="text-3xl font-semibold tracking-tight tabular-nums text-[var(--chart-1)]">
               {score}/{maxScore}
             </p>
-            {shown.score !== score && <p className="text-xs text-muted-foreground">The saved score is the one the server calculated.</p>}
           </div>
           <ol className="space-y-3">
             {questions.map((q, qi) => {
-              const picked = answers[qi];
-              const right = picked === q.answerIndex;
+              const r = results[qi];
+              const picked = typeof r?.given === "string" ? r.given : null;
+              const right = r?.correct === true;
               return (
                 <li key={qi} className="rounded-xl border p-4">
                   <p className="text-sm font-medium">
-                    <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {withSuperscripts(q.stem)}
+                    <span className="tabular-nums text-muted-foreground">{qi + 1}.</span> {withSuperscripts(q.body)}
                   </p>
                   <p className={`mt-1 text-xs font-medium ${right ? "" : "text-destructive"}`}>{right ? "Correct" : picked === null ? "Skipped" : "Incorrect"}</p>
                   {!right && (
                     <div className="mt-2 space-y-1 text-sm">
-                      {picked !== null && <p className="text-muted-foreground">Your answer: {withSuperscripts(q.options[picked] ?? "")}</p>}
-                      <p>Correct answer: {withSuperscripts(q.options[q.answerIndex] ?? "")}</p>
-                      {q.explanation && <p className="text-muted-foreground">{withSuperscripts(q.explanation)}</p>}
+                      {picked !== null && <p className="text-muted-foreground">Your answer: {withSuperscripts(picked)}</p>}
+                      <p>Correct answer: {withSuperscripts(r?.answer ?? "")}</p>
+                      {r?.explanation && <p className="text-muted-foreground">{withSuperscripts(r.explanation)}</p>}
                     </div>
                   )}
                 </li>

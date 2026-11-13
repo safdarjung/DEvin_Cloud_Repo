@@ -84,6 +84,14 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": "off",
     },
   },
+  {
+    // 0151: public.create_ai_practice_session is service_role only (07 §4,
+    // `practice` caller) — this factory is its only caller, from /api/ai/practice-quiz.
+    files: ["src/modules/practice/service-role.ts"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

@@ -20,7 +20,7 @@ const F18_LEADERS = [
   // Study studio (resource.manage): leaders see engagement, teachers share material.
   "/study-studio",
   // 0139 textbooks mapping (resource.manage).
-  "/textbooks",
+  "/textbooks", "/textbooks/search",
 ];
 // Permission-gated links (insight.read / forecast.read / agent.run): staff roles
 // without them don't get dead pages. Demo tenant, no module settings.
@@ -50,7 +50,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/modules",
     "/settings/ai",
     "/settings/control-centre",
-    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
+    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/assistant", "/messages",
     ...F18_LEADERS, "/finance/fee-plans", "/payroll",
   ],
   principal: [
@@ -73,7 +73,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/modules",
     "/settings/ai",
     "/settings/control-centre",
-    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/assistant", "/messages",
+    "/diary", "/lesson-plans", "/ptm", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/assistant", "/messages",
     ...F18_LEADERS, "/finance/fee-plans",
   ],
   admin: [
@@ -99,25 +99,25 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     ...F18_LEADERS,
   ],
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant",
-    "/students/lifecycle", "/clubs", "/staff", "/certificates", "/alumni", "/documents", "/safety", "/resources", "/duties"],
+    "/students/lifecycle", "/clubs", "/staff", "/certificates", "/alumni", "/documents", "/safety", "/resources", "/duties", "/textbooks/search"],
   accountant: ["/dashboard", "/students", "/finance", "/finance/ledger", "/notifications", ...NO_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant",
-    "/clubs", "/finance/fee-plans", "/finance/concessions", "/finance/expenses", "/payroll", "/staff", "/canteen", "/inventory", "/safety", "/compliance", "/resources", "/duties"],
+    "/clubs", "/finance/fee-plans", "/finance/concessions", "/finance/expenses", "/payroll", "/staff", "/canteen", "/inventory", "/safety", "/compliance", "/resources", "/duties", "/textbooks/search"],
   // Finance intel needs finance.read (9bb75b9); exam_controller holds forecast.read but not finance.read.
-  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/timetable", "/assistant",
-    "/exams/seating", "/clubs", "/staff", "/safety", "/resources", "/duties"],
-  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/timetable", "/messages",
-    "/behaviour", "/clubs", "/labs", "/staff", "/visitors", "/helpdesk", "/forms", "/achievements", "/safety", "/resources", "/duties", "/study-studio", "/textbooks"],
+  exam_controller: ["/dashboard", "/students", "/attendance", "/exams", "/exams/rechecks", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/fabric/students", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/assistant",
+    "/exams/seating", "/clubs", "/staff", "/safety", "/resources", "/duties", "/textbooks/search"],
+  teacher: ["/today", "/students", "/attendance", "/assignments", "/exams", "/ai", "/notifications", "/diary", "/lesson-plans", "/ptm", "/question-bank", "/question-papers", "/online-tests", "/timetable", "/messages",
+    "/behaviour", "/clubs", "/labs", "/staff", "/visitors", "/helpdesk", "/forms", "/achievements", "/safety", "/resources", "/duties", "/study-studio", "/textbooks", "/textbooks/search"],
   // Portal roles hold read permissions for their own child's data, but the
   // staff module pages aren't built for them — the portal tabs are.
   // They get the portal's own sidebar (formerly PortalNav's tab strip).
   student: [
-    "/portal", "/portal/subjects", "/portal/study", "/portal/practice", "/portal/study/studio", "/portal/assignments",
+    "/portal", "/portal/subjects", "/portal/study", "/portal/practice", "/portal/study/studio", "/portal/study/search", "/portal/tests", "/portal/assignments",
     "/portal/results", "/portal/timetable", "/portal/library", "/portal/exams", "/portal/attendance", "/portal/fees", "/portal/notifications",
     "/portal/behaviour", "/portal/clubs", "/portal/canteen", "/portal/forms", "/portal/helpdesk",
     "/portal/achievements", "/portal/safety", "/portal/resources",
   ],
   guardian: [
-    "/portal", "/portal/attendance", "/portal/results", "/portal/timetable", "/portal/library", "/portal/exams", "/portal/study-progress", "/portal/assignments", "/portal/updates",
+    "/portal", "/portal/attendance", "/portal/results", "/portal/tests", "/portal/timetable", "/portal/library", "/portal/exams", "/portal/study-progress", "/portal/assignments", "/portal/updates",
     "/portal/fees", "/portal/messages", "/portal/meetings", "/portal/assistant", "/portal/leave",
     "/portal/surveys", "/portal/notifications",
     "/portal/behaviour", "/portal/health", "/portal/canteen", "/portal/clubs", "/portal/forms", "/portal/helpdesk",

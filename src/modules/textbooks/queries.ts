@@ -6,6 +6,8 @@ import "server-only";
 // reads the mapping, unit links follow grade+subject.
 import type { TenantContext } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
+import { getExtractionStatus } from "@/modules/content/queries";
+import type { ExtractionSummary } from "@/modules/content/schemas";
 import { CATALOGUE_COLUMNS, loadCatalogue, mappablePairs, toCatalogueBook, type CatalogueRow } from "./catalogue";
 import { chapterLinks, classNumberFromGrade, type CatalogueBook } from "./ncert";
 
@@ -34,6 +36,8 @@ export interface BookView {
   verified: boolean;
   code: string | null;
   chapters: ChapterView[];
+  /** 0147 rights metadata; NCERT rows are always link_only. */
+  meta: { edition: string | null; publicationYear: number | null; isbn: string | null; board: string | null; rightsStatus: string; permittedUse: string | null };
 }
 
 interface MappingRow {
@@ -48,11 +52,19 @@ interface MappingRow {
   school_url: string | null;
   chapter_titles: unknown;
   position: number;
+  edition: string | null;
+  publication_year: number | null;
+  isbn: string | null;
+  board: string | null;
+  rights_status: string;
+  permitted_use: string | null;
   ncert_textbooks: CatalogueRow | null;
   file?: BookView["file"];
 }
 
-const MAPPING_COLUMNS = `id, grade_id, subject_id, ncert_code, custom_title, custom_publisher, custom_url, custom_chapters, school_url, chapter_titles, position, ncert_textbooks(${CATALOGUE_COLUMNS})`;
+const MAPPING_COLUMNS = `id, grade_id, subject_id, ncert_code, custom_title, custom_publisher, custom_url, custom_chapters, school_url, chapter_titles, position, edition, publication_year, isbn, board, rights_status, permitted_use, ncert_textbooks(${CATALOGUE_COLUMNS})`;
+
+const metaOf = (row: MappingRow): BookView["meta"] => ({ edition: row.edition, publicationYear: row.publication_year, isbn: row.isbn, board: row.board, rightsStatus: row.rights_status, permittedUse: row.permitted_use });
 
 function toBookView(row: MappingRow): BookView {
   const titles = (row.chapter_titles && typeof row.chapter_titles === "object" ? row.chapter_titles : {}) as Record<string, string>;
@@ -70,6 +82,7 @@ function toBookView(row: MappingRow): BookView {
       file: row.file ?? null,
       verified: b.verified,
       code: b.code,
+      meta: metaOf(row),
       chapters: chapterLinks(b).map((c) => ({ ...c, title: titles[String(c.no)] ?? null })),
     };
   }
@@ -85,6 +98,7 @@ function toBookView(row: MappingRow): BookView {
     file: row.file ?? null,
     verified: false,
     code: null,
+    meta: metaOf(row),
     chapters: Array.from({ length: row.custom_chapters ?? 0 }, (_, i) => ({
       no: i + 1,
       title: titles[String(i + 1)] ?? null,
@@ -244,4 +258,92 @@ export async function textbookSettings(ctx: TenantContext): Promise<{ grades: Se
       .map((g) => ({ ...g, subjects: g.subjects.sort((a, b) => a.subjectName.localeCompare(b.subjectName)) })),
     catalogue: options,
   };
+}
+
+/** The newest reading per school-uploaded book (RLS hides it while the book's rights do not allow stored text). */
+export async function extractionStates(ctx: TenantContext, bookIds: string[]): Promise<Record<string, ExtractionSummary>> {
+  const rows = await Promise.all(bookIds.map(async (id) => [id, await getExtractionStatus(ctx, { subjectTextbookId: id })] as const));
+  return Object.fromEntries(rows.filter((r): r is readonly [string, ExtractionSummary] => r[1] !== null));
+}
+
+export interface SearchableBook {
+  id: string;
+  title: string;
+  gradeId: string;
+  subjectId: string;
+  /** "VI · Science" */
+  label: string;
+}
+
+/** Books whose text has been read (any chunks) and the caller may see; RLS on content_extractions scopes staff and the book's students/guardians. */
+export async function searchableBooks(ctx: TenantContext): Promise<SearchableBook[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("content_extractions")
+    .select("subject_textbook_id, subject_textbooks!inner(id, grade_id, subject_id, custom_title, grades(code), subjects(name))")
+    .eq("institution_id", ctx.institution.id)
+    .in("status", ["done", "partial"]);
+  if (error) throw error;
+  const seen = new Map<string, SearchableBook>();
+  for (const row of data ?? []) {
+    const b = row.subject_textbooks as unknown as { id: string; grade_id: string; subject_id: string; custom_title: string | null; grades: { code: string } | null; subjects: { name: string } | null } | null;
+    if (!b || seen.has(b.id)) continue;
+    seen.set(b.id, { id: b.id, title: b.custom_title ?? "Textbook", gradeId: b.grade_id, subjectId: b.subject_id, label: `${b.grades?.code ?? "?"} · ${b.subjects?.name ?? ""}` });
+  }
+  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label) || a.title.localeCompare(b.title));
+}
+
+export interface ReviewChunk {
+  id: string;
+  chapterNo: number | null;
+  heading: string | null;
+  pageFrom: number;
+  pageTo: number;
+  body: string;
+  editedAt: string | null;
+}
+
+export const CHUNK_PAGE_SIZE = 15;
+
+/** One page of a book's read text in page order (RLS: staff of the school), plus its chapter numbers. */
+export async function bookChunks(ctx: TenantContext, bookId: string, opts: { chapter?: number | "none"; page: number }): Promise<{ chunks: ReviewChunk[]; total: number; chapters: number[] }> {
+  const supabase = await createClient();
+  let q = supabase
+    .from("content_chunks")
+    .select("id, chapter_no, heading, page_from, page_to, body, edited_at", { count: "exact" })
+    .eq("institution_id", ctx.institution.id)
+    .eq("subject_textbook_id", bookId)
+    .order("page_from")
+    .order("id");
+  if (opts.chapter === "none") q = q.is("chapter_no", null);
+  else if (opts.chapter) q = q.eq("chapter_no", opts.chapter);
+  const from = (opts.page - 1) * CHUNK_PAGE_SIZE;
+  const [{ data, count, error }, { data: nos, error: nosError }] = await Promise.all([
+    q.range(from, from + CHUNK_PAGE_SIZE - 1),
+    supabase.from("content_chunks").select("chapter_no").eq("institution_id", ctx.institution.id).eq("subject_textbook_id", bookId).not("chapter_no", "is", null).limit(5000),
+  ]);
+  // PGRST103: a page past the last row reads as empty.
+  if (error && error.code !== "PGRST103") throw error;
+  if (nosError) throw nosError;
+  return {
+    chunks: (data ?? []).map((r) => ({ id: r.id, chapterNo: r.chapter_no, heading: r.heading, pageFrom: r.page_from, pageTo: r.page_to, body: r.body, editedAt: r.edited_at })),
+    total: count ?? 0,
+    chapters: [...new Set((nos ?? []).map((r) => r.chapter_no as number))].sort((a, b) => a - b),
+  };
+}
+
+/** A book's title and grade/subject label for page headers; null when the caller cannot see it. */
+export async function bookHeader(ctx: TenantContext, bookId: string): Promise<{ title: string; label: string; ncert: boolean } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("subject_textbooks")
+    .select("custom_title, ncert_code, grades(code), subjects(name)")
+    .eq("id", bookId)
+    .eq("institution_id", ctx.institution.id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const grade = data.grades as { code: string } | null;
+  const subject = data.subjects as { name: string } | null;
+  return { title: data.custom_title ?? "Textbook", label: `${grade?.code ?? ""} · ${subject?.name ?? ""}`, ncert: data.ncert_code !== null };
 }

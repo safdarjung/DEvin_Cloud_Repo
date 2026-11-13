@@ -16,9 +16,11 @@ import { describeActionError } from "@/lib/action-error";
 import type { ActionResult } from "@/lib/actions/result";
 import { addTextbook, removeTextbook, setChapterTitles, suggestNcertBooks } from "@/modules/textbooks/actions";
 import { canonicalSubject } from "@/modules/textbooks/ncert";
+import type { ExtractionSummary } from "@/modules/content/schemas";
 import type { BookView, CatalogueOption, SettingsGrade } from "@/modules/textbooks/queries";
 import { BookCard } from "./BookLinks";
 import { SchoolCopyEditor } from "./SchoolCopy";
+import { TextbookContent } from "./TextbookContent";
 import { checkTextbookPdf, MAX_TEXTBOOK_FILE_MB, uploadTextbookPdf } from "./upload-textbook-file";
 
 const SELECT = "h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:h-9";
@@ -232,7 +234,7 @@ function AddBook({ institutionSlug, gradeId, subjectId, subjectName, options }: 
   );
 }
 
-export function TextbookSettings({ institutionSlug, grades, catalogue }: { institutionSlug: string; grades: SettingsGrade[]; catalogue: Record<string, CatalogueOption[]> }) {
+export function TextbookSettings({ institutionSlug, grades, catalogue, states }: { institutionSlug: string; grades: SettingsGrade[]; catalogue: Record<string, CatalogueOption[]>; states: Record<string, ExtractionSummary> }) {
   const { pending, run } = useRun();
   return (
     <div className="space-y-4">
@@ -252,7 +254,7 @@ export function TextbookSettings({ institutionSlug, grades, catalogue }: { insti
                   {s.books.length === 0 && <Badge variant="outline">No book</Badge>}
                 </div>
                 {s.books.map((b) => (
-                  <div key={b.id}>
+                  <div key={b.id} data-testid="book-row">
                     <BookCard book={b} />
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       <Button
@@ -268,6 +270,7 @@ export function TextbookSettings({ institutionSlug, grades, catalogue }: { insti
                       </Button>
                     </div>
                     <SchoolCopyEditor institutionSlug={institutionSlug} book={b} />
+                    <TextbookContent institutionSlug={institutionSlug} book={b} state={states[b.id] ?? null} />
                     <ChapterTitles institutionSlug={institutionSlug} book={b} />
                   </div>
                 ))}

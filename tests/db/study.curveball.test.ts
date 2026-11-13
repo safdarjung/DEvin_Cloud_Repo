@@ -14,7 +14,7 @@ import {
   submitStudyQuiz,
   toggleStudyPlanItem,
 } from "@/modules/study/actions";
-import { submitPracticeAttempt } from "@/modules/practice/actions";
+import { submitPracticeSession } from "@/modules/practice/actions";
 import { callAs, closeActionsHelper } from "../helpers/actions";
 import {
   closeFactoriesHelper,
@@ -27,14 +27,13 @@ import {
 } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, ROLES, type TestInstitution } from "../helpers/roles";
 
-// Curveballs for study.* and practice.submitAttempt (no prior action-level tests).
+// Curveballs for study.* and practice.submitSession (no prior action-level tests).
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 5 });
 
 let inst: TestInstitution;
 let other: TestInstitution;
 let sectionId: string;
 let studentId: string;
-let unitId: string;
 
 const deck = { cards: [{ id: "c1", front: "Front one", back: "Back one" }, { id: "c2", front: "Front two", back: "Back two" }] };
 const flash = (title = "Deck") => ({ format: "flashcards" as const, title, sourceKind: "paste" as const, content: deck });
@@ -47,9 +46,8 @@ beforeAll(async () => {
   const yearId = await createAcademicYear(inst.institutionId);
   const gradeId = await createGrade(inst.institutionId, { code: "VII" });
   const subjectId = await createSubject(inst.institutionId, { name: "Science" });
-  const [u] = await sql`insert into public.curriculum_units (institution_id, subject_id, grade_id, title, description, sequence)
+  await sql`insert into public.curriculum_units (institution_id, subject_id, grade_id, title, description, sequence)
     values (${inst.institutionId}, ${subjectId}, ${gradeId}, 'Light', 'Reflection.', 1) returning id`;
-  unitId = u.id as string;
   const [t] = await sql`select staff_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'`;
   sectionId = await createClassSection(inst.institutionId, gradeId, yearId, { name: "A", classTeacherId: t.staff_id });
   const [s] = await sql`select student_id from public.memberships where institution_id = ${inst.institutionId} and role = 'student'`;
@@ -275,35 +273,21 @@ describe("study teacher actions", () => {
   });
 });
 
-describe("practice.submitAttempt", () => {
-  const q = { stem: "2+2?", options: ["1", "2", "3", "4"], answerIndex: 3 };
-  const input = () => ({ studentId, curriculumUnitId: unitId, difficulty: "easy" as const, questions: [q], answers: [3] });
+describe("practice.submitSession", () => {
+  // Server-scored sessions are proved in tests/db/learning-intelligence.test.ts.
+  const input = () => ({ sessionId: crypto.randomUUID(), answers: ["4"] });
 
-  it("scores on the server from the answer keys", async () => {
-    const r = await callAs(inst, "student", submitPracticeAttempt, input());
-    expect(r.ok, JSON.stringify(r)).toBe(true);
-    if (r.ok) expect([r.data.score, r.data.maxScore]).toEqual([1, 1]);
-  });
-
-  it("answers/questions length mismatch and a client score field fail validation", async () => {
-    const mismatch = await callAs(inst, "student", submitPracticeAttempt, { ...input(), answers: [3, 1] });
-    expect(!mismatch.ok && mismatch.error.code).toBe("validation_failed");
-    const score = await callAs(inst, "student", submitPracticeAttempt, { ...input(), score: 5 } as never);
+  it("a client score field fails validation; an unknown session is not found", async () => {
+    const score = await callAs(inst, "student", submitPracticeSession, { ...input(), score: 5 } as never);
     expect(!score.ok && score.error.code).toBe("validation_failed");
+    const unknown = await callAs(inst, "student", submitPracticeSession, input());
+    expect(!unknown.ok && unknown.error.code).toBe("not_found");
   });
 
   it("only students hold practice.attempt; other roles forbidden", async () => {
     for (const role of ROLES.filter((r) => r !== "student")) {
-      const r = await callAs(inst, role, submitPracticeAttempt, input());
+      const r = await callAs(inst, role, submitPracticeSession, input());
       expect(!r.ok && r.error.code, role).toBe("forbidden");
     }
-  });
-
-  it("a student cannot submit for another student id or a unit from another school", async () => {
-    const [o] = await sql`select student_id from public.memberships where institution_id = ${other.institutionId} and role = 'student'`;
-    const asOther = await callAs(inst, "student", submitPracticeAttempt, { ...input(), studentId: o.student_id as string });
-    expect(asOther.ok).toBe(false);
-    const badUnit = await callAs(inst, "student", submitPracticeAttempt, { ...input(), curriculumUnitId: crypto.randomUUID() });
-    expect(badUnit.ok).toBe(false);
   });
 });

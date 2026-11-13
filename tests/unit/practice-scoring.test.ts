@@ -1,21 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeStreak, istDay, scoreAttempt, subjectAverages } from "@/modules/practice/scoring";
-
-describe("scoreAttempt", () => {
-  const qs = [{ answerIndex: 1 }, { answerIndex: 3 }, { answerIndex: 0 }];
-
-  it("counts exact matches only", () => {
-    expect(scoreAttempt(qs, [1, 0, 0])).toEqual({ score: 2, maxScore: 3 });
-  });
-
-  it("scores skipped (null) answers as zero", () => {
-    expect(scoreAttempt(qs, [null, null, null])).toEqual({ score: 0, maxScore: 3 });
-  });
-
-  it("treats answer index 0 as an answer, not as missing", () => {
-    expect(scoreAttempt([{ answerIndex: 0 }], [0])).toEqual({ score: 1, maxScore: 1 });
-  });
-});
+import { computeStreak, istDay, subjectAverages } from "@/modules/practice/scoring";
 
 describe("istDay", () => {
   it("rolls to the next day after 18:30 UTC", () => {
@@ -72,7 +56,7 @@ describe("subjectAverages", () => {
 });
 
 describe("withSuperscripts (practice quiz display)", async () => {
-  const { withSuperscripts } = await import("@/modules/practice/components/PracticeStudio");
+  const { withSuperscripts } = await import("@/lib/superscript");
 
   it("shows the model's caret powers as superscripts", () => {
     expect(withSuperscripts("Factorise 2x^2 - 4x")).toBe("Factorise 2x² - 4x");

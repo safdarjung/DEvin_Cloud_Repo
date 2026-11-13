@@ -192,7 +192,8 @@ describe("regressions: AI tools on a cloud-only host", () => {
       .map((file) => ({ file, source: fs.readFileSync(path.join(root, file), "utf8") }))
       .filter(({ source }) => source.includes("runStructured({"));
     expect(routes.length).toBeGreaterThan(15);
-    expect(routes.filter(({ source }) => !source.includes("agentCloud: true")).map(({ file }) => file)).toEqual([]);
+    // A route may also gate the opt-in on the policy: local_only never reaches a cloud provider (rule 6).
+    expect(routes.filter(({ source }) => !/agentCloud: (true|ctx\.institution\.ai_policy !== "local_only")/.test(source)).map(({ file }) => file)).toEqual([]);
   });
 
   it("quiz routes hand QuizContentSchema to the gateway, so a duplicate option or stray answer gets the repair retry", () => {

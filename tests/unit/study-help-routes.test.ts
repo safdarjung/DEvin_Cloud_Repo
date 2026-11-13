@@ -87,9 +87,10 @@ const teacherRoute = await import("@/app/api/ai/study-teacher-generate/route");
 const mockRoute = await import("@/app/api/ai/study-mock/route");
 const translateRoute = await import("@/app/api/ai/study-translate/route");
 
+let aiPolicy: TenantContext["institution"]["ai_policy"] = "local_only";
 function fakeCtx(role: Role, aiRoles: Record<string, unknown> = {}): TenantContext {
   return {
-    institution: { id: "inst-1", slug: "demo", name: "Sunrise Public School", settings: { modules: allModulesOn(), ai_roles: aiRoles }, ai_policy: "local_only", is_demo: false },
+    institution: { id: "inst-1", slug: "demo", name: "Sunrise Public School", settings: { modules: allModulesOn(), ai_roles: aiRoles }, ai_policy: aiPolicy, is_demo: false },
     user: { id: "user-1", profile: { fullName: "Asha Verma", phone: null, avatarPath: null, isPlatformAdmin: false } },
     membership: { role, staffId: role === "teacher" ? "staff-1" : null, guardianId: null, studentId: role === "student" ? "stu-1" : null },
     permissions: new Set(permissionsFor(role)),
@@ -107,6 +108,7 @@ const ORIGINAL_ENV = { ...process.env };
 beforeEach(() => {
   vi.clearAllMocks();
   TABLES = baseTables();
+  aiPolicy = "local_only";
   process.env.GROQ_API_KEY = "test-key";
   process.env.GEMINI_API_KEY = "test-key";
   vi.stubGlobal("fetch", fetchMock);
@@ -117,6 +119,18 @@ afterEach(() => {
 });
 
 describe("study from an uploaded file (multimodal gate)", () => {
+  beforeEach(() => {
+    aiPolicy = "cloud_allowed";
+  });
+
+  it("refuses under a local_only policy: the file never reaches a cloud provider", async () => {
+    aiPolicy = "local_only";
+    getTenantContextMock.mockResolvedValue(fakeCtx("student"));
+    const res = await studentRoute.POST(post("study-generate", fileBody));
+    expect((await res.json()).error.code).toBe("ai_policy_blocked");
+    expect(generateTextMock).not.toHaveBeenCalled();
+  });
+
   it("reads the student's own file through Gemini with one file part and logs usage", async () => {
     getTenantContextMock.mockResolvedValue(fakeCtx("student"));
     modelReturns(SUMMARY);

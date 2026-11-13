@@ -38,6 +38,23 @@ export type AddTextbookInput = z.infer<typeof AddTextbookSchema>;
 export const TextbookIdSchema = z.object({ textbookId: uuid }).strict();
 export type TextbookIdInput = z.infer<typeof TextbookIdSchema>;
 
+export const RIGHTS_STATUSES = ["unknown", "link_only", "school_owned", "licensed", "open_licence"] as const;
+const optText = (max: number) => z.string().trim().max(max).transform((v) => (v === "" ? null : v)).nullable();
+
+/** 0147 metadata. Reading a book's text needs school_owned, licensed or open_licence on a non-NCERT book (NCERT is forced link_only in SQL). */
+export const UpdateTextbookMetaSchema = z
+  .object({
+    textbookId: uuid,
+    edition: optText(60),
+    publicationYear: z.number().int().min(1950).max(2100).nullable(),
+    isbn: z.string().trim().transform((v) => v.replace(/[-\s]/g, "")).pipe(z.union([z.literal(""), z.string().regex(/^(97[89])?[0-9]{9}[0-9X]$/, "ISBN-10 or ISBN-13")])).transform((v) => (v === "" ? null : v)).nullable(),
+    board: optText(60),
+    rightsStatus: z.enum(RIGHTS_STATUSES),
+    permittedUse: optText(500),
+  })
+  .strict();
+export type UpdateTextbookMetaInput = z.infer<typeof UpdateTextbookMetaSchema>;
+
 /** The school's own link on a book (an e-book, a scan); null clears it. NCERT rows keep their official link separately. */
 export const SetTextbookLinkSchema = z.object({ textbookId: uuid, url: httpsUrl.nullable() }).strict();
 export type SetTextbookLinkInput = z.infer<typeof SetTextbookLinkSchema>;

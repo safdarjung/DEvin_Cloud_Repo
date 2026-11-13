@@ -38,6 +38,18 @@ const EMPTY_IN_DEMO = new Set<string>([
   "question_collections", // 0146: personal question sets; none is seeded yet
   "question_collection_items", // 0146: follows question_collections
   "curriculum_topics", // 0147: unit topics are entered by the school; none is seeded yet
+  "question_papers", // 0149: papers are built by the school; none is seeded yet
+  "question_paper_sections", // 0149: follows question_papers
+  "question_paper_items", // 0149: follows question_papers
+  "question_paper_versions", // 0149: follows question_papers
+  "question_paper_templates", // 0149: school-defined blueprints; none is seeded yet
+  "content_extractions", // 0148: a school reads its own uploaded book PDFs; none is uploaded in the demo tenant
+  "content_chunks", // 0148: follows content_extractions
+  "online_tests", // 0150: tests are given by the school; none is seeded yet
+  "test_attempts", // 0150: follows online_tests
+  "test_responses", // 0150: follows online_tests
+  "test_events", // 0150: follows online_tests
+  "practice_sessions", // 0151: created when a student starts a practice set; none is seeded
 ]);
 
 // Roles that read only the rows they take part in. The demo seed gives the demo teacher, guardian and student

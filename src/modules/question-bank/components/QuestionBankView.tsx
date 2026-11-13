@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ListPager } from "@/components/list-pager";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +17,12 @@ import { approveQuestion, archiveQuestion, duplicateQuestion, rejectQuestion, su
 import type { CollectionItem, NearDuplicate, QuestionBankItem, QuestionCollection } from "@/modules/question-bank/queries";
 import { QuestionOriginSchema, QuestionStatusSchema } from "@/modules/question-bank/schemas";
 import { AddToCollectionDialog, CollectionsPanel } from "./CollectionsPanel";
+import { GenerateFromTextbook } from "./GenerateFromTextbook";
 import { ExportDialog, ImportDialog } from "./ImportExport";
 import { QuestionForm } from "./QuestionForm";
-import { DIFFICULTIES, isStemType, ORIGIN_LABEL, STATUS_LABEL, STATUS_VARIANT, TYPES, typeLabel, type PairMeta } from "./question-meta";
+import { DIFFICULTIES, ORIGIN_LABEL, STATUS_LABEL, STATUS_VARIANT, TYPES, typeLabel, type PairMeta } from "./question-meta";
 
 const ALL = "all";
-const needsReview = (q: QuestionBankItem) => q.status === "in_review" || q.status === "draft";
 
 function Filter({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
@@ -39,6 +40,11 @@ export function QuestionBankView({
   institutionSlug,
   items,
   total,
+  page,
+  pageSize,
+  queue,
+  stems,
+  filters,
   pairs,
   filterTopics,
   canManage,
@@ -47,8 +53,16 @@ export function QuestionBankView({
   collectionItems,
 }: {
   institutionSlug: string;
+  /** One server page of the filtered list. */
   items: QuestionBankItem[];
   total: number;
+  page: number;
+  pageSize: number;
+  /** Drafts and in-review questions, regardless of the list filters. */
+  queue: QuestionBankItem[];
+  /** Passage and case-based stems a question can hang under. */
+  stems: QuestionBankItem[];
+  filters: { status?: string; type?: string; difficulty?: string; origin?: string; topic?: string };
   pairs: PairMeta[];
   /** Every topic of the subjects shown (a reviewer with no classes still filters by topic). */
   filterTopics: { value: string; label: string }[];
@@ -68,20 +82,18 @@ export function QuestionBankView({
   const [dupes, setDupes] = useState<NearDuplicate[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [f, setF] = useState({ status: ALL, type: ALL, difficulty: ALL, origin: ALL, topic: ALL });
+  const f = { status: filters.status ?? ALL, type: filters.type ?? ALL, difficulty: filters.difficulty ?? ALL, origin: filters.origin ?? ALL, topic: filters.topic ?? ALL };
   const canAuthor = canManage && pairs.length > 0;
-
-  const stems = useMemo(() => items.filter((q) => isStemType(q.type) && q.status !== "archived"), [items]);
-  const visible = items.filter(
-    (q) =>
-      (f.status === ALL || q.status === f.status) &&
-      (f.type === ALL || q.type === f.type) &&
-      (f.difficulty === ALL || q.difficulty === f.difficulty) &&
-      (f.origin === ALL || q.origin === f.origin) &&
-      (f.topic === ALL || q.curriculumTopicId === f.topic),
-  );
-  const queue = items.filter(needsReview);
+  const visible = items;
   const filtering = Object.values(f).some((v) => v !== ALL);
+
+  // Filters live in the URL and run in SQL; changing one returns to page 1.
+  function setFilters(next: Partial<typeof f> | "clear") {
+    const merged: Record<string, string | undefined> = next === "clear" ? {} : { ...f, ...next };
+    const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(merged)) if (v && v !== ALL) sp.set(k, v);
+    router.push(`?${sp.toString()}`);
+  }
 
   function openNew() {
     setEditing(null);
@@ -168,6 +180,7 @@ export function QuestionBankView({
         <TabsList>
           <TabsTrigger value="questions">Questions</TabsTrigger>
           {canApprove && <TabsTrigger value="review">Review queue{queue.length > 0 ? ` (${queue.length})` : ""}</TabsTrigger>}
+          {canAuthor && <TabsTrigger value="generate">From textbook</TabsTrigger>}
           <TabsTrigger value="collections">Collections</TabsTrigger>
         </TabsList>
 
@@ -186,7 +199,7 @@ export function QuestionBankView({
               <Button size="sm" variant="ghost" className="mt-1" onClick={() => setDupes([])}>Dismiss</Button>
             </div>
           )}
-          {items.length === 0 ? (
+          {items.length === 0 && !filtering ? (
             <EmptyState
               title="No questions yet"
               description={canAuthor ? "Add questions for the grades and subjects you teach, then reuse them in assignments and exams." : "Questions for your subjects appear here."}
@@ -195,15 +208,15 @@ export function QuestionBankView({
           ) : (
             <>
               <div className="flex flex-wrap gap-2" role="group" aria-label="Filters">
-                <Filter label="Status" value={f.status} onChange={(status) => setF({ ...f, status })} options={QuestionStatusSchema.options.map((s) => ({ value: s, label: STATUS_LABEL[s] }))} />
-                <Filter label="Type" value={f.type} onChange={(type) => setF({ ...f, type })} options={TYPES} />
-                <Filter label="Difficulty" value={f.difficulty} onChange={(difficulty) => setF({ ...f, difficulty })} options={DIFFICULTIES.map((d) => ({ value: d, label: d[0].toUpperCase() + d.slice(1) }))} />
-                <Filter label="Origin" value={f.origin} onChange={(origin) => setF({ ...f, origin })} options={QuestionOriginSchema.options.map((o) => ({ value: o, label: ORIGIN_LABEL[o] }))} />
-                {filterTopics.length > 0 && <Filter label="Topic" value={f.topic} onChange={(topic) => setF({ ...f, topic })} options={filterTopics} />}
-                {filtering && <Button variant="ghost" size="sm" onClick={() => setF({ status: ALL, type: ALL, difficulty: ALL, origin: ALL, topic: ALL })}>Clear filters</Button>}
+                <Filter label="Status" value={f.status} onChange={(status) => setFilters({ status })} options={QuestionStatusSchema.options.map((s) => ({ value: s, label: STATUS_LABEL[s] }))} />
+                <Filter label="Type" value={f.type} onChange={(type) => setFilters({ type })} options={TYPES} />
+                <Filter label="Difficulty" value={f.difficulty} onChange={(difficulty) => setFilters({ difficulty })} options={DIFFICULTIES.map((d) => ({ value: d, label: d[0].toUpperCase() + d.slice(1) }))} />
+                <Filter label="Origin" value={f.origin} onChange={(origin) => setFilters({ origin })} options={QuestionOriginSchema.options.map((o) => ({ value: o, label: ORIGIN_LABEL[o] }))} />
+                {filterTopics.length > 0 && <Filter label="Topic" value={f.topic} onChange={(topic) => setFilters({ topic })} options={filterTopics} />}
+                {filtering && <Button variant="ghost" size="sm" onClick={() => setFilters("clear")}>Clear filters</Button>}
               </div>
               <div className="max-w-xl">
-                <p className="mb-1 text-sm font-medium">Difficulty mix (shown questions)</p>
+                <p className="mb-1 text-sm font-medium">Difficulty mix (this page)</p>
                 <BarList
                   ariaLabel="Questions shown by difficulty"
                   max={Math.max(visible.length, 1)}
@@ -218,6 +231,7 @@ export function QuestionBankView({
                 </div>
               )}
               {visible.length === 0 ? <EmptyState title="No questions match these filters" description="Clear a filter to see more." /> : list(visible, false)}
+              <ListPager basePath="" params={{ ...Object.fromEntries(Object.entries(f).filter(([, v]) => v !== ALL)) }} page={page} total={total} pageSize={pageSize} noun="questions" />
               <p className="text-xs tabular-nums text-muted-foreground">Showing {visible.length} of {total}</p>
             </>
           )}
@@ -226,6 +240,12 @@ export function QuestionBankView({
         {canApprove && (
           <TabsContent value="review" className="space-y-3">
             {queue.length === 0 ? <EmptyState title="Nothing to review" description="AI-written, imported and submitted questions wait here for approval." /> : list(queue, true)}
+          </TabsContent>
+        )}
+
+        {canAuthor && (
+          <TabsContent value="generate">
+            <GenerateFromTextbook institutionSlug={institutionSlug} pairs={pairs} onSaved={() => router.refresh()} />
           </TabsContent>
         )}
 

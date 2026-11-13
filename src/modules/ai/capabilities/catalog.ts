@@ -180,6 +180,8 @@ export const CAPABILITY_KEYS = [
   "translate",
   "form_draft",
   "substitution_note",
+  // Phase 4 online tests (api/ai/online-tests/suggest-marks)
+  "answer_marking",
   // features-18 §E: one chat capability per new module (reads + safe drafts)
   "clubs_overview",
   "hostel_overview",
@@ -768,7 +770,7 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "ai.study",
     module: "mastery",
     data: "own",
-    queries: ["mastery.gapsForStudent"],
+    queries: ["mastery.gapsForStudent", "learning.myWeakTopics"],
     instruction: "Short study plan, weakest units first.",
   },
   study_language: {
@@ -1000,6 +1002,17 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     permission: "timetable.manage",
     module: "substitution",
     data: "aggregate",
+  },
+  answer_marking: {
+    key: "answer_marking",
+    label: "Online test marking suggestions",
+    description: "Suggest marks and feedback for a written answer in an online test from its marking scheme. A suggestion only: you review and save the marks.",
+    kind: "task",
+    // exam_controller has no ai.generate (the gateway would refuse it).
+    roles: ["owner", "principal", "teacher"],
+    permission: "online_test.mark",
+    module: "exams",
+    data: "personal",
   },
 
   // ---- features-18 §E: new modules, reads + human-confirmed drafts --------

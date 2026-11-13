@@ -212,6 +212,10 @@ export const QuestionArchiveSchema = z
   .strict();
 export type QuestionArchiveInput = z.infer<typeof QuestionArchiveSchema>;
 
+// 0151: false keeps the question out of student practice (not content: allowed on an approved AI row).
+export const QuestionPracticeAllowedSchema = z.object({ id: uuid, practiceAllowed: z.boolean() }).strict();
+export type QuestionPracticeAllowedInput = z.infer<typeof QuestionPracticeAllowedSchema>;
+
 export const QuestionIdSchema = z.object({ id: uuid }).strict();
 export type QuestionIdInput = z.infer<typeof QuestionIdSchema>;
 

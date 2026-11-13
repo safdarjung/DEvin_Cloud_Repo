@@ -18,11 +18,13 @@ import {
   SetUnitChapterSchema,
   SuggestNcertSchema,
   TextbookIdSchema,
+  UpdateTextbookMetaSchema,
   type AddTextbookInput,
   type SetChapterTitlesInput,
   type SetUnitChapterInput,
   type SuggestNcertInput,
   type TextbookIdInput,
+  type UpdateTextbookMetaInput,
 } from "./schemas";
 
 type Client = Awaited<ReturnType<typeof createClient>>;
@@ -235,5 +237,30 @@ export const setUnitChapter = defineAction({
     if (!data?.length) throw new AppError("forbidden", "You can only link chapters for subjects you teach.");
     await audit(ctx, { action: "textbook.unit_chapter_set", entityType: "curriculum_unit", entityId: unit.id, after: { chapterNo: input.chapterNo } });
     return { unitId: unit.id, chapterNo: input.chapterNo };
+  },
+});
+
+/** Edition / ISBN / board / rights (0147). NCERT rows stay link-only: SQL forces it, so the action refuses to pretend otherwise. */
+export const updateTextbookMeta = defineAction({
+  name: "textbook.meta.update",
+  module: "academic_structure",
+  schema: UpdateTextbookMetaSchema,
+  permission: "resource.manage",
+  handler: async (input: UpdateTextbookMetaInput, ctx) => {
+    const supabase = await createClient();
+    const { data: book, error: readError } = await supabase.from("subject_textbooks").select("id, ncert_code").eq("id", input.textbookId).eq("institution_id", ctx.institution.id).maybeSingle();
+    if (readError) throw readError;
+    if (!book) throw new AppError("not_found", "Book not found.");
+    if (book.ncert_code && input.rightsStatus !== "link_only") throw new AppError("validation_failed", "NCERT books are link only.", { rightsStatus: ["NCERT books are link only"] });
+    const { data, error } = await supabase
+      .from("subject_textbooks")
+      .update({ edition: input.edition, publication_year: input.publicationYear, isbn: input.isbn, board: input.board, rights_status: input.rightsStatus, permitted_use: input.permittedUse })
+      .eq("id", input.textbookId)
+      .eq("institution_id", ctx.institution.id)
+      .select("id");
+    if (error) throwWrite(error, "You can only change books for subjects you teach.");
+    if (!data?.length) throw new AppError("forbidden", "You can only change books for subjects you teach.");
+    await audit(ctx, { action: "textbook.meta_update", entityType: "subject_textbook", entityId: input.textbookId, after: { rightsStatus: input.rightsStatus } });
+    return { id: input.textbookId };
   },
 });

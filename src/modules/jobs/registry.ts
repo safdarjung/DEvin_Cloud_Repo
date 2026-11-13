@@ -1,6 +1,7 @@
 import type { ModuleKey } from "@/lib/modules/catalog";
 import type { JobHandler } from "./types.ts";
 import {
+  contentExtract,
   generateReport,
   lateFees,
   feeReminder,
@@ -68,6 +69,7 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "mastery.compute": masteryCompute,
   "workflow.run": workflowRun,
   "notify.study_reminders": notifyStudyReminders,
+  "content.extract": contentExtract,
 };
 
 export function resolveHandler(type: string): JobHandler | undefined {

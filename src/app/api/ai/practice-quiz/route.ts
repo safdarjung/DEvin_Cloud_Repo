@@ -1,11 +1,12 @@
 import "server-only";
 // Student practice quiz generation (Lane E). Student-only (`ai.study`).
 // Only the curriculum unit's own text goes to the model (dataClass "general"
-// in effect: buildQuizPrompt has no parameter for student data). Persists
-// nothing — the student saves a finished attempt through
-// `practice.submitAttempt`, which recomputes the score server-side.
+// in effect: buildQuizPrompt has no parameter for student data). The answer
+// key stays on the server (0151): the questions and keys go into a
+// practice_sessions row through the service role, the client gets the
+// questions only, and `practice.submitSession` marks the answers in SQL.
 import { NextResponse } from "next/server";
-import { AppError, fail, ok, type ActionResult, type ErrorCode } from "@/lib/actions/result";
+import { AppError, fail, mapSqlError, ok, type ActionResult, type ErrorCode } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { createClient } from "@/lib/supabase/server";
@@ -13,9 +14,11 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { isAiCapabilityEnabled } from "@/modules/ai/capabilities/resolve";
 import { runStructured } from "@/lib/ai/gateway";
 import type { TenantContext } from "@/lib/auth/types";
+import type { Json } from "@/lib/db/types";
 import { QuizContentSchema } from "@/modules/ai/quiz.schemas";
 import { buildQuizPrompt, generateWithMetaRetry, isMetaQuestion, PRACTICE_QUIZ_INSTRUCTIONS, quizStems } from "@/modules/ai/prompts/quiz";
-import { PracticeGenerationSchema, PracticeQuizRequestSchema, type PracticeQuestion } from "@/modules/practice/schemas";
+import { PracticeGenerationSchema, PracticeQuizRequestSchema, type PracticeQuestion, type PracticeSession } from "@/modules/practice/schemas";
+import { practiceAdmin } from "@/modules/practice/service-role";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 
 export const runtime = "nodejs";
@@ -25,8 +28,7 @@ const MAX_BODY_BYTES = 4 * 1024;
 // 15 questions + explanations, same bound rationale as the teacher quiz route.
 const MAX_OUTPUT_TOKENS = 3072;
 
-interface PracticeQuizResponseData {
-  questions: PracticeQuestion[];
+interface PracticeQuizResponseData extends PracticeSession {
   provider: "local" | "cloud";
   model: string;
 }
@@ -191,7 +193,20 @@ export async function POST(request: Request): Promise<NextResponse> {
       ...(q.explanation ? { explanation: q.explanation } : {}),
     }));
 
-    return json(ok({ questions, provider: result.data.provider, model: result.data.model }));
+    const { data: session, error: sessionError } = await practiceAdmin().rpc("create_ai_practice_session", {
+      p_institution_id: ctx.institution.id,
+      p_student_id: studentId,
+      p_curriculum_unit_id: unit.id,
+      p_difficulty: input.difficulty,
+      p_questions: questions as unknown as Json,
+    });
+    if (sessionError) {
+      // 0151 caps practice sets per student per day.
+      const mapped = mapSqlError(sessionError);
+      if (!mapped.ok && mapped.error.code === "rate_limited") return json(mapped);
+      throw sessionError;
+    }
+    return json(ok({ ...(session as unknown as PracticeSession), provider: result.data.provider, model: result.data.model }));
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] /api/ai/practice-quiz failed`, err);

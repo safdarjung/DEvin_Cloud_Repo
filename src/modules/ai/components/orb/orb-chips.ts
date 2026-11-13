@@ -80,6 +80,7 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   translate: ["create", "Translate my latest notice into Hindi."],
   form_draft: ["create", "Draft a consent form for next week's school trip."],
   substitution_note: ["create", "Write a handover note for today's substitute teachers."],
+  answer_marking: ["create", "Suggest marks for the written answers in my online test."],
   clubs_overview: ["ask", "Which house leads the points table, and what club events are coming up?"],
   hostel_overview: ["ask", "How full are the hostel rooms right now?"],
   expenses_overview: ["ask", "Which expense categories are over budget this year?"],
@@ -129,6 +130,8 @@ const TASK_PAGES: Partial<Record<CapabilityKey, string | readonly string[]>> = {
   helpdesk_triage: "/helpdesk",
   form_draft: "/forms",
   substitution_note: "/staff",
+  // shortcut: /exams until the online tests marking page exists (UI session), then point there.
+  answer_marking: "/exams",
   lab_safety_note: "/labs",
   // /setup has no nav item; the dashboard's setup checklist links to its step 3 (people import).
   import_mapping: "/dashboard",

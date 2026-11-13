@@ -69,6 +69,9 @@ import {
   Wallet,
   Workflow,
   Zap,
+  Search,
+  ScrollText,
+  Timer,
 } from "lucide-react";
 import type { Permission, Role } from "@/lib/auth/permissions";
 import type { ModuleKey } from "@/lib/modules/catalog";
@@ -115,6 +118,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/exams/seating", label: "Exam seating", icon: Armchair, permission: "exam.seating.read", group: "Academics", module: "exam_seating" },
   { href: "/lesson-plans", label: "Lesson plans", icon: NotebookText, permission: "diary.write", group: "Academics", module: "lesson_plans" },
   { href: "/question-bank", label: "Question bank", icon: ListChecks, permission: "question.manage", group: "Academics", module: "question_bank" },
+  { href: "/question-papers", label: "Question papers", icon: ScrollText, permission: "question.manage", group: "Academics", module: "question_bank" },
   { href: "/timetable", label: "Timetable", icon: CalendarDays, permission: "timetable.read", group: "Academics", module: "timetable" },
   { href: "/calendar", label: "Calendar", icon: CalendarRange, permission: "academics.read", group: "Academics", module: "calendar" },
   { href: "/behaviour", label: "Behaviour", icon: Flag, permission: "behaviour.read", group: "Academics", module: "behaviour" },
@@ -124,6 +128,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/resources", label: "Resources", icon: LibraryBig, permission: "resource.read", group: "Academics", module: "resources" },
   // 0139: the school's (grade, subject) -> textbook mapping (NCERT links or its own books); teachers edit only subjects they teach.
   { href: "/textbooks", label: "Textbooks", icon: BookOpen, permission: "resource.manage", group: "Academics" },
+  // Phase 2: full-text search over the school's own uploaded, read books.
+  { href: "/textbooks/search", label: "Textbook search", icon: Search, permission: "academics.read", group: "Academics" },
+  // Phase 4: timed online tests set from published question papers.
+  { href: "/online-tests", label: "Online tests", icon: Timer, permission: "online_test.manage", group: "Academics", module: "exams" },
   // Teachers build and share study material; leaders see school-wide engagement on the same page.
   { href: "/study-studio", label: "Study studio", icon: Layers, permission: "resource.manage", group: "Academics", module: "ai_teacher" },
   { href: "/admissions", label: "Admissions", icon: ClipboardList, permission: "admissions.enquiry.read", group: "Operations", module: "admissions" },
@@ -209,6 +217,7 @@ export const GUARDIAN_NAV: readonly NavItem[] = [
   { ...ORB_NAV, group: "My child" },
   portal("/attendance", "Attendance", CalendarCheck, "My child", "attendance"),
   portal("/results", "Results", GraduationCap, "My child", "exams"),
+  { ...portal("/tests", "Test results", Timer, "My child", "exams"), permission: "exam.result.read" },
   portal("/assignments", "Assignments", FileText, "My child", "assignments"),
   { ...portal("/timetable", "Timetable", CalendarDays, "My child", "timetable"), permission: "timetable.read" },
   { ...portal("/library", "Library", Library, "My child", "library"), permission: "library.read" },
@@ -244,8 +253,10 @@ export const STUDENT_NAV: readonly NavItem[] = [
   { ...portal("/practice", "Practice", Target, "Learning", "practice"), permission: "ai.study" },
   { ...portal("/study/studio", "Study studio", Layers, "Learning", "ai_student"), permission: "ai.study" },
   { ...portal("/resources", "Resources", LibraryBig, "Learning", "resources"), permission: "resource.read" },
+  { ...portal("/study/search", "Textbook search", Search, "Learning"), permission: "academics.read" },
   portal("/assignments", "Assignments", FileText, "Academic", "assignments"),
   portal("/results", "Results", GraduationCap, "Academic", "exams"),
+  { ...portal("/tests", "My tests", Timer, "Academic", "exams"), permission: "online_test.take" },
   { ...portal("/timetable", "Timetable", CalendarDays, "Academic", "timetable"), permission: "timetable.read" },
   { ...portal("/library", "Library", Library, "Academic", "library"), permission: "library.read" },
   { ...portal("/exams", "Exams", ClipboardCheck, "Academic", "exams"), permission: "exam.result.read" },

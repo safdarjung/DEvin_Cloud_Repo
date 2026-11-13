@@ -1,22 +1,6 @@
-// Pure practice helpers: client-side preview scoring (the server recomputes
-// the authoritative score in submit_practice_attempt), per-subject averages
-// and the IST-day streak. No I/O, no server-only imports.
-
-export interface ScorableQuestion {
-  answerIndex: number;
-}
-
-/** Same rule as the SQL: one point per answer equal to the key; null/unanswered scores 0. */
-export function scoreAttempt(
-  questions: readonly ScorableQuestion[],
-  answers: readonly (number | null)[],
-): { score: number; maxScore: number } {
-  let score = 0;
-  questions.forEach((q, i) => {
-    if (answers[i] !== null && answers[i] !== undefined && answers[i] === q.answerIndex) score += 1;
-  });
-  return { score, maxScore: questions.length };
-}
+// Pure practice helpers: per-subject averages and the IST-day streak (scores
+// are marked only in SQL, submit_practice_session, 0151). No I/O, no
+// server-only imports.
 
 const IST_OFFSET_MS = 330 * 60_000;
 

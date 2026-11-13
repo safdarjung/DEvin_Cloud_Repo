@@ -46,6 +46,7 @@ function fakePorts(overrides: Partial<RunnerPorts> = {}): RunnerPorts {
     enqueueMasteryCompute: vi.fn(async () => 0),
     enqueueStudyReminders: vi.fn(async () => 0),
     purgeAiProposals: vi.fn(async () => 0),
+    autoSubmitExpiredTestAttempts: vi.fn(async () => 0),
     now: () => 0,
     ...overrides,
   };
@@ -536,6 +537,20 @@ describe("createRunnerPorts (jobs_claim/jobs_complete RPC wrappers + direct jobs
 
     await expect(runOnceCore({ workerId: "w" }, ports)).resolves.toBeDefined();
     expect(purgeAiProposals).toHaveBeenCalledTimes(1);
+    expect(claimJob).toHaveBeenCalled();
+  });
+
+  it("autoSubmitExpiredTestAttempts calls the auto_submit_expired_test_attempts RPC every tick, and a failure does not stop the run", async () => {
+    const { admin, rpc } = fakeAdmin({ rpcResult: { data: 2, error: null } });
+    await expect(createRunnerPorts(admin).autoSubmitExpiredTestAttempts()).resolves.toBe(2);
+    expect(rpc).toHaveBeenCalledWith("auto_submit_expired_test_attempts");
+
+    const autoSubmitExpiredTestAttempts = vi.fn(async () => {
+      throw new Error("sweep boom");
+    });
+    const claimJob = vi.fn(async () => null);
+    await expect(runOnceCore({ workerId: "w" }, fakePorts({ autoSubmitExpiredTestAttempts, claimJob }))).resolves.toBeDefined();
+    expect(autoSubmitExpiredTestAttempts).toHaveBeenCalledTimes(1);
     expect(claimJob).toHaveBeenCalled();
   });
 

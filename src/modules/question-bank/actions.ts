@@ -28,6 +28,7 @@ import {
   QuestionArchiveSchema,
   QuestionCreateSchema,
   QuestionIdSchema,
+  QuestionPracticeAllowedSchema,
   QuestionRejectSchema,
   QuestionUpdateSchema,
   questionShapeColumns,
@@ -35,6 +36,7 @@ import {
   type QuestionArchiveInput,
   type QuestionCreateInput,
   type QuestionIdInput,
+  type QuestionPracticeAllowedInput,
   type QuestionRejectInput,
   type QuestionShape,
   type QuestionStatus,
@@ -194,6 +196,27 @@ export const archiveQuestion = defineAction({
     if (to === status) return { id, isActive: to === "approved" };
     const done = await transition(ctx, id, isActive ? ["archived"] : ["draft", "in_review", "approved", "rejected"], to);
     return { id: done.id, isActive: done.status === "approved" };
+  },
+});
+
+export const setPracticeAllowed = defineAction({
+  name: "questionBank.setPracticeAllowed",
+  module: "question_bank",
+  schema: QuestionPracticeAllowedSchema,
+  permission: "question.manage",
+  handler: async ({ id, practiceAllowed }: QuestionPracticeAllowedInput, ctx) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("question_bank")
+      .update({ practice_allowed: practiceAllowed })
+      .eq("id", id)
+      .eq("institution_id", ctx.institution.id)
+      .select("id")
+      .maybeSingle();
+    if (error) throwWriteError(error);
+    if (!data) throw new AppError("not_found", "Question not found, or you cannot change it.");
+    await audit(ctx, { action: "question_bank.practice_allowed", entityType: "question_bank", entityId: id, after: { practiceAllowed } });
+    return { id, practiceAllowed };
   },
 });
 

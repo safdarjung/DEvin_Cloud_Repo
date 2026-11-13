@@ -70,6 +70,8 @@ export interface RunnerPorts {
   enqueueStudyReminders(): Promise<number>;
   /** 0143: deletes orb approval cards past the 30-day retention (`public.purge_ai_proposals`). */
   purgeAiProposals(): Promise<number>;
+  /** 0150: submits online test attempts past their deadline (`public.auto_submit_expired_test_attempts`). */
+  autoSubmitExpiredTestAttempts(): Promise<number>;
   now(): number;
 }
 
@@ -199,6 +201,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
     },
     async purgeAiProposals() {
       const { data, error } = await admin.rpc("purge_ai_proposals");
+      if (error) throw new Error(error.message);
+      return Number(data);
+    },
+    async autoSubmitExpiredTestAttempts() {
+      const { data, error } = await admin.rpc("auto_submit_expired_test_attempts");
       if (error) throw new Error(error.message);
       return Number(data);
     },
@@ -351,6 +358,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] orb card purge failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.autoSubmitExpiredTestAttempts();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] online test auto-submit sweep failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

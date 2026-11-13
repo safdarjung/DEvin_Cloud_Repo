@@ -17,9 +17,9 @@ describe("assistant catalog", () => {
   });
 
   describe("ASSISTANT_QUERIES", () => {
-    it("has exactly 116 entries (features-18 §E added 70; academics.mySubmissions for students 2026-11-13)", () => {
+    it("has exactly 117 entries (features-18 §E added 70; academics.mySubmissions for students 2026-11-13; learning.myWeakTopics 0151)", () => {
       const names = Object.keys(ASSISTANT_QUERIES);
-      expect(names).toHaveLength(116);
+      expect(names).toHaveLength(117);
     });
 
     it("has exactly 49 with aggregate flag", () => {
@@ -159,8 +159,8 @@ describe("assistant catalog", () => {
   });
 
   describe("queriesFor", () => {
-    it("returns all 116 queries for every provider (owner decision 2026-11-12)", () => {
-      expect(Object.keys(queriesFor())).toHaveLength(116);
+    it("returns all 117 queries for every provider (owner decision 2026-11-12)", () => {
+      expect(Object.keys(queriesFor())).toHaveLength(117);
       expect(queriesFor()).toHaveProperty("people.listStudents");
     });
 

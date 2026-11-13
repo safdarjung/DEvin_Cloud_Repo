@@ -170,6 +170,9 @@ export const ASSISTANT_QUERIES: Readonly<Record<string, AssistantQuerySpec>> = {
   "admissions.listApplications": {
     description: "Submitted admission applications",
   },
+  "learning.myWeakTopics": {
+    description: "A student's weak topics with evidence (test and practice questions, mastery) and what to practise next",
+  },
   "academics.mySubmissions": {
     description: "The student's own published assignments: title, due date and own submission state (not submitted, submitted, graded)",
   },

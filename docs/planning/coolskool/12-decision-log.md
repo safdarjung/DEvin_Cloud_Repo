@@ -388,6 +388,10 @@ Full text: `docs/planning/fabric/07-master-plan-v1-v2.md` §2. Summary:
 - **Applies to:** new schools and any school without a stored value. Stored settings (the demo tenant until reseeded) keep their old numbers.
  Extraction runs only on school-uploaded files whose rights status allows storage. AI output stays a draft a human approves (rule 6).
 
+### D57 — Question papers: leadership may approve its own paper (2026-11-13)
+
+- **Decision:** an owner, principal or exam controller may approve and publish a paper they wrote; there is no four-eyes check. Revisit if a school requires one.
+
 ## 2. Phase 0 verified facts and installed versions
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.

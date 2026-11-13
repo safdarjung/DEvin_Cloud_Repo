@@ -65,6 +65,12 @@ export type Permission =
   | "notification.log.read"
   | "question.manage"
   | "question.approve"
+  | "paper.approve"
+  | "paper.publish"
+  | "online_test.manage"
+  | "online_test.take"
+  | "online_test.mark"
+  | "online_test.publish"
   | "job.manage"
   | "data.import"
   | "data.export"
@@ -240,6 +246,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.log.read",
     "question.manage",
     "question.approve",
+    "paper.approve",
+    "paper.publish",
+    "online_test.manage",
+    "online_test.mark",
+    "online_test.publish",
     "job.manage",
     "data.import",
     "document.read",
@@ -331,6 +342,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.log.read",
     "question.manage",
     "question.approve",
+    "paper.approve",
+    "paper.publish",
+    "online_test.manage",
+    "online_test.mark",
+    "online_test.publish",
     "job.manage",
     "data.import",
     "document.read",
@@ -541,6 +557,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "question.manage",
     "question.approve",
+    "paper.approve",
+    "paper.publish",
+    "online_test.manage",
+    "online_test.mark",
+    "online_test.publish",
     "document.read",
     "timetable.read",
     "staff.attendance.mark",
@@ -574,6 +595,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "assignment.read",
     "notification.read",
     "question.manage",
+    "online_test.manage",
+    "online_test.mark",
     "document.read",
     "timetable.read",
     "staff.attendance.mark",
@@ -627,6 +650,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "timetable.read",
     "library.read",
     "practice.attempt",
+    "online_test.take",
     "behaviour.read",
     "club.read",
     "club.join",

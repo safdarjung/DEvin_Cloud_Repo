@@ -12,8 +12,8 @@ import {
 } from "../helpers/factories";
 import { closeRolesHelper, createTestInstitution, type TestInstitution } from "../helpers/roles";
 
-// Migration 0103: practice_attempts + submit_practice_attempt +
-// my_upcoming_exam_papers.
+// Migration 0103: practice_attempts + my_upcoming_exam_papers; attempts are
+// written by public.submit_practice_session since 0151.
 
 const sql = postgres(process.env.SUPABASE_DB_URL as string, { max: 10 });
 
@@ -52,73 +52,25 @@ async function makeBase(inst: TestInstitution, opts: { linkGuardian?: boolean } 
   return { yearId, gradeId, sectionId, subjectId, studentId, guardianId, unitId: unit.id as string, teacherStaff };
 }
 
-const QUESTIONS = [
-  { stem: "1+1?", options: ["1", "2", "3", "4"], answerIndex: 1 },
-  { stem: "2+2?", options: ["1", "2", "3", "4"], answerIndex: 3 },
-  { stem: "3+3?", options: ["6", "2", "3", "4"], answerIndex: 0 },
-];
-
-function submit(inst: TestInstitution, role: "student" | "guardian", base: { studentId: string; unitId: string }, answers: unknown[]) {
-  return inst.clientAs(role).rpc("submit_practice_attempt", {
-    p_institution_id: inst.institutionId,
-    p_student_id: base.studentId,
-    p_curriculum_unit_id: base.unitId,
-    p_difficulty: "easy",
-    p_questions: QUESTIONS,
-    p_answers: answers,
+// Attempts are recorded only through a server-keyed practice session (0151);
+// scoring and key handling are proved in tests/db/learning-intelligence.test.ts.
+async function attemptViaBank(inst: TestInstitution, base: Awaited<ReturnType<typeof makeBase>>): Promise<string> {
+  const [teacher] = await sql`select user_id from public.memberships where institution_id = ${inst.institutionId} and role = 'teacher'`;
+  await sql`
+    insert into public.question_bank (institution_id, grade_id, subject_id, curriculum_unit_id, type, body, options, answer, difficulty, marks, status, created_by)
+    values (${inst.institutionId}, ${base.gradeId}, ${base.subjectId}, ${base.unitId}, 'mcq', '1+1?', ${sql.json(["1", "2", "3", "4"])}, '2', 'easy', 1, 'approved', ${teacher.user_id})
+  `;
+  const started = await inst.clientAs("student").rpc("start_bank_practice", { p_institution_id: inst.institutionId, p_curriculum_unit_id: base.unitId });
+  expect(started.error).toBeNull();
+  const submitted = await inst.clientAs("student").rpc("submit_practice_session", {
+    p_session_id: (started.data as { sessionId: string }).sessionId,
+    p_answers: ["2"],
   });
+  expect(submitted.error).toBeNull();
+  return (submitted.data as { attemptId: string }).attemptId;
 }
 
-describe("practice attempts (0103)", () => {
-  it("recomputes the score server-side from the answer keys", async () => {
-    const inst = await createTestInstitution("practice-score");
-    try {
-      const base = await makeBase(inst);
-      const res = await submit(inst, "student", base, [1, 0, 0]); // 1st and 3rd correct
-      expect(res.error).toBeNull();
-      const row = res.data as { score: number; max_score: number; subject_id: string };
-      expect(row.score).toBe(2);
-      expect(row.max_score).toBe(3);
-      expect(row.subject_id).toBe(base.subjectId);
-
-      const skipped = await submit(inst, "student", base, [null, null, null]);
-      expect((skipped.data as { score: number }).score).toBe(0);
-    } finally {
-      await inst.cleanup();
-    }
-  }, 30_000);
-
-  it("rejects malformed answer arrays and keys", async () => {
-    const inst = await createTestInstitution("practice-validate");
-    try {
-      const base = await makeBase(inst);
-      const short = await submit(inst, "student", base, [1]);
-      expect(short.error?.message).toBe("code:validation_failed");
-      const outOfRange = await submit(inst, "student", base, [1, 9, 0]);
-      expect(outOfRange.error?.message).toBe("code:validation_failed");
-    } finally {
-      await inst.cleanup();
-    }
-  }, 30_000);
-
-  it("a student cannot submit for another student; a guardian cannot submit at all", async () => {
-    const inst = await createTestInstitution("practice-other");
-    try {
-      const base = await makeBase(inst);
-      const [other] = await sql`
-        insert into public.students (institution_id, admission_no, first_name, dob, gender)
-        values (${inst.institutionId}, ${`ADM-${crypto.randomUUID().slice(0, 8)}`}, 'Other', '2016-01-01', 'other')
-        returning id
-      `;
-      const forOther = await submit(inst, "student", { studentId: other.id, unitId: base.unitId }, [1, 3, 0]);
-      expect(forOther.error?.message).toBe("code:forbidden");
-      const asGuardian = await submit(inst, "guardian", base, [1, 3, 0]);
-      expect(asGuardian.error?.message).toBe("code:forbidden");
-    } finally {
-      await inst.cleanup();
-    }
-  }, 30_000);
-
+describe("practice attempts (0103, 0151)", () => {
   it("rejects a unit whose subject is not taught in the student's section", async () => {
     const inst = await createTestInstitution("practice-unit");
     try {
@@ -129,7 +81,7 @@ describe("practice attempts (0103)", () => {
         values (${inst.institutionId}, ${foreignSubject}, ${base.gradeId}, 'Colours', 1)
         returning id
       `;
-      const res = await submit(inst, "student", { studentId: base.studentId, unitId: unit.id }, [1, 3, 0]);
+      const res = await inst.clientAs("student").rpc("start_bank_practice", { p_institution_id: inst.institutionId, p_curriculum_unit_id: unit.id });
       expect(res.error?.message).toBe("code:not_found");
     } finally {
       await inst.cleanup();
@@ -141,8 +93,7 @@ describe("practice attempts (0103)", () => {
     const other = await createTestInstitution("practice-immutable-b");
     try {
       const base = await makeBase(inst);
-      const res = await submit(inst, "student", base, [1, 3, 0]);
-      const attemptId = (res.data as { id: string }).id;
+      const attemptId = await attemptViaBank(inst, base);
 
       const student = inst.clientAs("student");
       expect((await student.from("practice_attempts").update({ score: 3 }).eq("id", attemptId)).error).not.toBeNull();
@@ -155,8 +106,8 @@ describe("practice attempts (0103)", () => {
             curriculum_unit_id: base.unitId,
             subject_id: base.subjectId,
             difficulty: "easy",
-            questions: QUESTIONS,
-            answers: [1, 3, 0],
+            questions: [],
+            answers: [],
             score: 3,
             max_score: 3,
           })

@@ -27,6 +27,10 @@ import type { Database } from "@/lib/db/types";
 // status writes in src/modules/ai/tasks/proposals.ts go through
 // src/modules/ai/tasks/service-role.ts after the row was read under the
 // caller's RLS (created_by = the caller), institution_id always from ctx.
+// "practice" (0151): public.create_ai_practice_session is granted to
+// service_role only, so a student never writes their own practice answer key —
+// /api/ai/practice-quiz writes it through src/modules/practice/service-role.ts
+// after its own checks, institution and student always from ctx.
 const ALLOWED_CALLERS = new Set([
   "seed",
   "reset",
@@ -39,13 +43,14 @@ const ALLOWED_CALLERS = new Set([
   "briefings",
   "school_start",
   "orb_tasks",
+  "practice",
 ]);
 
 export function createAdminClient() {
   const caller = process.env.SERVICE_ROLE_CALLER;
   if (!caller || !ALLOWED_CALLERS.has(caller)) {
     throw new Error(
-      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/agents/briefings/school_start/orb_tasks/test",
+      "createAdminClient: SERVICE_ROLE_CALLER must be one of seed/reset/jobs/ai/public_enquiry/payments_webhook/agents/briefings/school_start/orb_tasks/practice/test",
     );
   }
 

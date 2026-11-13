@@ -1,31 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { PracticeGenerationSchema, PracticeQuizRequestSchema, SubmitAttemptSchema } from "@/modules/practice/schemas";
+import { PracticeGenerationSchema, PracticeQuizRequestSchema, StartBankPracticeSchema, SubmitSessionSchema } from "@/modules/practice/schemas";
 import { SendMessageSchema, StartThreadSchema } from "@/modules/messaging/schemas";
 
 const U = "3f1c0f8e-6f0e-4d63-9d07-2f6c1b1b9a11";
-const question = { stem: "Q?", options: ["a", "b", "c", "d"], answerIndex: 2 };
 
-describe("SubmitAttemptSchema", () => {
-  const base = { studentId: U, curriculumUnitId: U, difficulty: "easy", questions: [question], answers: [2] };
+describe("SubmitSessionSchema", () => {
+  const base = { sessionId: U, answers: ["4", null, ["a", "c"], 9.8] };
 
-  it("accepts a valid attempt", () => {
-    expect(SubmitAttemptSchema.safeParse(base).success).toBe(true);
+  it("accepts answers in every item shape, with skips", () => {
+    expect(SubmitSessionSchema.safeParse(base).success).toBe(true);
   });
 
-  it("rejects a client-sent score (strict)", () => {
-    expect(SubmitAttemptSchema.safeParse({ ...base, score: 1 }).success).toBe(false);
+  it("rejects a client-sent score or key (strict)", () => {
+    expect(SubmitSessionSchema.safeParse({ ...base, score: 1 }).success).toBe(false);
+    expect(SubmitSessionSchema.safeParse({ ...base, questions: [{ answerIndex: 0 }] }).success).toBe(false);
   });
 
-  it("rejects mismatched answer length, bad index and >15 questions", () => {
-    expect(SubmitAttemptSchema.safeParse({ ...base, answers: [] }).success).toBe(false);
-    expect(SubmitAttemptSchema.safeParse({ ...base, answers: [4] }).success).toBe(false);
-    expect(
-      SubmitAttemptSchema.safeParse({ ...base, questions: Array(16).fill(question), answers: Array(16).fill(0) }).success,
-    ).toBe(false);
+  it("rejects no answers, more than 15 and objects", () => {
+    expect(SubmitSessionSchema.safeParse({ ...base, answers: [] }).success).toBe(false);
+    expect(SubmitSessionSchema.safeParse({ ...base, answers: Array(16).fill("a") }).success).toBe(false);
+    expect(SubmitSessionSchema.safeParse({ ...base, answers: [{ correct: true }] }).success).toBe(false);
   });
+});
 
-  it("allows skipped (null) answers", () => {
-    expect(SubmitAttemptSchema.safeParse({ ...base, answers: [null] }).success).toBe(true);
+describe("StartBankPracticeSchema", () => {
+  it("defaults to 10 questions of mixed difficulty and caps at 15", () => {
+    expect(StartBankPracticeSchema.parse({ curriculumUnitId: U })).toEqual({ curriculumUnitId: U, count: 10 });
+    expect(StartBankPracticeSchema.safeParse({ curriculumUnitId: U, count: 16 }).success).toBe(false);
+    expect(StartBankPracticeSchema.safeParse({ curriculumUnitId: U, difficulty: "insane" }).success).toBe(false);
   });
 });
 

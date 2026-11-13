@@ -218,6 +218,12 @@ create trigger question_bank_guard
 before insert or update on public.question_bank
 for each row execute function app.question_bank_guard();
 
+-- Definer (0011 pattern): the seed writes question_bank as service_role, which
+-- has no EXECUTE on app.current_user_id()/my_institution_ids(). Safe here: every
+-- lookup above filters institution_id explicitly and the reviewer check keys on
+-- auth.uid(), which a definer still sees.
+alter function app.question_bank_guard() security definer;
+
 -- Column grant: origin, ai_model, version, parent_question_id, reviewed_*,
 -- is_active, institution_id, created_by are not client-updatable.
 revoke update on public.question_bank from anon, authenticated;

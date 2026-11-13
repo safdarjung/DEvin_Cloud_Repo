@@ -14,18 +14,39 @@ import { textbooksForGrade } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Question bank" };
 
-export default async function QuestionBankPage({ params }: { params: Promise<{ institution: string }> }) {
+const PAGE_SIZE = 25;
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function QuestionBankPage({ params, searchParams }: { params: Promise<{ institution: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { institution: slug } = await params;
+  const sp = await searchParams;
   const ctx = await getTenantContext(slug);
   requireModule(ctx, "question_bank");
   requirePermission(ctx, "question.manage");
 
+  // Filters and paging run in SQL (URL params). Bad values fall back to "all" rather than erroring.
+  const filter = QuestionListSchema.safeParse({
+    includeArchived: true,
+    pageSize: PAGE_SIZE,
+    page: Number(one(sp.page)) || 1,
+    ...Object.fromEntries((["status", "type", "difficulty", "origin"] as const).map((k) => [k, one(sp[k]) || undefined])),
+    curriculumTopicId: one(sp.topic) || undefined,
+  });
+  const active = filter.success ? filter.data : QuestionListSchema.parse({ includeArchived: true, pageSize: PAGE_SIZE });
+  const canApprove = hasPermission(ctx, "question.approve");
+  const canManage = hasPermission(ctx, "question.manage");
+
   // RLS scopes a teacher to their taught (grade, subject) pairs.
-  const [{ items, total }, pairs, collections] = await Promise.all([
-    listQuestions(ctx, QuestionListSchema.parse({ includeArchived: true, pageSize: 100 })),
+  const [{ items, total }, pairs, collections, queueLists, stemLists] = await Promise.all([
+    listQuestions(ctx, active),
     listTeachingPairs(ctx),
     listCollections(ctx),
+    // Review queue and passage stems are not page-bound: they ignore the list filters.
+    canApprove ? Promise.all(["draft", "in_review"].map((status) => listQuestions(ctx, QuestionListSchema.parse({ status, pageSize: 100 })))) : Promise.resolve([]),
+    canManage ? Promise.all(["passage", "case_based"].map((type) => listQuestions(ctx, QuestionListSchema.parse({ type, pageSize: 100 })))) : Promise.resolve([]),
   ]);
+  const queue = queueLists.flatMap((r) => r.items);
+  const stems = stemLists.flatMap((r) => r.items);
 
   const [unitLists, topicLists, bookLists, collectionLists] = await Promise.all([
     Promise.all(pairs.map((p) => listCurriculumUnits(ctx, { gradeId: p.gradeId, subjectId: p.subjectId }))),
@@ -40,10 +61,7 @@ export default async function QuestionBankPage({ params }: { params: Promise<{ i
     books: (bookLists[i][p.subjectId] ?? []).map((b) => ({ id: b.id, title: b.title })),
   }));
 
-  // Topic filter covers every subject shown, including ones a reviewer does not teach.
-  const shownPairs = [...new Map(items.map((q) => [`${q.gradeId}:${q.subjectId}`, q])).values()];
-  const filterLists = await Promise.all(shownPairs.map((q) => listTopics(ctx, { gradeId: q.gradeId, subjectId: q.subjectId })));
-  const filterTopics = shownPairs.flatMap((q, i) => filterLists[i].map((t) => ({ value: t.id, label: `${q.gradeCode} ${q.subjectName}: ${t.title}` })));
+  const filterTopics = meta.flatMap((p) => p.topics.map((t) => ({ value: t.id, label: `${p.gradeCode} ${p.subjectName}: ${t.title}` })));
 
   const canBuildPaper = pairs.length > 0 && aiTaskOn(ctx, "question_paper_builder");
   return (
@@ -58,10 +76,15 @@ export default async function QuestionBankPage({ params }: { params: Promise<{ i
         institutionSlug={slug}
         items={items}
         total={total}
+        page={active.page}
+        pageSize={PAGE_SIZE}
+        queue={queue}
+        stems={stems}
+        filters={{ status: active.status, type: active.type, difficulty: active.difficulty, origin: active.origin, topic: active.curriculumTopicId }}
         pairs={meta}
         filterTopics={filterTopics}
-        canManage={hasPermission(ctx, "question.manage")}
-        canApprove={hasPermission(ctx, "question.approve")}
+        canManage={canManage}
+        canApprove={canApprove}
         collections={collections}
         collectionItems={Object.fromEntries(collections.map((c, i) => [c.id, collectionLists[i]]))}
       />

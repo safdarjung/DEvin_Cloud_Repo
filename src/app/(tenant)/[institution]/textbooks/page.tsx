@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/states";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { SuggestNcertButton, TextbookSettings } from "@/modules/textbooks/components/TextbookSettings";
-import { textbookSettings } from "@/modules/textbooks/queries";
+import { extractionStates, textbookSettings } from "@/modules/textbooks/queries";
 
 export const metadata: Metadata = { title: "Textbooks" };
 
@@ -15,6 +15,7 @@ export default async function TextbooksPage({ params }: { params: Promise<{ inst
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "resource.manage");
   const { grades, catalogue } = await textbookSettings(ctx);
+  const states = await extractionStates(ctx, grades.flatMap((g) => g.subjects.flatMap((s) => s.books.filter((b) => b.file && b.source === "custom").map((b) => b.id))));
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -29,7 +30,7 @@ export default async function TextbooksPage({ params }: { params: Promise<{ inst
       {grades.length === 0 ? (
         <EmptyState title="No subjects to map yet" description="Textbooks are set per grade and subject once teachers are assigned to sections." />
       ) : (
-        <TextbookSettings institutionSlug={institutionSlug} grades={grades} catalogue={catalogue} />
+        <TextbookSettings institutionSlug={institutionSlug} grades={grades} catalogue={catalogue} states={states} />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { contentExtract } from "./content.extract.ts";
 import { lateFees } from "./fee_plans.late_fees.ts";
 import { feeReminder } from "./finance.fee_reminder.ts";
 import { generateTermInvoices } from "./finance.generate_term_invoices.ts";
@@ -19,6 +20,7 @@ import { notifySafetyAlert } from "./notify.safety_alert.ts";
 import { workflowRun } from "./workflow.run.ts";
 
 export {
+  contentExtract,
   generateReport,
   lateFees,
   feeReminder,

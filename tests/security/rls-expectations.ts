@@ -700,6 +700,73 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "exam_controller", "teacher"],
     write: ["owner", "principal", "exam_controller", "teacher"],
   },
+  // 0149 — question papers: staff-only like question_bank. Leadership reads/writes
+  // every paper; teacher reads papers of taught (grade, subject) pairs and writes
+  // the ones they created (children follow the paper; versions only via
+  // transition_question_paper). Templates: question.manage roles read the school's;
+  // leadership writes any, a teacher their own. Proved in tests/db/question-papers.test.ts.
+  question_papers: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  question_paper_sections: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  question_paper_items: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  // INSERT policy exists because transition_question_paper is security invoker;
+  // app.question_paper_version_guard rejects any insert outside that function.
+  question_paper_versions: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  question_paper_templates: {
+    classes: ["C", "O"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  // 0150 — online tests. Leadership (owner/principal/exam_controller) reads every
+  // row; a teacher reads tests of taught (grade, subject) pairs and the attempts of
+  // sections they teach that subject in; students see non-draft tests of their
+  // sections and their own attempt while in progress or once released; guardians a
+  // child's attempt once released. Attempts/responses/events have no client write
+  // grant (definer functions only); students/guardians have no policy on
+  // responses/events. Proved in tests/db/online-tests.test.ts.
+  online_tests: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  test_attempts: {
+    classes: ["C", "S+G"],
+    read: ["owner", "principal", "exam_controller"],
+    write: [],
+  },
+  test_responses: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller"],
+    write: [],
+  },
+  test_events: {
+    classes: ["C"],
+    read: ["owner", "principal", "exam_controller"],
+    write: [],
+  },
+  // 0151 — practice_sessions holds practice answer keys: RLS on with no policy
+  // (every client read is empty) and no write grant; only the definer
+  // functions read or write it. Proved in tests/db/learning-intelligence.test.ts.
+  practice_sessions: {
+    classes: ["A"],
+    read: [],
+    write: [],
+  },
   // 0147 — curriculum_topics mirrors curriculum_units (S+G read; owner/principal/admin write).
   curriculum_topics: {
     classes: ["S+G"],
@@ -1021,7 +1088,7 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
 
   // 0103 — practice_attempts: leaders read all; student and linked guardians
   // read own/child rows (app.my_student_ids); teachers read taught students
-  // (app.my_taught_student_ids). Insert only via submit_practice_attempt;
+  // (app.my_taught_student_ids). Insert only via submit_practice_session (0151);
   // immutable (guard trigger). Scoping proved in tests/db/practice-rls.test.ts.
   practice_attempts: {
     classes: ["S+G", "T", "O"],
@@ -1399,6 +1466,21 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     classes: ["S+G", "T", "O"],
     read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
     write: ["owner", "principal", "admin", "teacher", "student"],
+  },
+  // 0148 — extracted textbook text: read like the textbook's file (0142: staff;
+  // students/guardians of that grade+subject) while rights allow storing text.
+  // Runs have no authenticated write (definer RPCs + content.extract job);
+  // chunks: UPDATE (heading, body) by leaders and that grade+subject's teacher.
+  // Scoping proved in tests/db/content-extraction.test.ts.
+  content_extractions: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: [],
+  },
+  content_chunks: {
+    classes: ["S+G", "T"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin", "teacher"],
   },
   // 0143 — orb task bridge proposals: every member reads and writes only their
   // own rows (outcome columns only, guard trigger state machine); owner/

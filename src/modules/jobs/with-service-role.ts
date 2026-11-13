@@ -1,7 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Only imported by `src/app/api/jobs/run/route.ts`,
+// Only imported by `src/app/api/jobs/run/route.ts`, `src/modules/content/actions.ts`
+// (in-request run of a book's own content.extract job, after its permission check),
 // `src/modules/safety/actions.ts` (in-request `runJobNow` of the alert's own
 // job, after the action's permission check) and
 // `src/modules/workflows/actions.ts` (same, for the run's own workflow.run

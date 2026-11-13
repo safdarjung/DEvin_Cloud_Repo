@@ -5,6 +5,7 @@ import "server-only";
 // every other queries.ts in this codebase. Paging mirrors
 // core/audit.queries.ts's listAuditEvents.
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
 import type {
@@ -143,34 +144,37 @@ export interface TeachingPair {
   subjectName: string;
 }
 
-/** Distinct (grade, subject) pairs the caller may author questions for: their taught sections' grades x subjects (owner/principal: all). RLS on question_bank re-checks on write. */
+/** Distinct (grade, subject) pairs the caller may author questions for: their taught sections' grades x subjects (owner/principal: all). Question approvers without classes (exam controller) get every pair the school teaches: RLS lets them write school-wide. */
 export async function listTeachingPairs(ctx: TenantContext): Promise<TeachingPair[]> {
-  const sections = await listTeachableSections(ctx);
-  if (sections.length === 0) return [];
   const supabase = await createClient();
+  const sections = await listTeachableSections(ctx);
+  const subjectLists = await Promise.all(sections.map((s) => listSectionSubjects(ctx, s.id)));
+
+  const pairs = new Map<string, { gradeId: string; subjectId: string; subjectName: string }>();
+  sections.forEach((section, i) => {
+    for (const subject of subjectLists[i]) pairs.set(`${section.gradeId}:${subject.id}`, { gradeId: section.gradeId, subjectId: subject.id, subjectName: subject.name });
+  });
+  if (hasPermission(ctx, "question.approve")) {
+    const { data, error } = await supabase
+      .from("subject_assignments")
+      .select("subject_id, subjects(name), class_sections(grade_id)")
+      .eq("institution_id", ctx.institution.id);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const gradeId = (row.class_sections as { grade_id: string } | null)?.grade_id;
+      if (gradeId) pairs.set(`${gradeId}:${row.subject_id}`, { gradeId, subjectId: row.subject_id, subjectName: (row.subjects as { name: string } | null)?.name ?? "" });
+    }
+  }
+  if (pairs.size === 0) return [];
   const { data: grades, error } = await supabase
     .from("grades")
     .select("id, code, sort_key")
     .eq("institution_id", ctx.institution.id)
-    .in("id", [...new Set(sections.map((s) => s.gradeId))]);
+    .in("id", [...new Set([...pairs.values()].map((p) => p.gradeId))]);
   if (error) throw error;
   const gradeById = new Map((grades ?? []).map((g) => [g.id, g]));
-  const subjectLists = await Promise.all(sections.map((s) => listSectionSubjects(ctx, s.id)));
-
-  const pairs = new Map<string, TeachingPair & { sort: number }>();
-  sections.forEach((section, i) => {
-    const grade = gradeById.get(section.gradeId);
-    for (const subject of subjectLists[i]) {
-      pairs.set(`${section.gradeId}:${subject.id}`, {
-        gradeId: section.gradeId,
-        gradeCode: grade?.code ?? "?",
-        subjectId: subject.id,
-        subjectName: subject.name,
-        sort: grade?.sort_key ?? 0,
-      });
-    }
-  });
   return [...pairs.values()]
+    .map((p) => ({ ...p, gradeCode: gradeById.get(p.gradeId)?.code ?? "?", sort: gradeById.get(p.gradeId)?.sort_key ?? 0 }))
     .sort((a, b) => a.sort - b.sort || a.subjectName.localeCompare(b.subjectName))
     .map(({ gradeId, gradeCode, subjectId, subjectName }) => ({ gradeId, gradeCode, subjectId, subjectName }));
 }

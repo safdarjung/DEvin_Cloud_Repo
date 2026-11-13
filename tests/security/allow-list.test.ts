@@ -17,6 +17,7 @@ const ADMIN_IMPORT_ALLOWED = [
   "src/modules/ai/tasks/service-role.ts",
   "src/modules/insights/briefings.service-role.ts",
   "src/modules/core/setup/with-service-role.ts",
+  "src/modules/practice/service-role.ts",
 ];
 
 function walk(dir: string): string[] {
