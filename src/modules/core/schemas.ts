@@ -355,7 +355,8 @@ export const DEFAULT_INSTITUTION_SETTINGS: InstitutionSettings = {
     stages: ["new", "contacted", "visit_scheduled", "application_sent", "converted", "closed"],
   },
   ai: {
-    daily_token_quota: 200000,
+    // Kept at 10x the student cap (2026-11-13, D56) so a few students can't lock teachers out.
+    daily_token_quota: 1000000,
     per_user_per_minute: 10,
     max_concurrent_local: 2,
     max_concurrent_cloud: 4,

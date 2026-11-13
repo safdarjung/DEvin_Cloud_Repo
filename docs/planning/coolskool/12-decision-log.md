@@ -379,7 +379,14 @@ Full text: `docs/planning/fabric/07-master-plan-v1-v2.md` §2. Summary:
 - **Decision 1:** text PDFs are read locally with `unpdf` (new dependency). Only pages with no text layer (scans) go to Gemini through the gateway for OCR.
 - **Decision 2:** Phase 2 reads PDF only. DOCX and PPTX come later.
 - **Decision 3:** all five phases of `15-learning-exam-system-plan.md` run straight through, each fully tested before the next, with one report at the end.
-- **Unchanged:** NCERT PDFs stay link-only (0139 ruling). Extraction runs only on school-uploaded files whose rights status allows storage. AI output stays a draft a human approves (rule 6).
+- **Unchanged:** NCERT PDFs stay link-only (0139 ruling).
+
+### D56 — AI daily quotas raised, ratio kept (2026-11-13)
+
+- **Decision:** default `student_daily_token_quota` 20,000 → 100,000, institution `daily_token_quota` 200,000 → 1,000,000. Picture generation stays 20,000 per user.
+- **Why:** live orb checks found a tool-using turn costs ~4–8k tokens, so 20,000 ran out after ~5 messages. The institution cap moves with it to keep the 10:1 ratio from the GU review (line ~201), so a few students still can't exhaust the school's budget and lock teachers out.
+- **Applies to:** new schools and any school without a stored value. Stored settings (the demo tenant until reseeded) keep their old numbers.
+ Extraction runs only on school-uploaded files whose rights status allows storage. AI output stays a draft a human approves (rule 6).
 
 ## 2. Phase 0 verified facts and installed versions
 
