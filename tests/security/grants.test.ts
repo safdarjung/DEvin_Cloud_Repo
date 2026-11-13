@@ -227,6 +227,7 @@ export const PUBLIC_INVOKER_AUTHENTICATED = [
   "public.ledger_voucher_lines",
   "public.mastery_heatmap",
   "public.mastery_student_stats",
+  "public.question_bank_near_duplicates",
   "public.report_attendance_daily",
   "public.report_fee_defaulters",
   "public.school_lab_utilisation",

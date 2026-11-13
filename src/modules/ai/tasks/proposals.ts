@@ -415,6 +415,8 @@ export async function approveProposal(ctx: TenantContext, proposalId: string, ca
   // The person's values, minus anything only the server fills.
   let input: Values = withoutPaths(cardValues, [...task.generated.filter((p) => p !== "/idempotencyKey"), ...contextPaths(task)]);
   input = withoutPaths(input, ["/idempotencyKey"]);
+  // Orb-written questions are AI-authored: they save as origin "ai" (a draft someone reviews), whatever the card carried.
+  if (row.action === "questionBank.create") input.origin = "ai";
   if (schema.properties?.idempotencyKey) input.idempotencyKey = row.id; // one key per card, reused on retry
   if (row.depends_on) {
     const parent = await loadOwnParent(ctx, row.depends_on);

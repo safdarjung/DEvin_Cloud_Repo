@@ -1239,6 +1239,82 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"content_chunks": {
+                  Row: {
+                    "body": string,"chapter_no": number | null,"created_at": string,"edited_at": string | null,"edited_by": string | null,"extraction_id": string,"heading": string | null,"id": string,"institution_id": string,"original_body": string | null,"page_from": number,"page_to": number,"subject_textbook_id": string,"tsv": unknown,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"chapter_no"?: number | null,"created_at"?: string,"edited_at"?: string | null,"edited_by"?: string | null,"extraction_id": string,"heading"?: string | null,"id"?: string,"institution_id": string,"original_body"?: string | null,"page_from": number,"page_to": number,"subject_textbook_id": string,"tsv"?: never,"updated_at"?: string
+                  }
+                  Update: {
+                    "body"?: string,"chapter_no"?: number | null,"created_at"?: string,"edited_at"?: string | null,"edited_by"?: string | null,"extraction_id"?: string,"heading"?: string | null,"id"?: string,"institution_id"?: string,"original_body"?: string | null,"page_from"?: number,"page_to"?: number,"subject_textbook_id"?: string,"tsv"?: never,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "content_chunks_edited_by_fkey"
+      columns: ["edited_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_chunks_extraction_fkey"
+      columns: ["extraction_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "content_extractions"
+      referencedColumns: ["id","institution_id"]
+    },{
+      foreignKeyName: "content_chunks_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_chunks_textbook_fkey"
+      columns: ["subject_textbook_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "subject_textbooks"
+      referencedColumns: ["id","institution_id"]
+    }
+                  ]
+                },"content_extractions": {
+                  Row: {
+                    "created_at": string,"created_by": string,"document_id": string,"error": string | null,"finished_at": string | null,"id": string,"institution_id": string,"needs_ocr_pages": (number)[],"pages_done": number,"pages_ocr": number,"pages_total": number | null,"started_at": string | null,"status": string,"subject_textbook_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"created_by": string,"document_id": string,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"institution_id": string,"needs_ocr_pages"?: (number)[],"pages_done"?: number,"pages_ocr"?: number,"pages_total"?: number | null,"started_at"?: string | null,"status"?: string,"subject_textbook_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"created_by"?: string,"document_id"?: string,"error"?: string | null,"finished_at"?: string | null,"id"?: string,"institution_id"?: string,"needs_ocr_pages"?: (number)[],"pages_done"?: number,"pages_ocr"?: number,"pages_total"?: number | null,"started_at"?: string | null,"status"?: string,"subject_textbook_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "content_extractions_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_extractions_document_id_fkey"
+      columns: ["document_id"]
+isOneToOne: false
+      referencedRelation: "documents"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_extractions_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "content_extractions_textbook_fkey"
+      columns: ["subject_textbook_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "subject_textbooks"
+      referencedColumns: ["id","institution_id"]
+    }
+                  ]
                 },"curriculum_materials": {
                   Row: {
                     "created_at": string,"created_by": string,"curriculum_unit_id": string | null,"grade_id": string | null,"id": string,"institution_id": string,"owner_kind": string,"reviewed_at": string | null,"reviewed_by": string | null,"student_id": string | null,"subject_id": string | null,"suggestion": string,"title": string,"updated_at": string,"visibility": string
@@ -1293,6 +1369,38 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "subjects"
       referencedColumns: ["id"]
+    }
+                  ]
+                },"curriculum_topics": {
+                  Row: {
+                    "created_at": string,"curriculum_unit_id": string,"id": string,"institution_id": string,"parent_id": string | null,"sequence": number,"title": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"curriculum_unit_id": string,"id"?: string,"institution_id": string,"parent_id"?: string | null,"sequence": number,"title": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"curriculum_unit_id"?: string,"id"?: string,"institution_id"?: string,"parent_id"?: string | null,"sequence"?: number,"title"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "curriculum_topics_curriculum_unit_id_fkey"
+      columns: ["curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_units"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_topics_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "curriculum_topics_parent_fkey"
+      columns: ["parent_id","curriculum_unit_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_topics"
+      referencedColumns: ["id","curriculum_unit_id"]
     }
                   ]
                 },"curriculum_unit_chapters": {
@@ -4415,14 +4523,14 @@ isOneToOne: false
                   ]
                 },"question_bank": {
                   Row: {
-                    "answer": string,"body": string,"created_at": string,"created_by": string,"curriculum_unit_id": string | null,"difficulty": string,"grade_id": string,"id": string,"institution_id": string,"is_active": boolean,"marks": number,"options": Json | null,"subject_id": string,"type": string,"updated_at": string
+                    "ai_model": string | null,"answer": string,"answer_key": Json | null,"body": string,"created_at": string,"created_by": string,"curriculum_topic_id": string | null,"curriculum_unit_id": string | null,"difficulty": string,"explanation": string | null,"grade_id": string,"id": string,"institution_id": string,"is_active": boolean,"learning_outcome": string | null,"marking_scheme": string | null,"marks": number,"options": Json | null,"origin": string,"parent_question_id": string | null,"review_note": string | null,"reviewed_at": string | null,"reviewed_by": string | null,"source_chapter_no": number | null,"source_page": number | null,"source_subject_textbook_id": string | null,"status": string,"stem_question_id": string | null,"subject_id": string,"type": string,"updated_at": string,"version": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "answer": string,"body": string,"created_at"?: string,"created_by": string,"curriculum_unit_id"?: string | null,"difficulty": string,"grade_id": string,"id"?: string,"institution_id": string,"is_active"?: boolean,"marks"?: number,"options"?: Json | null,"subject_id": string,"type": string,"updated_at"?: string
+                    "ai_model"?: string | null,"answer": string,"answer_key"?: Json | null,"body": string,"created_at"?: string,"created_by": string,"curriculum_topic_id"?: string | null,"curriculum_unit_id"?: string | null,"difficulty": string,"explanation"?: string | null,"grade_id": string,"id"?: string,"institution_id": string,"is_active"?: boolean,"learning_outcome"?: string | null,"marking_scheme"?: string | null,"marks"?: number,"options"?: Json | null,"origin"?: string,"parent_question_id"?: string | null,"review_note"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"source_chapter_no"?: number | null,"source_page"?: number | null,"source_subject_textbook_id"?: string | null,"status"?: string,"stem_question_id"?: string | null,"subject_id": string,"type": string,"updated_at"?: string,"version"?: number
                   }
                   Update: {
-                    "answer"?: string,"body"?: string,"created_at"?: string,"created_by"?: string,"curriculum_unit_id"?: string | null,"difficulty"?: string,"grade_id"?: string,"id"?: string,"institution_id"?: string,"is_active"?: boolean,"marks"?: number,"options"?: Json | null,"subject_id"?: string,"type"?: string,"updated_at"?: string
+                    "ai_model"?: string | null,"answer"?: string,"answer_key"?: Json | null,"body"?: string,"created_at"?: string,"created_by"?: string,"curriculum_topic_id"?: string | null,"curriculum_unit_id"?: string | null,"difficulty"?: string,"explanation"?: string | null,"grade_id"?: string,"id"?: string,"institution_id"?: string,"is_active"?: boolean,"learning_outcome"?: string | null,"marking_scheme"?: string | null,"marks"?: number,"options"?: Json | null,"origin"?: string,"parent_question_id"?: string | null,"review_note"?: string | null,"reviewed_at"?: string | null,"reviewed_by"?: string | null,"source_chapter_no"?: number | null,"source_page"?: number | null,"source_subject_textbook_id"?: string | null,"status"?: string,"stem_question_id"?: string | null,"subject_id"?: string,"type"?: string,"updated_at"?: string,"version"?: number
                   }
                   Relationships: [
                     {
@@ -4450,10 +4558,104 @@ isOneToOne: false
       referencedRelation: "institutions"
       referencedColumns: ["id"]
     },{
+      foreignKeyName: "question_bank_parent_question_fkey"
+      columns: ["parent_question_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "question_bank"
+      referencedColumns: ["id","institution_id"]
+    },{
+      foreignKeyName: "question_bank_reviewed_by_fkey"
+      columns: ["reviewed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "question_bank_source_textbook_fkey"
+      columns: ["source_subject_textbook_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "subject_textbooks"
+      referencedColumns: ["id","institution_id"]
+    },{
+      foreignKeyName: "question_bank_stem_question_fkey"
+      columns: ["stem_question_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "question_bank"
+      referencedColumns: ["id","institution_id"]
+    },{
       foreignKeyName: "question_bank_subject_id_fkey"
       columns: ["subject_id"]
 isOneToOne: false
       referencedRelation: "subjects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "question_bank_topic_fkey"
+      columns: ["curriculum_topic_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "curriculum_topics"
+      referencedColumns: ["id","institution_id"]
+    }
+                  ]
+                },"question_collection_items": {
+                  Row: {
+                    "added_by": string,"collection_id": string,"created_at": string,"institution_id": string,"position": number,"question_id": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "added_by"?: string,"collection_id": string,"created_at"?: string,"institution_id": string,"position"?: number,"question_id": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "added_by"?: string,"collection_id"?: string,"created_at"?: string,"institution_id"?: string,"position"?: number,"question_id"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "question_collection_items_added_by_fkey"
+      columns: ["added_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "question_collection_items_collection_id_institution_id_fkey"
+      columns: ["collection_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "question_collections"
+      referencedColumns: ["id","institution_id"]
+    },{
+      foreignKeyName: "question_collection_items_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "question_collection_items_question_id_institution_id_fkey"
+      columns: ["question_id","institution_id"]
+isOneToOne: false
+      referencedRelation: "question_bank"
+      referencedColumns: ["id","institution_id"]
+    }
+                  ]
+                },"question_collections": {
+                  Row: {
+                    "created_at": string,"description": string | null,"id": string,"institution_id": string,"name": string,"owner_id": string,"updated_at": string,"visibility": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"description"?: string | null,"id"?: string,"institution_id": string,"name": string,"owner_id"?: string,"updated_at"?: string,"visibility"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"description"?: string | null,"id"?: string,"institution_id"?: string,"name"?: string,"owner_id"?: string,"updated_at"?: string,"visibility"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "question_collections_institution_id_fkey"
+      columns: ["institution_id"]
+isOneToOne: false
+      referencedRelation: "institutions"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "question_collections_owner_id_fkey"
+      columns: ["owner_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -5777,14 +5979,14 @@ isOneToOne: false
                   ]
                 },"subject_textbooks": {
                   Row: {
-                    "chapter_titles": NonNullable<Json>,"created_at": string,"created_by": string,"custom_chapters": number | null,"custom_publisher": string | null,"custom_title": string | null,"custom_url": string | null,"grade_id": string,"id": string,"institution_id": string,"ncert_code": string | null,"position": number,"school_url": string | null,"subject_id": string,"updated_at": string
+                    "board": string | null,"chapter_titles": NonNullable<Json>,"created_at": string,"created_by": string,"custom_chapters": number | null,"custom_publisher": string | null,"custom_title": string | null,"custom_url": string | null,"edition": string | null,"grade_id": string,"id": string,"institution_id": string,"isbn": string | null,"ncert_code": string | null,"permitted_use": string | null,"position": number,"publication_year": number | null,"rights_status": string,"school_url": string | null,"source_note": string | null,"subject_id": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"grade_id": string,"id"?: string,"institution_id": string,"ncert_code"?: string | null,"position"?: number,"school_url"?: string | null,"subject_id": string,"updated_at"?: string
+                    "board"?: string | null,"chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"edition"?: string | null,"grade_id": string,"id"?: string,"institution_id": string,"isbn"?: string | null,"ncert_code"?: string | null,"permitted_use"?: string | null,"position"?: number,"publication_year"?: number | null,"rights_status"?: string,"school_url"?: string | null,"source_note"?: string | null,"subject_id": string,"updated_at"?: string
                   }
                   Update: {
-                    "chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"grade_id"?: string,"id"?: string,"institution_id"?: string,"ncert_code"?: string | null,"position"?: number,"school_url"?: string | null,"subject_id"?: string,"updated_at"?: string
+                    "board"?: string | null,"chapter_titles"?: NonNullable<Json>,"created_at"?: string,"created_by"?: string,"custom_chapters"?: number | null,"custom_publisher"?: string | null,"custom_title"?: string | null,"custom_url"?: string | null,"edition"?: string | null,"grade_id"?: string,"id"?: string,"institution_id"?: string,"isbn"?: string | null,"ncert_code"?: string | null,"permitted_use"?: string | null,"position"?: number,"publication_year"?: number | null,"rights_status"?: string,"school_url"?: string | null,"source_note"?: string | null,"subject_id"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -7494,6 +7696,11 @@ isOneToOne: false
 "purge_ai_proposals":
 { Args: { "p_older_than"?: string }; Returns: number
                            },
+"question_bank_near_duplicates":
+{ Args: { "p_bodies": (string)[],"p_exclude_id"?: string,"p_grade_id": string,"p_institution_id": string,"p_subject_id": string }; Returns: {
+              "body": string,"input_index": number,"question_id": string,"similarity": number
+            }[]
+                           },
 "raise_helpdesk_ticket":
 { Args: { "p_body": string,"p_category": string,"p_institution_id": string,"p_priority": string,"p_subject": string }; Returns: Json
                            },
@@ -7598,12 +7805,44 @@ isOneToOne: false
 "revoke_invitation":
 { Args: { "p_invitation_id": string }; Returns: undefined
                            },
+"save_content_extraction":
+{ Args: { "p_chunks": Json,"p_extraction_id": string,"p_needs_ocr": (number)[],"p_pages_total": number }; Returns: undefined
+                           },
+"save_content_ocr_pages":
+{ Args: { "p_chunks": Json,"p_extraction_id": string,"p_pages": (number)[] }; Returns: {
+              "created_at": string,
+"created_by": string,
+"document_id": string,
+"error": string | null,
+"finished_at": string | null,
+"id": string,
+"institution_id": string,
+"needs_ocr_pages": (number)[],
+"pages_done": number,
+"pages_ocr": number,
+"pages_total": number | null,
+"started_at": string | null,
+"status": string,
+"subject_textbook_id": string,
+"updated_at": string
+            }
+                          SetofOptions: {
+        from: "*"
+        to: "content_extractions"
+        isOneToOne: true
+        isSetofReturn: false
+      } },
 "save_hostel_roll_call":
 { Args: { "p_entries": Json,"p_institution_id": string,"p_session": string,"p_taken_on": string }; Returns: string
                            },
 "school_lab_utilisation":
 { Args: { "p_from": string,"p_institution_id": string,"p_to": string }; Returns: {
               "bookings": number,"lab_id": string,"periods_used": number
+            }[]
+                           },
+"search_content_chunks":
+{ Args: { "p_chapter_nos"?: (number)[],"p_grade_id"?: string,"p_institution_id": string,"p_limit"?: number,"p_q"?: string,"p_subject_id"?: string,"p_subject_textbook_id"?: string }; Returns: {
+              "body": string,"book_title": string,"chapter_no": number,"heading": string,"id": string,"page_from": number,"page_to": number,"rank": number,"snippet": string,"subject_textbook_id": string
             }[]
                            },
 "send_message":
@@ -7723,6 +7962,9 @@ isOneToOne: false
         isOneToOne: true
         isSetofReturn: false
       } },
+"start_content_extraction":
+{ Args: { "p_subject_textbook_id": string }; Returns: string
+                           },
 "start_message_thread":
 { Args: { "p_body": string,"p_counterpart_id": string,"p_institution_id": string,"p_student_id": string,"p_subject": string }; Returns: {
               "created_at": string,

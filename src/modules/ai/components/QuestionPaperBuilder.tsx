@@ -14,6 +14,7 @@ import { actionErrorMessage } from "@/lib/actions/ui-error";
 import { AiDraftBadge } from "@/modules/ai/components/AiDraft";
 import { postAiTask } from "@/modules/ai/components/ai-task-fetch";
 import type { DraftQuestion, QuestionPaperResponse } from "@/modules/ai/question-paper.schemas";
+import type { QuestionCreateInput } from "@/modules/question-bank/schemas";
 import { createQuestion } from "@/modules/question-bank/actions";
 import type { TeachingPair } from "@/modules/question-bank/queries";
 import type { Difficulty } from "@/modules/question-bank/schemas";
@@ -64,12 +65,18 @@ export function QuestionPaperBuilder({ institutionSlug, pairs }: { institutionSl
 
   async function save(draft: DraftQuestion, index: number) {
     const { options, ...rest } = draft;
-    const outcome = await createQuestion(institutionSlug, { ...rest, ...(draft.type === "mcq" ? { options } : {}) });
+    // AI-written: saved as a draft for review (origin ai), never straight to the bank.
+    const outcome = await createQuestion(institutionSlug, {
+      ...rest,
+      ...(draft.type === "mcq" ? { options } : {}),
+      origin: "ai",
+      aiModel: result?.model ?? null,
+    } as QuestionCreateInput);
     if (!outcome.ok) {
       toast.error(actionErrorMessage(outcome.error));
       return;
     }
-    toast.success("Saved to the question bank");
+    toast.success("Saved to the question bank as a draft for review");
     setSaved(new Set(saved).add(index));
   }
 

@@ -18,6 +18,11 @@ export function escapeFormula(value: string): string {
   return FORMULA_PREFIX.test(value) ? `'${value}` : value;
 }
 
+/** Inverse of escapeFormula for re-importing our own exports. A real cell starting `'=` loses its apostrophe. */
+export function unescapeFormula(value: string): string {
+  return value.startsWith("'") && FORMULA_PREFIX.test(value.slice(1)) ? value.slice(1) : value;
+}
+
 // `columns` fixes the header order (and which keys are emitted) via
 // Papa's `columns` option. For 0 rows, Papa.unparse([]) drops the header
 // entirely (empty-array branch in papaparse), so a 0-row + columns call is

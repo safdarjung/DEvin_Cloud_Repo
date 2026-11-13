@@ -35,6 +35,9 @@ const EMPTY_IN_DEMO = new Set<string>([
   "curriculum_materials", // 0139: uploads need a real stored file; none is uploaded in the demo tenant
   "timetable_snapshots", // 0141: snapshots are saved by a manager before a risky edit; none is saved in the demo tenant
   "ai_proposals", // 0143: task cards exist only while a person is working in the orb; none is seeded
+  "question_collections", // 0146: personal question sets; none is seeded yet
+  "question_collection_items", // 0146: follows question_collections
+  "curriculum_topics", // 0147: unit topics are entered by the school; none is seeded yet
 ]);
 
 // Roles that read only the rows they take part in. The demo seed gives the demo teacher, guardian and student

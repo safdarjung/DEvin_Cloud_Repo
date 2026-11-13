@@ -8,6 +8,8 @@ import { hasPermission, requirePermission, requireModule } from "@/lib/auth/requ
 import { isModuleEnabled } from "@/lib/modules/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { listSectionSubjects, listTeachableSections } from "@/modules/academics/assignments.queries";
+import { TopicsManager } from "@/modules/academics/components/TopicsManager";
+import { listTopics } from "@/modules/academics/curriculum.queries";
 import { QuizReviewEditor } from "@/modules/ai/components/QuizReviewEditor";
 import { FadeIn } from "@/components/motion";
 import { StudyFromFileLinks } from "@/modules/study/components/StudyFromFileLinks";
@@ -31,6 +33,7 @@ export default async function CurriculumUnitQuizPage({
   requirePermission(ctx, "academics.read");
   const canGenerate = hasPermission(ctx, "ai.generate");
   const canManage = hasPermission(ctx, "resource.manage");
+  const canManageTopics = hasPermission(ctx, "academics.manage");
 
   const supabase = await createClient();
   const { data: unit, error } = await supabase
@@ -47,7 +50,8 @@ export default async function CurriculumUnitQuizPage({
     supabase.from("subjects").select("name").eq("id", unit.subject_id).maybeSingle(),
   ]);
 
-  const [booksBySubject, chapters, files, suggested] = await Promise.all([
+  const [topics, booksBySubject, chapters, files, suggested] = await Promise.all([
+    listTopics(ctx, { curriculumUnitId: unit.id }),
     textbooksForGrade(ctx, unit.grade_id),
     unitChapters(ctx, [unit.id]),
     classMaterials(ctx, { gradeId: unit.grade_id, subjectId: unit.subject_id, unitId: unit.id }),
@@ -85,6 +89,15 @@ export default async function CurriculumUnitQuizPage({
           <CardContent className="text-sm">{unit.description}</CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Topics</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <TopicsManager institutionSlug={institutionSlug} unitId={unit.id} topics={topics} canManage={canManageTopics} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

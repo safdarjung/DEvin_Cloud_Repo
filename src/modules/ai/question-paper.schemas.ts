@@ -5,7 +5,7 @@
 // Lesson 9: generated strings ≤500 chars.
 import { z } from "zod";
 import { uuid } from "@/lib/schemas/common";
-import { DifficultySchema, QuestionTypeSchema, type Difficulty, type QuestionType } from "@/modules/question-bank/schemas";
+import { BasicQuestionTypeSchema, DifficultySchema, type Difficulty, type QuestionType } from "@/modules/question-bank/schemas";
 
 export const QUESTION_PAPER_MAX_AI_SLOTS = 10;
 
@@ -43,7 +43,7 @@ export const QuestionPaperGenerationSchema = z
       .array(
         z
           .object({
-            type: QuestionTypeSchema,
+            type: BasicQuestionTypeSchema,
             body: z.string().trim().min(1).max(500),
             options: z.array(z.string().trim().min(1).max(120)).max(6),
             answer: z.string().trim().min(1).max(300),
@@ -73,7 +73,7 @@ export interface DraftQuestion {
   curriculumUnitId: string;
   difficulty: Difficulty;
   marks: number;
-  type: QuestionType;
+  type: z.infer<typeof BasicQuestionTypeSchema>;
   body: string;
   options: string[];
   answer: string;

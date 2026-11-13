@@ -60,7 +60,12 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "assignment.update": t("Edit an assignment", { generated: ["/aiGenerated"] }),
   "assignment.publish": t("Publish an assignment"),
   "curriculum.lessonPlan.upsert": t("Write a lesson plan", { entities: { "/id": "lessonPlan" } }),
-  "questionBank.create": t("Add a question to the bank"),
+  // 0146/0147 fields beyond the basics are page-only, never taken from the model. origin is forced to
+  // "ai" at approval (proposals.ts), so orb questions land as drafts for review.
+  "questionBank.create": t("Add a question to the bank", {
+    entities: { "/curriculumTopicId": "context", "/sourceSubjectTextbookId": "context", "/stemQuestionId": "context" },
+    generated: ["/origin", "/aiModel", "/markingScheme", "/learningOutcome", "/sourceChapterNo", "/sourcePage"],
+  }),
   "exam.remark.save": t("Write a report-card remark"),
   // staff_attendance and facilities have no orb group in MODULE_GROUP (they fall to "more").
   "people.leave.request": t("Request staff leave", { groupId: "people", undo: "people.leave.cancel" }),
@@ -218,6 +223,10 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "workflow.setStatus": x(AI_DECIDES),
   "workflow.runNow": x(AI_DECIDES),
   "studio.request.decide": x(AI_DECIDES),
+  // rule 6: review of AI-written questions is a person's decision.
+  "questionBank.approve": x(AI_DECIDES),
+  "questionBank.reject": x(AI_DECIDES),
+  "questionBank.import": x(BULK),
   "visitors.purge": x(BULK),
   "alumni.sync": x(BULK),
   "compliance.starter.load": x(BULK),
@@ -294,6 +303,9 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "compliance.item.delete": x(DESTRUCTIVE),
   "curriculum.lessonPlan.delete": x(DESTRUCTIVE),
   "curriculum.material.delete": x(DESTRUCTIVE),
+  "curriculum.topic.delete": x(DESTRUCTIVE),
+  "questionCollection.delete": x(DESTRUCTIVE),
+  "questionCollection.removeItems": x(DESTRUCTIVE),
   "document.delete": x(DESTRUCTIVE),
   "fabric.simulator.delete": x(DESTRUCTIVE),
   "ptm.slot.remove": x(DESTRUCTIVE),
@@ -347,14 +359,17 @@ export function catalogRow(name: string): TaskRow | undefined {
 /** Registered actions not yet classified. Frozen: it may only shrink; a new action must get a row. */
 export const UNCLASSIFIED: readonly string[] = Object.freeze([
   "alumni.profile.update", "attendance.correct", "compliance.item.update", "curriculum.markCovered", "curriculum.material.attach",
-  "curriculum.material.review", "curriculum.material.suggest", "duty.assignment.set", "exam.paper.schedule", "exam.paper.setUnits",
-  "exam.recheck.request", "fabric.simulator.create", "fabric.simulator.decide", "fabric.simulator.update", "facilities.asset.upsert",
-  "finance.reminders.sendSelected", "form.update", "hostel.rollCall.save", "library.copies.add", "library.copy.setStatus",
-  "mastery.intervention.update", "people.guardian.update", "people.staff.upsert", "people.staffAttendance.mark", "questionBank.update",
-  "resource.create", "resource.publish", "schoolLabs.equipment.update", "schoolLabs.experiment.complete", "schoolLabs.experiment.log",
-  "schoolLabs.incident.record", "studio.request.propose", "studio.request.submit", "study.question.answer", "study.question.ask",
-  "study.session.log", "study.teacher.assign", "survey.create", "textbook.add", "textbook.chapterTitles.set", "textbook.link.set",
-  "textbook.suggestNcert", "textbook.unitChapter.set", "timetable.change.apply", "timetable.change.rollback", "timetable.period.upsert",
-  "timetable.publish", "timetable.room.upsert", "timetable.rules.set", "timetable.saveDraft", "timetable.snapshot.create",
-  "timetable.snapshot.restore", "timetable.version.create", "transport.stop.upsert", "website.page.publish", "website.page.save_version",
+  "curriculum.material.review", "curriculum.material.suggest", "curriculum.topic.upsert", "duty.assignment.set",
+  "exam.paper.schedule", "exam.paper.setUnits", "exam.recheck.request", "fabric.simulator.create", "fabric.simulator.decide",
+  "fabric.simulator.update", "facilities.asset.upsert", "finance.reminders.sendSelected", "form.update", "hostel.rollCall.save",
+  "library.copies.add", "library.copy.setStatus", "mastery.intervention.update", "people.guardian.update", "people.staff.upsert",
+  "people.staffAttendance.mark", "questionBank.duplicate", "questionBank.export", "questionBank.submitForReview",
+  "questionBank.update", "questionCollection.addItems", "questionCollection.create", "questionCollection.update",
+  "resource.create", "resource.publish", "schoolLabs.equipment.update", "schoolLabs.experiment.complete",
+  "schoolLabs.experiment.log", "schoolLabs.incident.record", "studio.request.propose", "studio.request.submit",
+  "study.question.answer", "study.question.ask", "study.session.log", "study.teacher.assign", "survey.create", "textbook.add",
+  "textbook.chapterTitles.set", "textbook.link.set", "textbook.suggestNcert", "textbook.unitChapter.set", "timetable.change.apply",
+  "timetable.change.rollback", "timetable.period.upsert", "timetable.publish", "timetable.room.upsert", "timetable.rules.set",
+  "timetable.saveDraft", "timetable.snapshot.create", "timetable.snapshot.restore", "timetable.version.create",
+  "transport.stop.upsert", "website.page.publish", "website.page.save_version",
 ]);

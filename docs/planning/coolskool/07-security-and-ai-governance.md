@@ -100,6 +100,7 @@ Roles: **own** owner · **pri** principal · **adm** admin · **ads** admissions
 | leave.approve (never own) | ✓ | ✓ | ✓ | | | | | | |
 | certificate.manage (issue/verify/print certificates + ID cards; staff-only table) | ✓ | ✓ | ✓ | ✓ | | | | | |
 | question.manage (teacher: taught grade + subject; staff-only table) | ✓ | ✓ | | | | ✓ | s | | |
+| question.approve (approve/reject AI and imported questions; also enforced by app.question_bank_guard) | ✓ | ✓ | | | | ✓ | | | |
 | workflow.read (queries) | ✓ | ✓ | ✓ | | | | | | |
 | workflow.manage (save, status, run now, approvals) | ✓ | ✓ | | | | | | | |
 | agent.run (run agents, read definitions/runs, decide own user_confirmed runs) | ✓ | ✓ | ✓ | | | | | | |

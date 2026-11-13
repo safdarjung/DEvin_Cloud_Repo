@@ -6,8 +6,8 @@
 // all; no policy for guardian/student/admin, caught earlier by the
 // permission gate).
 import { defineQuery } from "@/lib/actions/define-query";
-import { PaperDraftSchema, QuestionListSchema } from "@/modules/question-bank/schemas";
-import { listQuestions, paperDraft } from "@/modules/question-bank/queries";
+import { CollectionItemsListSchema, CollectionListSchema, PaperDraftSchema, QuestionListSchema } from "@/modules/question-bank/schemas";
+import { listCollectionItems, listCollections, listQuestions, paperDraft } from "@/modules/question-bank/queries";
 
 export const questionBankListQuery = defineQuery({
   name: "questionBank.list",
@@ -26,4 +26,21 @@ export const questionBankPaperDraftQuery = defineQuery({
   schema: PaperDraftSchema,
   permission: "question.manage",
   handler: (input, ctx) => paperDraft(ctx, input),
+});
+
+// 0146 — question collections (own + shared with the school; RLS scopes).
+export const questionBankCollectionsQuery = defineQuery({
+  name: "questionBank.collections",
+  module: "question_bank",
+  schema: CollectionListSchema,
+  permission: "question.manage",
+  handler: (_input, ctx) => listCollections(ctx),
+});
+
+export const questionBankCollectionItemsQuery = defineQuery({
+  name: "questionBank.collectionItems",
+  module: "question_bank",
+  schema: CollectionItemsListSchema,
+  permission: "question.manage",
+  handler: (input, ctx) => listCollectionItems(ctx, input.collectionId),
 });

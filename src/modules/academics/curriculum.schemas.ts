@@ -81,3 +81,27 @@ export const LessonPlansQuerySchema = z
     path: ["from"],
   });
 export type LessonPlansQueryInput = z.infer<typeof LessonPlansQuerySchema>;
+
+// 0147 — curriculum_topics: unit -> topic -> subtopic (parentId).
+export const TopicUpsertSchema = z
+  .object({
+    id: uuid.optional(),
+    curriculumUnitId: uuid,
+    parentId: uuid.nullable().optional(),
+    title: z.string().trim().min(1).max(200),
+    sequence: z.number().int().min(1).max(999),
+  })
+  .strict();
+export type TopicUpsertInput = z.infer<typeof TopicUpsertSchema>;
+
+export const TopicDeleteSchema = z.object({ id: uuid }).strict();
+export type TopicDeleteInput = z.infer<typeof TopicDeleteSchema>;
+
+export const TopicsQuerySchema = z
+  .object({ curriculumUnitId: uuid.optional(), gradeId: uuid.optional(), subjectId: uuid.optional() })
+  .strict()
+  .refine((v) => v.curriculumUnitId || (v.gradeId && v.subjectId), {
+    message: "Give a unit, or a grade and a subject.",
+    path: ["curriculumUnitId"],
+  });
+export type TopicsQueryInput = z.infer<typeof TopicsQuerySchema>;

@@ -71,7 +71,7 @@ describe("QuestionCreateSchema", () => {
       answer: "Option A",
     };
     const result = QuestionCreateSchema.parse(mcqWithOptions);
-    expect(result.options).toEqual(["Option A", "Option B", "Option C"]);
+    expect(result.type === "mcq" && result.options).toEqual(["Option A", "Option B", "Option C"]);
   });
 
   it("rejects mcq answer not in options", () => {

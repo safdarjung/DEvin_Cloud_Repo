@@ -59,6 +59,7 @@ export const POST = aiTaskRoute<QuestionPaperRequest, QuestionPaperResponse>({
         gradeId,
         curriculumUnitId: row.curriculumUnitId,
         difficulty: row.difficulty,
+        status: "approved",
         includeArchived: false,
         page: 1,
         pageSize: CANDIDATES_PER_ROW,
@@ -69,7 +70,7 @@ export const POST = aiTaskRoute<QuestionPaperRequest, QuestionPaperResponse>({
         .slice(0, row.count);
       for (const q of matches) {
         used.add(q.id);
-        picked.push({ id: q.id, curriculumUnitId: row.curriculumUnitId, difficulty: q.difficulty, type: q.type, body: q.body, options: q.options, marks: q.marks });
+        picked.push({ id: q.id, curriculumUnitId: row.curriculumUnitId, difficulty: q.difficulty, type: q.type, body: q.body, options: Array.isArray(q.options) ? q.options : null, marks: q.marks });
       }
       for (let i = matches.length; i < row.count; i++) slots.push(row);
     }

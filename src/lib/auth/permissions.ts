@@ -64,6 +64,7 @@ export type Permission =
   | "notification.read"
   | "notification.log.read"
   | "question.manage"
+  | "question.approve"
   | "job.manage"
   | "data.import"
   | "data.export"
@@ -238,6 +239,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "notification.log.read",
     "question.manage",
+    "question.approve",
     "job.manage",
     "data.import",
     "document.read",
@@ -328,6 +330,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "notification.read",
     "notification.log.read",
     "question.manage",
+    "question.approve",
     "job.manage",
     "data.import",
     "document.read",
@@ -537,6 +540,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     "exam.seating.read",
     "notification.read",
     "question.manage",
+    "question.approve",
     "document.read",
     "timetable.read",
     "staff.attendance.mark",

@@ -241,3 +241,34 @@ export async function curriculumLessonPlans(
     createdBy: row.created_by,
   }));
 }
+
+export interface CurriculumTopic {
+  id: string;
+  curriculumUnitId: string;
+  parentId: string | null;
+  title: string;
+  sequence: number;
+}
+
+/** 0147 topics of one unit, or of every unit of a grade+subject; ordered unit, sequence, title. RLS: staff, or an enrolled student/guardian of the grade. */
+export async function listTopics(
+  ctx: TenantContext,
+  input: { curriculumUnitId?: string; gradeId?: string; subjectId?: string },
+): Promise<CurriculumTopic[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("curriculum_topics")
+    .select("id, curriculum_unit_id, parent_id, title, sequence, curriculum_units!inner(grade_id, subject_id, sequence)")
+    .eq("institution_id", ctx.institution.id)
+    .order("sequence")
+    .order("title");
+  if (input.curriculumUnitId) query = query.eq("curriculum_unit_id", input.curriculumUnitId);
+  if (input.gradeId) query = query.eq("curriculum_units.grade_id", input.gradeId);
+  if (input.subjectId) query = query.eq("curriculum_units.subject_id", input.subjectId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? [])
+    .map((t) => ({ unitSeq: t.curriculum_units.sequence, topic: { id: t.id, curriculumUnitId: t.curriculum_unit_id, parentId: t.parent_id, title: t.title, sequence: t.sequence } }))
+    .sort((a, b) => a.unitSeq - b.unitSeq)
+    .map((t) => t.topic);
+}

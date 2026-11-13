@@ -1,333 +1,276 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { BarList } from "@/components/widgets/viz";
 import { actionErrorMessage } from "@/lib/actions/ui-error";
-import { archiveQuestion, createQuestion, updateQuestion } from "@/modules/question-bank/actions";
-import type { QuestionBankItem, TeachingPair } from "@/modules/question-bank/queries";
-import type { Difficulty, QuestionType } from "@/modules/question-bank/schemas";
+import { approveQuestion, archiveQuestion, duplicateQuestion, rejectQuestion, submitForReview } from "@/modules/question-bank/actions";
+import type { CollectionItem, NearDuplicate, QuestionBankItem, QuestionCollection } from "@/modules/question-bank/queries";
+import { QuestionOriginSchema, QuestionStatusSchema } from "@/modules/question-bank/schemas";
+import { AddToCollectionDialog, CollectionsPanel } from "./CollectionsPanel";
+import { ExportDialog, ImportDialog } from "./ImportExport";
+import { QuestionForm } from "./QuestionForm";
+import { DIFFICULTIES, isStemType, ORIGIN_LABEL, STATUS_LABEL, STATUS_VARIANT, TYPES, typeLabel, type PairMeta } from "./question-meta";
 
-const TYPES: { value: QuestionType; label: string }[] = [
-  { value: "mcq", label: "Multiple choice" },
-  { value: "true_false", label: "True or false" },
-  { value: "short_answer", label: "Short answer" },
-  { value: "long_answer", label: "Long answer" },
-];
-const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
-const typeLabel = (t: QuestionType) => TYPES.find((x) => x.value === t)?.label ?? t;
+const ALL = "all";
+const needsReview = (q: QuestionBankItem) => q.status === "in_review" || q.status === "draft";
 
-interface Draft {
-  id?: string;
-  pair: string;
-  type: QuestionType;
-  difficulty: Difficulty;
-  body: string;
-  options: string[];
-  answer: string;
-  marks: string;
+function Filter({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-full sm:w-40" aria-label={label}><SelectValue placeholder={label} /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL}>{label}: all</SelectItem>
+        {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 }
-
-const pairKey = (gradeId: string, subjectId: string) => `${gradeId}:${subjectId}`;
 
 export function QuestionBankView({
   institutionSlug,
   items,
   total,
   pairs,
+  filterTopics,
   canManage,
+  canApprove,
+  collections,
+  collectionItems,
 }: {
   institutionSlug: string;
   items: QuestionBankItem[];
   total: number;
-  pairs: TeachingPair[];
+  pairs: PairMeta[];
+  /** Every topic of the subjects shown (a reviewer with no classes still filters by topic). */
+  filterTopics: { value: string; label: string }[];
   canManage: boolean;
+  canApprove: boolean;
+  collections: QuestionCollection[];
+  collectionItems: Record<string, CollectionItem[]>;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<QuestionBankItem | null | undefined>(undefined);
+  const [formOpen, setFormOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [rejecting, setRejecting] = useState<QuestionBankItem | null>(null);
+  const [note, setNote] = useState("");
+  const [dupes, setDupes] = useState<NearDuplicate[]>([]);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [f, setF] = useState({ status: ALL, type: ALL, difficulty: ALL, origin: ALL, topic: ALL });
   const canAuthor = canManage && pairs.length > 0;
 
+  const stems = useMemo(() => items.filter((q) => isStemType(q.type) && q.status !== "archived"), [items]);
+  const visible = items.filter(
+    (q) =>
+      (f.status === ALL || q.status === f.status) &&
+      (f.type === ALL || q.type === f.type) &&
+      (f.difficulty === ALL || q.difficulty === f.difficulty) &&
+      (f.origin === ALL || q.origin === f.origin) &&
+      (f.topic === ALL || q.curriculumTopicId === f.topic),
+  );
+  const queue = items.filter(needsReview);
+  const filtering = Object.values(f).some((v) => v !== ALL);
+
   function openNew() {
-    setError(null);
-    const first = pairs[0];
-    setDraft({ pair: pairKey(first.gradeId, first.subjectId), type: "mcq", difficulty: "medium", body: "", options: ["", "", "", ""], answer: "", marks: "1" });
+    setEditing(null);
+    setFormOpen(true);
   }
 
-  function openEdit(q: QuestionBankItem) {
-    setError(null);
-    setDraft({
-      id: q.id,
-      pair: pairKey(q.gradeId, q.subjectId),
-      type: q.type,
-      difficulty: q.difficulty,
-      body: q.body,
-      options: q.options ?? ["", "", "", ""],
-      answer: q.answer,
-      marks: String(q.marks),
-    });
-  }
-
-  function save() {
-    if (!draft) return;
-    const [gradeId, subjectId] = draft.pair.split(":");
-    const options = draft.type === "mcq" ? draft.options.map((o) => o.trim()).filter(Boolean) : undefined;
-    const input = {
-      subjectId,
-      gradeId,
-      type: draft.type,
-      difficulty: draft.difficulty,
-      body: draft.body,
-      ...(options ? { options } : {}),
-      answer: draft.type === "true_false" && !draft.answer ? "True" : draft.answer,
-      marks: Number(draft.marks),
-    };
-    setError(null);
+  function run<T>(fn: () => Promise<{ ok: true; data: T } | { ok: false; error: Parameters<typeof actionErrorMessage>[0] }>, done: string, after?: (data: T) => void) {
     start(async () => {
-      const result = draft.id ? await updateQuestion(institutionSlug, { id: draft.id, ...input }) : await createQuestion(institutionSlug, input);
-      if (!result.ok) {
-        const message = actionErrorMessage(result.error);
-        setError(message);
-        toast.error(message);
-        return;
-      }
-      toast.success(draft.id ? "Question updated" : "Question added");
-      setDraft(null);
+      const r = await fn();
+      if (!r.ok) return void toast.error(actionErrorMessage(r.error));
+      toast.success(done);
+      after?.(r.data);
       router.refresh();
     });
   }
 
-  function setArchived(q: QuestionBankItem, isActive: boolean) {
-    start(async () => {
-      const result = await archiveQuestion(institutionSlug, { id: q.id, isActive });
-      if (!result.ok) {
-        toast.error(actionErrorMessage(result.error));
-        return;
-      }
-      toast.success(isActive ? "Question restored" : "Question archived");
-      router.refresh();
-    });
+  const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  function renderRow(q: QuestionBankItem, queueMode: boolean) {
+    const reviewable = canApprove && (q.status === "draft" || q.status === "in_review");
+    return (
+      <li key={q.id} data-testid="question-row" className="rounded-md border bg-card p-3">
+        <div className="flex items-start gap-3">
+          {!queueMode && (
+            <input type="checkbox" className="mt-1.5" aria-label="Select question" checked={selected.includes(q.id)} onChange={() => toggle(q.id)} />
+          )}
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="line-clamp-3 whitespace-pre-line text-sm">{q.body}</p>
+            <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              <Badge variant={STATUS_VARIANT[q.status]}>{STATUS_LABEL[q.status]}</Badge>
+              {q.origin === "ai" && <Badge variant="info">AI-written{q.aiModel ? ` · ${q.aiModel}` : ""}</Badge>}
+              {q.origin === "import" && <Badge variant="outline">{ORIGIN_LABEL.import}</Badge>}
+              {q.stemQuestionId && <Badge variant="outline">Part of a passage</Badge>}
+              <span>{q.gradeCode} · {q.subjectName}</span>
+              <span>{typeLabel(q.type)}</span>
+              <span className="capitalize">{q.difficulty}</span>
+              <span className="tabular-nums">{q.marks} marks</span>
+              {q.topicTitle && <span>Topic: {q.topicTitle}</span>}
+              {q.version > 1 && <span className="tabular-nums">v{q.version}</span>}
+            </div>
+            {queueMode && (
+              <p className="text-xs"><span className="text-muted-foreground">Answer: </span>{q.answer}{q.explanation ? <span className="text-muted-foreground"> · {q.explanation}</span> : null}</p>
+            )}
+            {q.reviewNote && (q.status === "rejected" || q.status === "approved") && <p className="text-xs text-muted-foreground">Reviewer note: {q.reviewNote}</p>}
+          </div>
+        </div>
+        {canManage && (
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
+            {reviewable && (
+              <>
+                <Button size="sm" disabled={pending} onClick={() => run(() => approveQuestion(institutionSlug, { id: q.id }), "Question approved")}>Approve</Button>
+                <Button size="sm" variant="outline" disabled={pending} onClick={() => { setNote(""); setRejecting(q); }}>Reject</Button>
+              </>
+            )}
+            {!queueMode && (q.status === "draft" || q.status === "rejected") && (
+              <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => submitForReview(institutionSlug, { id: q.id }), "Sent for review")}>Submit for review</Button>
+            )}
+            {q.status !== "archived" && (
+              <Button size="sm" variant="outline" disabled={pending} onClick={() => { setEditing(q); setFormOpen(true); }}>Edit</Button>
+            )}
+            {!queueMode && (
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => duplicateQuestion(institutionSlug, { id: q.id }), "Copied as a new draft")}>Duplicate</Button>
+            )}
+            {!queueMode && (
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => archiveQuestion(institutionSlug, { id: q.id, isActive: q.status === "archived" }), q.status === "archived" ? "Question restored" : "Question archived")}>
+                {q.status === "archived" ? "Restore" : "Archive"}
+              </Button>
+            )}
+          </div>
+        )}
+      </li>
+    );
   }
+
+  const list = (rows: QuestionBankItem[], queueMode: boolean) => (
+    <ul className="space-y-2" aria-label={queueMode ? "Questions waiting for review" : "Questions"}>
+      {rows.map((q) => renderRow(q, queueMode))}
+    </ul>
+  );
 
   return (
     <div className="space-y-4">
-      {canAuthor && (
-        <div className="flex justify-end">
-          <Button onClick={openNew}>New question</Button>
-        </div>
-      )}
-      {items.length === 0 ? (
-        <EmptyState
-          title="No questions yet"
-          description={canAuthor ? "Add questions for the grades and subjects you teach, then reuse them in assignments and exams." : "Questions for your subjects appear here."}
-          action={canAuthor ? <Button onClick={openNew}>New question</Button> : undefined}
-        />
-      ) : (
-        <>
-          <div className="max-w-xl">
-            <p className="mb-1 text-sm font-medium">Difficulty mix (shown questions)</p>
-            <BarList
-              ariaLabel="Questions shown by difficulty"
-              max={items.length}
-              items={DIFFICULTIES.map((d) => ({
-                label: d.charAt(0).toUpperCase() + d.slice(1),
-                value: items.filter((q) => q.difficulty === d).length,
-              }))}
-            />
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Question</TableHead>
-                <TableHead>Class and subject</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Difficulty</TableHead>
-                <TableHead className="text-right">Marks</TableHead>
-                {canManage && <TableHead className="text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((q, i) => (
-                <TableRow
-                  key={q.id}
-                  className="motion-safe:animate-in motion-safe:fade-in motion-safe:fill-mode-backwards motion-safe:duration-200"
-                  style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-                >
-                  <TableCell className="max-w-md">
-                    <p className="line-clamp-2 whitespace-normal">{q.body}</p>
-                    {!q.isActive && <Badge variant="outline">Archived</Badge>}
-                  </TableCell>
-                  <TableCell>
-                    {q.gradeCode} · {q.subjectName}
-                  </TableCell>
-                  <TableCell>{typeLabel(q.type)}</TableCell>
-                  <TableCell className="capitalize">{q.difficulty}</TableCell>
-                  <TableCell className="text-right tabular-nums">{q.marks}</TableCell>
-                  {canManage && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => openEdit(q)} disabled={pending}>
-                          Edit
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setArchived(q, !q.isActive)} disabled={pending}>
-                          {q.isActive ? "Archive" : "Restore"}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <p className="text-xs tabular-nums text-muted-foreground">
-            Showing {items.length} of {total}
-          </p>
-        </>
-      )}
+      <Tabs defaultValue="questions">
+        <TabsList>
+          <TabsTrigger value="questions">Questions</TabsTrigger>
+          {canApprove && <TabsTrigger value="review">Review queue{queue.length > 0 ? ` (${queue.length})` : ""}</TabsTrigger>}
+          <TabsTrigger value="collections">Collections</TabsTrigger>
+        </TabsList>
 
-      <Dialog open={draft !== null} onOpenChange={(open) => !open && setDraft(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{draft?.id ? "Edit question" : "New question"}</DialogTitle>
-            <DialogDescription>Only questions for grades and subjects you teach can be saved.</DialogDescription>
-          </DialogHeader>
-          {draft && (
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                save();
-              }}
-            >
-              <label className="block space-y-1 text-sm">
-                Class and subject
-                <Select value={draft.pair} onValueChange={(v) => setDraft({ ...draft, pair: v })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pairs.map((p) => (
-                      <SelectItem key={pairKey(p.gradeId, p.subjectId)} value={pairKey(p.gradeId, p.subjectId)}>
-                        {p.gradeCode} · {p.subjectName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </label>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <label className="space-y-1 text-sm">
-                  Type
-                  <Select
-                    value={draft.type}
-                    onValueChange={(v) => setDraft({ ...draft, type: v as QuestionType, answer: v === "true_false" ? "True" : "" })}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="space-y-1 text-sm">
-                  Difficulty
-                  <Select value={draft.difficulty} onValueChange={(v) => setDraft({ ...draft, difficulty: v as Difficulty })}>
-                    <SelectTrigger className="w-full capitalize">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DIFFICULTIES.map((d) => (
-                        <SelectItem key={d} value={d} className="capitalize">
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="space-y-1 text-sm">
-                  Marks
-                  <Input type="number" min={0.01} max={100} step="0.5" required value={draft.marks} onChange={(e) => setDraft({ ...draft, marks: e.target.value })} className="tabular-nums" />
-                </label>
-              </div>
-              <label className="block space-y-1 text-sm">
-                Question
-                <Textarea required rows={3} maxLength={4000} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} />
-              </label>
-              {draft.type === "mcq" && (
-                <fieldset className="space-y-2">
-                  <legend className="text-sm">Options (pick the correct one)</legend>
-                  {draft.options.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <input
-                        type="radio"
-                        name="correct"
-                        aria-label={`Option ${i + 1} is correct`}
-                        checked={opt.trim() !== "" && draft.answer === opt}
-                        onChange={() => setDraft({ ...draft, answer: opt })}
-                        disabled={opt.trim() === ""}
-                      />
-                      <Input aria-label={`Option ${i + 1}`}
-                        value={opt}
-                        maxLength={500}
-                        placeholder={`Option ${i + 1}`}
-                        onChange={(e) => {
-                          const options = draft.options.map((o, j) => (j === i ? e.target.value : o));
-                          setDraft({ ...draft, options, answer: draft.answer === opt ? e.target.value : draft.answer });
-                        }}
-                      />
-                    </div>
-                  ))}
-                </fieldset>
-              )}
-              {draft.type === "true_false" && (
-                <label className="block space-y-1 text-sm">
-                  Correct answer
-                  <Select value={draft.answer || "True"} onValueChange={(v) => setDraft({ ...draft, answer: v })}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="True">True</SelectItem>
-                      <SelectItem value="False">False</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-              )}
-              {(draft.type === "short_answer" || draft.type === "long_answer") && (
-                <label className="block space-y-1 text-sm">
-                  Model answer
-                  <Textarea required rows={3} maxLength={4000} value={draft.answer} onChange={(e) => setDraft({ ...draft, answer: e.target.value })} />
-                </label>
-              )}
-              {error && (
-                <p role="alert" className="text-sm text-destructive">
-                  {error}
-                </p>
-              )}
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setDraft(null)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={pending}>
-                  {pending ? "Saving…" : "Save question"}
-                </Button>
-              </DialogFooter>
-            </form>
+        <TabsContent value="questions" className="space-y-4">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => setExportOpen(true)}>Export CSV</Button>
+            {canAuthor && <Button variant="outline" onClick={() => setImportOpen(true)}>Import CSV</Button>}
+            {canAuthor && <Button onClick={openNew}>New question</Button>}
+          </div>
+          {dupes.length > 0 && (
+            <div role="status" data-testid="duplicate-warning" className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm">
+              <p className="font-medium">Saved. {dupes.length === 1 ? "A similar question already exists" : `${dupes.length} similar questions already exist`} in the bank:</p>
+              <ul className="mt-1 list-disc pl-5">
+                {dupes.map((d) => <li key={d.questionId}><span className="line-clamp-1">{d.body}</span> <span className="text-xs tabular-nums text-muted-foreground">({Math.round(d.similarity * 100)}% alike)</span></li>)}
+              </ul>
+              <Button size="sm" variant="ghost" className="mt-1" onClick={() => setDupes([])}>Dismiss</Button>
+            </div>
           )}
+          {items.length === 0 ? (
+            <EmptyState
+              title="No questions yet"
+              description={canAuthor ? "Add questions for the grades and subjects you teach, then reuse them in assignments and exams." : "Questions for your subjects appear here."}
+              action={canAuthor ? <Button onClick={openNew}>New question</Button> : undefined}
+            />
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Filters">
+                <Filter label="Status" value={f.status} onChange={(status) => setF({ ...f, status })} options={QuestionStatusSchema.options.map((s) => ({ value: s, label: STATUS_LABEL[s] }))} />
+                <Filter label="Type" value={f.type} onChange={(type) => setF({ ...f, type })} options={TYPES} />
+                <Filter label="Difficulty" value={f.difficulty} onChange={(difficulty) => setF({ ...f, difficulty })} options={DIFFICULTIES.map((d) => ({ value: d, label: d[0].toUpperCase() + d.slice(1) }))} />
+                <Filter label="Origin" value={f.origin} onChange={(origin) => setF({ ...f, origin })} options={QuestionOriginSchema.options.map((o) => ({ value: o, label: ORIGIN_LABEL[o] }))} />
+                {filterTopics.length > 0 && <Filter label="Topic" value={f.topic} onChange={(topic) => setF({ ...f, topic })} options={filterTopics} />}
+                {filtering && <Button variant="ghost" size="sm" onClick={() => setF({ status: ALL, type: ALL, difficulty: ALL, origin: ALL, topic: ALL })}>Clear filters</Button>}
+              </div>
+              <div className="max-w-xl">
+                <p className="mb-1 text-sm font-medium">Difficulty mix (shown questions)</p>
+                <BarList
+                  ariaLabel="Questions shown by difficulty"
+                  max={Math.max(visible.length, 1)}
+                  items={DIFFICULTIES.map((d) => ({ label: d.charAt(0).toUpperCase() + d.slice(1), value: visible.filter((q) => q.difficulty === d).length }))}
+                />
+              </div>
+              {selected.length > 0 && (
+                <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-2 text-sm">
+                  <span className="tabular-nums">{selected.length} selected</span>
+                  <Button size="sm" onClick={() => setAddOpen(true)}>Add to collection</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSelected([])}>Clear</Button>
+                </div>
+              )}
+              {visible.length === 0 ? <EmptyState title="No questions match these filters" description="Clear a filter to see more." /> : list(visible, false)}
+              <p className="text-xs tabular-nums text-muted-foreground">Showing {visible.length} of {total}</p>
+            </>
+          )}
+        </TabsContent>
+
+        {canApprove && (
+          <TabsContent value="review" className="space-y-3">
+            {queue.length === 0 ? <EmptyState title="Nothing to review" description="AI-written, imported and submitted questions wait here for approval." /> : list(queue, true)}
+          </TabsContent>
+        )}
+
+        <TabsContent value="collections">
+          <CollectionsPanel institutionSlug={institutionSlug} collections={collections} items={collectionItems} />
+        </TabsContent>
+      </Tabs>
+
+      {canAuthor && (
+        <QuestionForm
+          institutionSlug={institutionSlug}
+          pairs={pairs}
+          stems={stems}
+          editing={editing}
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          onSaved={(warnings) => { setFormOpen(false); setDupes(warnings); router.refresh(); }}
+        />
+      )}
+      {canAuthor && <ImportDialog institutionSlug={institutionSlug} pairs={pairs} open={importOpen} onClose={() => setImportOpen(false)} onDone={() => { setImportOpen(false); router.refresh(); }} />}
+      <ExportDialog institutionSlug={institutionSlug} pairs={pairs} open={exportOpen} onClose={() => setExportOpen(false)} />
+      <AddToCollectionDialog
+        institutionSlug={institutionSlug}
+        collections={collections}
+        questionIds={selected}
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onDone={() => { setAddOpen(false); setSelected([]); router.refresh(); }}
+      />
+
+      <Dialog open={rejecting !== null} onOpenChange={(o) => !o && setRejecting(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Reject question</DialogTitle><DialogDescription>The author sees your note and can fix the question and send it again.</DialogDescription></DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!rejecting) return;
+              const id = rejecting.id;
+              run(() => rejectQuestion(institutionSlug, { id, note }), "Question rejected", () => setRejecting(null));
+            }}
+          >
+            <label className="block space-y-1 text-sm">Why is it being rejected?<Textarea required rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setRejecting(null)}>Cancel</Button><Button type="submit" disabled={pending || !note.trim()}>Reject</Button></DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

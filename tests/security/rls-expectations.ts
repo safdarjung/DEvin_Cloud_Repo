@@ -687,6 +687,25 @@ export const RLS_EXPECTATIONS: Record<string, TableExpectation> = {
     read: ["owner", "principal", "exam_controller", "teacher"],
     write: ["owner", "principal", "exam_controller", "teacher"],
   },
+  // 0146 — question collections: owner-scoped rows of question.manage
+  // roles; visibility 'school' widens read to the same roles. Items follow
+  // their collection; only the collection owner writes items.
+  question_collections: {
+    classes: ["C", "O"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  question_collection_items: {
+    classes: ["C", "O"],
+    read: ["owner", "principal", "exam_controller", "teacher"],
+    write: ["owner", "principal", "exam_controller", "teacher"],
+  },
+  // 0147 — curriculum_topics mirrors curriculum_units (S+G read; owner/principal/admin write).
+  curriculum_topics: {
+    classes: ["S+G"],
+    read: ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher", "student", "guardian"],
+    write: ["owner", "principal", "admin"],
+  },
 
   // 0095 (M22-T2) — agent_definitions/agent_runs: owner/principal/admin
   // read every row of the institution (same shape as audit_events/jobs).

@@ -68,6 +68,7 @@ const MATRIX: Row[] = [
   ["notification.read", true, true, true, true, true, true, true, true, true],
   ["notification.log.read", true, true, true, true, false, false, false, false, false],
   ["question.manage", true, true, false, false, false, true, true, false, false],
+  ["question.approve", true, true, false, false, false, true, false, false, false],
   ["library.manage", true, true, true, false, false, false, false, false, false],
   ["library.read", true, true, true, true, true, true, true, true, true],
   ["job.manage", true, true, true, false, false, false, false, false, false],

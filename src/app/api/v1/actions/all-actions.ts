@@ -4,6 +4,7 @@
 // every new action file must be imported here
 import "@/modules/academics/assignments.actions";
 import "@/modules/academics/curriculum.actions";
+import "@/modules/academics/topics.actions";
 import "@/modules/academics/setup.actions";
 import "@/modules/academics/submissions.actions";
 import "@/modules/admissions/actions";
@@ -59,6 +60,8 @@ import "@/modules/alumni/actions";
 import "@/modules/ptm/survey.actions";
 import "@/modules/forms/actions";
 import "@/modules/question-bank/actions";
+import "@/modules/question-bank/collections.actions";
+import "@/modules/question-bank/csv.actions";
 import "@/modules/reports/actions";
 import "@/modules/student-leave/actions";
 import "@/modules/timetable/actions";

@@ -76,6 +76,12 @@ describe("orb task catalog — completeness (design §2)", () => {
     expect(FIRST_SLICE.filter((n) => TASK_CATALOG[n]?.label === undefined)).toEqual([]);
   });
 
+  it("the orb cannot edit a question (an edit would leave AI text on an approved row)", () => {
+    expect(UNCLASSIFIED).toContain("questionBank.update");
+    expect(catalogRow("questionBank.update")).toBeUndefined();
+    expect(FIRST_SLICE).not.toContain("questionBank.update");
+  });
+
   it("the design's exclusions are excluded", () => {
     for (const name of ["core.ai_role.set", "core.member.setRole", "agent.approve", "workflow.run.decide", "visitors.purge", "data.import.commit", "textbook.file.requestUpload", "document.getReadUrl", "notification.read", "study.quiz.submit", "form.respond", "safety.alert.send", "finance.payment.createIntent", "ai.study.note.save"]) {
       expect(catalogRow(name)?.excluded, name).toBeTruthy();
