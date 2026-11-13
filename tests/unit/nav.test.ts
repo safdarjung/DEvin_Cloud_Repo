@@ -97,7 +97,8 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
     "/settings/ai",
     "/settings/control-centre",
     "/diary", "/lesson-plans", "/ptm", "/timetable", "/assistant", "/messages",
-    ...F18_LEADERS,
+    // 0151: admin holds mastery.review but section analytics refuse it, so no insights link.
+    ...F18_LEADERS.filter((h) => h !== "/learning-insights"),
   ],
   admissions: ["/dashboard", "/students", "/admissions", "/website", "/ai", "/notifications", ...NO_FORECAST_AGENT, ...VIEW_WORKSPACES, "/timetable", "/assistant",
     "/students/lifecycle", "/clubs", "/staff", "/certificates", "/alumni", "/documents", "/safety", "/resources", "/duties", "/textbooks/search"],

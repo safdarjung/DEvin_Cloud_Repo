@@ -55,6 +55,15 @@ export default async function LearningInsightsPage({
   const ctx = await getTenantContext(slug);
   requireModule(ctx, "mastery");
   requirePermission(ctx, "mastery.review");
+  // 0151 learning_can_view_section: subject teachers and exam leaders only (admin has mastery.review but is refused).
+  if (ctx.membership.role === "admin") {
+    return (
+      <div className="max-w-5xl space-y-8">
+        <PageHeader title="Learning insights" description="Chapter and topic gaps, students who need revision, and question-wise test results." />
+        <EmptyState title="Not available for your role" description="Learning insights are shown to subject teachers, the exam controller, the principal and the owner." />
+      </div>
+    );
+  }
 
   const picks = await listPicks(ctx.institution.id, ctx.membership.role === "teacher" ? ctx.membership.staffId : null);
   const pick = picks.find((p) => p.key === sp.a) ?? picks[0];

@@ -298,6 +298,8 @@ export function navItemsFor(
     if (item.demoOnly) return false;
     // Fabric pages themselves require dashboard.view; hide the link from roles that would get a 403.
     if (item.group === "Fabric" && !hasDashboard) return false;
+    // 0151: section analytics are for subject teachers and exam leaders; admin holds mastery.review but gets refused.
+    if (item.href === "/learning-insights" && role === "admin") return false;
     if (item.module && settings && !isModuleEnabled({ institution: { settings } }, item.module)) return false;
     seen.add(item.href);
     return true;
