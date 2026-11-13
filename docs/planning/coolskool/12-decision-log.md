@@ -374,6 +374,13 @@ Full text: `docs/planning/fabric/07-master-plan-v1-v2.md` §2. Summary:
 - **Gates unchanged:** rule-6 tasks still only open an approval card, their humanOnly fields stay for the person, and every action re-checks its own permission. Module switches and role ceilings still apply.
 - **Code:** `src/modules/ai/capabilities/resolve.ts`, `src/lib/auth/entitlements.ts`, `src/modules/ai/tasks/state.ts`, `src/modules/core/control-centre/{model,state}.ts`, `src/modules/ai/assistant/catalog.ts` (`queriesFor()`), `src/modules/ai/kernel/handle-chat.ts`.
 
+### D55 — Learning & exam system: extraction stack and pacing (2026-11-12, owner decisions)
+
+- **Decision 1:** text PDFs are read locally with `unpdf` (new dependency). Only pages with no text layer (scans) go to Gemini through the gateway for OCR.
+- **Decision 2:** Phase 2 reads PDF only. DOCX and PPTX come later.
+- **Decision 3:** all five phases of `15-learning-exam-system-plan.md` run straight through, each fully tested before the next, with one report at the end.
+- **Unchanged:** NCERT PDFs stay link-only (0139 ruling). Extraction runs only on school-uploaded files whose rights status allows storage. AI output stays a draft a human approves (rule 6).
+
 ## 2. Phase 0 verified facts and installed versions
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.
