@@ -89,8 +89,15 @@ describe("M20-T13 compute_mastery over the demo tenant", () => {
         join public.assignments a on a.id = asu.assignment_id
         where asu.institution_id = ${institutionId} and asu.status = 'graded' and a.curriculum_unit_id is not null
           and asu.student_id in (select student_id from active)
+      ),
+      -- 0151: online tests and practice (seed learning-exams) feed compute_mastery too.
+      learning_pairs as (
+        select o.student_id, o.unit_id from app.learning_obs(${institutionId}, null, false) o
+        where o.unit_id is not null and o.student_id in (select student_id from active)
       )
-      select count(*)::int as n from (select * from mark_pairs union select * from submission_pairs) p
+      select count(*)::int as n from (
+        select * from mark_pairs union select * from submission_pairs union select * from learning_pairs
+      ) p
     `;
 
     const [{ n: snapshotCount }] = await sql`
@@ -103,6 +110,11 @@ describe("M20-T13 compute_mastery over the demo tenant", () => {
       from public.mastery_snapshots ms
       join public.exam_papers ep on ep.exam_id = ${ptExamId}
       where ms.curriculum_unit_id = any(ep.unit_ids)
+        -- PT2-X marks never feed mastery; online tests and practice on the same chapter (0151) legitimately do.
+        and not exists (
+          select 1 from app.learning_obs(${institutionId}, null, false) o
+          where o.student_id = ms.student_id and o.unit_id = ms.curriculum_unit_id
+        )
     `;
     expect(ptUnitSnapshots).toBe(0);
   });

@@ -60,6 +60,7 @@ import { run as runTextbooks } from "./sections/textbooks.ts";
 import { run as runFinanceExtras } from "./sections/finance-extras.ts";
 import { run as runDataOps } from "./sections/data-ops.ts";
 import { run as runPeopleHistory } from "./sections/people-history.ts";
+import { run as runLearningExams } from "./sections/learning-exams.ts";
 
 const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "core", run: runCore },
@@ -148,6 +149,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "finance-extras", run: runFinanceExtras },
   { name: "data-ops", run: runDataOps },
   { name: "people-history", run: runPeopleHistory },
+  // 0146-0151: needs question-bank, academics units/sections, exams (marks-entry paper) and core demo logins; no rng draws.
+  { name: "learning-exams", run: runLearningExams },
 ];
 
 /** `--only a,b` runs just those sections against the already-seeded demo tenant (no reset, no count assertions). */
