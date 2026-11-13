@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { Callout, CtaBand, PageHero, Rows, Section } from "@/components/marketing/ui";
 
-export const metadata = meta("Security", "How Fabric separates institutions, checks permissions twice, keeps history immutable and controls AI.", "/security");
+export const metadata = meta("Security", "How FabricOS separates institutions, checks permissions twice, keeps history immutable and controls AI.", "/security");
 
 export default function Page() {
   return (

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { FabricMark, MARK_BG } from "@/components/fabricos/mark";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -13,13 +14,10 @@ export default function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0b1020",
-          color: "#ffffff",
-          fontSize: 112,
-          fontWeight: 700,
+          background: MARK_BG,
         }}
       >
-        F
+        <FabricMark size={128} />
       </div>
     ),
     size,

@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { BRAND } from "@/components/fabricos/content";
+import { OG_IMAGE, OG_LOCALE } from "@/components/fabricos/seo";
 import type { Row } from "./ui";
 
 export const NAV = [
@@ -26,7 +28,15 @@ export const LEGAL = [
 ] as const;
 
 export function meta(title: string, description: string, path: string): Metadata {
-  return { title, description, alternates: { canonical: path }, openGraph: { title, description, url: path, type: "website" } };
+  return {
+    title,
+    description,
+    alternates: { canonical: path },
+    // Replaces the layout's openGraph/twitter wholesale, so siteName/locale/image
+    // repeat here. The title template does not reach og/twitter titles.
+    openGraph: { title: `${title} | ${BRAND}`, description, url: path, type: "website", siteName: BRAND, locale: OG_LOCALE, images: [OG_IMAGE] },
+    twitter: { card: "summary_large_image", title: `${title} | ${BRAND}`, description, images: [OG_IMAGE] },
+  };
 }
 
 export const MODULES: readonly Row[] = [
@@ -35,7 +45,7 @@ export const MODULES: readonly Row[] = [
   { title: "Fees and receipts", body: "Invoices, payments, receipts and a ledger. Online payment runs in Razorpay test mode only; without keys, payments are simulated.", tag: "Test mode" },
   { title: "Exams and results", body: "Marks entry, verification, publishing and rechecks. Published results are versioned: corrections add a new version, they never overwrite.", },
   { title: "Assignments", body: "Teachers set and review work for their classes; students and guardians see their own." },
-  { title: "Website CMS", body: "A public school website managed from inside Fabric. Only published content is ever served." },
+  { title: "Website CMS", body: "A public school website managed from inside FabricOS. Only published content is ever served." },
   { title: "Notifications", body: "Announcements and reminders. Email and WhatsApp are simulated until provider keys are configured for your institution.", tag: "Simulated until configured" },
   { title: "AI assistant", body: "Answers and drafts inside the permissions of the person asking. Your institution chooses whether models run in the cloud or locally." },
   { title: "Insights, forecasts and agents", body: "Surfaces what needs attention. Anything that changes records waits for a person to approve it." },
@@ -51,7 +61,7 @@ export const ROLES: readonly { role: string; summary: string; sees: string[] }[]
 ];
 
 export const FAQ: readonly { q: string; a: string }[] = [
-  { q: "What is Fabric?", a: "An operating system for educational institutions: admissions, attendance, fees, exams, assignments, website, notifications and an AI layer in one multi-tenant platform." },
+  { q: "What is FabricOS?", a: "An operating system for educational institutions: admissions, attendance, fees, exams, assignments, website, notifications and an AI layer in one multi-tenant platform." },
   { q: "Do payments work today?", a: "Online payments are wired to Razorpay in test mode only. Without keys they are simulated. Live payments need configuration and review for your institution." },
   { q: "Do emails and WhatsApp messages actually send?", a: "Not until provider keys are configured. Until then those channels are simulated and labelled as such in the product." },
   { q: "Can the AI change marks, payments or access?", a: "No. AI output is a suggestion. A person saves or approves it. AI never writes marks, payments, access or welfare decisions." },

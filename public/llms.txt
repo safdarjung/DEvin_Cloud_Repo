@@ -1,32 +1,44 @@
-# Fabric
+# FabricOS
 
-> Fabric is an AI-assisted operating system for private schools: admissions, attendance, fees, exams and results, assignments, a school website CMS, and notifications in one multi-tenant, permission-checked workspace.
+> FabricOS is a configurable, AI-powered operating system for institutions. It connects people, roles, departments, workflows, information and AI agents in one permission-checked workspace, so work moves forward while people stay in control.
+
+Tagline: Your institution. Your workflows. Your AI.
 
 This file is optional documentation for AI agents and crawlers. Nothing here guarantees search ranking or citation. If this file and a public page disagree, the page is correct.
 
+## Who it is for
+- Built and running today for schools and colleges (education and training).
+- Other sectors (professional institutes, associations, service organisations, multi-team businesses) are configuration conversations: the same core of roles, workflows, approvals and AI agents is configured with the institution. FabricOS does not claim a finished product for every industry.
+
 ## Public pages
-- [Product](/product): what Fabric does
+- [Home](/): what FabricOS is, AI agents, automation, insights, use cases, human control, how it works, FAQ
+- [Product](/product): what FabricOS does for an institution
 - [Modules](/modules): module list
 - [AI](/ai): how AI is used and bounded
 - [Security](/security): tenant isolation, roles, audit log
-- [Pricing](/pricing)
+- [Pricing](/pricing): quoted per institution
 - [How it works](/how-it-works)
 - [FAQ](/faq)
 - [Roles](/roles)
-- [Demo](/demo)
-- [Contact](/contact)
-- [Privacy](/legal/privacy), [Terms](/legal/terms), [Cookies](/legal/cookies), [Data processing](/legal/data-processing), [Acceptable use](/legal/acceptable-use)
+- [Demo](/demo): try a role on a sample school with sample data
+- [Contact](/contact): book a demo
+- [Privacy](/legal/privacy), [Terms](/legal/terms), [Cookies](/legal/cookies), [Data processing](/legal/data-processing), [Acceptable use](/legal/acceptable-use) (drafts pending legal review)
 - [Agent notes](/for-agents.md)
 
-## Capabilities
-- Admissions, attendance, fees, exams and results, assignments, school website CMS, notifications.
+## Capabilities (education, available today)
+- Admissions, attendance, fees and receipts, exams and results, assignments, school website CMS, notifications.
+- Role-scoped workspaces for leaders, administrators, teachers, students and parents.
+- Workflows with defined steps (draft, review, approve, publish); corrections add a new version instead of overwriting history.
+- AI agents answer questions, prepare drafts and propose actions within the permissions of the person asking. A person approves anything that changes a record.
+- AI output is a suggestion a person saves or approves. AI never writes marks, payments, access or welfare decisions.
+- Each institution sets an AI policy: cloud models or local-only processing.
+- Attention signals and forecasts across modules; these need human approval before anything changes.
+- Multi-tenant isolation with row-level security; append-only audit log of sensitive actions.
 - Fee payments run through Razorpay in test mode only.
 - Email and WhatsApp notifications are simulated until a channel is configured.
-- AI features are permission-checked; a human reviews and saves AI output. Insights, forecasts and agents require human approval.
-- Multi-tenant isolation with row-level security; audit log of sensitive actions.
 
 ## Not available
-AI credits or bring-your-own-key, voice, what-if simulation, marketplace purchasing.
+AI credits or bring-your-own-key, voice, what-if simulation, marketplace purchasing, native mobile apps (the web app works in a mobile browser).
 
 ## Not for crawling
-Signed-in app routes, /api, /login, /select, /portal. See /robots.txt.
+Signed-in app routes, /api, /login, /start, /select, /portal, /platform. See /robots.txt.

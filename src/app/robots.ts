@@ -9,7 +9,9 @@ import { SITE_URL } from "@/lib/site-url";
 // Training crawlers (GPTBot, Google-Extended, CCBot...) are left allowed: the
 // site is public marketing copy we want represented accurately. Revisit if
 // that changes; add a per-bot `disallow: "/"` rule here.
-const PRIVATE = ["/api/", "/login", "/logout", "/select", "/portal", "/offline"];
+// /platform = operator console, /start = invite-code school setup (both noindex too).
+// /s/<slug> is the PUBLIC school-site renderer: deliberately not listed.
+const PRIVATE = ["/api/", "/login", "/logout", "/start", "/select", "/portal", "/platform", "/offline"];
 
 export default function robots(): MetadataRoute.Robots {
   return {

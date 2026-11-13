@@ -4,7 +4,7 @@ import { meta } from "@/components/marketing/content";
 import { RoleCard } from "./role-card";
 import { Callout, Container, PageHero } from "@/components/marketing/ui";
 
-export const metadata = meta("Demo", "Try Fabric as a Principal, Administrator, Teacher, Student or Parent on a demo school with sample data.", "/demo");
+export const metadata = meta("Demo", "Try FabricOS as a Principal, Administrator, Teacher, Student or Parent on a demo school with sample data.", "/demo");
 
 // Each role maps to one allow-listed demo account (src/lib/auth/demo-accounts.ts).
 const D = "@demo.coolskool.test";
@@ -20,7 +20,7 @@ const DEMO_ON = process.env.NEXT_PUBLIC_DEMO_LOGIN_HINTS === "true";
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="Demo" title="Try Fabric as the person who uses it" lead="Pick a role and you are signed in to that role's dashboard on one sample school (St. Joseph's, demo mode). Everything is sample data, kept separate from real schools." />
+      <PageHero eyebrow="Demo" title="Try FabricOS as the person who uses it" lead="Pick a role and you are signed in to that role's dashboard on one sample school (St. Joseph's, demo mode). Everything is sample data, kept separate from real schools." />
       <Container className="py-14">
         <ul className="divide-y divide-(color:--mk-line) border-y border-(color:--mk-line)">
           {PICK.map((p) =>

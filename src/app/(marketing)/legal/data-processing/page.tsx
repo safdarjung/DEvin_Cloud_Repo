@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { LegalPage } from "@/components/marketing/legal-page";
 
-export const metadata = meta("Data processing terms", "Draft data processing terms for Fabric. Requires legal review.", "/legal/data-processing");
+export const metadata = meta("Data processing terms", "Draft data processing terms for FabricOS. Requires legal review.", "/legal/data-processing");
 
 const SECTIONS = [
   { h: "Status of this document", p: "This is a working draft prepared for internal review. It is not legal advice and has not been approved for publication." },
@@ -19,5 +19,5 @@ const REVIEW = [
 ];
 
 export default function Page() {
-  return <LegalPage title="Data processing terms" lead="How Fabric would process institution data on the institution's behalf. Draft." sections={SECTIONS} review={REVIEW} />;
+  return <LegalPage title="Data processing terms" lead="How FabricOS would process institution data on the institution's behalf. Draft." sections={SECTIONS} review={REVIEW} />;
 }

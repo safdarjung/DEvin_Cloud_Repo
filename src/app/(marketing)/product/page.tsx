@@ -1,12 +1,12 @@
 import { meta } from "@/components/marketing/content";
 import { ButtonLink, CtaBand, Rows, Section, PageHero } from "@/components/marketing/ui";
 
-export const metadata = meta("Product", "What Fabric does for an institution: operating modules, an AI layer with approvals, and tenant-isolated data.", "/product");
+export const metadata = meta("Product", "What FabricOS does for an institution: operating modules, an AI layer with approvals, and tenant-isolated data.", "/product");
 
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="Product" title="One system for the daily work of an institution" lead="Fabric puts the records and routines of a school or college in one place, then adds an AI layer that works inside the same permissions.">
+      <PageHero eyebrow="Product" title="One system for the daily work of an institution" lead="FabricOS puts the records and routines of a school or college in one place, then adds an AI layer that works inside the same permissions.">
         <ButtonLink href="/modules" arrow>See the modules</ButtonLink>
         <ButtonLink href="/how-it-works" variant="secondary">How it works</ButtonLink>
       </PageHero>

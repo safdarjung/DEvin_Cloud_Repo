@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { LegalPage } from "@/components/marketing/legal-page";
 
-export const metadata = meta("Terms of service", "Draft terms of service for Fabric. Requires legal review.", "/legal/terms");
+export const metadata = meta("Terms of service", "Draft terms of service for FabricOS. Requires legal review.", "/legal/terms");
 
 const SECTIONS = [
   { h: "Status of this document", p: "This is a working draft prepared for internal review. It is not legal advice and has not been approved for publication." },
@@ -19,5 +19,5 @@ const REVIEW = [
 ];
 
 export default function Page() {
-  return <LegalPage title="Terms of service" lead="The terms that would govern use of Fabric. Draft." sections={SECTIONS} review={REVIEW} />;
+  return <LegalPage title="Terms of service" lead="The terms that would govern use of FabricOS. Draft." sections={SECTIONS} review={REVIEW} />;
 }

@@ -1,7 +1,7 @@
 import { FAQ, meta } from "@/components/marketing/content";
 import { Container, CtaBand, PageHero } from "@/components/marketing/ui";
 
-export const metadata = meta("FAQ", "Straight answers about Fabric: payments, messaging, AI, data isolation and what is planned.", "/faq");
+export const metadata = meta("FAQ", "Straight answers about FabricOS: payments, messaging, AI, data isolation and what is planned.", "/faq");
 
 export default function Page() {
   return (
