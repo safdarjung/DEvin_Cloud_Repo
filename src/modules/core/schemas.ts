@@ -7,6 +7,7 @@ import { isoDate, shortText, uuid } from "../../lib/schemas/common.ts";
 import { MODULE_KEYS } from "../../lib/modules/catalog.ts";
 import { DASHBOARD_WIDGET_IDS, MORE_CARD_IDS } from "./dashboard-widgets.ts";
 import { MAX_TASK_OVERRIDES, ORB_GROUP_IDS, ORB_MODES, TASK_KEY_RE } from "./control-centre/ids.ts";
+import { QUAL_LEVELS } from "../people/qualifications.ts";
 
 // Equal to the SQL check institutions_slug_not_reserved (0127), which is the
 // authority: a school slug must never shadow an app route or public page.
@@ -288,6 +289,12 @@ export const InstitutionSettingsSchema = z
       .strict()
       .optional(),
     setup: z.partialRecord(z.enum(SETUP_STEPS), z.enum(["done", "dismissed"])).optional(),
+    // 0155 — written only by people.qualificationRules.save: the highest class (grade code) each
+    // qualification level may teach; a missing level uses DEFAULT_MAX_GRADE (people/qualifications.ts).
+    staff: z
+      .object({ max_grade_by_level: z.partialRecord(z.enum(QUAL_LEVELS), z.string().min(1).max(20)).optional() })
+      .strict()
+      .optional(),
   })
   .strict();
 

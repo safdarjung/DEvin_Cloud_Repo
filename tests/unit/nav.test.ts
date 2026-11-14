@@ -129,6 +129,13 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
 
 // Calendar (academics.read) is on every role's sidebar; Transport is transport.manage on staff, student.read in the portal.
 const LEADERS = ["owner", "principal", "admin"];
+// 0155: every staff role (leave.request) has its own teaching profile; staff.read roles see the qualification list.
+const TEACHING_PROFILE_ROLES: readonly string[] = ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"];
+const QUALIFICATION_ROLES: readonly string[] = ["owner", "principal", "admin", "accountant", "exam_controller"];
+const teachingHrefs = (role: Role): string[] => [
+  ...(TEACHING_PROFILE_ROLES.includes(role) ? ["/me/teaching-profile"] : []),
+  ...(QUALIFICATION_ROLES.includes(role) ? ["/staff/qualifications"] : []),
+];
 const calendarTransportHrefs = (role: Role): string[] =>
   role === "student" || role === "guardian" ? ["/portal/calendar", "/portal/transport"] : LEADERS.includes(role) ? ["/calendar", "/transport"] : ["/calendar"];
 
@@ -137,7 +144,7 @@ describe("navItemsFor", () => {
     it(`matches the expected link set for ${role}`, () => {
       const hrefs = navItemsFor(new Set(permissionsFor(role)), undefined, true, role).map((item) => item.href);
       // Every role holds notification.read, so every role gets the App Orb link.
-      expect(new Set(hrefs)).toEqual(new Set([...EXPECTED_HREFS[role], "/orb", ...calendarTransportHrefs(role)]));
+      expect(new Set(hrefs)).toEqual(new Set([...EXPECTED_HREFS[role], "/orb", ...calendarTransportHrefs(role), ...teachingHrefs(role)]));
     });
   }
 

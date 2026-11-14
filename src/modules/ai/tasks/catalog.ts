@@ -320,6 +320,8 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "examSeating.generate": x(BULK),
   "core.setup.saveBranding": x(SETTINGS),
   "core.settings.saveSchoolName": x(SETTINGS),
+  "people.qualificationRules.save": x(SETTINGS),
+  "people.teacherProfile.saveOwn": x(OWN_ANSWERS),
   "notification.preferences.set": x(SETTINGS),
   "report.schedule.setStatus": x(SETTINGS),
   "website.live_set": x(SETTINGS),

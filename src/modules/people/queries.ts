@@ -6,6 +6,8 @@ import "server-only";
 // pages) — the same shape as attendance's per-section page guard.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { InstitutionSettingsSchema } from "@/modules/core/schemas";
+import { highestLevel, type QualLevel, type QualRules, type QualTeacher } from "./qualifications";
 import { escapeIlike } from "@/lib/list-search";
 
 const PAGE_SIZE = 50;
@@ -418,4 +420,105 @@ export async function searchStaff(ctx: TenantContext, filter: { query?: string; 
   const { data, error } = await builder;
   if (error) throw error;
   return (data ?? []).map((row) => ({ id: row.id, fullName: row.full_name, designation: row.designation }));
+}
+
+// ---- 0155: teaching profiles and qualifications --------------------------------------------------
+
+export interface Qualification {
+  level: QualLevel;
+  degree: string;
+  subject?: string;
+  year?: number;
+}
+
+export interface MyTeacherProfile {
+  staffId: string;
+  fullName: string;
+  qualifications: Qualification[];
+  subjectIds: string[];
+  gradeIds: string[];
+  experienceYears: number | null;
+  onboardedAt: string | null;
+}
+
+/** The signed-in staff member's own profile (through their membership), or null for a non-staff login. */
+export async function getMyTeacherProfile(ctx: TenantContext): Promise<MyTeacherProfile | null> {
+  if (!ctx.membership.staffId) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_teacher_profile", { p_institution_id: ctx.institution.id });
+  if (error) throw error;
+  const row = data?.[0];
+  if (!row) return null;
+  return {
+    staffId: row.staff_id,
+    fullName: row.full_name,
+    qualifications: (row.qualifications as unknown as Qualification[]) ?? [],
+    subjectIds: row.can_teach_subject_ids ?? [],
+    gradeIds: row.can_teach_grade_ids ?? [],
+    experienceYears: row.experience_years,
+    onboardedAt: row.onboarded_at,
+  };
+}
+
+export interface ClassOption {
+  id: string;
+  code: string;
+  displayName: string;
+  sortKey: number;
+}
+
+/** The school's classes (grades, in order) and subjects, for the profile form and the qualification page. */
+export async function listClassesAndSubjects(ctx: TenantContext): Promise<{ grades: ClassOption[]; subjects: { id: string; name: string }[] }> {
+  const supabase = await createClient();
+  const [grades, subjects] = await Promise.all([
+    supabase.from("grades").select("id, code, display_name, sort_key").eq("institution_id", ctx.institution.id).order("sort_key"),
+    supabase.from("subjects").select("id, name").eq("institution_id", ctx.institution.id).order("name"),
+  ]);
+  if (grades.error) throw grades.error;
+  if (subjects.error) throw subjects.error;
+  return {
+    grades: (grades.data ?? []).map((g) => ({ id: g.id, code: g.code, displayName: g.display_name, sortKey: g.sort_key })),
+    subjects: subjects.data ?? [],
+  };
+}
+
+/** The school's qualification rule (settings.staff.max_grade_by_level); missing levels use the defaults. */
+export function qualificationRules(ctx: TenantContext): QualRules {
+  const parsed = InstitutionSettingsSchema.shape.staff.safeParse(ctx.institution.settings.staff);
+  return (parsed.success ? parsed.data?.max_grade_by_level : undefined) ?? {};
+}
+
+export interface TeacherQualificationRow extends QualTeacher {
+  designation: string;
+  degrees: string;
+  subjectNames: string[];
+  onboarded: boolean;
+}
+
+/** Every active teaching staff member with what they entered on their profile (office roles; staff_select RLS). */
+export async function listTeacherQualifications(ctx: TenantContext, subjects: readonly { id: string; name: string }[]): Promise<TeacherQualificationRow[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("staff")
+    .select("id, full_name, designation, qualifications, can_teach_subject_ids, can_teach_grade_ids, experience_years, onboarded_at")
+    .eq("institution_id", ctx.institution.id)
+    .eq("is_teaching", true)
+    .eq("status", "active")
+    .order("full_name");
+  if (error) throw error;
+  const subjectName = new Map(subjects.map((s) => [s.id, s.name]));
+  return (data ?? []).map((s) => {
+    const quals = (s.qualifications as unknown as Qualification[]) ?? [];
+    return {
+      staffId: s.id,
+      name: s.full_name,
+      designation: s.designation,
+      level: highestLevel(quals),
+      degrees: quals.map((q) => (q.subject ? `${q.degree} (${q.subject})` : q.degree)).join(", "),
+      gradeIds: s.can_teach_grade_ids ?? [],
+      subjectNames: (s.can_teach_subject_ids ?? []).flatMap((id) => subjectName.get(id) ?? []),
+      experienceYears: s.experience_years,
+      onboarded: s.onboarded_at !== null,
+    };
+  });
 }

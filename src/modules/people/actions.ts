@@ -8,14 +8,19 @@
 import { defineAction } from "@/lib/actions/define-action";
 import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import {
   DepartmentUpsertSchema,
   GuardianLinkSchema,
   GuardianUpdateSchema,
+  SaveQualificationRulesSchema,
+  SaveTeacherProfileSchema,
   StaffUpsertSchema,
   StudentUpdateSchema,
   type DepartmentUpsertInput,
+  type SaveQualificationRulesInput,
+  type SaveTeacherProfileInput,
   type GuardianLinkInput,
   type GuardianUpdateInput,
   type StaffUpsertInput,
@@ -238,5 +243,52 @@ export const linkGuardian = defineAction({
     const result = data as { guardian_id: string; created: boolean };
 
     return { guardianId: result.guardian_id, created: result.created };
+  },
+});
+
+// 0155: a staff member saves their own teaching profile (the first sign-in form). leave.request is held
+// by every staff role and by no student or guardian; save_own_teacher_profile only ever writes the
+// caller's own staff row (found through their membership).
+export const saveOwnTeacherProfile = defineAction({
+  name: "people.teacherProfile.saveOwn",
+  schema: SaveTeacherProfileSchema,
+  module: "core",
+  permission: "leave.request",
+  handler: async (input: SaveTeacherProfileInput, ctx) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("save_own_teacher_profile", {
+      p_institution_id: ctx.institution.id,
+      p_qualifications: input.qualifications,
+      p_subject_ids: input.subjectIds,
+      p_grade_ids: input.gradeIds,
+      // null clears it; generated RPC arg types cannot say an argument may be null.
+      p_experience_years: input.experienceYears as number,
+    });
+    if (error) throwMapped(error);
+    const saved = data as { staff_id: string; highest_qualification: string | null };
+    await audit(ctx, { action: "people.teacher_profile.saved", entityType: "staff", entityId: saved.staff_id, metadata: { highest: saved.highest_qualification } });
+    revalidatePath(`/${ctx.institution.slug}`, "layout");
+    return saved;
+  },
+});
+
+// 0155: the school's rule for the highest class each qualification level may teach.
+export const saveQualificationRules = defineAction({
+  name: "people.qualificationRules.save",
+  schema: SaveQualificationRulesSchema,
+  module: "core",
+  permission: "institution.settings.manage",
+  handler: async ({ maxGradeByLevel }: SaveQualificationRulesInput, ctx) => {
+    const supabase = await createClient();
+    const { data: grades, error: gradesError } = await supabase.from("grades").select("code").eq("institution_id", ctx.institution.id);
+    if (gradesError) throwMapped(gradesError);
+    const known = new Set((grades ?? []).map((g) => g.code));
+    const unknown = Object.values(maxGradeByLevel).filter((code) => !known.has(code));
+    if (unknown.length) throw new AppError("validation_failed", `This school has no class ${unknown.join(", ")}.`);
+    const { error } = await supabase.rpc("patch_institution_settings", { p_institution_id: ctx.institution.id, p_patch: { staff: { max_grade_by_level: maxGradeByLevel } } });
+    if (error) throwMapped(error);
+    await audit(ctx, { action: "people.qualification_rules.saved", entityType: "institution", entityId: ctx.institution.id, metadata: { maxGradeByLevel } });
+    revalidatePath(`/${ctx.institution.slug}/staff/qualifications`);
+    return { maxGradeByLevel };
   },
 });

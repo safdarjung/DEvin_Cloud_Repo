@@ -18,6 +18,8 @@ import { getClaims } from "@/lib/supabase/server";
 import { brandingStyle } from "@/modules/core/setup/branding-utils";
 import { getLayoutBranding } from "@/modules/core/setup/branding.queries";
 import { listEnabledTasks } from "@/modules/ai/tasks/state";
+import { TeachingProfileBanner } from "@/modules/people/components/TeachingProfileBanner";
+import { getMyTeacherProfile } from "@/modules/people/queries";
 
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
@@ -84,6 +86,10 @@ export default async function TenantLayout({
   };
   // F18 §H: school branding (validated colour as CSS variables, logo via signed URL); default theme when unset.
   const branding = await getLayoutBranding(ctx);
+  // 0155: a teacher who has not saved their teaching profile sees a reminder until they do. A failed read
+  // only hides the reminder; it never breaks the page.
+  const profilePending =
+    ctx.membership.role === "teacher" && Boolean(ctx.membership.staffId) && (await getMyTeacherProfile(ctx).then((p) => p !== null && p.onboardedAt === null, () => false));
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
 
   return (
@@ -123,6 +129,7 @@ export default async function TenantLayout({
           />
           <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(9rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-24">
             <div className="mx-auto w-full max-w-7xl">
+              {profilePending && <TeachingProfileBanner href={`${base}/me/teaching-profile`} />}
               {children}
             </div>
           </main>

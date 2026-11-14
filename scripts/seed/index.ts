@@ -27,6 +27,7 @@ import { run as runPayroll } from "./sections/payroll.ts";
 import { run as runPtm } from "./sections/ptm.ts";
 import { run as runAlumni } from "./sections/alumni.ts";
 import { run as runStaffing } from "./sections/staffing.ts";
+import { run as runTeacherProfiles } from "./sections/teacher-profiles.ts";
 import { run as runTimetable } from "./sections/timetable.ts";
 import { run as runTimetableControl } from "./sections/timetable-control.ts";
 import { run as runHealth } from "./sections/health.ts";
@@ -68,6 +69,8 @@ const SECTIONS: { name: string; run: (ctx: SeedContext) => Promise<void> }[] = [
   { name: "academics", run: runAcademics },
   { name: "timetable", run: runTimetable },
   { name: "staffing", run: runStaffing },
+  // 0155: after staffing, so subject_assignments exist.
+  { name: "teacher-profiles", run: runTeacherProfiles },
   // M13-T11: right after timetable, so public.rooms already exists for assets.room_id.
   { name: "operations", run: runOperations },
   { name: "curriculum", run: runCurriculum },

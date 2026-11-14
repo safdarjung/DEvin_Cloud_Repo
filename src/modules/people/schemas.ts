@@ -3,6 +3,7 @@
 // designation, department_id, phone, email, status, is_teaching}.
 import { z } from "zod";
 import { notFutureDate, phoneIN, shortText, uuid } from "@/lib/schemas/common";
+import { QUAL_LEVELS } from "./qualifications";
 
 export const DepartmentUpsertSchema = z
   .object({
@@ -117,3 +118,28 @@ export const StudentListFiltersSchema = z
   .strip();
 
 export type StudentListFiltersInput = z.infer<typeof StudentListFiltersSchema>;
+
+// 0155: a staff member's own teaching profile (first sign-in form).
+export const QualificationSchema = z
+  .object({
+    level: z.enum(QUAL_LEVELS),
+    degree: z.string().trim().min(1, "Name the degree, e.g. B.Ed.").max(80),
+    subject: z.string().trim().max(80).optional(),
+    year: z.number().int().min(1950).max(2100).optional(),
+  })
+  .strict();
+export const SaveTeacherProfileSchema = z
+  .object({
+    qualifications: z.array(QualificationSchema).min(1, "Add at least one qualification.").max(10),
+    subjectIds: z.array(uuid).max(40),
+    gradeIds: z.array(uuid).max(20),
+    experienceYears: z.number().int().min(0).max(60).nullable(),
+  })
+  .strict();
+export type SaveTeacherProfileInput = z.infer<typeof SaveTeacherProfileSchema>;
+
+// 0155: the highest class each qualification level may teach (grade codes), saved to settings.staff.
+export const SaveQualificationRulesSchema = z
+  .object({ maxGradeByLevel: z.partialRecord(z.enum(QUAL_LEVELS), z.string().trim().min(1).max(20)) })
+  .strict();
+export type SaveQualificationRulesInput = z.infer<typeof SaveQualificationRulesSchema>;

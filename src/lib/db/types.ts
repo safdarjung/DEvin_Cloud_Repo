@@ -5689,14 +5689,14 @@ isOneToOne: false
                   ]
                 },"staff": {
                   Row: {
-                    "created_at": string,"department_id": string | null,"designation": string,"email": string | null,"employee_no": string,"full_name": string,"id": string,"institution_id": string,"is_teaching": boolean,"phone": string | null,"status": string,"updated_at": string,"user_id": string | null
+                    "can_teach_grade_ids": (string)[],"can_teach_subject_ids": (string)[],"created_at": string,"department_id": string | null,"designation": string,"email": string | null,"employee_no": string,"experience_years": number | null,"full_name": string,"highest_qualification": string | null,"id": string,"institution_id": string,"is_teaching": boolean,"onboarded_at": string | null,"phone": string | null,"qualifications": NonNullable<Json>,"status": string,"updated_at": string,"user_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"department_id"?: string | null,"designation": string,"email"?: string | null,"employee_no": string,"full_name": string,"id"?: string,"institution_id": string,"is_teaching"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string | null
+                    "can_teach_grade_ids"?: (string)[],"can_teach_subject_ids"?: (string)[],"created_at"?: string,"department_id"?: string | null,"designation": string,"email"?: string | null,"employee_no": string,"experience_years"?: number | null,"full_name": string,"highest_qualification"?: string | null,"id"?: string,"institution_id": string,"is_teaching"?: boolean,"onboarded_at"?: string | null,"phone"?: string | null,"qualifications"?: NonNullable<Json>,"status"?: string,"updated_at"?: string,"user_id"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"department_id"?: string | null,"designation"?: string,"email"?: string | null,"employee_no"?: string,"full_name"?: string,"id"?: string,"institution_id"?: string,"is_teaching"?: boolean,"phone"?: string | null,"status"?: string,"updated_at"?: string,"user_id"?: string | null
+                    "can_teach_grade_ids"?: (string)[],"can_teach_subject_ids"?: (string)[],"created_at"?: string,"department_id"?: string | null,"designation"?: string,"email"?: string | null,"employee_no"?: string,"experience_years"?: number | null,"full_name"?: string,"highest_qualification"?: string | null,"id"?: string,"institution_id"?: string,"is_teaching"?: boolean,"onboarded_at"?: string | null,"phone"?: string | null,"qualifications"?: NonNullable<Json>,"status"?: string,"updated_at"?: string,"user_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -8052,6 +8052,11 @@ isOneToOne: false
               "class_section_id": string,"cover_teacher": string,"on_date": string,"period_id": string,"subject": string
             }[]
                            },
+"my_teacher_profile":
+{ Args: { "p_institution_id": string }; Returns: {
+              "can_teach_grade_ids": (string)[],"can_teach_subject_ids": (string)[],"experience_years": number,"full_name": string,"highest_qualification": string,"onboarded_at": string,"qualifications": Json,"staff_id": string
+            }[]
+                           },
 "my_upcoming_exam_papers":
 { Args: { "p_days"?: number,"p_student_id": string }; Returns: {
               "duration_minutes": number,"exam_id": string,"exam_name": string,"paper_id": string,"scheduled_at": string,"subject_name": string
@@ -8325,6 +8330,9 @@ isOneToOne: false
       } },
 "save_hostel_roll_call":
 { Args: { "p_entries": Json,"p_institution_id": string,"p_session": string,"p_taken_on": string }; Returns: string
+                           },
+"save_own_teacher_profile":
+{ Args: { "p_experience_years": number,"p_grade_ids": (string)[],"p_institution_id": string,"p_qualifications": Json,"p_subject_ids": (string)[] }; Returns: Json
                            },
 "save_test_ai_suggestion":
 { Args: { "p_feedback": string,"p_marks": number,"p_response_id": string }; Returns: undefined
