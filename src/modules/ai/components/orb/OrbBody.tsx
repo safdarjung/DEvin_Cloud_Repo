@@ -1,16 +1,17 @@
 "use client";
 
-// The orb. Full size it is the page's hero: a glass ball in living dust (OrbCore,
-// whose motion follows the AI state) in front of a role-tinted glow and a faint orbit
-// ring, with the current mode's features riding its surface as dots (children:
-// OrbDots, `nodeKey` set). Drag turns the sphere on two axes and a fling keeps it
+// The orb. Full size it is the page's hero: a hollow net you can see through (OrbCore,
+// whose motion follows the AI state and the hand: it lifts toward the pointer, dents
+// under a press, wobbles after a hard spin) inside a faint orbit ring, with nothing
+// behind it, and the current mode's features riding it as dots (children: OrbDots,
+// `nodeKey` set). Drag turns the sphere on two axes and a fling keeps it
 // spinning; the wheel spins it; keyboard focus, a lit section and a search turn the
 // right dots to the front; a slow idle spin pauses on hover and focus. The hot dot
-// (hovered, focused or tapped) bulges, its neighbours part, the dust behind it lights
+// (hovered, focused or tapped) bulges, its neighbours part, the net behind it lights
 // and its label follows it. One frame loop (motion's, which OrbCore renders in too)
 // does the physics and writes each dot's transform and opacity straight to the DOM; it
 // stops when the tab is hidden or the orb is off-screen. No WebGL or reduced motion:
-// no dots here (OrbView shows the sections as a row instead). Small (a conversation
+// the same net as a flat drawing that the loop turns with the dots. Small (a conversation
 // open), the orb leans toward the open section in the row below. Each state reads
 // without colour (icon + text in the pill), a badge counts cards waiting, and phones
 // get tiny haptics. The hot dot's section is joined by constellation lines, and a finished
@@ -21,10 +22,9 @@ import { AnimatePresence, animate, cancelFrame, frame, motion, useMotionValue, u
 import { Check, FilePlus2, Inbox, Loader2, MessageSquareText, Mic, Sparkles, TriangleAlert } from "lucide-react";
 import type { OrbSignals } from "./OrbCore";
 import {
-  dotLook, dotPoints, dotSize, easeOutBack, frontAngle, frontTilt, idleEase, nearestAngle, nudgeAway, rotateYX, springStep,
+  dotLook, dotPoints, dotSize, easeOutBack, frontAngle, frontTilt, idleEase, nearestAngle, netPaths, nudgeAway, orbNet, rotateYX, springStep,
   type OrbState, type Vec3,
 } from "./orb-layout";
-import { ORB_ERROR } from "./orb-theme";
 import { Bursts, type Burst } from "./OrbBurst";
 import { constellationPath } from "./orb-play";
 
@@ -61,6 +61,8 @@ interface Props {
   onTap: () => void;
   /** The mouse over the orb, in the ball's own -1..1 square (y up); `over` false when it leaves (x, y are then ignored). */
   onPointer: (x: number, y: number, over: boolean) => void;
+  /** A press on the orb, in the same square: `down` while the button or finger is held (the net dents there), false on release. */
+  onPress: (x: number, y: number, down: boolean) => void;
   showStatus: boolean;
   /** The dots (OrbDots). */
   children?: React.ReactNode;
@@ -85,10 +87,12 @@ const LEAN_PX = 8;
 const SLOP_PX = { mouse: 6, touch: 12 };
 /** Released this long after the last move: no fling. */
 const STALE_MS = 80;
-/** The dots' sphere: its radius as a share of the stage's side (they ride the glass ball's surface). */
+/** The dots' sphere: its radius as a share of the stage's side (they ride the net). */
 const NODE_RADIUS = 0.385;
-/** The glass ball's radius as a share of half the stage (OrbCore draws it; the fallback disc has the same inset). */
+/** The net's radius as a share of half the stage (OrbCore draws it; the flat drawing has the same radius). */
 const BALL_SHARE = 0.76;
+/** Where the net's rim falls in the glow box, which overhangs the stage by 6% on every side (it has faded out before a phone's clip edge). */
+const RIM = `${((BALL_SHARE / 1.12) * 100).toFixed(0)}%`;
 /** Below this diameter (px) the dots could not be tapped reliably. */
 const MIN_NODE_SPHERE_PX = 220;
 const AUTO_SPIN = 0.12;
@@ -102,10 +106,17 @@ const MAX_TILT = 1.15;
 const wrapAngle = (a: number): number => a - 2 * Math.PI * Math.floor((a + Math.PI) / (2 * Math.PI));
 /** Tilt it rests at after a mode change: a little of the top shows. */
 const REST_TILT = 0.22;
+/** How fine the net is (orbNet): full size, and the small orb beside a conversation. */
+const NET_FREQ = { full: 4, compact: 2 };
+const NETS = { full: orbNet(NET_FREQ.full), compact: orbNet(NET_FREQ.compact) };
+/** The flat drawing's box (SVG units, centred), the net's radius in it, and the net at its resting pose. */
+const NET_BOX = 200;
+const NET_R = (BALL_SHARE * NET_BOX) / 2;
+const NET_STILL = { full: netPaths(NETS.full, 0, REST_TILT, NET_R), compact: netPaths(NETS.compact, 0, REST_TILT, NET_R) };
 /** Wheel px -> spin impulse (rad/s). */
 const WHEEL_GAIN = 0.016;
 const MAX_SPIN = 9;
-/** Each dot's fly-in, after [delay, time over which all of them start] in seconds: later on arrival while the dust assembles. */
+/** Each dot's fly-in, after [delay, time over which all of them start] in seconds: later on arrival while the net unwinds. */
 const FLY_S = 0.45;
 const ARRIVAL = [0.35, 0.7] as const;
 const MODE_CHANGE = [0, 0.45] as const;
@@ -287,7 +298,7 @@ export function OrbBody(p: Props) {
     return () => ro.disconnect();
   }, [compact, onRoomy]);
 
-  // The frame loop: spin physics on two axes, the dots' transforms, the hot dot's label, and the spin + hot spot for the dust.
+  // The frame loop: spin physics on two axes, the dots' transforms, the hot dot's label, and the spin + hot spot for the net.
   useEffect(() => {
     const el = stage.current;
     if (!live || !el) return;
@@ -299,6 +310,9 @@ export function OrbBody(p: Props) {
     let label: HTMLElement | null = null;
     let lines: SVGElement | null = null;
     let path: SVGPathElement | null = null;
+    // No canvas: the flat net's two paths (far, near) and the pose they were last drawn at.
+    const flat = showCanvas ? [] : [...el.querySelectorAll<SVGPathElement>("[data-orb-net] path")];
+    let drawn = [0, REST_TILT];
     let turn = "";
     const pos: [number, number, number][] = [];
     let width = 0;
@@ -408,7 +422,7 @@ export function OrbBody(p: Props) {
           sp.lastInput = now;
         }
       }
-      // A hard spin stirs the dust.
+      // A hard spin stirs the net.
       sig.pulse = Math.max(sig.pulse, Math.min(1.2, (Math.abs(sp.vy) + Math.abs(sp.vx)) * 0.14));
 
       // The hot dot (OrbDots marks the hovered, focused or tapped one); none while the sphere is dragged.
@@ -420,8 +434,14 @@ export function OrbBody(p: Props) {
       if (resting && !reduced) sp.ry += dt * AUTO_SPIN * idle;
       sig.spin = sp.ry;
       sig.tilt = sp.rx;
+      if (flat.length === 2 && (drawn[0] !== sp.ry || drawn[1] !== sp.rx)) {
+        drawn = [sp.ry, sp.rx];
+        const d = netPaths(compact ? NETS.compact : NETS.full, sp.ry, sp.rx, NET_R);
+        flat[0].setAttribute("d", d.far);
+        flat[1].setAttribute("d", d.near);
+      }
 
-      // Its neighbours part and the dust behind it brightens.
+      // Its neighbours part and the net behind it brightens.
       if (hot >= 0 && sp.pts[hot]) {
         hotI = hot;
         hotP = sp.pts[hot];
@@ -453,7 +473,7 @@ export function OrbBody(p: Props) {
         n.style.transform = `translate(-50%, -50%) translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) scale(${s.toFixed(4)})`;
         n.style.opacity = (Math.max(look.opacity, k) * Math.min(1, a * 2.5)).toFixed(3);
         n.style.pointerEvents = look.pickable && a > 0.6 ? "" : "none";
-        // Back-hemisphere dots stack below the ball (negative, inside the isolated stage), so the glass and dust pass over them; the hot one is on top.
+        // Back-hemisphere dots stack below the ball (negative, inside the isolated stage), so the net passes over them; the hot one is on top.
         n.style.zIndex = k > 0.5 ? "40" : String(Math.round(v[2] * 10) + (v[2] < 0 ? -11 : 11));
         pos[i] = [x, y, v[2]];
         if (i === hotI) {
@@ -501,7 +521,7 @@ export function OrbBody(p: Props) {
       cancelFrame(step);
       sig.hot[3] = 0;
     };
-  }, [live, reduced, signals]);
+  }, [live, reduced, signals, showCanvas, compact]);
 
   // Wheel and trackpad spin the sphere; the page must not scroll under it (non-passive listener).
   useEffect(() => {
@@ -530,6 +550,11 @@ export function OrbBody(p: Props) {
     let moved = 0;
     dragged.current = false;
     buzz(reduced, 6);
+    // The net dents under the press and the dent follows the finger (OrbCore), in the ball's own -1..1 square, y up.
+    const box = e.currentTarget.getBoundingClientRect();
+    const pressAt = (cx: number, cy: number, down: boolean) =>
+      p.onPress((cx - (box.left + box.width / 2)) / (box.width / 2) / BALL_SHARE, -(cy - (box.top + box.height / 2)) / (box.height / 2) / BALL_SHARE, down);
+    pressAt(e.clientX, e.clientY, true);
     // A small squash on press: the pressed dot, else the orb.
     if (node) sp.press = Number(node.dataset.node);
     else if (!reduced) {
@@ -551,6 +576,7 @@ export function OrbBody(p: Props) {
       const dx = ev.clientX - lx;
       const dy = ev.clientY - ly;
       moved += Math.abs(dx) + Math.abs(dy);
+      pressAt(ev.clientX, ev.clientY, true);
       if (moved > slop) sp.press = -1;
       if (sp.dragging) {
         // px -> radians so the front of the sphere follows the pointer, on both axes.
@@ -574,6 +600,7 @@ export function OrbBody(p: Props) {
       window.removeEventListener("pointercancel", up);
       dragged.current = moved > slop;
       sp.press = -1;
+      pressAt(ev.clientX, ev.clientY, false);
       sx.set(1);
       sy.set(1);
       if (sp.dragging) {
@@ -595,7 +622,7 @@ export function OrbBody(p: Props) {
     const r = e.currentTarget.getBoundingClientRect();
     const nx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
     const ny = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-    // The ball's highlight and the dust under the pointer follow it (in the ball's own square, y up).
+    // The net lifts toward the pointer (in the ball's own square, y up).
     p.onPointer(nx / BALL_SHARE, -ny / BALL_SHARE, true);
     // Mouse over the bare orb (no dots on it): it leans toward the pointer.
     if (keyRef.current || spin.current.dragging) return;
@@ -616,7 +643,7 @@ export function OrbBody(p: Props) {
   }
 
   const ui = STATE_UI[state];
-  const coreColor = state === "error" ? [ORB_ERROR, ORB_ERROR] : accent;
+  const still = compact ? NET_STILL.compact : NET_STILL.full;
   const breathing = !reduced && (state === "idle" || state === "typing" || state === "waiting");
   const working = state === "submitted" || state === "streaming";
   // Theme-dependent colours go through CSS (dark:), not `dark`, so the server HTML matches on hydration.
@@ -656,27 +683,18 @@ export function OrbBody(p: Props) {
         style={{ touchAction: live && !compact ? "none" : "pan-y", ...roleVars }}
         className={`relative isolate select-none ${live ? "cursor-grab active:cursor-grabbing" : ""} ${compact ? "size-28 sm:size-32" : "size-[max(min(90vw,19rem),min(90vw,34rem,58dvh,calc(100dvh_-_30rem)))] max-sm:size-[max(min(90vw,19rem),min(90vw,58dvh,calc(100dvh_-_32.5rem)))]"}`}
       >
-        {/* Depth: a soft role-tinted glow and the far half of an orbit ring behind the sphere. */}
-        <div
-          aria-hidden
-          // On a phone the sphere fills the column: the glow must fade out before the clip edge.
-          className="pointer-events-none absolute -inset-[24%] rounded-full opacity-45 max-sm:-inset-[2%] dark:opacity-70"
-          style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--orb-a) 42%, transparent), transparent)" }}
-        />
-        {/* The glow swells while the orb listens, thinks and answers. */}
+        {/* Nothing sits behind the net at rest: any glow there reads as a ball inside it. A rim of light swells round it while the orb listens, thinks and answers. */}
         {!reduced && (
           <motion.div
             aria-hidden
-            className="pointer-events-none absolute -inset-[10%] rounded-full max-sm:-inset-[2%]"
-            style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--orb-b) 46%, transparent), transparent)" }}
+            className="pointer-events-none absolute -inset-[6%] rounded-full"
+            style={{ background: `radial-gradient(closest-side, transparent 58%, color-mix(in oklab, var(--orb-b) 46%, transparent) ${RIM}, transparent)` }}
             initial={false}
             animate={working || state === "listening" || state === "proposing" ? { opacity: [0.35, 0.9, 0.35], scale: [0.96, 1.04, 0.96] } : { opacity: 0, scale: 1 }}
             transition={working || state === "listening" || state === "proposing" ? { duration: state === "submitted" ? 1.3 : 2.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.4 }}
           />
         )}
         <Orbit near={false} moving={!reduced} />
-        {/* Contact shadow: the sphere sits on something. */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-[24%] bottom-[2%] h-[7%] rounded-[50%] bg-black/25 blur-xl dark:bg-black/70" />
         <motion.div className="absolute inset-0" style={{ x: shake }}>
           <motion.div ref={orbRef} aria-hidden data-orb style={{ x, y, scaleX: sx, scaleY: sy }} className="absolute inset-0">
             <motion.div
@@ -686,8 +704,9 @@ export function OrbBody(p: Props) {
             >
               {lean && !reduced && (
                 <motion.span
-                  className="absolute -inset-3 rounded-full blur-xl"
-                  style={{ background: `radial-gradient(circle, ${lean.hue}, transparent 70%)` }}
+                  className="absolute -inset-3 rounded-full blur-md"
+                  // A rim of the open section's colour: the middle of the net stays clear.
+                  style={{ background: `radial-gradient(closest-side, transparent 52%, ${lean.hue} 68%, transparent)` }}
                   initial={{ opacity: 0.2, scale: 0.9 }}
                   animate={{ opacity: [0.25, 0.6, 0.25], scale: [0.95, 1.08, 0.95] }}
                   transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
@@ -702,37 +721,23 @@ export function OrbBody(p: Props) {
                   transition={{ duration: 2.2, repeat: Infinity, ease: "easeOut" }}
                 />
               )}
-              <div
-                className="absolute inset-[12%] overflow-hidden rounded-full transition-[background] duration-500"
-                style={{
-                  background: `radial-gradient(circle at 35% 30%, ${coreColor[1]}, ${coreColor[0]} 70%)`,
-                  // With WebGL the glass ball is drawn by OrbCore: this disc only lends its glow.
-                  opacity: showCanvas ? 0 : 0.9,
-                  boxShadow: `0 0 40px -8px ${coreColor[1]}`,
-                }}
-              >
-                {!showCanvas && (
-                  // No WebGL / reduced motion: a still highlight where the dust would move.
-                  <span
-                    className="absolute -inset-1/4 rounded-full"
-                    style={{ background: "conic-gradient(from 0deg, transparent 0 55%, rgb(255 255 255 / 0.35) 70%, transparent 85%)" }}
-                  />
-                )}
-              </div>
-              {/* Volume: an off-centre highlight, a darker limb toward the terminator and a soft inner glow (the glass shader does this itself). */}
-              {!showCanvas && <div
+              {/* The net as a flat drawing: all there is without WebGL or under reduced motion (the frame loop turns it
+                  with the dots), and what shows until the canvas has loaded, when it fades out under the live net. */}
+              <svg
+                data-orb-net
                 aria-hidden
-                className="pointer-events-none absolute inset-[12%] rounded-full opacity-100 dark:opacity-75"
-                style={{
-                  background:
-                    "radial-gradient(circle at 33% 27%, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 32%), radial-gradient(circle at 40% 36%, transparent 46%, rgb(12 8 32 / 0.26) 84%, rgb(8 4 24 / 0.5) 100%)",
-                  boxShadow: "inset 0 0 40px -6px color-mix(in oklab, var(--orb-b) 75%, transparent), inset -16px -22px 44px -12px rgb(0 0 0 / 0.3)",
-                }}
-              />}
+                viewBox={`${-NET_BOX / 2} ${-NET_BOX / 2} ${NET_BOX} ${NET_BOX}`}
+                fill="none"
+                strokeLinecap="round"
+                className={`pointer-events-none absolute inset-0 size-full transition-[opacity,visibility] duration-700 ${showCanvas ? "invisible opacity-0" : ""} ${state === "error" ? "stroke-destructive" : "stroke-(--orb-a) dark:stroke-(--orb-b)"}`}
+              >
+                <path d={still.far} strokeOpacity={0.22} strokeWidth={1} vectorEffect="non-scaling-stroke" />
+                <path d={still.near} strokeOpacity={0.8} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+              </svg>
               {showCanvas && (
                 // Wider than the stage (room for the motes), so it takes no pointer events: the tabs under the orb stay clickable.
                 <div className="pointer-events-none absolute -inset-[20%]">
-                  <OrbCore state={state} dark={dark} accent={accent} signals={signals} />
+                  <OrbCore state={state} dark={dark} accent={accent} signals={signals} freq={compact ? NET_FREQ.compact : NET_FREQ.full} />
                 </div>
               )}
               {state === "done" && (

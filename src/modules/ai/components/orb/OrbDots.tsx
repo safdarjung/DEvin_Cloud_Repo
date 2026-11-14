@@ -1,7 +1,7 @@
 "use client";
 
 // The current mode's features as dots on the orb: one real button (or page link) per
-// feature, in its section's colour with the section's icon. OrbBody's frame loop
+// feature, a ring in its section's colour round the section's icon (filled when hot). OrbBody's frame loop
 // places them over the whole sphere and reads two things from here: which dot is hot
 // (`data-hot`: hovered, keyboard-focused or tapped) and which are dimmed (`data-dim`:
 // a section or a search is lit and this dot is not in it). The hot dot's name and what
@@ -41,8 +41,11 @@ interface Props {
   preview: { key: string; n: number } | null;
 }
 
+// A dot is a bead on the net: a ring in its section's colour that fills with it when hot (hovered, focused or tapped).
 const DOT =
-  "group pointer-events-auto absolute left-1/2 top-1/2 grid size-(--dot) cursor-pointer place-items-center rounded-full opacity-0 outline-none transition-[filter,outline-color] duration-200 outline-offset-2 outline-transparent data-kin:outline-2 data-kin:outline-(--hue) data-fade:[filter:saturate(0.5)_opacity(0.6)] after:absolute after:-inset-1 after:rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-dim:[filter:grayscale(0.9)_opacity(0.28)] disabled:cursor-default";
+  "group pointer-events-auto absolute left-1/2 top-1/2 grid size-(--dot) cursor-pointer place-items-center rounded-full text-(--hue) opacity-0 shadow-[inset_0_0_0_1.5px_var(--hue)] outline-none transition-[filter,outline-color,background-color,color,box-shadow] duration-200 outline-offset-2 outline-transparent data-hot:bg-(--hue) data-hot:text-white data-hot:shadow-[0_0_0_4px_color-mix(in_oklab,var(--hue)_22%,transparent),0_0_24px_color-mix(in_oklab,var(--hue)_65%,transparent)] data-kin:outline-2 data-kin:outline-(--hue) data-fade:[filter:saturate(0.5)_opacity(0.6)] after:absolute after:-inset-1 after:rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-dim:[filter:grayscale(0.9)_opacity(0.28)] disabled:cursor-default";
+/** An AI action carries a tint of its colour; a page link is plain. */
+const TINTED = "bg-[color-mix(in_oklab,var(--hue)_16%,var(--background))]";
 
 function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRun, onHot, reduced, preview }: Props) {
   const dots = groups.flatMap((g) => g.features.map((f) => ({ f, hue: g.hue }))).slice(0, DOT_CAP);
@@ -130,18 +133,8 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
           },
           onPointerEnter: (e: React.PointerEvent) => e.pointerType === "mouse" && setHot(f.key),
           onPointerLeave: (e: React.PointerEvent) => e.pointerType === "mouse" && hot === f.key && setHotKey(null),
-          className: DOT,
-          // A page link is a hollow dot; an AI action is a filled, lit one.
-          style: {
-            ...({ "--hue": hue } as React.CSSProperties),
-            ...(page
-            ? { background: "var(--card)", boxShadow: `inset 0 0 0 2px ${hue}, 0 6px 14px -8px rgb(0 0 0 / 0.45)`, color: hue }
-            : {
-                background: `radial-gradient(circle at 32% 26%, color-mix(in oklab, ${hue} 72%, white), ${hue} 68%)`,
-                boxShadow: `0 0 0 1.5px rgb(255 255 255 / 0.7), 0 6px 14px -8px rgb(0 0 0 / 0.45)`,
-                color: "white",
-              }),
-          },
+          className: `${DOT} ${page ? "bg-background" : TINTED}`,
+          style: { "--hue": hue } as React.CSSProperties,
         };
         // Touch has no hover: the first tap only shows what the dot is.
         const firstTap = () => touch.current && hot !== f.key;

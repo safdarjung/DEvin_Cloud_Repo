@@ -16,6 +16,76 @@ export function fibonacciSphere(n: number): Vec3[] {
   return pts;
 }
 
+/** The orb's body: joints on the unit sphere and the links (pairs of joint indices) between them. */
+export interface OrbNet {
+  points: Vec3[];
+  links: (readonly [number, number])[];
+}
+
+const PHI = (1 + Math.sqrt(5)) / 2;
+const ICO_POINTS: Vec3[] = [
+  [-1, PHI, 0], [1, PHI, 0], [-1, -PHI, 0], [1, -PHI, 0], [0, -1, PHI], [0, 1, PHI],
+  [0, -1, -PHI], [0, 1, -PHI], [PHI, 0, -1], [PHI, 0, 1], [-PHI, 0, -1], [-PHI, 0, 1],
+];
+const ICO_FACES: Vec3[] = [
+  [0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8],
+  [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1],
+];
+const unit = (v: Vec3): Vec3 => {
+  const l = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / l, v[1] / l, v[2] / l];
+};
+
+/**
+ * A honeycomb net over the unit sphere: an icosahedron with every face cut into `freq`² triangles, then its dual
+ * (one joint per triangle, one link per pair of triangles that share an edge). 20·freq² joints, 30·freq² links,
+ * three links at each joint: hexagonal cells with twelve pentagons. Deterministic.
+ */
+export function orbNet(freq: number): OrbNet {
+  const points: Vec3[] = [];
+  const links: [number, number][] = [];
+  /** Triangle edges met once so far, by their midpoint: the second triangle on an edge closes a link. */
+  const open = new Map<string, number>();
+  const add = (a: Vec3, b: Vec3, c: Vec3) => {
+    const at = points.push(unit([a[0] + b[0] + c[0], a[1] + b[1] + c[1], a[2] + b[2] + c[2]])) - 1;
+    for (const [p, q] of [[a, b], [b, c], [c, a]] as const) {
+      const key = [0, 1, 2].map((k) => Math.round((p[k] + q[k]) * 5000)).join(",");
+      const other = open.get(key);
+      if (other === undefined) open.set(key, at);
+      else links.push([other, at]);
+    }
+  };
+  for (const [ia, ib, ic] of ICO_FACES) {
+    const [A, B, C] = [ICO_POINTS[ia], ICO_POINTS[ib], ICO_POINTS[ic]];
+    const at = (i: number, j: number): Vec3 => {
+      const w = freq - i - j;
+      return unit([A[0] * w + B[0] * i + C[0] * j, A[1] * w + B[1] * i + C[1] * j, A[2] * w + B[2] * i + C[2] * j]);
+    };
+    for (let i = 0; i < freq; i++) {
+      for (let j = 0; i + j < freq; j++) {
+        add(at(i, j), at(i + 1, j), at(i, j + 1));
+        if (i + j < freq - 1) add(at(i + 1, j), at(i + 1, j + 1), at(i, j + 1));
+      }
+    }
+  }
+  return { points, links };
+}
+
+/**
+ * The net as two SVG paths for the pose (`ry`, `rx` as in `rotateYX`): the links on the near half and those on
+ * the far half, in px about the centre with y down. The drawn net where WebGL or motion is off.
+ */
+export function netPaths(net: OrbNet, ry: number, rx: number, radius: number): { near: string; far: string } {
+  const at = net.points.map((p) => rotateYX(p, ry, rx));
+  const out = { near: "", far: "" };
+  for (const [a, b] of net.links) {
+    const seg = `M${(at[a][0] * radius).toFixed(1)} ${(-at[a][1] * radius).toFixed(1)}L${(at[b][0] * radius).toFixed(1)} ${(-at[b][1] * radius).toFixed(1)}`;
+    if (at[a][2] + at[b][2] > 0) out.near += seg;
+    else out.far += seg;
+  }
+  return out;
+}
+
 const MIC_GAIN = 4;
 
 /** 0..1 loudness from an AnalyserNode's byte time-domain samples (128 = silence). */
@@ -57,20 +127,22 @@ export interface Wave {
   swirl: number;
   /** Typing: a light jitter band sweeping the surface. */
   jitter: number;
+  /** Packets of light running along the net's links: faint at rest, full while the AI works. */
+  flow: number;
 }
 
 const CALM = { ripple: 0, contract: 0, swirl: 0, jitter: 0 };
 const WAVES: Record<OrbState, Wave> = {
-  idle: { ...CALM, amp: 0.035, speed: 0.3, glow: 0.35, spin: 1 },
-  listening: { ...CALM, amp: 0.03, speed: 0.6, glow: 0.6, spin: 0.4 },
-  typing: { ...CALM, amp: 0.04, speed: 0.5, glow: 0.5, spin: 0.8, jitter: 1 },
-  submitted: { ...CALM, amp: 0.05, speed: 1.4, glow: 0.95, spin: 3, contract: 1, swirl: 1 },
-  streaming: { ...CALM, amp: 0.05, speed: 0.9, glow: 0.8, spin: 1.2, ripple: 1 },
+  idle: { ...CALM, amp: 0.035, speed: 0.3, glow: 0.35, spin: 1, flow: 0.18 },
+  listening: { ...CALM, amp: 0.03, speed: 0.6, glow: 0.6, spin: 0.4, flow: 0.35 },
+  typing: { ...CALM, amp: 0.04, speed: 0.5, glow: 0.5, spin: 0.8, jitter: 1, flow: 0.35 },
+  submitted: { ...CALM, amp: 0.05, speed: 1.4, glow: 0.95, spin: 3, contract: 1, swirl: 1, flow: 1 },
+  streaming: { ...CALM, amp: 0.05, speed: 0.9, glow: 0.8, spin: 1.2, ripple: 1, flow: 0.8 },
   // Negative contract: the dots swell outward as a card leaves the orb.
-  proposing: { ...CALM, amp: 0.06, speed: 1.1, glow: 1, spin: 2, ripple: 0.5, contract: -0.6 },
-  waiting: { ...CALM, amp: 0.03, speed: 0.4, glow: 0.55, spin: 0.6 },
-  done: { ...CALM, amp: 0.045, speed: 0.8, glow: 0.9, spin: 1.6 },
-  error: { ...CALM, amp: 0.04, speed: 0.5, glow: 0.3, spin: 0.3 },
+  proposing: { ...CALM, amp: 0.06, speed: 1.1, glow: 1, spin: 2, ripple: 0.5, contract: -0.6, flow: 0.9 },
+  waiting: { ...CALM, amp: 0.03, speed: 0.4, glow: 0.55, spin: 0.6, flow: 0.25 },
+  done: { ...CALM, amp: 0.045, speed: 0.8, glow: 0.9, spin: 1.6, flow: 0.5 },
+  error: { ...CALM, amp: 0.04, speed: 0.5, glow: 0.3, spin: 0.3, flow: 0 },
 };
 
 /** Error: dots scatter and regroup. 0 at t=0, peaks at 1 after 0.25 s, back near 0 within ~2 s. */
@@ -179,7 +251,7 @@ export function dotLook(z: number): { scale: number; opacity: number; pickable: 
   return { scale: 0.34 + 0.66 * smoothstep(-1, 1, z), opacity: 0.3 + 0.7 * smoothstep(-0.6, 0.6, z), pickable: z > 0.45 };
 }
 
-const DOT_PX = { min: 22, max: 52, fill: 0.72 };
+const DOT_PX = { min: 22, max: 46, fill: 0.56 };
 
 /** Diameter (px) of a front dot so n of them fit on a sphere of the given radius without touching. */
 export function dotSize(radiusPx: number, n: number): number {

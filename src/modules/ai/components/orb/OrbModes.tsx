@@ -117,7 +117,7 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
             <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-foreground/70">
               <span className="font-medium text-foreground">Every dot is one thing the orb can do.</span>
               <span>Click to run</span>
-              <span>Drag to spin</span>
+              <span>Spin or poke it</span>
               {/* Key hints are for keyboards: a touch screen has none. */}
               <span className="pointer-coarse:hidden">
                 <Kbd>1</Kbd>–<Kbd>{modes.length}</Kbd> modes

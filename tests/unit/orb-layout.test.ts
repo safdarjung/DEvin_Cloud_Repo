@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dotLook, dotPoints, dotSize, easeOutBack, fibonacciSphere, flickDelta, frontAngle, frontTilt, idleEase, micLevel, nearestAngle,
-  nudgeAway, orbState, pointerDir, rotateYX, scatterEnvelope, shockAt, springStep, stepIndex, typingPulse, waveFor,
+  netPaths, nudgeAway, orbNet, orbState, pointerDir, rotateYX, scatterEnvelope, shockAt, springStep, stepIndex, typingPulse, waveFor,
 } from "@/modules/ai/components/orb/orb-layout";
 import { orbChips } from "@/modules/ai/components/orb/orb-chips";
 import { CAPABILITY_KEYS } from "@/modules/ai/capabilities/catalog";
@@ -227,6 +227,42 @@ describe("orbChips", () => {
   });
 });
 
+describe("orbNet", () => {
+  it("is a closed honeycomb: 20f² joints on the unit sphere, 30f² links, three links at every joint", () => {
+    for (const f of [1, 2, 4]) {
+      const net = orbNet(f);
+      expect(net.points).toHaveLength(20 * f * f);
+      expect(net.links).toHaveLength(30 * f * f);
+      for (const p of net.points) expect(len(p)).toBeCloseTo(1, 6);
+      const degree = net.points.map(() => 0);
+      for (const [a, b] of net.links) {
+        expect(a).not.toBe(b);
+        degree[a]++;
+        degree[b]++;
+      }
+      expect(new Set(degree)).toEqual(new Set([3]));
+    }
+  });
+
+  it("has links of nearly one length, so the net reads as even cells", () => {
+    const net = orbNet(4);
+    const lengths = net.links.map(([a, b]) => dist(net.points[a], net.points[b]));
+    expect(Math.max(...lengths) / Math.min(...lengths)).toBeLessThan(1.6);
+  });
+
+  it("draws the near and far halves as separate paths that turn with the pose", () => {
+    const net = orbNet(2);
+    const still = netPaths(net, 0, 0, 100);
+    const count = (d: string) => d.split("M").length - 1;
+    expect(count(still.near) + count(still.far)).toBe(net.links.length);
+    expect(count(still.near)).toBeGreaterThan(0);
+    expect(count(still.far)).toBeGreaterThan(0);
+    expect(netPaths(net, 0.4, 0.2, 100).near).not.toBe(still.near);
+    // Every coordinate stays inside the circle of the given radius.
+    for (const n of still.near.match(/-?\d+(\.\d+)?/g) ?? []) expect(Math.abs(Number(n))).toBeLessThanOrEqual(100);
+  });
+});
+
 describe("shockAt", () => {
   it("is silent before it starts and long after", () => {
     expect(shockAt(-0.5).strength).toBe(0);
@@ -306,9 +342,9 @@ describe("feature dots on the sphere", () => {
   });
 
   it("dot size shrinks with the count and stays within its limits", () => {
-    expect(dotSize(150, 4)).toBe(52);
+    expect(dotSize(150, 4)).toBe(46);
     expect(dotSize(150, 70)).toBeLessThan(dotSize(150, 30));
     expect(dotSize(60, 200)).toBe(22);
-    expect(dotSize(150, 0)).toBe(52);
+    expect(dotSize(150, 0)).toBe(46);
   });
 });

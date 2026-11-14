@@ -28,7 +28,7 @@ const MODE_ACCENTS: Record<Exclude<OrbMode, "ask">, readonly [string, string]> =
   manage: ["#334155", "#A5B4FC"],
 };
 
-/** The role always keeps the deep stop (its glow, ring and dust base); a mode other than Ask brings its bright stop. */
+/** The role always keeps the deep stop (its ring and the net's base colour); a mode other than Ask brings its bright stop. */
 export const orbAccent = (role: Role, mode: OrbMode): readonly [string, string] =>
   mode === "ask" ? ROLE_ACCENTS[role] : [ROLE_ACCENTS[role][0], MODE_ACCENTS[mode][1]];
 

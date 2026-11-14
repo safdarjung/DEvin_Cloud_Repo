@@ -189,7 +189,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const reduced = useSyncExternalStore(subscribeReduced, () => window.matchMedia(REDUCED).matches, () => false);
   const dark = useTheme().resolvedTheme === "dark";
   const hello = useSyncExternalStore(noSubscribe, dayPart, () => "Hello");
-  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, tilt: 0, hot: [0, 0, 1, 0], shock: 0, ptr: [0, 0, 0] });
+  const signals = useRef<OrbSignals>({ level: 0, pulse: 0, spin: 0, tilt: 0, hot: [0, 0, 1, 0], shock: 0, ptr: [0, 0, 0], press: [0, 0, 0] });
   // Which dots are lit: a section pinned or peeked at in the legend (kept per mode), or the search's matches.
   const [pinnedKey, setPinnedKey] = useState<string | null>(null);
   const [peek, setPeek] = useState<string | null>(null);
@@ -553,7 +553,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const orb = orbRef.current?.getBoundingClientRect();
     if (!el || !orb) return setLean(null);
     signals.current.pulse = typingPulse(signals.current.pulse);
-    // A group on the sphere is part of the orb: it pulses and its dust lights up (OrbBody), no lean.
+    // A group on the sphere is part of the orb: it pulses and the net round it lights up (OrbBody), no lean.
     if (el.closest("[data-orb-stage]")) return setLean(null);
     const r = el.getBoundingClientRect();
     const dx = r.left + r.width / 2 - (orb.left + orb.width / 2);
@@ -561,7 +561,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     const len = Math.hypot(dx, dy) || 1;
     setLean({ x: (dx / len) * LEAN_PX, y: (dy / len) * LEAN_PX, hue });
   }, []);
-  // The ball's highlight and the dust under the mouse follow it; leaving keeps the last spot while it fades.
+  // The net lifts toward the mouse; leaving keeps the last spot while it fades.
   const onPointer = useCallback((x: number, y: number, over: boolean) => {
     const ptr = signals.current.ptr;
     if (over) {
@@ -569,6 +569,13 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
       ptr[1] = y;
     }
     ptr[2] = over ? 1 : 0;
+  }, []);
+  // A press dents the net where it lands and the dent follows the finger; the release sends a ring from there (OrbCore).
+  const onPress = useCallback((x: number, y: number, down: boolean) => {
+    const press = signals.current.press;
+    press[0] = x;
+    press[1] = y;
+    press[2] = down ? 1 : 0;
   }, []);
   const swipe = useModeSwipe(onSwipe);
   const msgCount = useRef(0);
@@ -642,7 +649,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs when an answer finishes and reads that render's messages
   }, [busy]);
 
-  // The orb speaks: every piece of the answer that arrives nudges the dust, like a keystroke does.
+  // The orb speaks: every piece of the answer that arrives nudges the net, like a keystroke does.
   useEffect(() => {
     if (status === "streaming") signals.current.pulse = typingPulse(signals.current.pulse);
   }, [messages, status]);
@@ -708,7 +715,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const hasTalk = (Boolean(chat) && messages.length > 0) || localCards.length > 0 || explains.length > 0;
   const showTranscript = hasTalk && (open || Boolean(error));
   // The features ride the orb as dots unless it is small (a conversation open, or a screen too small for tappable dots)
-  // Not tied to WebGL or reduced motion any more: the dots are elements, only the glass ball needs WebGL.
+  // Not tied to WebGL or reduced motion any more: the dots are elements, only the live net needs WebGL.
   const onSphere = !showTranscript && roomy && groups.length > 0;
   const pinned = pinnedKey?.startsWith(`${mode}:`) ? pinnedKey.slice(mode.length + 1) : null;
   const litGroup = peek ?? pinned;
@@ -796,6 +803,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           onRoomy={setRoomy}
           onTap={() => inputRef.current?.focus()}
           onPointer={onPointer}
+          onPress={onPress}
           showStatus={Boolean(chat) || pending.length > 0}
         >
           {onSphere && (
