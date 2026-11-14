@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { LegalPage } from "@/components/marketing/legal-page";
 
-export const metadata = meta("Privacy notice", "Draft privacy notice for Fabric. Requires legal review.", "/legal/privacy");
+export const metadata = meta("Privacy notice", "Draft privacy notice for FabricOS. Requires legal review.", "/legal/privacy");
 
 const SECTIONS = [
   { h: "Status of this document", p: "This is a working draft prepared for internal review. It is not legal advice and has not been approved for publication." },
@@ -20,5 +20,5 @@ const REVIEW = [
 ];
 
 export default function Page() {
-  return <LegalPage title="Privacy notice" lead="How Fabric would handle personal information. Draft." sections={SECTIONS} review={REVIEW} />;
+  return <LegalPage title="Privacy notice" lead="How FabricOS would handle personal information. Draft." sections={SECTIONS} review={REVIEW} />;
 }

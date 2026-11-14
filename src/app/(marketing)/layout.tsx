@@ -3,10 +3,16 @@ import type { ReactNode } from "react";
 import "@/components/marketing/marketing.css";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
+import { BRAND } from "@/components/fabricos/content";
+import { HOME_DESCRIPTION, HOME_TITLE, OG_IMAGE, OG_LOCALE } from "@/components/fabricos/seo";
 
+// Child openGraph/twitter objects replace these wholesale, so meta() in
+// components/marketing/content.ts repeats siteName and locale.
 export const metadata: Metadata = {
-  title: { default: "Fabric — Intelligence That Moves Institutions Forward", template: "%s | Fabric" },
-  description: "Fabric runs admissions, attendance, fees, exams and more for your institution, with an AI layer that suggests and people decide.",
+  title: { default: HOME_TITLE, template: `%s | ${BRAND}` },
+  description: HOME_DESCRIPTION,
+  openGraph: { type: "website", siteName: BRAND, locale: OG_LOCALE, title: HOME_TITLE, description: HOME_DESCRIPTION, images: [OG_IMAGE] },
+  twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION, images: [OG_IMAGE] },
 };
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {

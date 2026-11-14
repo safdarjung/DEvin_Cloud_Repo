@@ -120,7 +120,7 @@ export function Callout({ children }: { children: ReactNode }) {
   );
 }
 
-export function CtaBand({ title = "See Fabric on a demo school." }: { title?: string }) {
+export function CtaBand({ title = "See FabricOS on a demo school." }: { title?: string }) {
   return (
     <section aria-labelledby="cta-h" className="border-t border-(color:--mk-line) py-14 sm:py-20">
       <Container className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">

@@ -1,7 +1,7 @@
 import { MODULES, meta } from "@/components/marketing/content";
 import { CtaBand, PageHero, Rows, Section } from "@/components/marketing/ui";
 
-export const metadata = meta("Modules", "Admissions, attendance, fees, exams, assignments, website, notifications, AI and audit in Fabric.", "/modules");
+export const metadata = meta("Modules", "Admissions, attendance, fees, exams, assignments, website, notifications, AI and audit in FabricOS.", "/modules");
 
 export default function Page() {
   return (

@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { LegalPage } from "@/components/marketing/legal-page";
 
-export const metadata = meta("Cookie notice", "Draft cookie notice for Fabric. Requires legal review.", "/legal/cookies");
+export const metadata = meta("Cookie notice", "Draft cookie notice for FabricOS. Requires legal review.", "/legal/cookies");
 
 const SECTIONS = [
   { h: "Status of this document", p: "This is a working draft prepared for internal review. It is not legal advice and has not been approved for publication." },

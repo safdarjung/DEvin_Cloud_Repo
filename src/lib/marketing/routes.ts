@@ -25,6 +25,8 @@ export const MARKETING_SEGMENTS = [
   "apple-icon",
   "select",
   "tour",
+  // Static landing-page media in public/fabricos (videos, posters, captions).
+  "fabricos",
 ] as const;
 
 const SET = new Set<string>(MARKETING_SEGMENTS);

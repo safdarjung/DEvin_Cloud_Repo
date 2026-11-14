@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Fabric",
-    short_name: "Fabric",
-    description: "Intelligence that moves institutions forward.",
+    name: "FabricOS",
+    short_name: "FabricOS",
+    description: "A configurable, AI-powered operating system for institutions.",
     start_url: "/",
     scope: "/",
     display: "standalone",
