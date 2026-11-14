@@ -69,6 +69,8 @@ interface Props {
   signals: React.RefObject<OrbSignals>;
   /** How fine the net is (orbNet): fewer, larger cells on the small orb. */
   freq: number;
+  /** Sphere radius as a share of the canvas's short side. The default leaves room for the feature dots around it. */
+  share?: number;
 }
 
 /** The beads (every joint, then the motes) and the links (four corners each: end 0 or 1, side -1 or 1). */
@@ -110,7 +112,7 @@ function netGeometry(freq: number) {
   return { beads, links };
 }
 
-function Net({ state, dark, accent, signals, freq }: Props) {
+function Net({ state, dark, accent, signals, freq, share = RADIUS_SHARE }: Props) {
   const stateRef = useRef(state);
   const size = useThree((s) => s.size);
   const dpr = useThree((s) => s.viewport.dpr);
@@ -229,13 +231,13 @@ function Net({ state, dark, accent, signals, freq }: Props) {
     u.uWhirl.value = Math.max(-WHIRL.max, Math.min(WHIRL.max, lo.whirl));
     u.uRot.value.setFromMatrix4(m4[0].makeRotationX(sig.tilt).multiply(m4[1].makeRotationY(turn)));
     u.uHot.value.set(sig.hot[0], sig.hot[1], sig.hot[2], sig.hot[3]);
-    const k = dpr * Math.min(1.3, Math.max(0.6, (RADIUS_SHARE * Math.min(size.width, size.height)) / 90));
+    const k = dpr * Math.min(1.3, Math.max(0.6, (share * Math.min(size.width, size.height)) / 90));
     u.uPx.value = BEAD_PX * k;
     u.uWidth.value = LINK_PX * k;
     u.uView.value.set(size.width * dpr, size.height * dpr);
   });
 
-  const scale = (RADIUS_SHARE * Math.min(size.width, size.height)) / pxPerWorldUnit(size.height);
+  const scale = (share * Math.min(size.width, size.height)) / pxPerWorldUnit(size.height);
   return (
     <>
       <mesh geometry={geo.links} material={linkMat} scale={scale} frustumCulled={false} renderOrder={0} />

@@ -7,7 +7,8 @@ import { SectionHeading, SectionShell } from "./section-shell";
 const id = SECTION.insights;
 const lead = NODES.find((n) => n.id === "insights")?.blurb;
 
-export function InsightsSection() {
+/** `media={false}` leaves out the recording, for a page that already shows it in the product tour. */
+export function InsightsSection({ media = true }: { media?: boolean }) {
   return (
     <SectionShell id={id} className="bg-[radial-gradient(80%_60%_at_85%_30%,rgb(12_18_36),transparent_70%)]">
       <ScrollReveal>
@@ -27,9 +28,11 @@ export function InsightsSection() {
             <InsightsChart />
           </div>
         </div>
-        <div className="fos-media mt-16 overflow-hidden rounded-[20px] border border-(color:--fos-line) bg-(color:--fos-surface)" data-reveal>
-          <ProductVideo id="insights" variant="loop" />
-        </div>
+        {media ? (
+          <div className="fos-media mt-16 overflow-hidden rounded-[20px] border border-(color:--fos-line) bg-(color:--fos-surface)" data-reveal>
+            <ProductVideo id="insights" variant="loop" />
+          </div>
+        ) : null}
       </ScrollReveal>
     </SectionShell>
   );

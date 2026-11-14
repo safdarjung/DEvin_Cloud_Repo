@@ -1,27 +1,40 @@
 import { expect, test } from "@playwright/test";
-import { PROBLEMS, STORIES } from "../src/components/home/story";
+import { HOME_STATS } from "../src/components/home/stats";
+import { PROBLEMS } from "../src/components/home/story";
 import { threadsMessage } from "../src/components/home/threads";
 import { TOUR_ROLES } from "../src/components/tour/roles";
 
 // "/": the landing page. Public, no login, no demo data needed. The copy is server-rendered, so these hold
-// with or without WebGL (the 3D film only changes how the first section is laid out).
+// with or without the 3D tilt (it only changes how the hero's product screen stands).
 test.describe("landing page", () => {
-  test("states what the product is and lists every problem it answers", async ({ page }) => {
+  test("states what the product is and answers every problem it lists", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("The whole school");
-    const problems = page.getByRole("list", { name: "Seven loose threads a school runs on today" }).getByRole("listitem");
-    await expect(problems).toHaveCount(PROBLEMS.length);
-    // Scoped to the opening list: the threads picker further down repeats each pain.
-    for (const p of PROBLEMS) await expect(problems.getByText(p.pain, { exact: true })).toBeAttached();
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Run the whole institution");
+    await expect(page.getByRole("link", { name: "Book a demo" }).first()).toHaveAttribute("href", "/contact");
+    await expect(page.getByRole("link", { name: "Try the live demo" }).first()).toHaveAttribute("href", "/demo");
+    const tabs = page.getByRole("tablist", { name: "What institutions run on today" }).getByRole("tab");
+    await expect(tabs).toHaveCount(PROBLEMS.length);
+    for (const [i, p] of PROBLEMS.entries()) {
+      await tabs.nth(i).click();
+      await expect(page.locator("#platform-panel")).toContainText(p.pain);
+      await expect(page.locator("#platform-panel")).toContainText(p.fix);
+    }
   });
 
-  test("use cases switch by tab and show an honesty label on simulated steps", async ({ page }) => {
+  test("a simulated answer carries its honesty label", async ({ page }) => {
     await page.goto("/");
-    const tabs = page.getByRole("tablist", { name: "Use cases" }).getByRole("tab");
-    await expect(tabs).toHaveCount(STORIES.length);
-    await tabs.nth(1).click();
-    await expect(page.locator("#story-panel")).toContainText(STORIES[1].question);
-    await expect(page.locator("#story-panel .lm-honest", { hasText: "Test mode only" })).toBeVisible();
+    await page.getByRole("tab", { name: /The receipt book/ }).click();
+    await expect(page.locator("#platform-panel .fos-honest", { hasText: "Test mode only" })).toBeVisible();
+  });
+
+  test("the product tour has one step per recording and can jump between them", async ({ page }) => {
+    await page.goto("/");
+    const tour = page.locator("#see-fabricos");
+    const steps = tour.getByRole("group", { name: "Tour steps" }).getByRole("button");
+    await expect(steps).toHaveCount(5);
+    await steps.nth(2).click();
+    await expect(steps.nth(2)).toHaveAttribute("aria-current", "step");
+    await expect(tour.locator("video")).toHaveAttribute("poster", /agents/);
   });
 
   test("each of the five people has a one-click demo form with the right account", async ({ page }) => {
@@ -32,60 +45,53 @@ test.describe("landing page", () => {
       await tabs.nth(i).click();
       const form = page.locator('#people-panel form[action="/api/public/demo-login"]');
       await expect(form.locator('input[name="email"]')).toHaveValue(role.demoEmail);
+      await expect(form.getByRole("button", { name: `Try the ${role.label} demo` })).toBeVisible();
     }
   });
 
-  test("links to the film, the 3D tour and the deck, and has no sideways scroll on a phone", async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
+  test("the Orb section explains the assistant, and its ask demo gives a student hints before the answer", async ({ page }) => {
     await page.goto("/");
-    const finale = page.locator("#explore");
-    await expect(finale.getByRole("link", { name: /Walk the 3D school/ })).toHaveAttribute("href", "/tour");
-    await expect(finale.getByRole("link", { name: /Open the deck/ })).toHaveAttribute("href", "/product/deck");
-    await expect(finale.getByRole("button", { name: /Watch the film/ })).toBeVisible();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
-    expect(overflow).toBe(false);
-  });
-
-  test("ticking a loose thread lists its modules with their labels and carries the choice to the contact form", async ({ page }) => {
-    await page.goto("/");
-    const picker = page.locator("#threads");
-    await picker.getByRole("button", { name: /The receipt book/ }).click();
-    await expect(picker.locator(".lh-thread-mods")).toContainText("Online Payments");
-    await expect(picker.locator(".lh-thread-mods .lm-honest", { hasText: "Test mode only" })).toBeVisible();
-    const cta = picker.getByRole("link", { name: "Book a demo for this thread" });
-    await expect(cta).toHaveAttribute("href", "/contact?threads=fees");
-    await page.goto("/contact?threads=fees,not-a-thread");
-    await expect(page.locator('textarea[name="message"]')).toHaveValue(threadsMessage("fees"));
-  });
-
-  test("the ask demo gives a student hints before the answer", async ({ page }) => {
-    await page.goto("/");
-    const demo = page.locator(".lh-ask");
+    const orb = page.locator("#orb");
+    await expect(orb.getByRole("heading", { level: 2 })).toContainText("Meet the Orb");
+    const demo = orb.locator(".lh-ask");
     await demo.scrollIntoViewIfNeeded();
-    await demo.getByRole("group", { name: "Ask as" }).getByRole("button", { name: "Student" }).click();
-    await expect(demo.getByText("Hint 1.")).toBeVisible();
+    // Retried: a click that lands before hydration is not seen by React.
+    await expect(async () => {
+      await demo.getByRole("group", { name: "Ask as" }).getByRole("button", { name: "Student" }).click();
+      await expect(demo.getByText("Hint 1.")).toBeVisible({ timeout: 2000 });
+    }).toPass();
     await expect(demo.locator("[data-answer]")).toHaveCount(0);
     await demo.getByRole("button", { name: "Another hint" }).click();
     await demo.getByRole("button", { name: "Show the answer" }).click();
     await expect(demo.locator("[data-answer]")).toBeVisible();
-    await expect(demo.locator(".lh-caption")).toContainText("sample data");
   });
 
-  test("module search narrows the quilt and says so when nothing matches", async ({ page }) => {
+  test("the module switchboard lists every module, filters by search and labels what is not live", async ({ page }) => {
     await page.goto("/");
-    const section = page.locator("#modules");
-    await section.getByRole("searchbox", { name: "Find a module" }).fill("payroll");
-    await expect(section.locator(".lh-quilt li:not([data-hide])")).toHaveCount(1);
-    await section.getByRole("searchbox", { name: "Find a module" }).fill("zzzz");
-    await expect(section.getByRole("status")).toContainText("No module matches");
+    const board = page.locator("#modules");
+    await expect(board.getByRole("heading", { level: 2 })).toContainText(`${HOME_STATS.modules} modules`);
+    await expect(board.locator("ul button")).toHaveCount(HOME_STATS.modules);
+    // Retried: a fill that lands before hydration is not seen by React.
+    await expect(async () => {
+      await board.getByRole("searchbox").fill("");
+      await board.getByRole("searchbox").fill("payroll");
+      await expect(board.locator("ul button")).toHaveCount(1, { timeout: 1000 });
+    }).toPass();
+    await board.getByRole("searchbox").fill("");
+    await board.getByRole("button", { name: "Online Payments" }).click();
+    await expect(board.locator("[aria-live] .fos-honest")).toHaveText("Test mode only");
   });
 
-  test("with reduced motion nothing is hidden waiting for an animation", async ({ page }) => {
-    await page.emulateMedia({ reducedMotion: "reduce" });
+  test("has no sideways scroll on a phone", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await expect(page.locator("#explore")).toBeAttached();
-    await expect(page.locator(".lh")).not.toHaveAttribute("data-motion", "on");
-    const hidden = await page.evaluate(() => [...document.querySelectorAll("[data-reveal]")].filter((el) => getComputedStyle(el).opacity === "0").length);
-    expect(hidden).toBe(0);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(overflow).toBe(false);
+  });
+
+  test("the contact form is prefilled from a thread choice", async ({ page }) => {
+    await page.goto("/contact?threads=fees,not-a-thread");
+    await expect(page.locator('textarea[name="message"]')).toHaveValue(threadsMessage("fees"));
   });
 });

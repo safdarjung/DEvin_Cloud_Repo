@@ -7,7 +7,8 @@ import { SectionHeading, SectionShell } from "./section-shell";
 const id = SECTION.agents;
 const lead = NODES.find((n) => n.id === "agents")?.blurb;
 
-export function AgentsSection() {
+/** `media={false}` leaves out the recording, for a page that already shows it in the product tour. */
+export function AgentsSection({ media = true }: { media?: boolean }) {
   return (
     <SectionShell id={id}>
       <ScrollReveal>
@@ -15,9 +16,11 @@ export function AgentsSection() {
         <div className="mt-14" data-reveal>
           <AgentDemo />
         </div>
-        <div className="fos-media mt-6 overflow-hidden rounded-[20px] border border-(color:--fos-line) bg-(color:--fos-surface)" data-reveal>
-          <ProductVideo id="agents" variant="loop" />
-        </div>
+        {media ? (
+          <div className="fos-media mt-6 overflow-hidden rounded-[20px] border border-(color:--fos-line) bg-(color:--fos-surface)" data-reveal>
+            <ProductVideo id="agents" variant="loop" />
+          </div>
+        ) : null}
       </ScrollReveal>
     </SectionShell>
   );

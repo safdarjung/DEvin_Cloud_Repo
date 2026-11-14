@@ -14,7 +14,7 @@ export function SectionShell({
   children: ReactNode;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className={cn("relative scroll-mt-20 py-24 md:py-36", className)}>
+    <section id={id} aria-labelledby={`${id}-title`} className={cn("relative scroll-mt-20 py-20 md:py-28", className)}>
       <div className={cn("mx-auto w-full max-w-[1200px] px-5 sm:px-8", innerClassName)}>{children}</div>
     </section>
   );

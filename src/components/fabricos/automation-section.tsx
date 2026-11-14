@@ -7,7 +7,8 @@ import { WorkflowDiagram } from "./workflow-diagram";
 const id = SECTION.automation;
 const lead = NODES.find((n) => n.id === "automation")?.blurb;
 
-export function AutomationSection() {
+/** `media={false}` leaves out the recording, for a page that already shows it in the product tour. */
+export function AutomationSection({ media = true }: { media?: boolean }) {
   return (
     <SectionShell id={id}>
       <ScrollReveal>
@@ -17,9 +18,11 @@ export function AutomationSection() {
         <WorkflowDiagram />
       </div>
       <ScrollReveal>
-        <div className="fos-media mt-20 overflow-hidden rounded-[20px] border border-(color:--fos-line) bg-(color:--fos-surface)" data-reveal>
-          <ProductVideo id="automation" variant="loop" />
-        </div>
+        {media ? (
+          <div className="fos-media mt-20 overflow-hidden rounded-[20px] border border-(color:--fos-line) bg-(color:--fos-surface)" data-reveal>
+            <ProductVideo id="automation" variant="loop" />
+          </div>
+        ) : null}
       </ScrollReveal>
     </SectionShell>
   );

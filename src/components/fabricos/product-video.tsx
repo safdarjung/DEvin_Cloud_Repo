@@ -36,10 +36,11 @@ function Sources({ mp4, webm }: { mp4?: string; webm?: string }) {
   );
 }
 
-export function ProductVideo({ id, variant, className }: { id: VideoId; variant: "loop" | "showcase"; className?: string }) {
+/** `eager` (loop only) starts playback once a fifth of the frame is in view, for a screen that begins half below the fold. */
+export function ProductVideo({ id, variant, className, eager }: { id: VideoId; variant: "loop" | "showcase"; className?: string; eager?: boolean }) {
   const v = VIDEOS[id];
   if (!v || (!v.webm && !v.mp4)) return null;
-  return variant === "loop" ? <LoopVideo id={id} className={className} /> : <ShowcaseVideo id={id} className={className} />;
+  return variant === "loop" ? <LoopVideo id={id} className={className} eager={eager} /> : <ShowcaseVideo id={id} className={className} />;
 }
 
 function Frame({ title, ratio, caption, children, className }: { title: string; ratio: string; caption: string; children: React.ReactNode; className?: string }) {
@@ -61,7 +62,7 @@ function Frame({ title, ratio, caption, children, className }: { title: string; 
   );
 }
 
-function LoopVideo({ id, className }: { id: VideoId; className?: string }) {
+function LoopVideo({ id, className, eager }: { id: VideoId; className?: string; eager?: boolean }) {
   const v = VIDEOS[id];
   const ref = useRef<HTMLVideoElement>(null);
   const userPaused = useRef(false);
@@ -89,11 +90,11 @@ function LoopVideo({ id, className }: { id: VideoId; className?: string }) {
     mq.addEventListener("change", onMq);
     const io = new IntersectionObserver(
       ([entry]) => {
-        visible.current = entry.isIntersecting && entry.intersectionRatio >= 0.5;
+        visible.current = entry.isIntersecting && entry.intersectionRatio >= (eager ? 0.2 : 0.5);
         if (visible.current) tryPlay();
         else el.pause();
       },
-      { threshold: [0, 0.5, 1] },
+      { threshold: [0, 0.2, 0.5, 1] },
     );
     io.observe(el);
     return () => {
@@ -102,7 +103,7 @@ function LoopVideo({ id, className }: { id: VideoId; className?: string }) {
       el.pause();
       if (activeLoop === el) activeLoop = null;
     };
-  }, [tryPlay]);
+  }, [tryPlay, eager]);
 
   const toggle = () => {
     const el = ref.current;

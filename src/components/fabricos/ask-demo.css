@@ -1,0 +1,440 @@
+/* Dark styles for the ask demo (home/sections/AskDemo.tsx) on the FabricOS home. The component
+   and its script are shared with the loom page; only the look differs. `--thread` is the asking
+   person's colour. */
+
+.fos .lh-ask {
+  display: grid;
+  gap: 1.5rem;
+  text-align: left;
+}
+@media (min-width: 1024px) {
+  .fos .lh-ask {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: 2.5rem;
+    align-items: start;
+  }
+}
+.fos .lh-ask-roles,
+.fos .lh-hints-lang {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.fos .lh-ask .lh-filter {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--fos-line-strong);
+  border-radius: 999px;
+  padding: 0 0.9rem;
+  font-size: 0.875rem;
+  color: var(--fos-muted);
+  transition:
+    border-color 200ms var(--fos-ease),
+    background-color 200ms var(--fos-ease),
+    color 200ms var(--fos-ease);
+}
+.fos .lh-ask .lh-filter:hover {
+  color: var(--fos-fg);
+}
+.fos .lh-ask .lh-filter[aria-pressed="true"] {
+  border-color: var(--thread, var(--fos-indigo));
+  background: color-mix(in oklab, var(--thread, var(--fos-indigo)) 16%, transparent);
+  color: var(--fos-fg);
+}
+.fos .lh-ask .lh-tab-bead {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--thread);
+}
+.fos .lh-ask-qs {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.fos .lh-ask-q {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--fos-line);
+  border-radius: 14px;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  line-height: 1.4;
+  color: var(--fos-muted);
+  transition:
+    border-color 200ms var(--fos-ease),
+    background-color 200ms var(--fos-ease),
+    color 200ms var(--fos-ease);
+}
+.fos .lh-ask-q svg {
+  flex: none;
+  margin-top: 0.1rem;
+  color: var(--thread);
+}
+.fos .lh-ask-q:hover {
+  border-color: var(--fos-line-strong);
+  color: var(--fos-fg);
+}
+.fos .lh-ask-q[aria-pressed="true"] {
+  border-color: var(--thread);
+  background: color-mix(in oklab, var(--thread) 10%, var(--fos-surface));
+  color: var(--fos-fg);
+}
+.fos .lh-ask .lh-caption {
+  margin-top: 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--fos-faint);
+}
+
+.fos .lh-ask-screen {
+  min-height: 27rem;
+  border: 1px solid var(--fos-line-strong);
+  border-radius: 20px;
+  padding: 1.5rem;
+  background: linear-gradient(180deg, color-mix(in oklab, var(--thread) 9%, var(--fos-surface)), var(--fos-surface) 46%);
+  box-shadow: 0 40px 100px -50px color-mix(in oklab, var(--thread) 70%, transparent);
+  transition: box-shadow 400ms var(--fos-ease);
+}
+@media (min-width: 640px) {
+  .fos .lh-ask-screen {
+    padding: 2rem;
+  }
+}
+.fos .lh-ask-said {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  border-bottom: 1px solid var(--fos-line);
+  padding-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--fos-fg);
+}
+.fos .lh-ask .lm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--fos-line-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  white-space: nowrap;
+  color: var(--fos-muted);
+}
+.fos .lh-ask-think {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  color: var(--fos-muted);
+}
+.fos .lh-ask-orb {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--thread);
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: fos-turn 0.7s linear infinite;
+}
+.fos .lh-ask-answer {
+  margin-top: 1.25rem;
+}
+.fos .lh-ask-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  color: var(--fos-fg);
+}
+.fos .lh-ask-title strong {
+  font-weight: 500;
+}
+.fos .lh-ask-source {
+  margin-top: 1.25rem;
+  font-family: var(--fos-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--fos-faint);
+}
+
+/* bars */
+.fos .lh-bars {
+  display: grid;
+  gap: 0.7rem;
+}
+.fos .lh-bars li {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 7.5rem) 1fr minmax(3.5rem, auto);
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--fos-muted);
+}
+.fos .lh-bar-track {
+  height: 0.7rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+}
+.fos .lh-bar-fill {
+  display: block;
+  width: calc(var(--v) * 1%);
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--thread) 45%, transparent), var(--thread));
+  transform-origin: 0 50%;
+}
+.fos .lh-bar-text {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--fos-fg);
+}
+
+/* donut */
+.fos .lh-donut {
+  display: grid;
+  align-items: center;
+  gap: 1.5rem;
+}
+@media (min-width: 640px) {
+  .fos .lh-donut {
+    grid-template-columns: 11rem 1fr;
+    gap: 2.5rem;
+  }
+}
+.fos .lh-donut svg {
+  width: 11rem;
+}
+.fos .lh-donut circle {
+  fill: none;
+}
+.fos .lh-donut-rest {
+  stroke: rgb(255 255 255 / 0.07);
+  stroke-width: 15;
+}
+.fos .lh-donut-arc {
+  stroke: var(--thread);
+  stroke-width: 15;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 60px 60px;
+}
+.fos .lh-donut text {
+  text-anchor: middle;
+}
+.fos .lh-donut-num {
+  fill: var(--fos-fg);
+  font: 500 22px var(--fos-font-display);
+  letter-spacing: -0.03em;
+}
+.fos .lh-donut-word {
+  fill: var(--fos-muted);
+  font-size: 9px;
+}
+.fos .lh-donut dl {
+  display: grid;
+  gap: 0.6rem;
+}
+.fos .lh-donut dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--fos-line);
+  padding-bottom: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--fos-muted);
+}
+.fos .lh-donut dd {
+  font-variant-numeric: tabular-nums;
+  color: var(--fos-fg);
+}
+
+/* mind map */
+.fos .lh-map {
+  width: 100%;
+  height: auto;
+}
+.fos .lh-map-thread {
+  fill: none;
+  stroke: var(--thread);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  opacity: 0.85;
+}
+.fos .lh-map-node rect {
+  fill: color-mix(in oklab, var(--thread) 18%, var(--fos-surface));
+  stroke: var(--thread);
+  stroke-width: 1.2;
+}
+.fos .lh-map text {
+  fill: var(--fos-fg);
+  font-size: 13px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.fos .lh-map text.lh-map-leaf {
+  fill: var(--fos-muted);
+  font-size: 11.5px;
+  font-weight: 400;
+}
+.fos .lh-map-centre rect {
+  fill: var(--fos-fg);
+}
+.fos .lh-map-centre text {
+  fill: var(--fos-accent-fg);
+  font-weight: 600;
+}
+
+/* hints */
+.fos .lh-hints ol {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.fos .lh-hints li {
+  display: flex;
+  gap: 0.6rem;
+  border: 1px solid var(--fos-line);
+  border-radius: 12px;
+  padding: 0.75rem 0.9rem;
+  line-height: 1.5;
+  color: var(--fos-muted);
+}
+.fos .lh-hints li svg {
+  flex: none;
+  margin-top: 0.25rem;
+  color: var(--th-office);
+}
+.fos .lh-hints li strong {
+  font-weight: 500;
+  color: var(--fos-fg);
+}
+.fos .lh-hints li[data-answer] {
+  border-color: color-mix(in oklab, var(--th-attendance) 60%, transparent);
+  background: color-mix(in oklab, var(--th-attendance) 10%, transparent);
+}
+.fos .lh-ask .lm-btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: 1rem;
+  border: 1px solid var(--fos-line-strong);
+  border-radius: 999px;
+  padding: 0 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--fos-fg);
+}
+.fos .lh-ask .lm-btn:hover {
+  border-color: rgb(255 255 255 / 0.32);
+  background: rgb(255 255 255 / 0.04);
+}
+
+/* week */
+.fos .lh-week ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+}
+.fos .lh-week ol li {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  border: 1px solid var(--fos-line);
+  border-radius: 12px;
+  padding: 0.7rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--fos-muted);
+}
+.fos .lh-week-day {
+  font-family: var(--fos-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fos-faint);
+}
+.fos .lh-week ol li[data-tone="good"] {
+  border-color: color-mix(in oklab, var(--th-attendance) 50%, transparent);
+  background: color-mix(in oklab, var(--th-attendance) 10%, transparent);
+  color: var(--fos-fg);
+}
+/* Absent is said in words and marked with a dashed edge, not by colour alone. */
+.fos .lh-week ol li[data-tone="bad"] {
+  border-style: dashed;
+  border-color: var(--th-parents);
+  background: color-mix(in oklab, var(--th-parents) 10%, transparent);
+  color: var(--fos-fg);
+}
+.fos .lh-week ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+@keyframes fos-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* The answer draws itself in. */
+@media (prefers-reduced-motion: no-preference) {
+  .fos .lh-ask-answer {
+    animation: fos-swap 0.45s var(--fos-ease) both;
+  }
+  .fos .lh-bar-fill {
+    animation: fos-grow 720ms var(--fos-ease) backwards;
+    animation-delay: calc(var(--i) * 90ms + 120ms);
+  }
+  .fos .lh-donut-arc {
+    animation: fos-arc 950ms var(--fos-ease) 150ms backwards;
+  }
+  .fos .lh-donut dl div,
+  .fos .lh-week ol li,
+  .fos .lh-hints li {
+    animation: fos-swap 0.5s var(--fos-ease) backwards;
+    animation-delay: calc(var(--i, 0) * 80ms + 200ms);
+  }
+  .fos .lh-map-thread {
+    animation: fos-draw 520ms var(--fos-ease) backwards;
+    animation-delay: calc(var(--i) * 130ms + 150ms);
+  }
+  .fos .lh-map-node {
+    animation: fos-fade 400ms var(--fos-ease) backwards;
+    animation-delay: calc(var(--i) * 130ms + 520ms);
+  }
+}
+@keyframes fos-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes fos-arc {
+  from {
+    stroke-dashoffset: var(--len);
+  }
+}
+@keyframes fos-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+@keyframes fos-fade {
+  from {
+    opacity: 0;
+  }
+}
