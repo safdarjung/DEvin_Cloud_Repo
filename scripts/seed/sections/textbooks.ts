@@ -9,6 +9,20 @@ import { proposeMapping, type CatalogueBook } from "../../../src/modules/textboo
 // ncert.nic.in only; no file is fetched or stored. Insert-if-missing: a pair
 // that already has any book is left alone, so reruns add nothing. No rng.
 
+// Pairs NCERT publishes no book for. CBSE IT URLs returned 200 (2026-11-14); the commercial series
+// (Touchpad Plus, Cyber Beans, Bumblebee) were seen in retailer listings for some classes only.
+// Art I/II/X, Physical Education I/II: no verified book, left unmapped.
+const CBSE = "CBSE (Department of Skill Education)";
+const IT_URL = "https://cbseacademic.nic.in/web_material/Curriculum25/publication/secondary";
+const touchpad = (g: string) => ({ grade: g, subject: "Computer Science", title: `Touchpad Plus, Class ${g}`, publisher: "Orange Education" });
+const CUSTOM_BOOKS: { grade: string; subject: string; title: string; publisher: string; url?: string }[] = [
+  ...["I", "II", "III", "IV", "V", "VI", "VII", "VIII"].map(touchpad),
+  ...["IX", "X"].map((g) => ({ grade: g, subject: "Computer Science", title: "New Cyber Beans Computer Applications (Code 165)", publisher: "Kips Publishing World" })),
+  { grade: "IX", subject: "Information Technology", title: "Information Technology (402) Class IX Student Handbook", publisher: CBSE, url: `${IT_URL}/402_IT_IX.pdf` },
+  { grade: "X", subject: "Information Technology", title: "Information Technology (402) Class X Student Handbook", publisher: CBSE, url: `${IT_URL}/402_IT_X.pdf` },
+  ...["I", "II"].map((g) => ({ grade: g, subject: "Environmental Studies", title: "Bumblebee EVS", publisher: "Collins" })),
+];
+
 export async function run(ctx: SeedContext): Promise<void> {
   const inst = ctx.institutionId;
   const users = await demoUsers(ctx.sql, inst);
@@ -55,6 +69,19 @@ export async function run(ctx: SeedContext): Promise<void> {
       on conflict do nothing`;
   }
 
+  // Custom (non-NCERT) books for pairs that still have none.
+  const customRows = pairs.flatMap((p) => {
+    const b = CUSTOM_BOOKS.find((c) => c.grade === p.grade_code && c.subject === p.subject_name);
+    return b ? [{ institution_id: inst, grade_id: p.grade_id, subject_id: p.subject_id, custom_title: b.title, custom_publisher: b.publisher, custom_url: b.url ?? null, position: 0, created_by: author }] : [];
+  });
+  const stillMapped = new Set(
+    (await ctx.sql<{ k: string }[]>`select distinct grade_id::text || ':' || subject_id::text as k from public.subject_textbooks where institution_id = ${inst}`).map((r) => r.k),
+  );
+  const customInserts = customRows.filter((r) => !stillMapped.has(`${r.grade_id}:${r.subject_id}`));
+  if (customInserts.length) {
+    await ctx.sql`insert into public.subject_textbooks ${ctx.sql(customInserts, "institution_id", "grade_id", "subject_id", "custom_title", "custom_publisher", "custom_url", "position", "created_by")}`;
+  }
+
   // Demo journey: X Mathematics "Quadratic Equations" is chapter 4 of NCERT Class 10 Mathematics.
   const [link] = await ctx.sql<{ unit_id: string; grade_id: string; subject_id: string; textbook_id: string }[]>`
     select cu.id as unit_id, cu.grade_id, cu.subject_id, st.id as textbook_id
@@ -74,5 +101,5 @@ export async function run(ctx: SeedContext): Promise<void> {
 
   const [{ pairs: mappedPairs }] = await ctx.sql<{ pairs: number }[]>`
     select count(distinct (grade_id, subject_id))::int as pairs from public.subject_textbooks where institution_id = ${inst}`;
-  console.log(`  textbooks: ${inserts.length} books added this run; ${mappedPairs} of ${pairs.length} taught (grade, subject) pairs have a book.`);
+  console.log(`  textbooks: ${inserts.length + customInserts.length} books added this run; ${mappedPairs} of ${pairs.length} taught (grade, subject) pairs have a book.`);
 }
