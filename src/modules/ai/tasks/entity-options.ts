@@ -4,6 +4,7 @@ import "server-only";
 // the options come from that entity's picker source under the caller's RLS.
 import type { TenantContext } from "@/lib/auth/types";
 import { searchEntities } from "./entities";
+import { statusAllows } from "./preconditions";
 import { patternOf } from "./resolve-refs";
 import { classifiedTask } from "./classified";
 import { taskState } from "./state";
@@ -24,5 +25,6 @@ export async function taskEntityOptions(ctx: TenantContext, input: EntityOptions
   // "/classSectionIds/2" is an item of the array field "/classSectionIds".
   const entity = task.entities[pattern] ?? task.entities[pattern.replace(/\/\*$/, "")];
   if (!entity || entity === "context" || entity !== input.entity) return [];
-  return searchEntities(ctx, entity, input.search, input.scope ?? {});
+  // Only records the action can act on now (an exam action lists exams in the right status).
+  return (await searchEntities(ctx, entity, input.search, input.scope ?? {})).filter((o) => statusAllows(input.action, entity, o));
 }

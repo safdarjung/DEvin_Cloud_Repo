@@ -140,6 +140,8 @@ export interface EntityOption {
   id: string;
   label: string;
   hint?: string;
+  /** The record's workflow status where an action depends on it (preconditions.ts); not shown. */
+  status?: string;
 }
 
 /** One input the card renders, built on the server from the action's JSON schema and the catalog row. */

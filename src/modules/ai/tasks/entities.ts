@@ -193,7 +193,7 @@ const SOURCES: Partial<Record<EntityType, readonly EntitySource[]>> = {
   assignment: [
     { query: "academics.listTeacherAssignments", list: async (ctx) => (await listTeacherAssignments(ctx)).map((a) => opt(a.id, a.title, a.status)) },
   ],
-  exam: [{ query: "exams.listExams", list: async (ctx) => (await listExams(ctx)).map((e) => opt(e.id, e.name, `${e.termName}, ${e.status}`)) }],
+  exam: [{ query: "exams.listExams", list: async (ctx) => (await listExams(ctx)).map((e) => ({ ...opt(e.id, e.name, `${e.termName}, ${e.status}`), status: e.status })) }],
   "exam.recheck": [
     { query: "exams.listRecheckQueue", list: async (ctx) => (await listRecheckQueue(ctx)).map((r) => opt(r.id, `${r.studentName}: recheck`, r.status)) },
   ],

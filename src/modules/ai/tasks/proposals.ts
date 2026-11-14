@@ -21,7 +21,8 @@ import { choicePatches } from "./choices";
 import { actionJsonSchema, deriveFieldKind, schemaFields, type JsonSchemaNode, type SchemaField } from "./derive";
 import { findEntity, searchEntities, SEARCHABLE_ENTITIES } from "./entities";
 import { EXPANDERS, relativeDate } from "./expanders";
-import { getAt, resolveEntities, withoutPaths, type Values } from "./resolve-refs";
+import { statusBlock } from "./preconditions";
+import { getAt, patternOf, resolveEntities, withoutPaths, type Values } from "./resolve-refs";
 import { classifiedTask, taskActionMeta } from "./classified";
 import { orbTasksAdmin } from "./service-role";
 import { taskState } from "./state";
@@ -212,6 +213,12 @@ export async function createProposal(ctx: TenantContext, input: CreateProposalIn
   }
   values = await withOnlyChoice(ctx, task, schema, values);
   const resolution = await resolveEntities(ctx, task, values, known);
+  // A record in the wrong state (e.g. reopening an exam whose marks entry is open) is refused with the reason.
+  for (const [pointer, option] of Object.entries(resolution.resolved)) {
+    const pattern = patternOf(pointer);
+    const block = statusBlock(input.action, task.entities[pattern] ?? task.entities[pattern.replace(/\/\*$/, "")] ?? "", option);
+    if (block) throw new AppError("invalid_state", block);
+  }
   const finalValues = input.source === "person" ? keepUnverifiable(task, values, resolution.values) : resolution.values;
 
   const proposed = JSON.stringify(finalValues);
