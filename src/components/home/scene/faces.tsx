@@ -210,7 +210,7 @@ export function HubBoard() {
           <i />
           <i />
         </span>
-        <b>St. Joseph&apos;s School</b>
+        <b>Fabric School</b>
         <span className="s3-board-chip">One record</span>
       </span>
       <svg className="s3-thread" viewBox={`0 0 ${HUB.w * 1000} ${HUB.h * 1000}`} preserveAspectRatio="none" aria-hidden="true">

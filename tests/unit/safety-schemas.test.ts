@@ -53,7 +53,7 @@ describe("safety_alert notification template", () => {
     expect(NOTIFICATION_TYPES).toContain("safety_alert");
     const t = NOTIFICATION_TEMPLATES.safety_alert;
     expect(t.channels).toEqual(["in_app", "sms"]);
-    const vars = { kind: "drill" as const, title: "Fire drill", message: "Walk to the assembly ground.", school: "St. Joseph" };
+    const vars = { kind: "drill" as const, title: "Fire drill", message: "Walk to the assembly ground.", school: "Fabric School" };
     const en = t.body(vars, "en");
     expect(en).toContain("DRILL");
     expect(en).toContain(vars.title);

@@ -177,6 +177,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/ai/usage", label: "AI usage", icon: BarChart3, permission: "ai.usage.read", group: "Admin" },
   { href: "/documents", label: "Documents", icon: FolderOpen, permission: "document.write", group: "Admin" },
   { href: "/jobs", label: "Jobs", icon: Briefcase, permission: "job.manage", group: "Admin" },
+  { href: "/settings/school", label: "School profile", icon: Palette, permission: "institution.settings.manage", group: "Admin" },
   { href: "/settings/modules", label: "Modules", icon: Puzzle, permission: "institution.settings.manage", group: "Admin" },
   { href: "/settings/ai", label: "AI roles", icon: Bot, permission: "institution.settings.manage", group: "Admin" },
   { href: "/settings/control-centre", label: "Control centre", icon: SlidersHorizontal, permission: "institution.settings.manage", group: "Admin" },

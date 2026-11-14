@@ -392,6 +392,10 @@ Full text: `docs/planning/fabric/07-master-plan-v1-v2.md` §2. Summary:
 
 - **Decision:** an owner, principal or exam controller may approve and publish a paper they wrote; there is no four-eyes check. Revisit if a school requires one.
 
+### D58 — The demo school is "Fabric School" (2026-11-14)
+
+Owner: remove the St. Joseph's Convent School branding everywhere and make branding configurable. The demo institution is renamed "Fabric School" (seed, hosted and local data; website pages republished as new versions, since `page_versions` is immutable); its slug stays `st-josephs-demo` (owner chose to keep the address, so links, tests and tools keep working). Schools change their name, logo and colour on Settings → School profile (`/settings/school`, `institution.settings.manage`); the demo school's name is locked there because every demo visitor shares it. Product screen recordings that still show the old name are re-recorded separately.
+
 ## 2. Phase 0 verified facts and installed versions
 
 Context7 MCP was not available in this session; versions come from the npm registry and official docs fetched by three read-only research agents. Items marked *unverified* are to be confirmed by T-001/T-002/T-035/T-040.

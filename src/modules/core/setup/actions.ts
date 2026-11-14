@@ -16,9 +16,11 @@ import { isLogoPathOf } from "./branding-utils";
 import {
   ApplyTemplateSchema,
   SaveBrandingSchema,
+  SaveSchoolNameSchema,
   SetProgressSchema,
   type ApplyTemplateInput,
   type SaveBrandingInput,
+  type SaveSchoolNameInput,
   type SetProgressInput,
 } from "./schemas";
 import { buildSchoolTemplate, defaultYearStart } from "./templates";
@@ -93,6 +95,24 @@ export const saveBranding = defineAction({
     await audit(ctx, { action: "core.setup.branding_saved", entityType: "institution", entityId: ctx.institution.id });
     revalidatePath(`/${ctx.institution.slug}`, "layout");
     return parsed.data;
+  },
+});
+
+export const saveSchoolName = defineAction({
+  name: "core.settings.saveSchoolName",
+  module: "core",
+  schema: SaveSchoolNameSchema,
+  permission: "institution.settings.manage",
+  handler: async ({ name }: SaveSchoolNameInput, ctx) => {
+    // The sample school is shared by every demo visitor: one visitor must not rename it for all.
+    if (ctx.institution.is_demo) throw new AppError("invalid_state", "The sample school's name is fixed in the demo.");
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("institutions").update({ name }).eq("id", ctx.institution.id).select("id");
+    if (error) throwMapped(error);
+    if ((data ?? []).length === 0) throw new AppError("forbidden", "You cannot rename this school.");
+    await audit(ctx, { action: "core.settings.school_renamed", entityType: "institution", entityId: ctx.institution.id, metadata: { name } });
+    revalidatePath(`/${ctx.institution.slug}`, "layout");
+    return { name };
   },
 });
 

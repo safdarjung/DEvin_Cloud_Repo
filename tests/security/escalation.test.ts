@@ -35,6 +35,7 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ board: "CBSE", fromGrade: "I", toGrade: "V", sectionsPerGrade: 2 }),
   },
   "core.setup.saveBranding": { permission: "institution.settings.manage", input: () => ({ logoPath: `${U()}/logo.png`, primaryColor: "#1a2b3c" }) },
+  "core.settings.saveSchoolName": { permission: "institution.settings.manage", input: () => ({ name: "Renamed School" }) },
   "core.setup.setProgress": { permission: "institution.settings.manage", input: () => ({ step: "branding", state: "dismissed" }) },
   "canteen.item.create": { permission: "canteen.manage", input: () => ({ name: "Probe item", pricePaise: 1500 }) },
   "canteen.item.update": { permission: "canteen.manage", input: () => ({ id: U(), pricePaise: 1500 }) },

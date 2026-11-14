@@ -30,9 +30,11 @@ interface StepBrandingProps {
   state: SetupStepState;
   logoPath: string | null;
   primaryColor: string | null;
+  /** On the School profile settings page there is no setup step to skip. */
+  hideSkip?: boolean;
 }
 
-export function StepBranding({ institutionSlug, institutionId, state, logoPath, primaryColor }: StepBrandingProps) {
+export function StepBranding({ institutionSlug, institutionId, state, logoPath, primaryColor, hideSkip = false }: StepBrandingProps) {
   const router = useRouter();
   const [color, setColor] = useState(primaryColor ?? "#1d4ed8");
   const [file, setFile] = useState<File | null>(null);
@@ -136,9 +138,11 @@ export function StepBranding({ institutionSlug, institutionId, state, logoPath, 
         <Button onClick={save} disabled={pending || (!file && !colorOk)}>
           {pending ? "Saving…" : "Save branding"}
         </Button>
-        <Button variant="ghost" onClick={skip} disabled={pending}>
-          {state === "dismissed" ? "Resume this step" : "Skip for now"}
-        </Button>
+        {!hideSkip && (
+          <Button variant="ghost" onClick={skip} disabled={pending}>
+            {state === "dismissed" ? "Resume this step" : "Skip for now"}
+          </Button>
+        )}
       </div>
     </div>
   );

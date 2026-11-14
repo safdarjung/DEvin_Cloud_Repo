@@ -8,7 +8,7 @@ Ship a sound foundation plus a demo that a non-technical principal of a Tier 2/3
 
 | # | Step | Actor | Status label |
 |---|---|---|---|
-| 1 | Public website of "St. Joseph's Convent School (Demo)" | Visitor | Fully implemented (data-driven pages, published versions only) |
+| 1 | Public website of "Fabric School" (the demo school) | Visitor | Fully implemented (data-driven pages, published versions only) |
 | 2 | Visitor submits an admission enquiry | Visitor | Fully implemented (rate limited, deduplicated) |
 | 3 | Admissions officer works the enquiry pipeline | Admissions | Fully implemented |
 | 4 | Application accepted | Admissions / Principal | Fully implemented |

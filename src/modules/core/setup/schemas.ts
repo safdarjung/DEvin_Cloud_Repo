@@ -67,6 +67,10 @@ export const SaveBrandingSchema = z
   .refine((v) => v.logoPath !== undefined || v.primaryColor !== undefined, { message: "Nothing to save." });
 export type SaveBrandingInput = z.infer<typeof SaveBrandingSchema>;
 
+// The school's display name (sidebar, dashboards, report cards, website).
+export const SaveSchoolNameSchema = z.object({ name: z.string().trim().min(2, "Enter the school's name.").max(120) }).strict();
+export type SaveSchoolNameInput = z.infer<typeof SaveSchoolNameSchema>;
+
 // "todo" clears the mark, so a skipped step can be resumed.
 export const SetProgressSchema = z
   .object({ step: z.enum(SETUP_STEPS), state: z.enum(["done", "dismissed", "todo"]) })

@@ -154,6 +154,7 @@ export const PAGE_PATHS = new Set([
   "settings/ai",
   "settings/control-centre",
   "settings/modules",
+  "settings/school",
   "settings/study-preferences",
   "setup",
   "staff",

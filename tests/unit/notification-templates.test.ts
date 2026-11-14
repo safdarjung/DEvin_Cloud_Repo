@@ -5,7 +5,7 @@ import { simulatedEmail } from "@/modules/notifications/channels/simulatedEmail"
 import { simulatedSms } from "@/modules/notifications/channels/simulatedSms";
 import { simulatedWhatsApp } from "@/modules/notifications/channels/whatsapp";
 
-const ATTENDANCE_VARS = { student: "Aarav Sharma", class: "X-A", date: "2026-10-29", school: "St. Joseph" };
+const ATTENDANCE_VARS = { student: "Aarav Sharma", class: "X-A", date: "2026-10-29", school: "Fabric School" };
 
 describe("NOTIFICATION_TEMPLATES (06 §3)", () => {
   it("has a template for every registered notification type", () => {
@@ -68,7 +68,7 @@ describe("NOTIFICATION_TEMPLATES (06 §3)", () => {
 
   it("fee_reminder renders EN and HI with all vars and rejects missing fields", () => {
     const { varsSchema, body } = NOTIFICATION_TEMPLATES.fee_reminder;
-    const vars = { student: "Aarav Sharma", invoice_no: "INV-001", amount: "₹12,345.00", due_on: "2026-11-30", school: "St. Joseph" };
+    const vars = { student: "Aarav Sharma", invoice_no: "INV-001", amount: "₹12,345.00", due_on: "2026-11-30", school: "Fabric School" };
     expect(varsSchema.safeParse(vars).success).toBe(true);
     expect(varsSchema.safeParse({ ...vars, extra: "x" }).success).toBe(false);
     expect(varsSchema.safeParse({ student: "Aarav", invoice_no: "INV-001", amount: "₹1,000", due_on: "2026-11-30" }).success).toBe(false);

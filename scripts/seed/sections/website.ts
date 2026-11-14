@@ -26,13 +26,13 @@ const PAGES: PageSpec[] = [
     blocks: [
       {
         type: "hero",
-        heading: "St. Joseph's Convent School",
+        heading: "Fabric School",
         subheading: "CBSE-affiliated, budget-friendly, Chennai.",
         cta: { label: "Apply for admission", href: "/admissions" },
       },
       {
         type: "stats",
-        heading: "St. Joseph's at a glance",
+        heading: "Fabric School at a glance",
         items: [
           { label: "Students", value: "3,024" },
           { label: "Teaching staff", value: "100" },
@@ -57,7 +57,7 @@ const PAGES: PageSpec[] = [
             type: "paragraph",
             spans: [
               {
-                text: "St. Joseph's Convent School has served students from Grade I to XII under the CBSE board for over three decades.",
+                text: "Fabric School has served students from Grade I to XII under the CBSE board for over three decades.",
               },
             ],
           },

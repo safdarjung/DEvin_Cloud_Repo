@@ -319,6 +319,7 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "textbook.remove": x(DESTRUCTIVE),
   "examSeating.generate": x(BULK),
   "core.setup.saveBranding": x(SETTINGS),
+  "core.settings.saveSchoolName": x(SETTINGS),
   "notification.preferences.set": x(SETTINGS),
   "report.schedule.setStatus": x(SETTINGS),
   "website.live_set": x(SETTINGS),

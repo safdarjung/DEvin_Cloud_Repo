@@ -42,7 +42,7 @@ Ports: API 54321, Postgres 54322, Studio 54323, Mailpit 54324. `supabase/config.
 
 ## 3. Demo tenant and logins
 
-Institution `st-josephs-demo` ("St. Joseph's Convent School (Demo)", `is_demo = true`). Users (`@demo.coolskool.test`): `principal`, `admin`, `admissions`, `accountant`, `examcontroller`, `teacher.vi-a`, `teacher.viii-b`, `teacher.x-a` (also teaches X-A Mathematics), `guardian.one` (Priya Sharma; children Aarav in VI-A and Ananya in X-A), `guardian.two` (Rohit Mehta; Ishaan in VIII-B), `student.one` (Ananya Sharma). Named entities for the script: `05 §8.1`. Password from `SEED_DEMO_PASSWORD` (default `CoolSkool-Demo-2026`; change on hosted). The login page lists these when `NEXT_PUBLIC_DEMO_LOGIN_HINTS=true` (anon cannot read `institutions`; recorded as DBT-11), under the heading "Demo accounts".
+Institution `st-josephs-demo` ("Fabric School", `is_demo = true`; renamed from St. Joseph's on 2026-11-14, D58). Users (`@demo.coolskool.test`): `principal`, `admin`, `admissions`, `accountant`, `examcontroller`, `teacher.vi-a`, `teacher.viii-b`, `teacher.x-a` (also teaches X-A Mathematics), `guardian.one` (Priya Sharma; children Aarav in VI-A and Ananya in X-A), `guardian.two` (Rohit Mehta; Ishaan in VIII-B), `student.one` (Ananya Sharma). Named entities for the script: `05 §8.1`. Password from `SEED_DEMO_PASSWORD` (default `CoolSkool-Demo-2026`; change on hosted). The login page lists these when `NEXT_PUBLIC_DEMO_LOGIN_HINTS=true` (anon cannot read `institutions`; recorded as DBT-11), under the heading "Demo accounts".
 
 Dev/demo separation: the demo institution is the only `is_demo = true` tenant; reset and seed refuse everything else. A second non-demo institution exists only in test fixtures.
 

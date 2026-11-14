@@ -103,7 +103,7 @@ describe("msg91WhatsApp.send", () => {
     vi.stubGlobal("fetch", fetchSpy);
     const { template } = whatsappMessage(
       "attendance_absence",
-      { student: "Aarav Sharma", class: "X-A", date: "29 Oct 2026", school: "St. Joseph" },
+      { student: "Aarav Sharma", class: "X-A", date: "29 Oct 2026", school: "Fabric School" },
       "hi",
     );
     const result = await msg91WhatsApp.send({ toAddress: "12345", renderedBody: "x", template });
@@ -125,7 +125,7 @@ describe("msg91WhatsApp.send", () => {
 
     const { template } = whatsappMessage(
       "attendance_absence",
-      { student: "Aarav Sharma", class: "X-A", date: "29 Oct 2026", school: "St. Joseph" },
+      { student: "Aarav Sharma", class: "X-A", date: "29 Oct 2026", school: "Fabric School" },
       "hi",
     );
     const result = await msg91WhatsApp.send({ toAddress: PHONE, renderedBody: "x", template });
@@ -150,7 +150,7 @@ describe("msg91WhatsApp.send", () => {
       body_1: { type: "text", value: "Aarav Sharma" },
       body_2: { type: "text", value: "X-A" },
       body_3: { type: "text", value: "29 Oct 2026" },
-      body_4: { type: "text", value: "St. Joseph" },
+      body_4: { type: "text", value: "Fabric School" },
     });
   });
 
