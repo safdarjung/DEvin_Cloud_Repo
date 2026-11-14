@@ -458,7 +458,10 @@ export async function run(ctx: SeedContext): Promise<void> {
 
   // The mastery section ran before these tests existed; compute_mastery (0151) folds test and practice results in.
   if (seededTests || !existingPractice) {
-    const { error } = await ctx.admin.rpc("compute_mastery", { p_institution_id: inst });
-    if (error) throw new Error(`compute_mastery failed: ${error.message}`);
+    // Direct SQL like mastery.ts: over PostgREST the full-tenant compute hit statement_timeout on hosted.
+    await ctx.sql.begin(async (tx) => {
+      await tx`set local statement_timeout = 0`;
+      await tx`select public.compute_mastery(${inst}::uuid)`;
+    });
   }
 }
