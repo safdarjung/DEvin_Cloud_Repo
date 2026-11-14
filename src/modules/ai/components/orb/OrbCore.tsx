@@ -248,6 +248,16 @@ function Net({ state, dark, accent, signals, freq, share = RADIUS_SHARE }: Props
 
 const tick = ({ timestamp }: FrameData) => advance(timestamp / 1000);
 
+// One frame loop for every orb on the page (advance() draws them all), counted so that an orb
+// leaving the screen does not stop the loop under one that is still showing.
+let watching = 0;
+const hold = () => {
+  if (watching++ === 0) frame.update(tick, true);
+};
+const release = () => {
+  if (--watching === 0) cancelFrame(tick);
+};
+
 export default function OrbCore(props: Props) {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -255,8 +265,8 @@ export default function OrbCore(props: Props) {
     let running = false;
     const sync = () => {
       const want = onScreen && !document.hidden;
-      if (want && !running) frame.update(tick, true);
-      else if (!want && running) cancelFrame(tick);
+      if (want && !running) hold();
+      else if (!want && running) release();
       running = want;
     };
     const io = new IntersectionObserver(([e]) => {
@@ -269,7 +279,7 @@ export default function OrbCore(props: Props) {
     return () => {
       io.disconnect();
       document.removeEventListener("visibilitychange", sync);
-      cancelFrame(tick);
+      if (running) release();
     };
   }, []);
   return (
