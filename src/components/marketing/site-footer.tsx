@@ -1,6 +1,6 @@
 import "@/components/fabricos/fabricos.css";
 import Link from "next/link";
-import { BRAND, CTA, DESCRIPTION, SECTION, TAGLINE } from "@/components/fabricos/content";
+import { BRAND, CTA, DESCRIPTION, OVERVIEW, SECTION, TAGLINE } from "@/components/fabricos/content";
 import { FabricGlyph } from "@/components/fabricos/fabric-glyph";
 import { LEGAL } from "./content";
 
@@ -8,12 +8,12 @@ const GROUPS: readonly { title: string; links: readonly { href: string; label: s
   {
     title: "Platform",
     links: [
-      { href: `/#${SECTION.platform}`, label: "Platform" },
-      { href: `/#${SECTION.agents}`, label: "AI agents" },
-      { href: `/#${SECTION.automation}`, label: "Automation" },
-      { href: `/#${SECTION.insights}`, label: "Insights" },
-      { href: `/#${SECTION.useCases}`, label: "Use cases" },
-      { href: `/#${SECTION.trust}`, label: "Human control" },
+      { href: `${OVERVIEW}#${SECTION.platform}`, label: "Platform" },
+      { href: `${OVERVIEW}#${SECTION.agents}`, label: "AI agents" },
+      { href: `${OVERVIEW}#${SECTION.automation}`, label: "Automation" },
+      { href: `${OVERVIEW}#${SECTION.insights}`, label: "Insights" },
+      { href: `${OVERVIEW}#${SECTION.useCases}`, label: "Use cases" },
+      { href: `${OVERVIEW}#${SECTION.trust}`, label: "Human control" },
     ],
   },
   {

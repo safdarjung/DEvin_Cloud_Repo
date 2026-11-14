@@ -8,7 +8,7 @@ import { TOUR_ROLES } from "../src/components/tour/roles";
 // with or without the 3D tilt (it only changes how the hero's product screen stands).
 test.describe("landing page", () => {
   test("states what the product is and answers every problem it lists", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Run the whole institution");
     await expect(page.getByRole("link", { name: "Book a demo" }).first()).toHaveAttribute("href", "/contact");
     await expect(page.getByRole("link", { name: "Try the live demo" }).first()).toHaveAttribute("href", "/demo");
@@ -22,13 +22,13 @@ test.describe("landing page", () => {
   });
 
   test("a simulated answer carries its honesty label", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     await page.getByRole("tab", { name: /The receipt book/ }).click();
     await expect(page.locator("#platform-panel .fos-honest", { hasText: "Test mode only" })).toBeVisible();
   });
 
   test("the product tour has one step per recording and can jump between them", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const tour = page.locator("#see-fabricos");
     const steps = tour.getByRole("group", { name: "Tour steps" }).getByRole("button");
     await expect(steps).toHaveCount(5);
@@ -38,7 +38,7 @@ test.describe("landing page", () => {
   });
 
   test("each of the five people has a one-click demo form with the right account", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const tabs = page.getByRole("tablist", { name: "People" }).getByRole("tab");
     await expect(tabs).toHaveCount(TOUR_ROLES.length);
     for (const [i, role] of TOUR_ROLES.entries()) {
@@ -50,7 +50,7 @@ test.describe("landing page", () => {
   });
 
   test("the Orb section explains the assistant, and its ask demo gives a student hints before the answer", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const orb = page.locator("#orb");
     await expect(orb.getByRole("heading", { level: 2 })).toContainText("Meet the Orb");
     const demo = orb.locator(".lh-ask");
@@ -66,16 +66,26 @@ test.describe("landing page", () => {
     await expect(demo.locator("[data-answer]")).toBeVisible();
   });
 
-  test("the landing points visitors to Fabric Vision for the detail, from the header and a band after the modules", async ({ page }) => {
+  test("the home page is Fabric Vision, the loom story, and the header leads to the overview", async ({ page }) => {
     await page.goto("/");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("woven into one system");
+    await expect(page.locator(`header a[href="/product/overview"]`).first()).toBeAttached();
+  });
+
+  test("the overview points visitors back to Fabric Vision from a band after the modules", async ({ page }) => {
+    await page.goto("/product/overview");
     const band = page.locator("#vision");
     await expect(band.getByRole("heading", { level: 2 })).toContainText("Want every feature in detail?");
-    await expect(band.getByRole("link", { name: "Explore Fabric Vision" })).toHaveAttribute("href", "/product/vision");
-    await expect(page.locator('header a[href="/product/vision"]').first()).toBeAttached();
+    await expect(band.getByRole("link", { name: "Explore Fabric Vision" })).toHaveAttribute("href", "/");
+  });
+
+  test("the old /product/vision link lands on the home page", async ({ page }) => {
+    await page.goto("/product/vision");
+    await expect(page).toHaveURL(/\/$/);
   });
 
   test("the module switchboard lists every module, filters by search and labels what is not live", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const board = page.locator("#modules");
     await expect(board.getByRole("heading", { level: 2 })).toContainText(`${HOME_STATS.modules} modules`);
     await expect(board.locator("ul button")).toHaveCount(HOME_STATS.modules);
@@ -92,7 +102,7 @@ test.describe("landing page", () => {
 
   test("has no sideways scroll on a phone", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/");
+    await page.goto("/product/overview");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     expect(overflow).toBe(false);

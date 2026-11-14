@@ -1,30 +1,30 @@
 import { expect, test } from "@playwright/test";
 
-// FabricOS marketing home: structure, honesty labels, keyboard paths and layout.
+// FabricOS overview (/product/overview; the home until 2026-11-14): structure, honesty labels, keyboard paths and layout.
 
 test.describe("FabricOS landing", () => {
   // The home page compiles a 3D scene on first hit in dev; allow for it.
   test.describe.configure({ timeout: 120_000 });
 
-  test("home responds 200 and has exactly one h1", async ({ page }) => {
-    const res = await page.goto("/");
+  test("the overview responds 200 and has exactly one h1", async ({ page }) => {
+    const res = await page.goto("/product/overview");
     expect(res?.status()).toBe(200);
     await expect(page.locator("h1")).toHaveCount(1);
   });
 
   test("every in-page nav anchor resolves to a section on the page", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const hrefs = await page.locator('header nav[aria-label="Primary"] a, footer a').evaluateAll((as) =>
-      as.map((a) => a.getAttribute("href") ?? "").filter((h) => h.startsWith("/#")),
+      as.map((a) => a.getAttribute("href") ?? "").filter((h) => h.startsWith("/product/overview#")),
     );
     expect(hrefs.length).toBeGreaterThan(5);
     for (const h of new Set(hrefs)) {
-      await expect(page.locator(`[id="${h.slice(2)}"]`), `missing target for ${h}`).toHaveCount(1);
+      await expect(page.locator(`[id="${h.split("#")[1]}"]`), `missing target for ${h}`).toHaveCount(1);
     }
   });
 
   test("FAQ answers are in the server HTML", async ({ request }) => {
-    const html = await (await request.get("/", { timeout: 90_000 })).text();
+    const html = await (await request.get("/product/overview", { timeout: 90_000 })).text();
     expect(html).toContain("Frequently asked questions");
     expect(html).toContain("How is FabricOS different from traditional ERP software?");
     expect(html).toContain("Traditional ERP software asks an institution to adapt to fixed modules.");
@@ -32,7 +32,7 @@ test.describe("FabricOS landing", () => {
   });
 
   test("agent demo steps through without any network calls", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const demo = page.locator("[data-agent-demo]");
     await demo.scrollIntoViewIfNeeded();
     await expect(demo.getByText("Illustrative example. Not live data.")).toBeVisible();
@@ -55,12 +55,12 @@ test.describe("FabricOS landing", () => {
   });
 
   test("use-case tabs are keyboard operable", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const first = page.getByRole("tab", { name: "Education and Training" });
     await first.scrollIntoViewIfNeeded();
     await first.focus();
     await expect(first).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel")).toContainText("Available today");
+    await expect(page.locator("#use-cases").getByRole("tabpanel")).toContainText("Available today");
 
     const second = page.getByRole("tab", { name: "Professional Institutes" });
     // Retry until hydrated: keys pressed before hydration do nothing.
@@ -71,7 +71,7 @@ test.describe("FabricOS landing", () => {
       await expect(second).toBeFocused({ timeout: 1000 });
     }).toPass({ timeout: 30_000 });
     await expect(second).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel")).toContainText("Configured with you");
+    await expect(page.locator("#use-cases").getByRole("tabpanel")).toContainText("Configured with you");
 
     await page.keyboard.press("End");
     await expect(page.getByRole("tab", { name: "Other Institutions" })).toHaveAttribute("aria-selected", "true");
@@ -80,7 +80,7 @@ test.describe("FabricOS landing", () => {
   });
 
   test("trust proposal buttons only change local state", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/product/overview");
     const card = page.locator(`#human-control`);
     await card.getByRole("button", { name: "Approve" }).scrollIntoViewIfNeeded();
     await expect(async () => {
@@ -94,7 +94,7 @@ test.describe("FabricOS landing", () => {
   test.describe("small screen", () => {
     test.use({ viewport: { width: 360, height: 780 } });
     test("no horizontal scroll at 360px", async ({ page }) => {
-      await page.goto("/");
+      await page.goto("/product/overview");
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(0);
     });
@@ -103,7 +103,7 @@ test.describe("FabricOS landing", () => {
   test.describe("reduced motion", () => {
     test.use({ reducedMotion: "reduce" });
     test("all section headings are visible without scrolling animations", async ({ page }) => {
-      await page.goto("/");
+      await page.goto("/product/overview");
       const h2s = page.locator("main h2");
       expect(await h2s.count()).toBeGreaterThanOrEqual(12);
       for (const h of await h2s.all()) {

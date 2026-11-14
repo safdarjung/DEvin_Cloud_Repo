@@ -3,7 +3,7 @@ import { SITE_URL } from "@/lib/site-url";
 
 // Public marketing URLs only. No tenant, auth, portal or api paths.
 const PATHS = [
-  "/", "/product", "/modules", "/ai", "/security", "/pricing", "/how-it-works",
+  "/", "/product", "/product/overview", "/modules", "/ai", "/security", "/pricing", "/how-it-works",
   "/faq", "/demo", "/roles", "/contact",
   "/legal/privacy", "/legal/terms", "/legal/cookies", "/legal/data-processing", "/legal/acceptable-use",
 ];

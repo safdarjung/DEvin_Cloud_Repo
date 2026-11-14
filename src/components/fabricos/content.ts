@@ -31,15 +31,17 @@ export const SECTION = {
   faq: "faq",
 } as const;
 
+/** The long product page (the home until 2026-11-14, when the loom story became the home). Section anchors live there. */
+export const OVERVIEW = "/product/overview";
+
 export const NAV: readonly { href: string; label: string }[] = [
-  { href: `/#${SECTION.platform}`, label: "Platform" },
-  { href: `/#${SECTION.agents}`, label: "AI Agents" },
-  { href: `/#${SECTION.automation}`, label: "Automation" },
-  { href: `/#${SECTION.insights}`, label: "Insights" },
-  { href: `/#${SECTION.useCases}`, label: "Use Cases" },
-  { href: `/#${SECTION.howItWorks}`, label: "How It Works" },
+  { href: OVERVIEW, label: "Overview" },
+  { href: `${OVERVIEW}#${SECTION.agents}`, label: "AI Agents" },
+  { href: `${OVERVIEW}#${SECTION.automation}`, label: "Automation" },
+  { href: `${OVERVIEW}#${SECTION.insights}`, label: "Insights" },
+  { href: `${OVERVIEW}#${SECTION.useCases}`, label: "Use Cases" },
+  { href: `${OVERVIEW}#${SECTION.howItWorks}`, label: "How It Works" },
   { href: "/tour", label: "Product Tour" },
-  { href: "/product/vision", label: "Vision" },
 ];
 
 /** Real routes only. */
@@ -47,7 +49,7 @@ export const CTA = {
   primary: { href: "/contact", label: "Book a demo" },
   secondary: { href: "/demo", label: "Try the live demo" },
   tour: { href: "/tour", label: "Take the product tour" },
-  vision: { href: "/product/vision", label: "Explore Fabric Vision" },
+  vision: { href: "/", label: "Explore Fabric Vision" },
   signIn: { href: "/login?switch=1", label: "Sign in" },
 } as const;
 

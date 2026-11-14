@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { cn } from "cn";
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { BRAND, CTA, NAV } from "@/components/fabricos/content";
+import { BRAND, CTA, NAV, OVERVIEW } from "@/components/fabricos/content";
 import { FabricGlyph } from "@/components/fabricos/fabric-glyph";
 
 export function Wordmark() {
@@ -32,12 +32,14 @@ function useScrolled(threshold = 8) {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const home = pathname === "/";
+  // The overview's dark 3D hero is the one the header floats over (it was the home's until 2026-11-14);
+  // the light loom home and every other page get the solid header.
+  const home = pathname === OVERVIEW;
   const scrolled = useScrolled();
-  // Over the home hero the header floats transparently; everywhere else, and
+  // Over that hero the header floats transparently; everywhere else, and
   // once the visitor scrolls, it gets a solid surface and a hairline.
   const solid = !home || scrolled;
-  const isCurrent = (href: string) => (href.startsWith("/#") ? false : pathname === href);
+  const isCurrent = (href: string) => (href.includes("#") ? false : pathname === href);
 
   const link = (href: string) =>
     cn(

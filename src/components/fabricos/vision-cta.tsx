@@ -1,4 +1,4 @@
-// Points visitors who want the detail to Fabric Vision (/product/vision), the long-form loom landing.
+// On the overview page: points visitors to Fabric Vision, the loom story that is the home page (/).
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
 import { HOME_STATS } from "@/components/home/stats";
