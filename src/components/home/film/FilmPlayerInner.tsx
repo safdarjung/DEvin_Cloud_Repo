@@ -48,7 +48,7 @@ export default function FilmPlayerInner({ autoPlay = false, onEnded }: { autoPla
     <div
       tabIndex={0}
       role="group"
-      aria-label="Fabric in 90 seconds, a silent product film. Press space to play or pause."
+      aria-label="Fabric in 90 seconds, a narrated product film. Press space to play or pause."
       onKeyDown={handleKeyDown}
       style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", outlineOffset: -3 }}
     >

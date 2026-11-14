@@ -13,6 +13,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "tour:render": "node scripts/tour/render-fallbacks.mjs",
     "film:render": "node scripts/film/render.mjs",
+    "film:narrate": "node scripts/film/narrate.mjs",
     "test": "vitest run --project unit",
     "test:db": "vitest run --project db --passWithNoTests",
     "test:security": "vitest run --project security --passWithNoTests",

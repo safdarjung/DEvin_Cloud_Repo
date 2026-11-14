@@ -37,7 +37,7 @@ export function FilmButton({ kind, label = "Watch the 90-second film" }: { kind?
             <div className="lh-dialog-frame">
               <FilmPlayer autoPlay />
             </div>
-            <p className="lh-dialog-note">Silent film with on-screen text. Space plays and pauses.</p>
+            <p className="lh-dialog-note">Narrated film with on-screen text. Space plays and pauses.</p>
             <form method="dialog">
               <button type="submit" className="lh-dialog-close" aria-label="Close the film">
                 <X aria-hidden className="size-5" />

@@ -327,7 +327,7 @@ const CLIPS = {
     await go(page, rec, "exams", /Exams/);
     await settle(page, 2200);
     rec.cue("One workspace for the whole school, with each person seeing only what their role allows.");
-    await go(page, rec, "dashboard", /Good morning/);
+    await go(page, rec, "dashboard", /Good (morning|afternoon|evening)/);
     await settle(page, 2200);
     await rec.detach();
     await page.context().close();

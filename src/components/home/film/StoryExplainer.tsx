@@ -1,5 +1,6 @@
 import { AbsoluteFill, Sequence, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { Beat, Words } from "../../tour/explainer/Beat";
+import { FilmAudio } from "../../tour/explainer/FilmAudio";
 import { BOUNCY, Chip, FONT, INK, chunky, useMotion } from "../../tour/explainer/kit";
 import { MASCOT_H, MASCOT_W, Mascot } from "../../tour/explainer/Mascot";
 import { BEAT_POSES, END_POSE, LAYOUTS, TITLE_POSE, Backdrop, ProgressPill, Wipes, type Pose } from "../../tour/explainer/Stage";
@@ -139,6 +140,7 @@ export function StoryExplainer({ story }: StoryExplainerProps) {
       <Wipes accent={thread.color} cuts={t.cuts} />
       <ProgressPill accent={thread.color} count={story.steps.length} />
       <StoryMascot story={story} />
+      <FilmAudio filmId={`story-${story.key}`} />
     </AbsoluteFill>
   );
 }

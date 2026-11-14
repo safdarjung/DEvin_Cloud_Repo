@@ -1,7 +1,9 @@
 // "Fabric in 90 seconds": the one composition behind the landing-page player, the deck and public/film/fabric.mp4.
-// Silent by design (it gets forwarded on WhatsApp), so every idea is on screen as text.
+// Narrated since 2026-11-14 (owner request: spoken lines + a soft music bed, see narration.ts and FilmAudio). Every idea
+// is still on screen as text, because the film gets forwarded muted on WhatsApp.
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
 import { FONT } from "../../tour/explainer/kit";
+import { FilmAudio } from "../../tour/explainer/FilmAudio";
 import { Backdrop } from "../../tour/explainer/Stage";
 import { PROBLEMS, THREAD } from "../story";
 import { BRAND, FilmWipes } from "./film-kit";
@@ -68,6 +70,7 @@ export function FabricFilm() {
         <EndScene />
       </Sequence>
       <FilmWipes cuts={FILM.cuts} />
+      <FilmAudio filmId="fabric" />
     </AbsoluteFill>
   );
 }

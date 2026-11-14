@@ -2,6 +2,7 @@ import { AbsoluteFill, Sequence } from "remotion";
 import type { TourRole } from "../roles";
 import { Beat, Words } from "./Beat";
 import { FeatureIcon } from "./icon";
+import { FilmAudio } from "./FilmAudio";
 import { Chip, FONT, INK, YELLOW, chunky, useMotion } from "./kit";
 import { Backdrop, MascotLayer, ProgressPill, Wipes } from "./Stage";
 import { explainerTimeline } from "./timeline";
@@ -103,6 +104,7 @@ export function RoleExplainer({ role }: RoleExplainerProps) {
       <Wipes accent={role.accent} cuts={t.cuts} />
       <ProgressPill accent={role.accent} count={role.features.length} />
       <MascotLayer role={role} />
+      <FilmAudio filmId={`role-${role.key}`} />
     </AbsoluteFill>
   );
 }

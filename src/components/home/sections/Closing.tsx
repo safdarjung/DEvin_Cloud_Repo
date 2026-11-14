@@ -66,7 +66,7 @@ export function Closing() {
           <ul className="lh-ways">
             <li>
               <FilmButton kind="paper" label="Watch the film" />
-              <span>Fabric in 90 seconds, silent, with on-screen text.</span>
+              <span>Fabric in 90 seconds, narrated, with on-screen text.</span>
             </li>
             <li>
               <Link href="/tour" className="lm-btn" data-kind="paper">
