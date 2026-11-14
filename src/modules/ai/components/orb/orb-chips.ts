@@ -103,6 +103,7 @@ const STARTERS: Record<CapabilityKey, Starter> = {
   workflows_overview: ["ask", "Which automation workflows ran recently, and did any fail?"],
   child_activities: ["ask", "What achievements, resources and forms does my child have right now?"],
   my_activities: ["ask", "Which forms and library books do I need to deal with?"],
+  my_fees: ["ask", "Do I have any fees due, and by when?"],
   lab_safety_note: ["ask", "Which lab chemicals are expired or hazardous right now?"],
   import_mapping: ["ask", "Which columns does the student import need?"],
   website_page_draft: ["create", "Draft an admissions page for our school website."],

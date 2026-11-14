@@ -205,6 +205,7 @@ export const CAPABILITY_KEYS = [
   "workflows_overview",
   "child_activities",
   "my_activities",
+  "my_fees",
   // features-18 §C2/§H task routes (api/ai/lab-safety-note, import-mapping)
   "lab_safety_note",
   "import_mapping",
@@ -1124,6 +1125,17 @@ export const CAPABILITIES: Readonly<Record<CapabilityKey, Capability>> = {
     module: "core",
     data: "own",
     queries: ["achievements.portfolio", "resources.forStudent", "library.myLoans", "form.mine", "helpdesk.myTickets", "safety.alerts"],
+  },
+  my_fees: {
+    key: "my_fees",
+    label: "My fees",
+    description: "Your own fee invoices: what is paid, what is still due and by when.",
+    kind: "chat_tool",
+    roles: ["student"],
+    permission: "finance.read",
+    module: "fees",
+    data: "own",
+    queries: ["finance.listInvoicesForStudent"],
   },
 
   // ---- features-18 task routes: write nothing but usage; a person applies --

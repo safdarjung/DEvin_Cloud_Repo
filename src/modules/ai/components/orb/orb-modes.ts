@@ -72,7 +72,9 @@ export interface OrbGroup {
 
 export const sectionLabel = (id: OrbGroupId | "recent") => (id === "recent" ? "Recent" : SECTIONS[id].label);
 const sectionHue = (id: OrbGroupId | "recent") => (id === "recent" ? RECENT_HUE : SECTIONS[id].hue);
-const GROUP_ORDER: readonly (OrbGroupId | "recent")[] = ["recent", ...(Object.keys(SECTIONS) as OrbGroupId[])];
+// No "recent" here: typed prompts stay in search only, so the orb's dots and cards are fixed per role
+// (a recent group first pushed role features past the dot cap, changing the orb after every message).
+const GROUP_ORDER: readonly OrbGroupId[] = Object.keys(SECTIONS) as OrbGroupId[];
 
 /** What a click does, said before the click. */
 export function featureEffect(f: Pick<OrbFeature, "kind" | "mode"> & { prompt?: string }, hasDraft: boolean): string {
@@ -102,7 +104,7 @@ export function explainFeatures(role: string, have: readonly OrbMode[]): OrbFeat
   );
 }
 
-/** The sections that have something in `mode`, in display order (Recent first). */
+/** The sections that have something in `mode`, in display order. Recent prompts are never a section. */
 export function groupsFor(features: readonly OrbFeature[], mode: OrbMode): OrbGroup[] {
   const by = new Map<OrbGroupId | "recent", OrbFeature[]>();
   for (const f of features) if (f.mode === mode) by.set(f.groupId, [...(by.get(f.groupId) ?? []), f]);

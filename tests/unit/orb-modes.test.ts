@@ -112,6 +112,14 @@ describe("searchFeatures", () => {
     expect(searchFeatures([recent, ...f], word).filter((x) => x.label === ask.label)).toHaveLength(1);
     expect(searchFeatures(f, "a", 2)).toHaveLength(2);
   });
+
+  it("never draws a recent prompt on the orb: the dots and cards stay the role's own features", () => {
+    const ask = f.find((x) => x.mode === "ask") as OrbFeature;
+    const typed = "How many students are enrolled?";
+    const recent: OrbFeature = { ...ask, key: `recent:${typed}`, label: typed, prompt: typed, groupId: "recent" };
+    expect(groupsFor([recent, ...f], "ask")).toEqual(groupsFor(f, "ask"));
+    expect(searchFeatures([recent, ...f], "enrolled").map((x) => x.key)).toContain(recent.key);
+  });
 });
 
 describe("URL and query", () => {

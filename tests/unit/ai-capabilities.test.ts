@@ -168,6 +168,11 @@ describe("enabledCapabilities / isAiCapabilityEnabled", () => {
     expect(isAiCapabilityEnabled(ctx, "find_student")).toBe(false); // role ceiling
   });
 
+  it("a student with AI chat on can ask about their own fees; the fees tool reads only the invoice list", () => {
+    expect(enabledCapabilities(ctxFor("student", { aiRoles: { student: { enabled: true } } }))).toContain("my_fees");
+    expect(CAPABILITIES.my_fees).toMatchObject({ roles: ["student"], data: "own", permission: "finance.read", queries: ["finance.listInvoicesForStudent"] });
+  });
+
   it("an accountant with AI chat off has no chat tools enabled", () => {
     expect(enabledCapabilities(ctxFor("accountant", { aiRoles: { accountant: { enabled: false } } })).filter((k) => CAPABILITIES[k].kind === "chat_tool")).toEqual([]);
   });

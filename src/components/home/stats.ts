@@ -9,7 +9,7 @@ export const HOME_STATS = {
   /** ROLES in src/lib/auth/permissions.ts */
   roles: 9,
   /** CAPABILITY_KEYS.length in src/modules/ai/capabilities/catalog.ts */
-  aiSkills: 91,
+  aiSkills: 92,
   /** STUDENT_LANGUAGES.length in src/modules/ai/prompts/student-skills.ts (includes English and Hinglish) */
   studyLanguages: 12,
 } as const;
