@@ -13,7 +13,8 @@
 // no dots here (OrbView shows the sections as a row instead). Small (a conversation
 // open), the orb leans toward the open section in the row below. Each state reads
 // without colour (icon + text in the pill), a badge counts cards waiting, and phones
-// get tiny haptics.
+// get tiny haptics. The hot dot's section is joined by constellation lines, and a finished
+// answer or an approval bursts out of the ball.
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, animate, cancelFrame, frame, motion, useMotionValue, useSpring, type FrameData } from "motion/react";
@@ -24,6 +25,8 @@ import {
   type OrbState, type Vec3,
 } from "./orb-layout";
 import { ORB_ERROR } from "./orb-theme";
+import { Bursts, type Burst } from "./OrbBurst";
+import { constellationPath } from "./orb-play";
 
 const OrbCore = dynamic(() => import("./OrbCore"), { ssr: false });
 
@@ -229,12 +232,24 @@ export function OrbBody(p: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- settle reads refs; re-run only when the lean target changes
   }, [lean?.x, lean?.y, reduced]);
 
-  // One-shot reactions to state changes: pop on done/proposing, shake on error.
+  // A burst out of the ball in the role's colours: an answer landed or a card was approved.
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const celebrate = () => {
+    const radius = Math.max(60, size.current * 0.42);
+    setBursts((b) => [...b, { id: performance.now(), x: 0, y: 0, hues: [accent[1], accent[0], "white"], radius, count: 22 }]);
+  };
+
+  // One-shot reactions to state changes: pop on done/proposing, shake on error, a burst when an answer lands.
   const prev = useRef(state);
   useEffect(() => {
     const was = prev.current;
     prev.current = state;
     if (was === state || reduced) return;
+    const landed = (was === "streaming" || was === "submitted") && !["submitted", "streaming", "error", "listening"].includes(state);
+    if (state === "done" || landed) {
+      const r = requestAnimationFrame(celebrate);
+      if (state !== "done" && state !== "proposing") return () => cancelAnimationFrame(r);
+    }
     if (state === "done" || state === "proposing") {
       sx.set(1.12);
       sy.set(1.12);
@@ -247,6 +262,7 @@ export function OrbBody(p: Props) {
       const a = animate(shake, [0, -9, 9, -6, 6, -3, 0], { duration: 0.45 });
       return () => a.stop();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- celebrate reads refs and this render's accent
   }, [state, reduced, sx, sy, shake]);
 
   useEffect(() => {
@@ -281,6 +297,10 @@ export function OrbBody(p: Props) {
     let els: HTMLElement[] = [];
     let dots: HTMLElement | null = null;
     let label: HTMLElement | null = null;
+    let lines: SVGElement | null = null;
+    let path: SVGPathElement | null = null;
+    let turn = "";
+    const pos: [number, number, number][] = [];
     let width = 0;
     let measured = -1;
     let key: string | null = null;
@@ -301,6 +321,8 @@ export function OrbBody(p: Props) {
         els = [...el.querySelectorAll<HTMLElement>("[data-node]")];
         dots = el.querySelector<HTMLElement>("[data-dots]");
         label = el.querySelector<HTMLElement>("[data-orb-label]");
+        lines = el.querySelector<SVGElement>("[data-orb-lines]");
+        path = lines?.querySelector("path") ?? null;
         sp.pts = dotPoints(els.length);
         measured = -1;
         if (fresh) {
@@ -338,6 +360,18 @@ export function OrbBody(p: Props) {
           const ry = Math.hypot(v[0], v[2]) > 0.2 ? nearestAngle(sp.ry, frontAngle(v)) : sp.ry;
           sp.target = { ry, rx: nearestAngle(sp.rx, Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v)))) };
           sp.coasting = false;
+        }
+      }
+
+      // "Surprise me" picked a dot: turn it to the front.
+      const turnNow = dots?.dataset.turn ?? "";
+      if (turnNow !== turn) {
+        turn = turnNow;
+        const v = turn ? sp.pts[Number(turn.split(":")[0])] : undefined;
+        if (v && !sp.dragging) {
+          sp.target = { ry: nearestAngle(sp.ry, frontAngle(v)), rx: nearestAngle(sp.rx, Math.max(-MAX_TILT, Math.min(MAX_TILT, frontTilt(v)))) };
+          sp.coasting = false;
+          sig.pulse = 1;
         }
       }
 
@@ -421,12 +455,21 @@ export function OrbBody(p: Props) {
         n.style.pointerEvents = look.pickable && a > 0.6 ? "" : "none";
         // Back-hemisphere dots stack below the ball (negative, inside the isolated stage), so the glass and dust pass over them; the hot one is on top.
         n.style.zIndex = k > 0.5 ? "40" : String(Math.round(v[2] * 10) + (v[2] < 0 ? -11 : 11));
+        pos[i] = [x, y, v[2]];
         if (i === hotI) {
           hx = x;
           hy = y;
           hs = s;
         }
       });
+      if (lines && path) {
+        // The constellation: the hot dot to every dot of its section that is not far round the back.
+        const group = hotI >= 0 ? els[hotI]?.dataset.group : undefined;
+        const kin: [number, number][] = [];
+        if (group && hotK > 0.01) els.forEach((n, i) => i !== hotI && n.dataset.group === group && pos[i] && pos[i][2] > -0.35 && kin.push([pos[i][0], pos[i][1]]));
+        path.setAttribute("d", constellationPath([hx, hy], kin));
+        lines.style.opacity = (0.95 * hotK).toFixed(3);
+      }
       if (label) {
         // Under the hot dot, or over it when the dot is low on the ball.
         const under = hy < radius * 0.3;
@@ -759,6 +802,7 @@ export function OrbBody(p: Props) {
             ))}
         </AnimatePresence>
         {p.children}
+        <Bursts items={bursts} onDone={(id) => setBursts((b) => b.filter((x) => x.id !== id))} />
       </div>
       {p.showStatus && (
         <p className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-medium shadow-xs backdrop-blur" style={roleVars}>

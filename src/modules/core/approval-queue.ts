@@ -19,6 +19,22 @@ export interface ApprovalQueueItem {
 
 const CATEGORY: Record<string, string> = { recheck: "Recheck", insight: "Insight", agent_run: "Agent run" };
 
+/**
+ * Pending student leave as generic approval rows, for readers that take one list (the AI tool, the daily
+ * briefing). The reason is left out on purpose: it is free text that can describe a child's health.
+ */
+export function studentLeaveApprovalRows(leaves: readonly StudentLeaveRow[], nowMs: number): ApprovalRow[] {
+  return leaves
+    .filter((l) => l.status === "pending")
+    .map((l) => ({
+      id: l.id,
+      kind: "student_leave",
+      title: `Student leave: ${l.days} day${l.days === 1 ? "" : "s"} from ${l.startDate}`,
+      requestedBy: `${l.studentName} (${l.classSection})`,
+      age: ageLabel(l.createdAt, nowMs),
+    }));
+}
+
 export function ageLabel(createdAtIso: string, nowMs: number): string {
   const hours = Math.max(0, Math.round((nowMs - Date.parse(createdAtIso)) / 3_600_000));
   return hours < 24 ? `${hours} h` : `${Math.floor(hours / 24)} d`;

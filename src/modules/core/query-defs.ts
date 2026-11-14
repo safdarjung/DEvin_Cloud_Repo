@@ -8,7 +8,7 @@ import { AppError } from "@/lib/actions/result";
 import { getDashboardData } from "./dashboard.queries";
 import { listAuditEvents } from "./audit.queries";
 import { listModules } from "./queries";
-import { pendingApprovals } from "./approvals.queries";
+import { pendingApprovalsWithStudentLeave } from "./approvals.queries";
 import { financeDashboard, admissionsDashboard } from "./dashboard-office.queries";
 import { principalDashboard, operationsDashboard } from "./dashboard-leader.queries";
 import { teacherDashboard, portalDashboard } from "./dashboard-member.queries";
@@ -68,7 +68,8 @@ export const pendingApprovalsQuery = defineQuery({
   module: "core",
   schema: z.object({}).strict(),
   permission: "dashboard.view",
-  handler: (_input, ctx) => pendingApprovals(ctx),
+  // With student leave, so an AI answer or briefing counts what the dashboard's "Approvals waiting" tile counts.
+  handler: (_input, ctx) => pendingApprovalsWithStudentLeave(ctx),
 });
 
 // M16-T8 — dashboard.finance / dashboard.admissions. Each composer gates

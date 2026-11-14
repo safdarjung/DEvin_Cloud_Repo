@@ -12,6 +12,9 @@ Semantic CSS variables: background, foreground, card, popover, primary, secondar
 ## Marketing tokens (src/components/marketing/marketing.css)
 Scoped to `.fabric-mk`: --mk-bg, fg, muted, line, surface, accent (#0f6f68 light, #5bbfb3 dark), accent-soft, blue. Dark values switch with the `.dark` class. Components: components/marketing/ui.tsx (PageHero, Section, Rows, CtaBand, ButtonLink), site-header, site-footer, theme-toggle, lead-form.
 
+## Landing, deck and film tokens (src/components/home/tokens.css)
+Scoped to `.loom` ("Storybook loom", the look of the 3D tour's explainers): cream paper `--lm-paper`, ink outlines `--lm-ink`, hard offset shadows, yellow `--lm-yellow` for the primary button, one yarn colour per school domain (`--th-attendance`, `--th-fees`, `--th-exams`, `--th-admissions`, `--th-parents`, `--th-learning`, `--th-office`; same values as `THREADS` in `story.ts`). Dark theme keeps cards as paper on a night background. Primitives: `.lm-card`, `.lm-btn`, `.lm-chip`, `.lm-honest` (the honesty label on public pages), `.lm-display`. Display face: Bricolage Grotesque (`src/components/home/fonts.ts`); body stays Plus Jakarta Sans. On `/` the site header and footer take the same paper via `.fabric-mk:has(.lh)`.
+
 ## Shared components
 page-header, breadcrumbs, states (empty/loading/error), honesty badges (SimulatedBadge, LimitedBadge), tenant sidebar, bottom nav (components/tenant/bottom-nav.tsx; logic in lib/bottom-nav.ts: max 5 slots, 4 + More), widgets/ for dashboards.
 

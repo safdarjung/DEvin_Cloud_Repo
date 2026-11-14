@@ -17,6 +17,8 @@ import { pendingLeaveApprovals } from "@/modules/people/hr.queries";
 import { listRecheckQueue } from "@/modules/exams/queries";
 import { AGENT_CATALOG, canDecideRun, type AgentSlug, type RiskClass } from "@/modules/agents/catalog";
 import { listInsights } from "@/modules/insights/queries";
+import { studentLeaveRequests } from "@/modules/student-leave/queries";
+import { studentLeaveApprovalRows } from "./approval-queue";
 
 function recheckAgeLabel(createdAt: string): string {
   const hours = Math.round((Date.now() - Date.parse(createdAt)) / 3_600_000);
@@ -45,6 +47,17 @@ export async function pendingApprovals(ctx: TenantContext): Promise<ApprovalRow[
   ]);
 
   return [...leaveRows, ...recheckRows, ...insightRows, ...agentRunRows, ...workflowRunRows];
+}
+
+/**
+ * Everything waiting for this person's decision as one list: `pendingApprovals` plus pending student leave.
+ * This is the set the leader dashboard's "Approvals waiting" tile counts (it fetches student leave with the
+ * same gate and limit), so the AI tool and the daily briefing, which read this, agree with the tile.
+ */
+export async function pendingApprovalsWithStudentLeave(ctx: TenantContext): Promise<ApprovalRow[]> {
+  const canSeeStudentLeave = ctx.permissions.has("student_leave.approve") && isModuleEnabled(ctx, "student_leave");
+  const [rows, leaves] = await Promise.all([pendingApprovals(ctx), canSeeStudentLeave ? studentLeaveRequests(ctx, { status: "pending", limit: 50 }) : Promise.resolve([])]);
+  return [...rows, ...studentLeaveApprovalRows(leaves, Date.now())];
 }
 
 async function pendingRecheckApprovals(ctx: TenantContext): Promise<ApprovalRow[]> {

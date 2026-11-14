@@ -9,8 +9,13 @@
 // runs. Touch: the first tap shows, the second runs. Keys: one Tab stop, arrows move.
 // A few dots (they all sit on the front) carry their names under them.
 // OrbLegend names the colours: a section's pill lights its dots.
+// The hot dot's section lights up as a constellation (OrbBody draws the lines; the other
+// sections fade), a dot that runs bursts in its colour, and "Surprise me" (OrbView) hands in
+// a `preview`: that dot turns to the front (`data-turn`) and shows its label.
 import Link from "next/link";
+import { Dices } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
+import { Bursts, type Burst } from "./OrbBurst";
 import { GROUP_ICONS, blocked } from "./OrbGroups";
 import { FULL_SPHERE_FROM } from "./orb-layout";
 import { featureEffect, modeInfo, sectionLabel, type OrbFeature, type OrbGroup, type OrbMode } from "./orb-modes";
@@ -31,21 +36,39 @@ interface Props {
   onRun: (f: OrbFeature) => void;
   /** A dot became hot: the orb answers with a small pulse. */
   onHot: () => void;
+  reduced: boolean;
+  /** "Surprise me": the dot to turn to the front and show until another is hot; `n` bumps on every pick. */
+  preview: { key: string; n: number } | null;
 }
 
 const DOT =
-  "group pointer-events-auto absolute left-1/2 top-1/2 grid size-(--dot) cursor-pointer place-items-center rounded-full opacity-0 outline-none transition-[filter] duration-200 after:absolute after:-inset-1 after:rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-dim:[filter:grayscale(0.9)_opacity(0.28)] disabled:cursor-default";
+  "group pointer-events-auto absolute left-1/2 top-1/2 grid size-(--dot) cursor-pointer place-items-center rounded-full opacity-0 outline-none transition-[filter,outline-color] duration-200 outline-offset-2 outline-transparent data-kin:outline-2 data-kin:outline-(--hue) data-fade:[filter:saturate(0.5)_opacity(0.6)] after:absolute after:-inset-1 after:rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-dim:[filter:grayscale(0.9)_opacity(0.28)] disabled:cursor-default";
 
-function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRun, onHot }: Props) {
+function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRun, onHot, reduced, preview }: Props) {
   const dots = groups.flatMap((g) => g.features.map((f) => ({ f, hue: g.hue }))).slice(0, DOT_CAP);
   // Keyed by mode, so a mode change drops whatever dot was hot.
   const [hotKey, setHotKey] = useState<string | null>(null);
-  const hot = hotKey?.startsWith(`${mode}:`) ? hotKey.slice(mode.length + 1) : null;
+  const own = hotKey?.startsWith(`${mode}:`) ? hotKey.slice(mode.length + 1) : null;
+  const previewAt = preview ? dots.findIndex((d) => d.f.key === preview.key) : -1;
+  const hot = own ?? (previewAt >= 0 ? preview!.key : null);
   const [rove, setRove] = useState(0);
   const touch = useRef(false);
   const root = useRef<HTMLDivElement>(null);
   const hotDot = dots.find((d) => d.f.key === hot);
   const named = dots.length < FULL_SPHERE_FROM;
+  // The hot dot's section: its other dots light up and OrbBody joins them with lines; the rest fade.
+  const kin = hotDot && dots.some((d) => d.f.groupId === hotDot.f.groupId && d.f.key !== hotDot.f.key) ? hotDot.f.groupId : null;
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  const burstId = useRef(0);
+
+  function burst(el: HTMLElement, hue: string) {
+    const box = root.current?.getBoundingClientRect();
+    if (reduced || !box) return;
+    const r = el.getBoundingClientRect();
+    const id = ++burstId.current;
+    const at = { x: r.left + r.width / 2 - (box.left + box.width / 2), y: r.top + r.height / 2 - (box.top + box.height / 2) };
+    setBursts((b) => [...b, { id, ...at, hues: [hue, "white"], radius: Math.max(36, r.width * 1.3), count: 12 }]);
+  }
 
   function setHot(key: string | null) {
     setHotKey(key && `${mode}:${key}`);
@@ -77,6 +100,8 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
       ref={root}
       data-dots
       data-lit={litKey}
+      // "Surprise me": OrbBody turns this dot to the front once per pick.
+      data-turn={previewAt >= 0 ? `${previewAt}:${preview!.n}` : ""}
       role="group"
       aria-label={`${modeInfo(mode).label}: everything the orb can do here. Arrow keys move between them.`}
       onKeyDown={onKeyDown}
@@ -90,6 +115,9 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
           "data-node": i,
           "data-hot": hot === f.key ? "" : undefined,
           "data-dim": lit && !lit.has(f.key) ? "" : undefined,
+          "data-group": f.groupId,
+          "data-kin": kin && f.groupId === kin && f.key !== hot ? "" : undefined,
+          "data-fade": kin && f.groupId !== kin && !(lit && !lit.has(f.key)) ? "" : undefined,
           "aria-label": `${f.label}: ${effect} (${sectionLabel(f.groupId)})`,
           tabIndex: i === Math.min(rove, dots.length - 1) ? 0 : -1,
           onFocus: (e: React.FocusEvent<HTMLElement>) => {
@@ -104,13 +132,16 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
           onPointerLeave: (e: React.PointerEvent) => e.pointerType === "mouse" && hot === f.key && setHotKey(null),
           className: DOT,
           // A page link is a hollow dot; an AI action is a filled, lit one.
-          style: page
+          style: {
+            ...({ "--hue": hue } as React.CSSProperties),
+            ...(page
             ? { background: "var(--card)", boxShadow: `inset 0 0 0 2px ${hue}, 0 6px 16px -8px ${hue}`, color: hue }
             : {
                 background: `radial-gradient(circle at 32% 26%, color-mix(in oklab, ${hue} 45%, white), ${hue} 62%, color-mix(in oklab, ${hue} 70%, black))`,
                 boxShadow: `0 0 0 1.5px rgb(255 255 255 / 0.55), 0 8px 20px -8px ${hue}, 0 0 18px -4px ${hue}`,
                 color: "white",
-              },
+              }),
+          },
         };
         // Touch has no hover: the first tap only shows what the dot is.
         const firstTap = () => touch.current && hot !== f.key;
@@ -131,7 +162,7 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
             href={f.href as string}
             {...common}
             onClick={(e) => {
-              if (!firstTap()) return;
+              if (!firstTap()) return burst(e.currentTarget, hue);
               e.preventDefault();
               setHot(f.key);
             }}
@@ -145,15 +176,24 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
             {...common}
             // Not `disabled`: a blocked dot still shows its name on hover and focus.
             aria-disabled={blocked(f, busy, hasDraft, starting)}
-            onClick={() => {
+            onClick={(e) => {
               if (firstTap()) return setHot(f.key);
-              if (!blocked(f, busy, hasDraft, starting)) onRun(f);
+              if (blocked(f, busy, hasDraft, starting)) return;
+              burst(e.currentTarget, hue);
+              onRun(f);
             }}
           >
             {face}
           </button>
         );
       })}
+      {/* The constellation: OrbBody's loop writes the path (hot dot to each dot of its section) and fades it with the hot dot. Over the ball, under the front dots. */}
+      <svg data-orb-lines aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 z-[1] size-px overflow-visible opacity-0">
+        <path fill="none" stroke={hotDot?.hue ?? "currentColor"} strokeWidth={2} strokeLinecap="round" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" style={{ filter: `drop-shadow(0 0 3px ${hotDot?.hue ?? "currentColor"})` }}>
+          {!reduced && <animate attributeName="stroke-dashoffset" from="16" to="0" dur="0.9s" repeatCount="indefinite" />}
+        </path>
+      </svg>
+      <Bursts items={bursts} onDone={(id) => setBursts((b) => b.filter((x) => x.id !== id))} />
       {/* The hot dot's label: OrbBody's loop keeps it beside the dot and fades it. Dots carry the same text as their accessible name. */}
       <div data-orb-label aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 z-50 w-max max-w-60 opacity-0">
         {hotDot && (
@@ -212,5 +252,23 @@ export function OrbLegend({ groups, pinned, onPin, onPeek }: {
         );
       })}
     </div>
+  );
+}
+
+/** "Surprise me" (key S): OrbView turns a random dot to the front and shows what it does. */
+export function OrbSurprise({ hue, onClick }: { hue: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-keyshortcuts="S"
+      aria-label="Surprise me: show a random thing the orb can do (key S)"
+      title="Surprise me (S)"
+      className="group inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Dices className="size-4 transition-transform duration-300 group-hover:rotate-[20deg] group-active:rotate-[200deg] motion-reduce:transition-none" style={{ color: hue }} aria-hidden />
+      <span className="hidden sm:inline">Surprise me</span>
+      <kbd className="hidden rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground sm:inline">S</kbd>
+    </button>
   );
 }

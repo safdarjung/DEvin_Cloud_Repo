@@ -1,0 +1,277 @@
+/* Landing page (/), part 3: motion. Loaded last. Everything here is an enhancement: without JS, and under
+   reduced motion, every element is simply in place (Motion.tsx never sets `data-motion`). */
+
+/* ---------- reading progress: one thread drawn under the header ---------- */
+
+.lh-progress {
+  position: fixed;
+  inset: var(--header) 0 auto 0;
+  z-index: 30;
+  height: 4px;
+  background: var(--lm-grad);
+  transform-origin: 0 50%;
+  scale: 0 1;
+  pointer-events: none;
+}
+
+@supports (animation-timeline: scroll()) {
+  .lh-progress {
+    animation: lh-progress linear both;
+    animation-timeline: scroll(root block);
+  }
+}
+
+@keyframes lh-progress {
+  to {
+    scale: 1 1;
+  }
+}
+
+/* ---------- reveal on scroll ---------- */
+
+/* `translate` / `scale` / `rotate`, not `transform`: cards that carry their own transform (a tilt, a hover
+   lift) keep it. Keyframes have no end state, so each element lands on whatever its own rules say. */
+.lh[data-motion] [data-reveal]:not([data-in]) {
+  opacity: 0;
+}
+
+.lh[data-motion] [data-reveal][data-in="true"] {
+  animation: lh-rise 760ms var(--lm-out) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.lh[data-motion] [data-reveal="pop"][data-in="true"] {
+  animation: lh-pop 620ms var(--lm-spring) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.lh[data-motion] [data-reveal="left"][data-in="true"] {
+  animation-name: lh-from-left;
+}
+
+.lh[data-motion] [data-reveal="right"][data-in="true"] {
+  animation-name: lh-from-right;
+}
+
+@keyframes lh-rise {
+  from {
+    opacity: 0;
+    translate: 0 34px;
+  }
+}
+
+@keyframes lh-pop {
+  from {
+    opacity: 0;
+    scale: 0.82;
+    translate: 0 18px;
+    rotate: -3deg;
+  }
+}
+
+@keyframes lh-from-left {
+  from {
+    opacity: 0;
+    translate: -48px 0;
+  }
+}
+
+@keyframes lh-from-right {
+  from {
+    opacity: 0;
+    translate: 48px 0;
+  }
+}
+
+/* The stitched rule between sections is sewn in from the left when the section arrives. */
+@supports (animation-timeline: view()) {
+  .lh[data-motion] .lh-section + .lh-section::before,
+  .lh[data-motion] .lf + .lh-section::before {
+    animation: lh-stitch linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 90%;
+  }
+}
+
+@keyframes lh-stitch {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ---------- a swatch that weaves itself ---------- */
+
+.lh[data-motion] .lm-weave[data-reveal]:not([data-in]) {
+  opacity: 1;
+}
+
+.lh[data-motion] .lm-weave[data-reveal]:not([data-in]) .lm-strand,
+.lh[data-motion] .lm-weave[data-reveal]:not([data-in]) .lm-cross {
+  opacity: 0;
+}
+
+.lh[data-motion] .lm-weave[data-reveal][data-in="true"] {
+  animation: none;
+}
+
+.lh[data-motion] .lm-weave[data-in="true"] .lm-strand {
+  animation: lm-weft 700ms var(--lm-out) backwards;
+  animation-delay: calc(var(--i) * 70ms);
+}
+
+.lh[data-motion] .lm-weave[data-in="true"] .lm-strand[data-kind="v"] {
+  animation-name: lm-warp;
+  animation-delay: calc(var(--i) * 70ms + 380ms);
+}
+
+.lh[data-motion] .lm-weave[data-in="true"] .lm-cross {
+  animation: lm-cross 240ms ease-out backwards;
+  animation-delay: calc(var(--i) * 70ms + 900ms);
+}
+
+@keyframes lm-weft {
+  from {
+    opacity: 0;
+    translate: -110% 0;
+  }
+}
+
+@keyframes lm-warp {
+  from {
+    opacity: 0;
+    translate: 0 -110%;
+  }
+}
+
+@keyframes lm-cross {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- hero entrance (plain CSS: it plays on first paint, before hydration) ---------- */
+
+.lf-w {
+  display: inline-block;
+}
+
+.lf-woven {
+  position: relative;
+  background-size: 160% 100%;
+}
+
+/* A running stitch under "woven". */
+.lf-woven::after {
+  content: "";
+  position: absolute;
+  inset: auto 0.04em -0.07em 0.04em;
+  height: 0.05em;
+  border-radius: 99px;
+  background: repeating-linear-gradient(90deg, var(--lm-fg) 0 0.15em, transparent 0.15em 0.27em);
+  transform-origin: 0 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lf-w {
+    animation: lf-word 720ms var(--lm-spring) backwards;
+    animation-delay: calc(var(--i) * 65ms + 60ms);
+  }
+
+  .lf-woven {
+    animation:
+      lf-word 720ms var(--lm-spring) calc(var(--i) * 65ms + 60ms) backwards,
+      lf-yarn 9s ease-in-out 1.2s infinite alternate;
+  }
+
+  .lf-woven::after {
+    animation: lf-sew 620ms var(--lm-out) 780ms backwards;
+  }
+
+  .lf-hero > :not(.lf-h1) {
+    animation: lh-rise 700ms var(--lm-out) backwards;
+  }
+
+  .lf-hero > .lm-eyebrow {
+    animation-delay: 0ms;
+  }
+
+  .lf-hero > .lf-lead {
+    animation-delay: 420ms;
+  }
+
+  .lf-hero > .lf-actions {
+    animation-delay: 540ms;
+  }
+
+  .lf-hero > .lf-sub,
+  .lf-hero > .lf-swatch {
+    animation-delay: 640ms;
+  }
+
+  /* The arrow on a primary button leans forward on hover. */
+  .lm-btn > svg:last-child {
+    transition: translate 200ms var(--lm-spring);
+  }
+
+  .lm-btn:hover > svg:last-child {
+    translate: 4px 0;
+  }
+
+  .lf-hint {
+    animation: lf-nudge 2.4s ease-in-out 2s infinite;
+  }
+}
+
+@keyframes lf-word {
+  from {
+    opacity: 0;
+    translate: 0 0.55em;
+    rotate: 5deg;
+  }
+}
+
+@keyframes lf-yarn {
+  to {
+    background-position: 100% 0;
+  }
+}
+
+@keyframes lf-sew {
+  from {
+    scale: 0 1;
+  }
+}
+
+@keyframes lf-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 5px;
+  }
+}
+
+/* ---------- cards answer the pointer ---------- */
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  .lh-rules li,
+  .lh-trust-list li,
+  .lh-start li,
+  .lh-stat {
+    transition:
+      translate 220ms var(--lm-spring),
+      box-shadow 220ms var(--lm-out);
+  }
+
+  .lh-rules li:hover,
+  .lh-trust-list li:hover,
+  .lh-start li:hover,
+  .lh-stat:hover {
+    translate: 0 -5px;
+    box-shadow: 0 calc(var(--lm-lift) + 5px) 0 var(--lm-shadow);
+  }
+}

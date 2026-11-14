@@ -18,7 +18,7 @@ import { FlashcardsCard, type FlashcardsResult } from "@/modules/ai/components/e
 import { LessonPlanCard, type LessonPlanResult } from "@/modules/ai/components/explain/LessonPlanCard";
 import { FileAnswerCard, type FileAnswerResult } from "./OrbFile";
 import { OrbHistory, SaveNoteButton, type OpenedChat } from "./OrbHistory";
-import { OrbDataChart, chartFromTool } from "./OrbDataChart";
+import { OrbDataChart, OrbStatTiles, chartFromTool, tilesFromTool } from "./OrbDataChart";
 import { lessonPlanText } from "@/modules/ai/components/explain/LessonPlanCard";
 import TaskStack from "@/modules/ai/components/task-card/TaskStack";
 import { taskProposalFromPart } from "@/modules/ai/components/task-card/parse";
@@ -220,6 +220,7 @@ export function answerShows(parts: readonly Part[]): boolean {
     return Boolean(
       taskProposalFromPart(part) ||
         chartFromTool(part.type, part.output) ||
+        tilesFromTool(part.type, part.output) ||
         navigateLink(part) ||
         EDITOR_DRAFT_TOOLS.has(part.type) ||
         (isDraftToolPartType(part.type) && parseDraftToolOutput(part.output)),
@@ -242,9 +243,17 @@ function ToolPart({ part, institutionSlug }: { part: Part; institutionSlug: stri
       </p>
     );
   }
-  // Numbers from a data tool are drawn as a chart under the answer.
+  // Numbers from a data tool are drawn under the answer: headline tiles that count up, then a chart.
   const chart = chartFromTool(part.type, part.output);
-  if (chart) return <OrbDataChart spec={chart} />;
+  const tiles = tilesFromTool(part.type, part.output);
+  if (chart || tiles) {
+    return (
+      <div className="space-y-2">
+        {tiles && <OrbStatTiles tiles={tiles} />}
+        {chart && <OrbDataChart spec={chart} />}
+      </div>
+    );
+  }
   const link = navigateLink(part);
   if (link) {
     return (

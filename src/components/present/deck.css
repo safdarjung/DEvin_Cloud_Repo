@@ -1,0 +1,519 @@
+/* /present: a fixed 1280x720 stage scaled to the viewport (--s set by Deck.tsx). Sizes are stage pixels.
+   Tokens and primitives come from src/components/home/tokens.css (.loom, .lm-*). */
+
+.deck {
+  --dk-letterbox: var(--lm-paper-2);
+  --dk-pad-y: 52px;
+  --dk-pad-x: 72px;
+}
+
+.dark .deck {
+  --dk-letterbox: #0b0d1a;
+}
+
+.dk-view {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--dk-letterbox);
+  touch-action: pan-y;
+}
+
+.dk-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1280px;
+  height: 720px;
+  overflow: hidden;
+  background-color: var(--lm-bg);
+  transform: translate(-50%, -50%) scale(var(--s, 1));
+  transform-origin: center;
+}
+
+/* The selvedge: a band of every thread along the bottom edge. */
+.dk-stage::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 12px;
+  border-top: 3px solid var(--lm-ink);
+  background: repeating-linear-gradient(90deg, var(--th-fees) 0 64px, var(--th-office) 64px 128px, var(--th-attendance) 128px 192px, var(--th-admissions) 192px 256px, var(--th-learning) 256px 320px, var(--th-exams) 320px 384px, var(--th-parents) 384px 448px);
+}
+
+.dk-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--dk-pad-y) var(--dk-pad-x) calc(var(--dk-pad-y) + 12px);
+  color: var(--lm-fg);
+  transition: opacity 360ms var(--lm-out), transform 520ms var(--lm-out), visibility 0s;
+}
+
+.dk-slide[data-pos="past"],
+.dk-slide[data-pos="next"] {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 260ms var(--lm-out), transform 520ms var(--lm-out), visibility 0s 520ms;
+}
+
+.dk-slide[data-pos="past"] {
+  transform: translateX(-48px);
+}
+
+.dk-slide[data-pos="next"] {
+  transform: translateX(48px);
+}
+
+.dk-slide h1,
+.dk-slide h2,
+.dk-slide h3,
+.dk-slide p,
+.dk-slide ul,
+.dk-slide ol {
+  margin: 0;
+}
+
+.dk-slide ul,
+.dk-slide ol {
+  list-style: none;
+  padding: 0;
+}
+
+/* ---------- shared type and bits ---------- */
+
+.dk-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lm-muted);
+}
+
+.dk-h2 {
+  font-size: 60px;
+  margin-bottom: 26px !important;
+}
+
+.dk-body {
+  font-size: 28px;
+  line-height: 1.4;
+  color: var(--lm-muted);
+  text-wrap: pretty;
+}
+
+.dk-yarn {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.dk-yarn i {
+  width: 16px;
+  height: 16px;
+  border: 2.5px solid var(--lm-ink);
+  border-radius: 50%;
+}
+
+.dk-dot {
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--lm-ink);
+  border-radius: 50%;
+}
+
+.deck .dk-chip {
+  gap: 8px;
+  padding: 4px 14px;
+  font-size: 19px;
+}
+
+.deck .dk-honest {
+  margin-left: 12px;
+  padding: 3px 10px;
+  font-size: 15px;
+  vertical-align: 0.2em;
+}
+
+.deck .dk-btn {
+  align-self: flex-start;
+  min-height: 60px;
+  padding: 14px 28px;
+  font-size: 22px;
+}
+
+.dk-ico {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}
+
+.dk-frag {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 320ms var(--lm-out), transform 420ms var(--lm-spring);
+}
+
+.dk-frag[data-on="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* ---------- chrome: progress, controls, notes, overview, film ---------- */
+
+.dk-progress {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 20;
+  height: 5px;
+  background: var(--lm-rule);
+}
+
+.dk-progress span {
+  display: block;
+  height: 100%;
+  background: var(--lm-grad);
+  transform-origin: left;
+  transition: transform 420ms var(--lm-out);
+}
+
+.dk-controls {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 2px solid var(--lm-ink);
+  border-radius: 999px;
+  background: var(--lm-card);
+  color: var(--lm-ink);
+  box-shadow: 0 3px 0 var(--lm-shadow);
+  opacity: 0.6;
+  transition: opacity 200ms;
+}
+
+.dk-controls:hover,
+.dk-controls:focus-within {
+  opacity: 1;
+}
+
+.dk-controls button,
+.dk-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--lm-ink);
+  cursor: pointer;
+}
+
+.dk-controls button:hover:not(:disabled),
+.dk-controls button[aria-pressed="true"] {
+  background: var(--lm-yellow);
+}
+
+.dk-controls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.dk-controls button:focus-visible,
+.dk-close:focus-visible,
+.dk-overview button:focus-visible {
+  outline: 3px solid var(--th-learning);
+  outline-offset: 2px;
+}
+
+.dk-controls svg,
+.dk-close svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dk-count {
+  min-width: 62px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.dk-notes {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 20;
+  width: min(680px, calc(100vw - 24px));
+  max-height: min(42vh, 360px);
+  overflow: auto;
+  padding: 16px 20px;
+  border: 2px solid var(--lm-ink);
+  border-radius: 18px;
+  background: var(--lm-ink);
+  color: #fff8ec;
+  box-shadow: 0 5px 0 #05060f;
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.dk-notes p {
+  margin: 0;
+}
+
+.dk-notes-h {
+  margin-bottom: 6px !important;
+  color: var(--lm-yellow);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.dk-notes-next {
+  margin-top: 10px !important;
+  color: #c3c8dc;
+  font-size: 15px;
+}
+
+/* On narrow screens the notes would cover the controls: lift them above. */
+@media (max-width: 760px) {
+  .dk-notes {
+    bottom: 70px;
+  }
+}
+
+.dk-overview {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: auto;
+  padding: 24px 16px 40px;
+  background: color-mix(in srgb, var(--lm-bg) 96%, transparent);
+}
+
+.dk-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1100px;
+  margin: 0 auto 16px;
+}
+
+.dk-overview-head p {
+  margin: 0;
+  font-size: 32px;
+}
+
+.dk-close {
+  border: 2px solid var(--lm-ink);
+  background: #fff;
+}
+
+.dk-overview ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.dk-overview li button {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-height: 96px;
+  padding: 12px 16px 14px;
+  border: 3px solid var(--lm-ink);
+  border-radius: 16px;
+  background: var(--lm-card);
+  color: var(--lm-card-fg);
+  box-shadow: 0 4px 0 var(--lm-shadow);
+  font: 700 17px/1.3 var(--lm-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dk-overview li button span {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dk-overview li button[aria-current="true"] {
+  background: var(--lm-yellow);
+}
+
+.dk-film {
+  margin: auto;
+  width: min(1100px, 94vw);
+  max-height: 94vh;
+  padding: 0;
+  border: 3px solid var(--lm-ink);
+  border-radius: var(--lm-radius);
+  background: var(--lm-card);
+  color: var(--lm-card-fg);
+  box-shadow: 0 8px 0 var(--lm-shadow);
+}
+
+.dk-film::backdrop {
+  background: rgb(20 23 43 / 0.72);
+}
+
+.dk-film-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px 10px 22px;
+}
+
+.dk-film-head p {
+  margin: 0;
+  font-size: 24px;
+}
+
+.dk-film-body {
+  padding: 0 14px 14px;
+}
+
+.dk-wait {
+  padding: 40px;
+  text-align: center;
+}
+
+/* ---------- motion and print ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .deck *,
+  .deck *::before,
+  .deck *::after {
+    transition: none !important;
+  }
+
+  .dk-slide[data-pos="past"],
+  .dk-slide[data-pos="next"] {
+    transform: none;
+  }
+}
+
+@media print {
+  @page {
+    size: 1280px 720px;
+    margin: 0;
+  }
+
+  .deck {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .deck .dk-view {
+    position: static;
+    overflow: visible;
+    background: none;
+  }
+
+  .deck .dk-stage {
+    position: static;
+    width: 1280px;
+    height: auto;
+    overflow: visible;
+    transform: none;
+    background: none;
+  }
+
+  .deck .dk-stage::after {
+    display: none;
+  }
+
+  .deck .dk-slide {
+    position: relative;
+    inset: auto;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background-color: var(--lm-bg);
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    break-after: page;
+  }
+
+  .dk-ui,
+  .dk-progress,
+  .dk-film,
+  .dk-slide button[type="button"] {
+    display: none !important;
+  }
+
+  /* Every fragment shown; the use-case and rule steps print open but compact. */
+  .dk-frag,
+  .st-row .st-body {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .st-row .st-knot {
+    border-style: solid !important;
+    border-color: var(--lm-ink) !important;
+    background: var(--th) !important;
+    color: var(--lm-ink) !important;
+  }
+
+  .st-steps::after {
+    transform: none;
+  }
+
+  .st-row .st-blurb {
+    display: block;
+    margin-top: 2px !important;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--lm-muted);
+    font-size: 19px;
+  }
+
+  .st-row .st-icon {
+    display: none;
+  }
+
+  .st-line {
+    min-height: 0;
+  }
+
+  .st-title {
+    font-size: 26px;
+  }
+
+  .r-row .r-body {
+    display: block;
+    font-size: 19px;
+  }
+
+  .r-row {
+    padding: 10px 18px;
+  }
+
+  .r-title {
+    font-size: 26px;
+  }
+}

@@ -34,7 +34,7 @@ function normaliseFields(raw: unknown): FieldErrors {
   return out;
 }
 
-export function LeadForm({ defaultKind = "demo" }: { defaultKind?: Kind }) {
+export function LeadForm({ defaultKind = "demo", defaultMessage }: { defaultKind?: Kind; defaultMessage?: string }) {
   const [kind, setKind] = useState<Kind>(defaultKind);
   const [state, setState] = useState<State>({ s: "idle" });
   const formRef = useRef<HTMLFormElement>(null);
@@ -155,7 +155,7 @@ export function LeadForm({ defaultKind = "demo" }: { defaultKind?: Kind }) {
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="lf-message" className={label}>Message</label>
-          <textarea {...common("message")} rows={5} className={cn(FIELD, "py-2")} />
+          <textarea {...common("message")} rows={5} defaultValue={defaultMessage} className={cn(FIELD, "py-2")} />
           <FieldError k="message" msg={err("message")} />
         </div>
       </div>

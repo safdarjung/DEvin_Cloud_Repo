@@ -156,6 +156,19 @@ const one = (v: Param) => (typeof v === "string" ? v : undefined);
 const TASK_KEY = /^[a-zA-Z][a-zA-Z0-9_.]{1,80}$/;
 const MAX_Q = 500;
 
+/**
+ * Where another page leaves a question for the orb when the text must not travel in the URL: a selection
+ * from a page can hold a child's name or a phone number, and a query string is kept in server logs.
+ */
+export const ORB_ASK_KEY = "coolskool.orb.ask";
+
+/** The question left under ORB_ASK_KEY, removed as it is read so a reload does not ask it again. */
+export function takeHandedQuestion(storage: Pick<Storage, "getItem" | "removeItem">): string | undefined {
+  const q = storage.getItem(ORB_ASK_KEY)?.trim().slice(0, MAX_Q);
+  storage.removeItem(ORB_ASK_KEY);
+  return q || undefined;
+}
+
 /** `?mode=`, `?task=` and `?q=` are untrusted: a task counts only when it is in the caller's enabled list (the server re-checks on start). */
 export function parseOrbQuery(
   params: { mode?: Param; task?: Param; q?: Param },

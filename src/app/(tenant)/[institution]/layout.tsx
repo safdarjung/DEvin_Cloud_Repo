@@ -6,6 +6,7 @@ import type { QuickAction } from "@/components/tenant/command-palette";
 import { BellLoader } from "@/components/tenant/bell-loader";
 import { Bell } from "@/modules/notifications/components/Bell";
 import { AskAiLauncher } from "@/components/ask-ai-launcher";
+import { ShellExtras } from "@/components/shell/shell-extras";
 import { BottomNav } from "@/components/tenant/bottom-nav";
 import { ROLE_LABELS } from "@/components/tenant/role-badge";
 import { TenantHeader } from "@/components/tenant/header";
@@ -128,6 +129,7 @@ export default async function TenantLayout({
         </div>
       </div>
       <BottomNav items={navItems} user={sidebarUser} />
+      <ShellExtras institutionSlug={ctx.institution.slug} />
       <AskAiLauncher
         institutionSlug={ctx.institution.slug}
         role={ctx.membership.role}

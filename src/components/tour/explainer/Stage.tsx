@@ -6,17 +6,17 @@ import { WIPE_FRAMES, explainerTimeline } from "./timeline";
 
 export const LAYOUTS = 3;
 
-interface Pose {
+export interface Pose {
   x: number; // centre of the feet, composition pixels
   y: number;
   scale: number;
   lookX: number;
   lookY: number;
 }
-const TITLE_POSE: Pose = { x: 290, y: 560, scale: 1.55, lookX: 0.6, lookY: 0 };
-const END_POSE: Pose = { x: 640, y: 296, scale: 1.05, lookX: 0, lookY: 0.7 };
+export const TITLE_POSE: Pose = { x: 290, y: 560, scale: 1.55, lookX: 0.6, lookY: 0 };
+export const END_POSE: Pose = { x: 640, y: 296, scale: 1.05, lookX: 0, lookY: 0.7 };
 /** Where the mascot stands in each beat layout (see Beat.tsx): sitting on the scene (right side, then left side), then beside a speech bubble. */
-const BEAT_POSES: readonly Pose[] = [
+export const BEAT_POSES: readonly Pose[] = [
   { x: 724, y: 146, scale: 0.58, lookX: 0.5, lookY: 0.9 },
   { x: 150, y: 166, scale: 0.58, lookX: 0.6, lookY: 0.8 },
   { x: 1020, y: 652, scale: 0.95, lookX: -0.9, lookY: -0.2 },

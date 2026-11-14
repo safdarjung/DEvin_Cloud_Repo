@@ -101,6 +101,14 @@ Two owners work this repo in parallel: this session (backend) and a friend's Cla
 6. Use `tdd-workflow`: write the failing test first for business rules, RLS, and state transitions.
 7. Ask only if a critical ambiguity cannot be resolved safely; otherwise proceed with a recorded default in your completion report.
 
+## Reusable tool scripts (do not delete, do not rewrite)
+
+Helper tooling is kept and reused: rewriting it every session wastes credits.
+
+- Cross-project bank: `~/.claude/toolbank/` (`README.md` is the index): `webshot.py` (screenshots of 3D / scroll pages, console errors, overflow), `video_frames.py` (frames, poster, contact sheet from a video), `hf_render.py` (React / Remotion composition to MP4 with hyperframes), `hmr_probe.py` (dev-server reload loop: find it and its cause). Check it before writing any helper; save new helpers there as Python files with arguments and `--help`.
+- Project tools: `pnpm tour:render` (`scripts/tour/render-fallbacks.mjs`, per-role explainer MP4s into `public/tour/`), `pnpm film:render` (`scripts/film/render.mjs`, the product film into `public/film/`), `node scripts/dev/ask-orb.mjs "<question>"` (asks the App Orb one question in a real browser and prints the answer, for checking AI answers against the database). Extend these in place.
+- Never delete or narrow a tool script, here or in the bank, without the owner's explicit instruction.
+
 ## Token rules
 
 No whole-file dumps. No restating context that lives in docs. Targeted greps and partial reads. No speculative extras. Stop after two failed attempts on the same root cause and report. Reuse existing components, schemas, utilities.

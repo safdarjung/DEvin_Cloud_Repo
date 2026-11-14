@@ -5,7 +5,7 @@
 // mode's icon and count, the active mode's one-line hint, and a dismissible
 // first-visit explanation.
 import { motion } from "motion/react";
-import { GraduationCap, MessageCircleQuestion, PenLine, Presentation, SlidersHorizontal, X, Zap } from "lucide-react";
+import { GraduationCap, MessageCircleQuestion, PenLine, Presentation, SlidersHorizontal, Sparkles, X, Zap } from "lucide-react";
 import { modeInfo, type OrbMode } from "./orb-modes";
 
 interface Props {
@@ -109,15 +109,40 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
         {modeInfo(current).hint}
       </motion.p>
       {showIntro && modes.length > 1 && (
-        <div role="note" className="flex max-w-3xl items-start gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-sm">
-          <p className="flex-1 leading-relaxed">
-            Each dot on the orb is one thing it can do: point at it to see what, click to run it, drag to spin. Ask answers questions; the other modes prepare cards you approve. Keys 1–{modes.length} switch modes, / starts a message.
-          </p>
+        <div
+          role="note"
+          className="relative flex w-full max-w-4xl items-center gap-3 rounded-2xl border bg-card/90 py-1 pl-2 pr-1 text-xs shadow-sm backdrop-blur"
+          style={{ borderColor: `color-mix(in oklab, ${hueFor(current)} 35%, var(--border))` }}
+        >
+          <span
+            aria-hidden
+            className="grid size-9 shrink-0 place-items-center rounded-full text-white shadow-sm"
+            style={{ background: `radial-gradient(circle at 32% 26%, color-mix(in oklab, ${hueFor(current)} 45%, white), ${hueFor(current)} 65%)` }}
+          >
+            <Sparkles className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1 leading-snug">
+            {/* One row on a desktop: a taller tip pushes the search field under the message box at 900px height. */}
+            <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-muted-foreground">
+              <span className="font-medium text-foreground">Every dot is one thing the orb can do.</span>
+              <span>Click to run</span>
+              <span>Drag to spin</span>
+              <span>
+                <Kbd>1</Kbd>–<Kbd>{modes.length}</Kbd> modes
+              </span>
+              <span>
+                <Kbd>/</Kbd> message
+              </span>
+              <span>
+                <Kbd>S</Kbd> surprise me
+              </span>
+            </p>
+          </div>
           <button
             type="button"
             onClick={onDismissIntro}
             aria-label="Dismiss the modes tip"
-            className="-m-1 grid size-11 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="size-4" aria-hidden />
           </button>
@@ -125,4 +150,8 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
       )}
     </div>
   );
+}
+
+function Kbd({ children }: { children: React.ReactNode }) {
+  return <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px] text-foreground">{children}</kbd>;
 }

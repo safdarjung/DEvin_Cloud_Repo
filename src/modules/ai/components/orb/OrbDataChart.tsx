@@ -3,7 +3,11 @@
 // Answers about numbers get a chart drawn from the tool's own result, never from model text (owner,
 // 2026-11-12: "things that can be explained better with graphs and visuals"). Horizontal bars as a
 // list, so a screen reader reads the same numbers; at most 12 rows, largest first where order is free.
-const DATA = /<data-[a-z0-9]+>([\s\S]*)<\/data-[a-z0-9]+>/i;
+// A few headline numbers (today's attendance, enrolment) also show as tiles that count up.
+import { useEffect, useRef } from "react";
+import { animate, useReducedMotion } from "motion/react";
+
+const DATA = /<data-[a-z0-9-]+>([\s\S]*)<\/data-[a-z0-9-]+>/i;
 
 export interface ChartSpec {
   title: string;
@@ -59,6 +63,45 @@ export function chartFromTool(toolType: string, output: unknown): ChartSpec | nu
   return null;
 }
 
+/** A headline number from a tool's own result; `decimals` and `suffix` say how to print it. */
+export interface StatTile {
+  label: string;
+  value: number;
+  decimals: number;
+  suffix: string;
+}
+
+const count = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null);
+
+/** One to four headline numbers for a read tool's output, or null. Pure; figures only from the tool, never the model. */
+export function tilesFromTool(toolType: string, output: unknown): StatTile[] | null {
+  if (typeof output !== "string") return null;
+  const m = DATA.exec(output);
+  if (!m) return null;
+  let data: Record<string, unknown>;
+  try {
+    data = JSON.parse(m[1]!) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+  const name = toolType.replace(/^tool-/, "");
+  const whole = (label: string, v: number): StatTile => ({ label, value: v, decimals: 0, suffix: "" });
+  if (name === "attendance_attendanceTodaySummary") {
+    const [pct, marked, present, absent] = [count(data.percentage), count(data.studentsMarked), count(data.present), count(data.absent)];
+    // Nothing marked yet is "none", not 0% (attendanceTodaySummaryQuery sends null then).
+    if (pct === null || !marked || present === null || absent === null) return null;
+    return [{ label: "Attendance", value: pct, decimals: Number.isInteger(pct) ? 0 : 1, suffix: "%" }, whole("Students present", present), whole("Absent", absent), whole("Marked", marked)];
+  }
+  if (name === "people_enrolmentCounts" && Array.isArray(data.sections)) {
+    const total = count(data.totalActive);
+    if (!total) return null;
+    // fitForModel may have cut the list (`truncated`): then the class count would be short, so only the total shows.
+    if (data.truncated) return [whole("Students", total)];
+    return [whole("Students", total), whole("Classes", (data.sections as { students: number }[]).filter((s) => s.students > 0).length)];
+  }
+  return null;
+}
+
 export function OrbDataChart({ spec }: { spec: ChartSpec }) {
   const max = Math.max(1, ...spec.rows.map((r) => r.value));
   if (spec.rows.length === 0) return null;
@@ -79,5 +122,43 @@ export function OrbDataChart({ spec }: { spec: ChartSpec }) {
         ))}
       </ul>
     </figure>
+  );
+}
+
+const fmt = (t: StatTile, v: number) => `${v.toLocaleString("en-IN", { minimumFractionDigits: t.decimals, maximumFractionDigits: t.decimals })}${t.suffix}`;
+
+/** One tile: the number counts up from 0 (aria-hidden); the exact figure is what a screen reader reads. */
+function Tile({ tile, index }: { tile: StatTile; index: number }) {
+  const shown = useRef<HTMLSpanElement>(null);
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    const el = shown.current;
+    if (!el) return;
+    if (reduced) {
+      el.textContent = fmt(tile, tile.value);
+      return;
+    }
+    const a = animate(0, tile.value, { duration: 0.9, delay: index * 0.08, ease: [0.16, 1, 0.3, 1], onUpdate: (v) => (el.textContent = fmt(tile, v)) });
+    return () => a.stop();
+  }, [tile, index, reduced]);
+  return (
+    <li className="relative overflow-hidden rounded-xl border border-border bg-card px-3 py-2">
+      <span aria-hidden className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/70 to-primary/0" />
+      <span ref={shown} aria-hidden className="block text-xl font-semibold tabular-nums tracking-tight">
+        {fmt(tile, tile.value)}
+      </span>
+      <span className="sr-only">{fmt(tile, tile.value)} </span>
+      <span className="block text-[11px] text-muted-foreground">{tile.label}</span>
+    </li>
+  );
+}
+
+export function OrbStatTiles({ tiles }: { tiles: readonly StatTile[] }) {
+  return (
+    <ul aria-label="Key figures" className={`grid gap-2 ${tiles.length > 2 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"}`}>
+      {tiles.map((t, i) => (
+        <Tile key={t.label} tile={t} index={i} />
+      ))}
+    </ul>
   );
 }

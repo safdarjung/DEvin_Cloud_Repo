@@ -17,6 +17,7 @@ export const NAV_MORE = [
   { href: "/how-it-works", label: "How it works" },
   { href: "/faq", label: "FAQ" },
   { href: "/demo", label: "Try the demo" },
+  { href: "/product/deck", label: "Presentation" },
 ] as const;
 
 export const LEGAL = [

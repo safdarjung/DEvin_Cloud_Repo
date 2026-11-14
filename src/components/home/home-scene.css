@@ -1,0 +1,534 @@
+/* Landing page (/): the opening 3D scene (scene/Scene3D.tsx). One product board and seven cards, laid out
+   in CSS 3D so every screen is real text. Sizes are fractions of the scene unit --u; positions come from
+   scene/pose.ts each frame. The numbers for the board's grid mirror HUB in pose.ts: change both together. */
+
+.s3 {
+  --u: 600px;
+  /* Layout unit of the board and the cards: twice the scene unit (see OVERSIZE in Scene3D.tsx). */
+  --d: calc(var(--u) * 2);
+  --ox: 73%;
+  --oy: 47%;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  perspective: 1500px;
+  perspective-origin: var(--ox) var(--oy);
+  font-family: var(--lm-body);
+  color: var(--lm-ink);
+}
+
+.s3-world {
+  position: absolute;
+  left: var(--ox);
+  top: var(--oy);
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.s3-hub,
+.s3-panel,
+.s3-shadow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-style: preserve-3d;
+  font-size: calc(var(--d) * 0.022);
+}
+
+/* Rastered once at their own (double) size and only ever shown smaller: sharp at every distance. */
+.s3-hub,
+.s3-panel {
+  will-change: transform;
+}
+
+/* ---------- the board ---------- */
+
+.s3-hub {
+  width: calc(var(--d) * 0.86);
+  height: calc(var(--d) * 0.5);
+  margin: calc(var(--d) * -0.25) 0 0 calc(var(--d) * -0.43);
+}
+
+.s3-board {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 0.16em solid var(--lm-ink);
+  border-radius: 1.5em;
+  background: linear-gradient(160deg, #ffffff, #fbf4e4);
+  box-shadow:
+    0 2.4em 4em -1.6em rgb(31 41 55 / 0.5),
+    0 0.5em 1.2em -0.4em rgb(31 41 55 / 0.3);
+}
+
+.s3-board-top {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  height: calc(var(--d) * 0.07);
+  padding: 0 calc(var(--d) * 0.03);
+  border-bottom: 0.12em solid #1f29371f;
+  font-size: 1.05em;
+}
+
+.s3-board-top .lh-mark {
+  width: 1.2em;
+  height: 1.2em;
+  border-color: var(--lm-ink);
+  background: var(--lm-ink);
+}
+
+.s3-board-chip {
+  margin-left: auto;
+  padding: 0.15em 0.75em;
+  border: 0.12em solid var(--lm-ink);
+  border-radius: 99em;
+  background: var(--lm-yellow);
+  font-size: 0.85em;
+  font-weight: 800;
+}
+
+.s3-slots {
+  position: absolute;
+  inset: calc(var(--d) * 0.07) 0 0 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--d) * 0.02);
+  padding: calc(var(--d) * 0.03);
+}
+
+.s3-slot {
+  display: grid;
+  place-items: center;
+  border: 0.14em dashed color-mix(in srgb, var(--thread, var(--lm-ink)) 60%, #1f293733);
+  border-radius: 1em;
+  background: color-mix(in srgb, var(--thread, #fff) 7%, #fff);
+  color: #6b7280;
+  font-size: 0.95em;
+  font-weight: 800;
+  text-align: center;
+}
+
+.s3-slot-ai {
+  align-content: center;
+  gap: 0.4em;
+  padding: 0.6em;
+  border-style: solid;
+  border-color: var(--lm-ink);
+  background: var(--lm-ink);
+  color: #fff8ec;
+  line-height: 1.2;
+}
+
+.s3-slot-ai svg {
+  width: 1.7em;
+  height: 1.7em;
+  color: var(--lm-yellow);
+}
+
+.s3-thread {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.s3-thread path {
+  fill: none;
+  stroke: url(#s3-yarn);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--weave, 0));
+}
+
+.s3-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5em;
+  background: linear-gradient(105deg, #fff0 42%, #ffffffb3 50%, #fff0 58%);
+  background-size: 300% 100%;
+  /* The light crosses the board once, as the thread is drawn. */
+  background-position: calc(140% - var(--weave, 0) * 180%) 0;
+  pointer-events: none;
+}
+
+.s3-shadow {
+  width: calc(var(--u) * 0.9);
+  height: calc(var(--u) * 0.5);
+  margin: calc(var(--u) * -0.25) 0 0 calc(var(--u) * -0.45);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(31 41 55 / 0.28), transparent);
+  pointer-events: none;
+}
+
+/* ---------- the film, played inside the board ---------- */
+
+.s3-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0.16em solid var(--lm-ink);
+  border-radius: 1.5em;
+  background: #14172b;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateZ(calc(var(--u) * 0.02));
+  transition: opacity 400ms ease;
+}
+
+.s3[data-playing] .s3-video {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.s3-chip {
+  position: absolute;
+  right: 1.2em;
+  bottom: -1.5em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  padding: 0.55em 1.1em;
+  border: 0.14em solid var(--lm-ink);
+  border-radius: 99em;
+  background: var(--lm-yellow);
+  color: var(--lm-ink);
+  box-shadow: 0 0.3em 0 var(--lm-ink);
+  font: 800 1.05em/1.1 var(--lm-body);
+  cursor: pointer;
+  pointer-events: auto;
+  transform: translateZ(calc(var(--u) * 0.05));
+  transition: translate 160ms var(--lm-spring);
+}
+
+.s3-chip:hover {
+  translate: 0 -0.15em;
+}
+
+.s3-chip svg {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.s3-close {
+  top: -1.5em;
+  bottom: auto;
+  background: #fff;
+}
+
+/* ---------- the seven cards ---------- */
+
+.s3-panel {
+  width: calc(var(--d) * 0.46);
+  height: calc(var(--d) * 0.4351);
+  margin: calc(var(--d) * -0.2176) 0 0 calc(var(--d) * -0.23);
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+}
+
+/* A second wrapper so the hover lift does not fight the transform the frame loop writes on the card. */
+.s3-lift {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 260ms var(--lm-spring);
+}
+
+.s3-panel:hover .s3-lift {
+  transform: translateZ(calc(var(--u) * 0.04)) scale(1.05);
+}
+
+.s3-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 0.16em solid var(--lm-ink);
+  border-radius: 1.6em;
+  backface-visibility: hidden;
+  box-shadow:
+    0 1.6em 2.8em -1.2em rgb(31 41 55 / 0.5),
+    0 0.4em 1em -0.3em rgb(31 41 55 / 0.28);
+  opacity: calc(1 - var(--dim, 0));
+}
+
+/* Paper: ruled lines, a dashed edge, a "Today" stamp. */
+.s3-paper {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1em;
+  padding: 2em;
+  border-style: dashed;
+  background:
+    repeating-linear-gradient(#0000 0 2.1em, #1f293714 2.1em 2.22em),
+    #fffdf6;
+  text-align: center;
+}
+
+.s3-stamp {
+  position: absolute;
+  top: 1.1em;
+  left: 1.2em;
+  padding: 0.1em 0.7em;
+  border: 0.12em solid #b4530999;
+  border-radius: 0.5em;
+  color: #b45309;
+  font-size: 1.3em;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  rotate: -6deg;
+}
+
+.s3-paper-icon {
+  width: 7em;
+  height: 7em;
+  color: #6b7280;
+}
+
+.s3-paper-name {
+  font: 800 2.5em/1.05 var(--lm-display);
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+/* Product: a coloured tile when small, the module's screen when the card is at the front. */
+.s3-product {
+  transform: rotateY(180deg);
+  background: #fff;
+}
+
+.s3-tile,
+.s3-screen {
+  position: absolute;
+  inset: 0;
+}
+
+.s3-tile {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 0.6em;
+  background: color-mix(in srgb, var(--thread) 20%, #fff);
+  border-top: 1.4em solid var(--thread);
+  font: 800 2.9em/1 var(--lm-display);
+  letter-spacing: -0.03em;
+  opacity: calc(1 - var(--detail, 0) * 1.6);
+}
+
+.s3-tile-icon {
+  width: 2.1em;
+  height: 2.1em;
+}
+
+.s3-screen {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  opacity: calc(var(--detail, 0) * 1.6 - 0.6);
+}
+
+.s3-screen-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0.75em 1.1em;
+  border-bottom: 0.14em solid var(--lm-ink);
+  background: var(--thread);
+  font-size: 1.25em;
+  font-weight: 800;
+}
+
+.s3-screen-icon {
+  width: 1.3em;
+  height: 1.3em;
+}
+
+.s3-screen-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.6em;
+  padding: 0.85em 1.1em 0.9em;
+}
+
+.s3-foot {
+  margin-top: auto;
+  padding-top: 0.45em;
+  border-top: 0.12em dashed #1f293733;
+  color: #4b5563;
+  font-size: 0.92em;
+  line-height: 1.3;
+}
+
+.s3-rows,
+.s3-tiles,
+.s3-lanes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.s3-rows {
+  display: grid;
+  gap: 0.4em;
+}
+
+.s3-rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8em;
+  padding: 0.34em 0.8em;
+  border: 0.12em solid #1f293726;
+  border-radius: 0.8em;
+  background: #fffaf0;
+  font-size: 1.12em;
+  font-weight: 700;
+}
+
+.s3-rows b {
+  padding: 0.1em 0.6em;
+  border-radius: 99em;
+  white-space: nowrap;
+}
+
+.s3-rows b[data-tone="good"] {
+  background: color-mix(in srgb, var(--th-attendance) 26%, #fff);
+}
+
+/* "Absent" and "due" are said in words; the dashed ring is a second cue beside the colour. */
+.s3-rows b[data-tone="bad"] {
+  outline: 0.12em dashed var(--lm-ink);
+  background: color-mix(in srgb, var(--th-parents) 22%, #fff);
+}
+
+.s3-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6em;
+}
+
+.s3-tiles li {
+  display: grid;
+  gap: 0.1em;
+  padding: 0.45em 0.8em;
+  border: 0.12em solid #1f293726;
+  border-radius: 0.9em;
+  background: color-mix(in srgb, var(--thread) 10%, #fff);
+}
+
+.s3-tiles span {
+  color: #4b5563;
+  font-size: 0.92em;
+  font-weight: 700;
+}
+
+.s3-tiles b {
+  font-size: 1.15em;
+  line-height: 1.2;
+}
+
+.s3-lanes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45em;
+}
+
+.s3-lanes li {
+  display: grid;
+  align-content: start;
+  gap: 0.35em;
+  min-height: 7.6em;
+  padding: 0.5em 0.4em;
+  border: 0.12em solid #1f293726;
+  border-radius: 0.8em;
+  background: #fffaf0;
+}
+
+.s3-lanes span {
+  font-size: 0.88em;
+  font-weight: 800;
+  text-align: center;
+}
+
+.s3-lanes i {
+  height: 1.5em;
+  border: 0.12em solid var(--lm-ink);
+  border-radius: 0.45em;
+  background: color-mix(in srgb, var(--thread) 35%, #fff);
+}
+
+.s3-chat {
+  display: grid;
+  gap: 0.45em;
+}
+
+.s3-chat p {
+  max-width: 82%;
+  padding: 0.45em 0.8em;
+  border: 0.12em solid var(--lm-ink);
+  border-radius: 1em;
+  font-size: 1.08em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.s3-chat p[data-from="student"] {
+  justify-self: end;
+  background: color-mix(in srgb, var(--thread) 22%, #fff);
+}
+
+.s3-chat p[data-from="ai"] {
+  background: #fffaf0;
+}
+
+/* The screen's rows arrive one by one each time the card comes to the front. */
+.s3-panel[data-current][data-side="product"] :is(.s3-rows li, .s3-tiles li, .s3-lanes li, .s3-chat p) {
+  animation: s3-in 460ms var(--lm-spring) backwards;
+  animation-delay: calc(var(--k) * 110ms + 120ms);
+}
+
+@keyframes s3-in {
+  from {
+    opacity: 0;
+    translate: 0 0.7em;
+    scale: 0.94;
+  }
+}
+
+.s3-note {
+  position: absolute;
+  right: var(--gut);
+  top: 0.8rem;
+  color: var(--lm-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* While the film plays the cards step aside. */
+.s3[data-playing] .s3-panel {
+  pointer-events: none;
+}
+
+/* Small scenes (phones, tall windows): a card's screen would be unreadable, so it stays a tile. */
+.s3[data-lite] .s3-tile {
+  opacity: 1;
+}
+
+.s3[data-lite] .s3-screen,
+.s3[data-lite] .s3-chip,
+.s3[data-lite] .s3-note {
+  display: none;
+}
+
+.dark .s3-shadow {
+  background: radial-gradient(closest-side, rgb(0 0 0 / 0.6), transparent);
+}

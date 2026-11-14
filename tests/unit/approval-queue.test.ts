@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ageLabel, buildApprovalQueue } from "../../src/modules/core/approval-queue";
+import { ageLabel, buildApprovalQueue, studentLeaveApprovalRows } from "../../src/modules/core/approval-queue";
 
 const NOW = Date.parse("2026-11-06T12:00:00Z");
 const leave = (id: string, status = "pending") => ({
@@ -43,5 +43,20 @@ describe("buildApprovalQueue", () => {
   });
   test("ageLabel switches to days after 24 hours", () => {
     expect(ageLabel("2026-11-04T12:00:00Z", NOW)).toBe("2 d");
+  });
+});
+
+describe("studentLeaveApprovalRows", () => {
+  test("keeps only pending leave and counts the same rows the dashboard queue counts", () => {
+    const leaves = [leave("l1"), leave("l2", "approved"), leave("l3")];
+    const rows = studentLeaveApprovalRows(leaves, NOW);
+    expect(rows.map((r) => r.id)).toEqual(["l1", "l3"]);
+    expect(rows).toHaveLength(buildApprovalQueue([], leaves, NOW).total);
+  });
+
+  test("names the student and the days but never the reason", () => {
+    const [row] = studentLeaveApprovalRows([leave("l1")], NOW);
+    expect(row).toEqual({ id: "l1", kind: "student_leave", title: "Student leave: 2 days from 2026-11-07", requestedBy: "Asha Rao (5-A)", age: "3 h" });
+    expect(JSON.stringify(row)).not.toContain("Fever");
   });
 });

@@ -1,0 +1,568 @@
+/* Landing page (/). Tokens and chunky primitives come from tokens.css (.loom / .lm-*).
+   Part 1: the opening film (.lf-*). Part 2 is home-sections.css. */
+
+/* The site header and footer take the page's paper on this route only. */
+.fabric-mk:has(.lh) {
+  --mk-bg: #fff8ec;
+  --mk-line: #1f293726;
+}
+
+.dark .fabric-mk:has(.lh) {
+  --mk-bg: #14172b;
+  --mk-line: #fff8ec26;
+  --mk-surface: #1d2140;
+}
+
+.lh {
+  --gut: clamp(1.1rem, 4vw, 3.5rem);
+  --header: 4rem;
+  overflow-x: clip;
+}
+
+.lh-mark {
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 2px solid var(--lm-fg);
+  background: var(--lm-fg);
+}
+
+.lh-mark i:nth-child(1) { background: var(--th-fees); }
+.lh-mark i:nth-child(2) { background: var(--th-learning); }
+.lh-mark i:nth-child(3) { background: var(--th-attendance); }
+.lh-mark i:nth-child(4) { background: var(--th-office); }
+
+.lh-link {
+  font-weight: 800;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.lh-link:hover {
+  text-decoration-color: var(--th-parents);
+}
+
+/* ---------- opening film: stacked page by default (no JS, no WebGL, reduced motion) ---------- */
+
+.lf {
+  position: relative;
+}
+
+.lf-stage {
+  position: relative;
+  padding: clamp(2.5rem, 6vw, 5rem) var(--gut) clamp(3rem, 6vw, 5rem);
+}
+
+.lf-copy {
+  max-width: 74rem;
+  margin-inline: auto;
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.lf-hero {
+  display: grid;
+  gap: 1.1rem;
+  align-items: center;
+  min-height: min(38rem, calc(100svh - var(--header) - 6rem));
+}
+
+.lf-h1 {
+  font-size: var(--lm-step-hero);
+  max-width: 11ch;
+}
+
+/* "woven": each letter pair sits on its own yarn colour, like a strand passing over and under. */
+.lf-woven {
+  background: var(--lm-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--lm-fg);
+  paint-order: stroke fill;
+}
+
+.lf-lead {
+  max-width: 34rem;
+}
+
+.lf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin-top: 0.4rem;
+}
+
+.lf-sub {
+  max-width: 34rem;
+  font-size: 0.95rem;
+  color: var(--lm-muted);
+}
+
+.lf-swatch {
+  width: min(100%, 26rem);
+  justify-self: center;
+  rotate: -8deg;
+  filter: drop-shadow(0 10px 0 var(--lm-shadow));
+}
+
+@media (min-width: 900px) {
+  .lf-hero {
+    grid-template-columns: 1.1fr 0.9fr;
+    column-gap: 3rem;
+  }
+
+  .lf-hero > :not(.lf-swatch) {
+    grid-column: 1;
+  }
+
+  .lf-swatch {
+    grid-column: 2;
+    grid-row: 1 / span 6;
+  }
+}
+
+.lf-problems {
+  display: grid;
+  gap: 1.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+@media (min-width: 760px) {
+  .lf-problems {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.lf-problem,
+.lf-weave {
+  padding: clamp(1.2rem, 2.2vw, 1.75rem);
+  background: var(--lm-card);
+  color: var(--lm-card-fg);
+  border: var(--lm-border) solid var(--lm-ink);
+  border-top: 10px solid var(--thread, var(--lm-ink));
+  border-radius: var(--lm-radius);
+  box-shadow: 0 var(--lm-lift) 0 var(--lm-shadow);
+}
+
+.lf-weave {
+  position: relative;
+  overflow: hidden;
+  border-top: var(--lm-border) solid var(--lm-ink);
+  padding-top: calc(clamp(1.2rem, 2.2vw, 1.75rem) + 12px);
+  display: grid;
+  gap: 0.9rem;
+  justify-items: start;
+}
+
+.lf-weave::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 12px;
+  background: var(--lm-grad);
+  border-bottom: var(--lm-border) solid var(--lm-ink);
+}
+
+.lf-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lm-card-muted);
+}
+
+.lf-bead {
+  flex: none;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: var(--thread);
+  border: 2px solid var(--lm-ink);
+}
+
+.lf-pain {
+  margin-top: 0.6rem;
+  font-size: clamp(1.6rem, 1.15rem + 1.9vw, 2.6rem);
+  line-height: 1.02;
+}
+
+.lf-detail {
+  margin-top: 0.7rem;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  color: var(--lm-card-muted);
+}
+
+.lf-fix {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 3px dashed var(--thread, var(--lm-ink));
+}
+
+.lf-fix-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lf-fix-text {
+  margin-top: 0.25rem;
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.lf-note {
+  margin-top: 0.7rem;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--lm-card-muted);
+}
+
+.lf-note .lm-honest {
+  margin-right: 0.3rem;
+}
+
+/* ---------- opening film: pinned 3D scroll film ---------- */
+
+/* The stage pins under the sticky site header, so nothing is hidden behind it at any scroll position. */
+.lf[data-mode="film"] .lf-stage {
+  position: sticky;
+  top: var(--header);
+  height: calc(100vh - var(--header));
+  height: calc(100svh - var(--header));
+  padding: 0;
+  overflow: hidden;
+}
+
+.lf-canvas {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+
+.lf[data-ready] .lf-canvas {
+  opacity: 1;
+}
+
+.lf[data-mode="film"] .lf-copy {
+  position: absolute;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  padding: 1.5rem var(--gut) 5rem;
+  display: grid;
+  gap: 0;
+  align-items: center;
+  pointer-events: none;
+}
+
+.lf[data-mode="film"] .lf-problems {
+  display: contents;
+}
+
+.lf[data-mode="film"] .lf-card {
+  grid-area: 1 / 1;
+  width: min(34rem, 43vw);
+  /* LoomFilm sets --fit below 1 when the card is taller than the stage has room for. */
+  scale: var(--fit, 1);
+  transform-origin: 0 50%;
+  pointer-events: auto;
+  transition: opacity 260ms ease, transform 520ms var(--lm-spring);
+}
+
+.lf[data-mode="film"] .lf-card[data-on="false"] {
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
+  pointer-events: none;
+  transition: opacity 160ms ease, transform 200ms ease;
+}
+
+.lf[data-mode="film"] .lf-hero {
+  display: block;
+  min-height: 0;
+  width: min(40rem, 47vw);
+}
+
+.lf[data-mode="film"] .lf-hero > * + * {
+  margin-top: 1.1rem;
+}
+
+.lf[data-mode="film"] .lf-swatch {
+  display: none;
+}
+
+/* Paper tags tied to the yarn. LoomCanvas sets each tag's translate every frame. */
+.lf-tags {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 500ms ease 300ms;
+}
+
+.lf[data-ready] .lf-tags {
+  opacity: 1;
+}
+
+.lf-tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
+
+.lf-tag > span {
+  position: absolute;
+  padding: 0.18rem 0.6rem 0.2rem 0.5rem;
+  border: 2px solid var(--lm-ink);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--lm-ink);
+  box-shadow: 0 3px 0 var(--lm-shadow);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.3;
+  white-space: nowrap;
+  transition: opacity 240ms ease, scale 320ms var(--lm-spring), background-color 200ms ease;
+}
+
+.lf-tag > span::before {
+  content: "";
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  margin-right: 0.35rem;
+  border-radius: 50%;
+  background: var(--thread);
+  border: 1.5px solid var(--lm-ink);
+}
+
+.lf-tag-artefact {
+  translate: -50% -50%;
+  rotate: -4deg;
+}
+
+.lf-tag:nth-child(even) .lf-tag-artefact {
+  rotate: 3deg;
+}
+
+.lf-tag-domain {
+  translate: calc(-100% - 0.5rem) -50%;
+  opacity: 0;
+  scale: 0.6;
+}
+
+.lf-tag[data-woven="true"] .lf-tag-artefact {
+  opacity: 0;
+  scale: 0.6;
+}
+
+.lf-tag[data-woven="true"] .lf-tag-domain {
+  opacity: 1;
+  scale: 1;
+}
+
+.lf-tag[data-current] > span {
+  background: var(--lm-yellow);
+  scale: 1.12;
+  z-index: 2;
+}
+
+/* While a problem is on screen, the other artefact tags step back so the pulled thread reads. */
+.lf-tags[data-act="problems"] .lf-tag:not([data-current]):not([data-woven="true"]) .lf-tag-artefact {
+  opacity: 0.45;
+}
+
+.lf-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--lm-muted);
+  transition: opacity 300ms ease;
+}
+
+.lf[data-moved] .lf-hint {
+  opacity: 0;
+}
+
+.lf-rail {
+  position: absolute;
+  inset: auto var(--gut) 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lf-rail ol {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* The beads sit on a thread that fills as the film plays. */
+.lf-rail ol::before,
+.lf-rail ol::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  top: 50%;
+  height: 4px;
+  translate: 0 -50%;
+  border-radius: 4px;
+  background: var(--lm-rule);
+}
+
+.lf-rail ol::after {
+  background: var(--lm-grad);
+  transform-origin: left;
+  transform: scaleX(var(--p, 0));
+}
+
+.lf-rail button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2.75rem;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.lf-rail button::before {
+  content: "";
+  width: 0.8rem;
+  height: 0.8rem;
+  border-radius: 50%;
+  background: var(--lm-bg);
+  border: 2.5px solid var(--lm-fg);
+  transition: scale 260ms var(--lm-spring), background-color 200ms ease;
+}
+
+.lf-rail button:hover::before {
+  scale: 1.25;
+}
+
+.lf-rail button[aria-current]::before {
+  scale: 1.6;
+  background: var(--thread, var(--lm-yellow));
+}
+
+.lf-skip {
+  white-space: nowrap;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Tall or narrow screens: yarn above, card docked below. */
+@media (max-width: 899px), (max-aspect-ratio: 21 / 20) {
+  .lf[data-mode="film"] .lf-copy {
+    align-items: end;
+    padding-bottom: 4.4rem;
+  }
+
+  .lf[data-mode="film"] .lf-card,
+  .lf[data-mode="film"] .lf-hero {
+    width: 100%;
+    max-width: 38rem;
+    justify-self: center;
+  }
+
+  .lf[data-mode="film"] .lf-h1 {
+    font-size: clamp(2.1rem, 9.2vw, 3.4rem);
+    max-width: 12ch;
+  }
+
+  .lf[data-mode="film"] .lf-lead {
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+
+  .lf[data-mode="film"] .lf-sub,
+  .lf[data-mode="film"] .lf-detail,
+  .lf-hint {
+    display: none;
+  }
+
+  .lf[data-mode="film"] .lf-problem,
+  .lf[data-mode="film"] .lf-weave {
+    padding: 0.95rem 1rem 1rem;
+  }
+
+  .lf[data-mode="film"] .lf-pain {
+    font-size: clamp(1.35rem, 6vw, 1.9rem);
+  }
+
+  .lf[data-mode="film"] .lf-weave .lf-detail {
+    display: block;
+    font-size: 0.95rem;
+  }
+
+  .lf[data-mode="film"] .lf-fix {
+    margin-top: 0.7rem;
+    padding-top: 0.6rem;
+  }
+
+  .lf[data-mode="film"] .lf-fix-text {
+    font-size: 0.98rem;
+  }
+
+  .lf-tag > span {
+    font-size: 0.68rem;
+  }
+
+  /* Seven long tags do not fit on a phone-sized tangle: show only the one being pulled. */
+  .lf-tag:not([data-current]) .lf-tag-artefact {
+    display: none;
+  }
+
+  .lf-tag-domain {
+    translate: 0.2rem -50%;
+  }
+
+  .lf-skip {
+    font-size: 0.8rem;
+  }
+
+  .lf-rail ol {
+    gap: 0;
+  }
+
+  .lf-rail button {
+    width: 1.55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lf-card,
+  .lf-tag > span {
+    transition: none !important;
+  }
+}

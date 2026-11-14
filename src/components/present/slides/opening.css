@@ -1,0 +1,163 @@
+/* /present slides: title, loose threads, cost, the idea. Stage pixels; tokens from src/components/home/tokens.css. */
+
+/* ---------- 1 title ---------- */
+
+.t-wrap {
+  display: grid;
+  grid-template-columns: 1fr 470px;
+  align-items: center;
+  gap: 40px;
+  height: 100%;
+}
+
+.t-name {
+  font-size: 196px;
+  line-height: 0.86;
+  letter-spacing: -0.05em;
+}
+
+.t-tag {
+  max-width: 640px;
+  margin: 22px 0 18px !important;
+  font-size: 46px;
+  font-weight: 600;
+  line-height: 1.06;
+}
+
+.t-line {
+  margin-bottom: 34px !important;
+}
+
+.t-weave {
+  width: 450px;
+  height: 450px;
+  rotate: 6deg;
+  filter: drop-shadow(12px 14px 0 var(--lm-shadow));
+}
+
+/* ---------- 2 seven loose threads ---------- */
+
+.th-list {
+  display: grid;
+  gap: 9px;
+  margin-left: calc(-1 * var(--dk-pad-x)) !important;
+}
+
+.th-list li {
+  display: grid;
+  grid-template-columns: 136px 292px 1fr;
+  align-items: center;
+  column-gap: 18px;
+}
+
+.th-strand {
+  width: 150px;
+  margin-right: -14px;
+}
+
+.th-tag {
+  position: relative;
+  justify-self: start;
+  padding: 7px 16px 7px 14px;
+  border: 3px solid var(--lm-ink);
+  border-left: 14px solid var(--th);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--lm-ink);
+  box-shadow: 0 4px 0 var(--lm-shadow);
+  font-size: 21px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.th-pain {
+  font-size: 28px;
+  line-height: 1.22;
+  text-wrap: pretty;
+}
+
+/* ---------- 3 cost ---------- */
+
+.c-wrap {
+  display: grid;
+  grid-template-columns: 390px 1fr;
+  align-items: center;
+  gap: 52px;
+  height: 100%;
+}
+
+.c-h2 {
+  font-size: 70px;
+}
+
+.c-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px 26px;
+}
+
+.c-card {
+  padding: 20px 24px 24px;
+  border-top-width: 14px !important;
+  border-top-color: var(--th) !important;
+}
+
+.c-card p {
+  margin-top: 10px !important;
+  font-size: 28px;
+  line-height: 1.3;
+  text-wrap: pretty;
+}
+
+.c-tag {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lm-card-muted);
+}
+
+/* ---------- 4 the idea ---------- */
+
+.i-wrap {
+  display: grid;
+  grid-template-columns: 1fr 600px;
+  align-items: center;
+  gap: 24px;
+  height: 100%;
+}
+
+.i-h2 {
+  font-size: 74px;
+}
+
+.i-lead {
+  max-width: 500px;
+  margin: 24px 0 30px !important;
+}
+
+.i-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 500px;
+}
+
+.i-art {
+  position: relative;
+  height: 470px;
+}
+
+.i-weave {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 470px;
+  height: 470px;
+  filter: drop-shadow(12px 14px 0 var(--lm-shadow));
+}
+
+.i-tail {
+  position: absolute;
+  left: -20px;
+}

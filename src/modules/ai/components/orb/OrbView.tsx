@@ -33,13 +33,14 @@ import { AttachButton, FileBar, type AttachedFile, type FileAction } from "./Orb
 import { OrbHistory, type OpenedChat } from "./OrbHistory";
 import { callAction } from "@/modules/ai/components/task-card/api";
 import type { OrbSignals } from "./OrbCore";
-import { OrbDots, OrbLegend } from "./OrbDots";
-import { FeatureSearch, OrbGroups, useModeSwipe } from "./OrbGroups";
+import { DOT_CAP, OrbDots, OrbLegend, OrbSurprise } from "./OrbDots";
+import { FeatureSearch, OrbGroups, blocked, useModeSwipe } from "./OrbGroups";
+import { pickSurprise } from "./orb-play";
 import { OrbModes, tabId } from "./OrbModes";
 import { OrbTranscript, proposalsIn, type ExplainEntry, type NextKind, type LocalCard, type OrbMessage } from "./OrbTranscript";
 import { CardFlight, OrbTray, type Flight, type StartFailure } from "./OrbTray";
 import { orbState, stepIndex, typingPulse } from "./orb-layout";
-import { MODES, explainFeatures, groupsFor, modesOf, pickMode, pushRecent, type OrbFeature, type OrbMode } from "./orb-modes";
+import { MODES, explainFeatures, groupsFor, modesOf, pickMode, pushRecent, takeHandedQuestion, type OrbFeature, type OrbMode } from "./orb-modes";
 import { ROLE_HOME, orbAccent } from "./orb-theme";
 import { useVoice } from "./useVoice";
 
@@ -157,6 +158,8 @@ function plannedFrom(words: string): string | undefined {
 }
 /** Ready questions that take turns as the message box's placeholder. */
 const HINTS_MAX = 5;
+/** How long a "Surprise me" pick stays shown when nothing else happens. */
+const SURPRISE_MS = 6000;
 /** The browser's clock, so the server renders a plain "Hello" and the client the time of day. */
 const dayPart = () => {
   const h = new Date().getHours();
@@ -191,6 +194,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   const [pinnedKey, setPinnedKey] = useState<string | null>(null);
   const [peek, setPeek] = useState<string | null>(null);
   const [hits, setHits] = useState<string[] | null>(null);
+  // "Surprise me": a random dot turns to the front and shows what it does for a few seconds.
+  const [preview, setPreview] = useState<{ key: string; n: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const orbRef = useRef<HTMLDivElement>(null);
   const trayRef = useRef<HTMLDivElement>(null);
@@ -511,10 +516,23 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     changeMode(visibleModes[stepIndex(visibleModes.indexOf(mode), delta, visibleModes.length)], Math.sign(delta));
   }
 
+  /** Turn a random runnable dot to the front; from the keyboard it also takes focus, so Enter runs it. */
+  function surprise(focus: boolean) {
+    const dots = groups.flatMap((g) => g.features).slice(0, DOT_CAP);
+    const key = pickSurprise(dots.filter((f) => !blocked(f, busy, input.trim().length > 0, starting)).map((f) => f.key), preview?.key ?? null, Math.random);
+    if (!key) return;
+    const n = (preview?.n ?? 0) + 1;
+    setPreview({ key, n });
+    signals.current.shock = 1;
+    buzz(reduced, [6, 30, 6]);
+    later(() => setPreview((p) => (p?.n === n ? null : p)), SURPRISE_MS);
+    if (focus) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-dots] [data-node="${dots.findIndex((f) => f.key === key)}"]`)?.focus());
+  }
+
   // Stable handlers for the memoised groups; they call the latest render's functions.
-  const latest = useRef({ startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat) });
+  const latest = useRef({ startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat), surprise: null as ((focus: boolean) => void) | null });
   useEffect(() => {
-    latest.current = { startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat) };
+    latest.current = { startTask, send, edit, stepMode, changeMode, visibleModes, input, chatOn: Boolean(chat), surprise: onSphere ? surprise : null };
   });
   const onRun = useCallback((f: OrbFeature) => {
     signals.current.shock = 1;
@@ -525,6 +543,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
   }, []);
   const onEdit = useCallback((t: string) => latest.current.edit(t), []);
   const onHot = useCallback(() => {
+    // Another dot is hot: the surprise has done its job.
+    setPreview(null);
     signals.current.pulse = typingPulse(signals.current.pulse);
     buzz(false, 4);
   }, []);
@@ -573,7 +593,10 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     // Marked inside the frame: a dev StrictMode remount cancels the first frame and schedules it again.
     const raf = requestAnimationFrame(() => {
       arrived.current = true;
-      if (initialQuery && chat) send(initialQuery, initialTask?.action);
+      // A selection handed over by the shell's "Ask AI" pill arrives in sessionStorage, never in the URL.
+      const handed = initialQuery ? undefined : takeHandedQuestion(window.sessionStorage);
+      if (handed && chat) send(handed);
+      else if (initialQuery && chat) send(initialQuery, initialTask?.action);
       else if (initialTask) void startTask(initialTask.action, features.find((f) => f.task === initialTask.action)?.label ?? initialTask.action);
       if (initialQuery || initialTask) setUrl({ q: null, task: null });
       else if (!window.matchMedia("(pointer: coarse)").matches) inputRef.current?.focus(); // not on touch: no surprise keyboard
@@ -582,12 +605,17 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once on mount
   }, []);
 
-  // 1-6 switch modes and "/" jumps to the message box (starting a command), from anywhere that is not a text field or an open dialog (the tablist handles its own keys).
+  // 1-6 switch modes, "/" jumps to the message box (starting a command) and "s" surprises, from anywhere that is not a text field or an open dialog (the tablist handles its own keys).
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !/^[1-6/]$/.test(e.key)) return;
+      if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || !/^[1-6/s]$/.test(e.key)) return;
       const t = e.target instanceof HTMLElement ? e.target : null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.closest('[role="dialog"]'))) return;
+      if (e.key === "s") {
+        if (!latest.current.surprise) return;
+        e.preventDefault();
+        return latest.current.surprise(true);
+      }
       if (e.key === "/") {
         if (!latest.current.chatOn) return;
         e.preventDefault();
@@ -737,6 +765,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
             <OrbHistory compact institutionSlug={institutionSlug} onOpenChat={openChat} />
           </div>
         )}
+        {onSphere && dotCount > 1 && (
+          <div className="absolute left-1 top-0 z-10">
+            <OrbSurprise hue={accent[1]} onClick={() => surprise(false)} />
+          </div>
+        )}
         {!showTranscript && (
           <p className="text-balance px-4 text-center">
             <span
@@ -772,7 +805,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           showStatus={Boolean(chat) || pending.length > 0}
         >
           {onSphere && (
-            <OrbDots mode={mode} groups={groups} lit={lit} litKey={litKey} hasDraft={input.trim().length > 0} busy={busy} starting={starting} onRun={onRun} onHot={onHot} />
+            <OrbDots mode={mode} groups={groups} lit={lit} litKey={litKey} hasDraft={input.trim().length > 0} busy={busy} starting={starting} onRun={onRun} onHot={onHot} reduced={reduced} preview={preview} />
           )}
         </OrbBody>
         {onSphere && groups.length > 1 && <OrbLegend groups={groups} pinned={pinned} onPin={(id) => setPinnedKey(id && `${mode}:${id}`)} onPeek={setPeek} />}
@@ -784,7 +817,8 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           panelId={panelId}
           hueFor={hueFor}
           reduced={reduced}
-          showIntro={!introDone}
+          // The tip teaches the sphere (click, drag, S), so it shows only while the sphere does.
+          showIntro={!introDone && onSphere}
           onDismissIntro={() => writeLocal("coolskool.orb.intro.modes", "1")}
           onChange={changeMode}
         />
