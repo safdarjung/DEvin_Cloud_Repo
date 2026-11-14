@@ -20,6 +20,7 @@ import {
   notifyStudentLeaveDecided,
   notifySafetyAlert,
   notifyStudyReminders,
+  notifyMarksReminders,
   workflowRun,
 } from "./handlers/index.ts";
 
@@ -44,6 +45,7 @@ export const JOB_MODULES: Readonly<Partial<Record<string, ModuleKey>>> = {
   "mastery.compute": "mastery",
   "workflow.run": "workflows",
   "notify.study_reminders": "ai_student",
+  "notify.marks_reminders": "exams",
 };
 
 // Dispatch table for the runner (06 §7). A type not listed here is dead-
@@ -69,6 +71,7 @@ export const JOB_REGISTRY: Readonly<Record<string, JobHandler>> = {
   "mastery.compute": masteryCompute,
   "workflow.run": workflowRun,
   "notify.study_reminders": notifyStudyReminders,
+  "notify.marks_reminders": notifyMarksReminders,
   "content.extract": contentExtract,
 };
 

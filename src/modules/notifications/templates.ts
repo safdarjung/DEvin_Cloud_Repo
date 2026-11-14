@@ -25,6 +25,7 @@ export const NOTIFICATION_TYPES = [
   "diary_entry",
   "safety_alert",
   "study_reminder",
+  "marks_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -259,6 +260,14 @@ export const NOTIFICATION_TEMPLATES = {
     category: "academic",
     varsSchema: StudyReminderVars,
     title: (lang) => (lang === "hi" ? "आज की पढ़ाई" : "Today's study"),
+    body: (v) => v.summary,
+  }),
+  // 0154: in-app, daily until the marks are in (notify.marks_reminders); same one-line summary shape.
+  marks_reminder: def({
+    channels: ["in_app"],
+    category: "academic",
+    varsSchema: StudyReminderVars,
+    title: (lang) => (lang === "hi" ? "अंक जमा करने हैं" : "Marks due"),
     body: (v) => v.summary,
   }),
 } satisfies Record<NotificationType, TemplateDef<unknown>>;

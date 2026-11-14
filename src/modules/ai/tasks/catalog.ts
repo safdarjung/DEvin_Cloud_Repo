@@ -210,6 +210,7 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   // ── exam controller ──
   "exam.create": t("Create an exam"),
   "exam.marks_entry.open": t("Open marks entry for an exam"),
+  "exam.marks_due.set": t("Set the date marks are due for an exam"),
   "exam.marks_entry.close": t("Close marks entry for an exam"),
   "exam.marks_entry.reopen": t("Reopen marks entry for an exam"),
   "exam.recheck.review": t("Start reviewing a recheck request"),

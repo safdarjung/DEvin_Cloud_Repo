@@ -5,6 +5,7 @@ import "server-only";
 // not a replacement for it.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { marksProgress, type PaperProgress, type PaperTeacher } from "./marks-progress";
 
 export interface TermOption {
   id: string;
@@ -105,6 +106,8 @@ export interface ExamDetail {
   status: string;
   termId: string;
   gradingScaleKey: string;
+  /** 0154: date every paper's marks are due, or null. */
+  marksDueOn: string | null;
   papers: ExamPaperSummary[];
 }
 
@@ -112,7 +115,7 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
   const supabase = await createClient();
   const { data: exam, error: examError } = await supabase
     .from("exams")
-    .select("id, name, type, status, term_id, grading_scale_key")
+    .select("id, name, type, status, term_id, grading_scale_key, marks_due_on")
     .eq("id", examId)
     .eq("institution_id", ctx.institution.id)
     .maybeSingle();
@@ -134,6 +137,7 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
     status: exam.status,
     termId: exam.term_id,
     gradingScaleKey: exam.grading_scale_key,
+    marksDueOn: exam.marks_due_on,
     papers: (papers ?? []).map((row) => {
       const section = row.class_sections as { name: string; grades: { code: string } | null } | null;
       const subject = row.subjects as { name: string } | null;
@@ -149,6 +153,42 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
       };
     }),
   };
+}
+
+/** 0154: who has entered marks for each paper of an exam (the exam office's "not submitted" list). */
+export async function getMarksProgress(ctx: TenantContext, exam: Pick<ExamDetail, "id" | "papers">): Promise<PaperProgress[]> {
+  if (exam.papers.length === 0) return [];
+  const supabase = await createClient();
+  const sectionIds = [...new Set(exam.papers.map((p) => p.classSectionId))];
+  const [counts, assignments, sections] = await Promise.all([
+    supabase.rpc("exam_marks_progress", { p_institution_id: ctx.institution.id, p_exam_id: exam.id }),
+    supabase
+      .from("subject_assignments")
+      .select("class_section_id, subject_id, staff(id, user_id, full_name)")
+      .eq("institution_id", ctx.institution.id)
+      .in("class_section_id", sectionIds),
+    supabase.from("class_sections").select("id, staff(id, user_id, full_name)").eq("institution_id", ctx.institution.id).in("id", sectionIds),
+  ]);
+  for (const r of [counts, assignments, sections]) if (r.error) throw r.error;
+
+  type StaffRow = { id: string; user_id: string | null; full_name: string } | null;
+  const asTeacher = (s: StaffRow): PaperTeacher | null => (s ? { staffId: s.id, userId: s.user_id, name: s.full_name } : null);
+  const subjectTeachers = new Map<string, PaperTeacher>();
+  for (const a of assignments.data ?? []) {
+    const t = asTeacher(a.staff as StaffRow);
+    if (t) subjectTeachers.set(`${a.class_section_id}:${a.subject_id}`, t);
+  }
+  const classTeachers = new Map<string, PaperTeacher>();
+  for (const s of sections.data ?? []) {
+    const t = asTeacher(s.staff as StaffRow);
+    if (t) classTeachers.set(s.id, t);
+  }
+  return marksProgress(
+    exam.papers.map((p) => ({ id: p.id, sectionId: p.classSectionId, subjectId: p.subjectId, label: `${p.sectionLabel} ${p.subjectName}` })),
+    new Map((counts.data ?? []).map((c) => [c.paper_id, { entered: c.entered, total: c.total }])),
+    subjectTeachers,
+    classTeachers,
+  );
 }
 
 export interface PaperMarksRow {

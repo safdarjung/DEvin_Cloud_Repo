@@ -9,9 +9,11 @@ import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { humanize } from "@/lib/format";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
+import { MarksDeadlinePanel } from "@/modules/exams/components/MarksDeadlinePanel";
 import { PaperGrid } from "@/modules/exams/components/PaperGrid";
 import { VerificationPanel } from "@/modules/exams/components/VerificationPanel";
-import { getExamWithPapers, listSectionOptions, listSubjectOptions } from "@/modules/exams/queries";
+import { getExamWithPapers, getMarksProgress, listSectionOptions, listSubjectOptions } from "@/modules/exams/queries";
+import { istDay } from "@/modules/practice/scoring";
 import { verifyExam } from "@/modules/exams/actions";
 
 export const metadata: Metadata = { title: "Exam" };
@@ -39,7 +41,10 @@ export default async function ExamDetailPage({
   const exam = await getExamWithPapers(ctx, examId);
   if (!exam) notFound();
 
-  const verification = exam.papers.length > 0 ? await verifyExam(institutionSlug, { examId }) : null;
+  const [verification, progress] = await Promise.all([
+    exam.papers.length > 0 ? verifyExam(institutionSlug, { examId }) : null,
+    getMarksProgress(ctx, exam),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -63,6 +68,17 @@ export default async function ExamDetailPage({
         hasPapers={exam.papers.length > 0}
         initialVerification={verification?.ok ? verification.data : null}
       />
+
+      {exam.papers.length > 0 && exam.status !== "published" && (
+        <MarksDeadlinePanel
+          institutionSlug={institutionSlug}
+          examId={exam.id}
+          examStatus={exam.status}
+          marksDueOn={exam.marksDueOn}
+          progress={progress}
+          today={istDay(new Date())}
+        />
+      )}
 
       {exam.papers.length === 0 ? (
         <PaperGridSection ctx={ctx} examId={exam.id} institutionSlug={institutionSlug} />

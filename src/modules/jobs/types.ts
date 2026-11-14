@@ -23,6 +23,7 @@ export type JobType =
   | "mastery.compute"
   | "workflow.run"
   | "notify.study_reminders"
+  | "notify.marks_reminders"
   | "content.extract";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "dead";

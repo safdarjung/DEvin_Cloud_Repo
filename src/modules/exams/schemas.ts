@@ -8,6 +8,10 @@ import { isoDate, money, shortText, uuid } from "@/lib/schemas/common";
 export const ExamIdSchema = z.object({ examId: uuid }).strict();
 export type ExamIdInput = z.infer<typeof ExamIdSchema>;
 
+// 0154: the date every paper's marks are due (null clears it); reminders follow from it.
+export const SetMarksDueSchema = z.object({ examId: uuid, marksDueOn: isoDate.nullable() }).strict();
+export type SetMarksDueInput = z.infer<typeof SetMarksDueSchema>;
+
 export const CreateExamSchema = z
   .object({
     termId: uuid,

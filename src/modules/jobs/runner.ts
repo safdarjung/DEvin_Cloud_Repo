@@ -68,6 +68,8 @@ export interface RunnerPorts {
   enqueueDueForecasts(): Promise<void>;
   /** 0138: enqueues the daily `notify.study_reminders` job per institution (`public.enqueue_study_reminders`). */
   enqueueStudyReminders(): Promise<number>;
+  /** 0154: enqueues the daily `notify.marks_reminders` job per institution with marks due (`public.enqueue_marks_reminders`). */
+  enqueueMarksReminders(): Promise<number>;
   /** 0143: deletes orb approval cards past the 30-day retention (`public.purge_ai_proposals`). */
   purgeAiProposals(): Promise<number>;
   /** 0150: submits online test attempts past their deadline (`public.auto_submit_expired_test_attempts`). */
@@ -196,6 +198,11 @@ export function createRunnerPorts(admin: SupabaseClient<Database>): RunnerPorts 
     },
     async enqueueStudyReminders() {
       const { data, error } = await admin.rpc("enqueue_study_reminders");
+      if (error) throw new Error(error.message);
+      return Number(data);
+    },
+    async enqueueMarksReminders() {
+      const { data, error } = await admin.rpc("enqueue_marks_reminders");
       if (error) throw new Error(error.message);
       return Number(data);
     },
@@ -349,6 +356,15 @@ export async function runOnceCore(
   } catch (err) {
     const correlationId = crypto.randomUUID();
     console.error(`[${correlationId}] study reminder sweep failed`, {
+      message: err instanceof Error ? err.message : "unknown error",
+    });
+  }
+
+  try {
+    await ports.enqueueMarksReminders();
+  } catch (err) {
+    const correlationId = crypto.randomUUID();
+    console.error(`[${correlationId}] marks reminder sweep failed`, {
       message: err instanceof Error ? err.message : "unknown error",
     });
   }

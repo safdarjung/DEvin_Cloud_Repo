@@ -2061,14 +2061,14 @@ isOneToOne: false
                   ]
                 },"exams": {
                   Row: {
-                    "academic_year_id": string,"created_at": string,"grading_scale_key": string,"id": string,"institution_id": string,"name": string,"published_at": string | null,"status": string,"term_id": string,"type": string,"updated_at": string
+                    "academic_year_id": string,"created_at": string,"grading_scale_key": string,"id": string,"institution_id": string,"marks_due_on": string | null,"name": string,"published_at": string | null,"status": string,"term_id": string,"type": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "academic_year_id": string,"created_at"?: string,"grading_scale_key"?: string,"id"?: string,"institution_id": string,"name": string,"published_at"?: string | null,"status"?: string,"term_id": string,"type": string,"updated_at"?: string
+                    "academic_year_id": string,"created_at"?: string,"grading_scale_key"?: string,"id"?: string,"institution_id": string,"marks_due_on"?: string | null,"name": string,"published_at"?: string | null,"status"?: string,"term_id": string,"type": string,"updated_at"?: string
                   }
                   Update: {
-                    "academic_year_id"?: string,"created_at"?: string,"grading_scale_key"?: string,"id"?: string,"institution_id"?: string,"name"?: string,"published_at"?: string | null,"status"?: string,"term_id"?: string,"type"?: string,"updated_at"?: string
+                    "academic_year_id"?: string,"created_at"?: string,"grading_scale_key"?: string,"id"?: string,"institution_id"?: string,"marks_due_on"?: string | null,"name"?: string,"published_at"?: string | null,"status"?: string,"term_id"?: string,"type"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -7653,6 +7653,9 @@ isOneToOne: false
 "enqueue_invoice_reminders":
 { Args: { "p_institution_id": string,"p_invoice_ids": (string)[] }; Returns: Json
                            },
+"enqueue_marks_reminders":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "enqueue_mastery_compute":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
@@ -7671,6 +7674,11 @@ isOneToOne: false
 "exam_mark_outliers":
 { Args: { "p_exam_id": string,"p_institution_id": string }; Returns: {
               "class_section_id": string,"details": Json,"exam_paper_id": string,"outlier_type": string,"student_id": string,"subject_id": string
+            }[]
+                           },
+"exam_marks_progress":
+{ Args: { "p_exam_id": string,"p_institution_id": string }; Returns: {
+              "entered": number,"paper_id": string,"total": number
             }[]
                            },
 "exam_verification":

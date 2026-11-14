@@ -112,6 +112,7 @@ const FIXTURES: Record<string, { permission: Permission; input: () => Record<str
     input: () => ({ examId: U(), papers: [{ paperId: U(), scheduledAt: null }] }),
   },
   "exam.marks_entry.open": { permission: "exam.manage", input: () => ({ examId: U() }) },
+  "exam.marks_due.set": { permission: "exam.manage", input: () => ({ examId: U(), marksDueOn: "2026-07-20" }) },
   "exam.marks_entry.close": { permission: "exam.manage", input: () => ({ examId: U() }) },
   "exam.marks_entry.reopen": { permission: "exam.manage", input: () => ({ examId: U() }) },
   "exam.verify": { permission: "exam.manage", input: () => ({ examId: U() }) },

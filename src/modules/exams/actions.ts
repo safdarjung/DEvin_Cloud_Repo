@@ -27,6 +27,7 @@ import {
   RequestRecheckSchema,
   SaveResultRemarkSchema,
   SchedulePapersSchema,
+  SetMarksDueSchema,
   type CreateExamInput,
   type CreateExamPapersInput,
   type DecideRecheckInput,
@@ -36,6 +37,7 @@ import {
   type RequestRecheckInput,
   type SaveResultRemarkInput,
   type SchedulePapersInput,
+  type SetMarksDueInput,
 } from "./schemas";
 
 type ExamsClient = Awaited<ReturnType<typeof createClient>>;
@@ -287,6 +289,33 @@ export const reopenMarksEntry = defineAction({
     if (error) throwMapped(error);
     revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}`);
     return data as { exam_id: string; status: string };
+  },
+});
+
+// 0154: the office sets when marks are due; notify.marks_reminders reminds teachers and the office from 2 days before.
+export const setMarksDue = defineAction({
+  name: "exam.marks_due.set",
+  schema: SetMarksDueSchema,
+  module: "exams",
+  permission: "exam.manage",
+  handler: async (input: SetMarksDueInput, ctx) => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("exams")
+      .update({ marks_due_on: input.marksDueOn })
+      .eq("id", input.examId)
+      .eq("institution_id", ctx.institution.id)
+      .select("id");
+    if (error) throwMapped(error);
+    if ((data ?? []).length === 0) throw new AppError("not_found", "Exam not found.");
+    await audit(ctx, {
+      action: "exam.marks_due.set",
+      entityType: "exam",
+      entityId: input.examId,
+      metadata: { marksDueOn: input.marksDueOn },
+    });
+    revalidatePath(`/${ctx.institution.slug}/exams/${input.examId}`);
+    return { examId: input.examId, marksDueOn: input.marksDueOn };
   },
 });
 
