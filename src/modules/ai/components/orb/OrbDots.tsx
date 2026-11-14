@@ -135,10 +135,10 @@ function OrbDotsImpl({ mode, groups, lit, litKey, hasDraft, busy, starting, onRu
           style: {
             ...({ "--hue": hue } as React.CSSProperties),
             ...(page
-            ? { background: "var(--card)", boxShadow: `inset 0 0 0 2px ${hue}, 0 6px 16px -8px ${hue}`, color: hue }
+            ? { background: "var(--card)", boxShadow: `inset 0 0 0 2px ${hue}, 0 6px 14px -8px rgb(0 0 0 / 0.45)`, color: hue }
             : {
-                background: `radial-gradient(circle at 32% 26%, color-mix(in oklab, ${hue} 45%, white), ${hue} 62%, color-mix(in oklab, ${hue} 70%, black))`,
-                boxShadow: `0 0 0 1.5px rgb(255 255 255 / 0.55), 0 8px 20px -8px ${hue}, 0 0 18px -4px ${hue}`,
+                background: `radial-gradient(circle at 32% 26%, color-mix(in oklab, ${hue} 72%, white), ${hue} 68%)`,
+                boxShadow: `0 0 0 1.5px rgb(255 255 255 / 0.7), 0 6px 14px -8px rgb(0 0 0 / 0.45)`,
                 color: "white",
               }),
           },
@@ -226,7 +226,7 @@ export function OrbLegend({ groups, pinned, onPin, onPeek }: {
     <div
       role="group"
       aria-label="Sections on the orb: choose one to light up its dots"
-      className="relative mx-auto flex w-fit max-w-full items-center gap-1.5 overflow-x-auto px-1 py-0.5 [scrollbar-width:none] xl:absolute xl:left-0 xl:top-1/2 xl:max-h-full xl:-translate-y-1/2 xl:flex-col xl:items-stretch xl:overflow-y-auto"
+      className="relative mx-auto flex w-fit max-w-full items-center gap-1.5 overflow-x-auto px-1 py-0.5 [scrollbar-width:none] xl:absolute xl:left-0 xl:top-1/2 xl:max-h-full xl:w-48 xl:-translate-y-1/2 xl:flex-col xl:items-stretch xl:gap-0.5 xl:overflow-y-auto"
     >
       {groups.map((g) => {
         const Icon = GROUP_ICONS[g.id];
@@ -238,13 +238,13 @@ export function OrbLegend({ groups, pinned, onPin, onPeek }: {
             onClick={() => onPin(pinned === g.id ? null : g.id)}
             onPointerEnter={(e) => e.pointerType === "mouse" && onPeek(g.id)}
             onPointerLeave={() => onPeek(null)}
-            className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pl-1 pr-2.5 text-xs font-medium shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:border-foreground aria-pressed:bg-accent pointer-coarse:min-h-11"
+            className="inline-flex min-h-8 shrink-0 items-center gap-2 rounded-full bg-muted/60 py-0.5 pl-1.5 pr-3 text-xs font-medium text-foreground/70 transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-accent aria-pressed:text-foreground aria-pressed:ring-1 aria-pressed:ring-foreground/30 pointer-coarse:min-h-11 xl:rounded-lg xl:bg-transparent"
           >
-            <span className="grid size-6 place-items-center rounded-full text-white" style={{ background: g.hue }}>
-              <Icon className="size-3.5" aria-hidden />
+            <span className="grid size-5 shrink-0 place-items-center rounded-full text-white" style={{ background: g.hue }}>
+              <Icon className="size-3" aria-hidden />
             </span>
             <span className="flex-1 text-left">{g.label}</span>
-            <span className="tabular-nums text-muted-foreground">
+            <span className="tabular-nums">
               {g.features.length}
               <span className="sr-only"> {g.features.length === 1 ? "option" : "options"}</span>
             </span>
@@ -264,11 +264,10 @@ export function OrbSurprise({ hue, onClick }: { hue: string; onClick: () => void
       aria-keyshortcuts="S"
       aria-label="Surprise me: show a random thing the orb can do (key S)"
       title="Surprise me (S)"
-      className="group inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-3 text-xs font-medium shadow-xs transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Dices className="size-4 transition-transform duration-300 group-hover:rotate-[20deg] group-active:rotate-[200deg] motion-reduce:transition-none" style={{ color: hue }} aria-hidden />
       <span className="hidden sm:inline">Surprise me</span>
-      <kbd className="hidden rounded border border-border bg-muted px-1 font-mono text-[10px] text-muted-foreground sm:inline">S</kbd>
     </button>
   );
 }

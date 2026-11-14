@@ -159,14 +159,14 @@ const ORBIT_TRACK = "M 0 50 A 50 12 0 0 1 100 50 A 50 12 0 0 1 0 50";
  */
 function Orbit({ near, moving }: { near: boolean; moving: boolean }) {
   return (
-    <svg aria-hidden viewBox="0 0 100 100" className="pointer-events-none absolute left-[-9%] top-[-9%] size-[118%] overflow-visible">
+    <svg aria-hidden viewBox="0 0 100 100" className="pointer-events-none absolute left-[-9%] top-[-9%] size-[118%] overflow-visible max-sm:hidden">
       <g transform="rotate(-9 50 50)">
         <path
           d={`M 0 50 A 50 12 0 0 ${near ? 0 : 1} 100 50`}
           fill="none"
           className="stroke-(--orb-a) dark:stroke-(--orb-b)"
-          strokeOpacity={near ? 0.45 : 0.22}
-          strokeWidth={near ? 1.25 : 1}
+          strokeOpacity={near ? 0.3 : 0.16}
+          strokeWidth={1}
           vectorEffect="non-scaling-stroke"
         />
         {moving && (
@@ -654,24 +654,14 @@ export function OrbBody(p: Props) {
         }}
         // Vertical swipes still scroll the page; horizontal drags spin the sphere.
         style={{ touchAction: live && !compact ? "none" : "pan-y", ...roleVars }}
-        className={`relative isolate select-none ${live ? "cursor-grab active:cursor-grabbing" : ""} ${compact ? "size-28 sm:size-32" : "size-[max(min(90vw,19rem),min(90vw,34rem,58dvh,calc(100dvh_-_30rem)))]"}`}
+        className={`relative isolate select-none ${live ? "cursor-grab active:cursor-grabbing" : ""} ${compact ? "size-28 sm:size-32" : "size-[max(min(90vw,19rem),min(90vw,34rem,58dvh,calc(100dvh_-_30rem)))] max-sm:size-[max(min(90vw,19rem),min(90vw,58dvh,calc(100dvh_-_32.5rem)))]"}`}
       >
         {/* Depth: a soft role-tinted glow and the far half of an orbit ring behind the sphere. */}
         <div
           aria-hidden
           // On a phone the sphere fills the column: the glow must fade out before the clip edge.
-          className="pointer-events-none absolute -inset-[24%] rounded-full opacity-60 max-sm:-inset-[2%] dark:opacity-100"
+          className="pointer-events-none absolute -inset-[24%] rounded-full opacity-45 max-sm:-inset-[2%] dark:opacity-70"
           style={{ background: "radial-gradient(closest-side, color-mix(in oklab, var(--orb-a) 42%, transparent), transparent)" }}
-        />
-        {/* A faint field of dots behind everything, fading out before the stage's edge. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -inset-[16%] text-(--orb-a) opacity-25 max-sm:-inset-[2%] dark:text-(--orb-b) dark:opacity-20"
-          style={{
-            backgroundImage: "radial-gradient(currentColor 1px, transparent 1.5px)",
-            backgroundSize: "22px 22px",
-            maskImage: "radial-gradient(closest-side, black 40%, transparent 100%)",
-          }}
         />
         {/* The glow swells while the orb listens, thinks and answers. */}
         {!reduced && (
@@ -691,8 +681,8 @@ export function OrbBody(p: Props) {
           <motion.div ref={orbRef} aria-hidden data-orb style={{ x, y, scaleX: sx, scaleY: sy }} className="absolute inset-0">
             <motion.div
               className="absolute inset-0"
-              animate={breathing ? { scale: [1, 1.035, 1] } : { scale: 1 }}
-              transition={breathing ? { duration: 4.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
+              animate={breathing ? { scale: [1, 1.02, 1] } : { scale: 1 }}
+              transition={breathing ? { duration: 6, repeat: Infinity, ease: "easeInOut" } : { duration: 0.3 }}
             >
               {lean && !reduced && (
                 <motion.span
@@ -805,7 +795,7 @@ export function OrbBody(p: Props) {
         <Bursts items={bursts} onDone={(id) => setBursts((b) => b.filter((x) => x.id !== id))} />
       </div>
       {p.showStatus && (
-        <p className="flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-1 text-xs font-medium shadow-xs backdrop-blur" style={roleVars}>
+        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground" style={roleVars}>
           <span className="relative grid size-2 place-items-center" aria-hidden>
             {(working || state === "listening") && !reduced && <span className="absolute inset-0 animate-ping rounded-full bg-(--orb-a) dark:bg-(--orb-b)" />}
             <span className={`relative size-2 rounded-full ${state === "error" ? "bg-destructive" : "bg-(--orb-a) dark:bg-(--orb-b)"}`} />

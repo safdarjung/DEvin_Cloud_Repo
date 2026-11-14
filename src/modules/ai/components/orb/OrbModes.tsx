@@ -55,7 +55,7 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
         aria-label="Orb modes"
         aria-orientation="horizontal"
         onKeyDown={onKeyDown}
-        className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full border border-border bg-card p-1 shadow-sm [scrollbar-width:none]"
+        className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-full bg-muted/70 p-1 [scrollbar-width:none]"
       >
         {modes.map((m, i) => {
           const on = m === current;
@@ -73,23 +73,21 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
               tabIndex={on ? 0 : -1}
               onClick={() => onChange(m)}
               className={`relative min-h-11 min-w-11 shrink-0 rounded-full px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                on ? "text-background" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                on ? "text-background" : "text-foreground/70 hover:bg-accent hover:text-foreground"
               }`}
             >
               {on && (
                 <motion.span
                   layoutId={`${idBase}-pill`}
-                  className="absolute inset-0 rounded-full bg-foreground"
-                  // The pill carries the mode's colour as a glow under it (the text keeps the monochrome contrast).
-                  style={{ boxShadow: `0 8px 22px -8px ${hueFor(m)}, 0 0 0 1px color-mix(in oklab, ${hueFor(m)} 55%, transparent)` }}
+                  className="absolute inset-0 rounded-full bg-foreground shadow-sm"
                   transition={reduced ? { duration: 0 } : SPRING}
                 />
               )}
               <span className="relative flex items-center gap-1.5">
-                <Icon className="size-3.5 transition-colors" style={on ? undefined : { color: hueFor(m) }} aria-hidden />
+                <Icon className="size-3.5" aria-hidden />
                 {modeInfo(m).label}
                 {count > 0 && (
-                  <span className="hidden text-xs tabular-nums opacity-75 sm:inline">
+                  <span className="hidden text-xs font-normal tabular-nums opacity-75 sm:inline">
                     {count}
                     <span className="sr-only"> {count === 1 ? "item" : "items"}</span>
                   </span>
@@ -111,29 +109,23 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
       {showIntro && modes.length > 1 && (
         <div
           role="note"
-          className="relative flex w-full max-w-4xl items-center gap-3 rounded-2xl border bg-card/90 py-1 pl-2 pr-1 text-xs shadow-sm backdrop-blur"
-          style={{ borderColor: `color-mix(in oklab, ${hueFor(current)} 35%, var(--border))` }}
+          className="flex w-fit max-w-full items-center gap-1 rounded-full bg-muted/60 pl-4 text-xs max-sm:rounded-2xl"
         >
-          <span
-            aria-hidden
-            className="grid size-9 shrink-0 place-items-center rounded-full text-white shadow-sm"
-            style={{ background: `radial-gradient(circle at 32% 26%, color-mix(in oklab, ${hueFor(current)} 45%, white), ${hueFor(current)} 65%)` }}
-          >
-            <Sparkles className="size-4" />
-          </span>
-          <div className="min-w-0 flex-1 leading-snug">
+          <Sparkles className="size-3.5 shrink-0" style={{ color: hueFor(current) }} aria-hidden />
+          <div className="min-w-0 flex-1 pl-1 leading-snug">
             {/* One row on a desktop: a taller tip pushes the search field under the message box at 900px height. */}
-            <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-muted-foreground">
+            <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-foreground/70">
               <span className="font-medium text-foreground">Every dot is one thing the orb can do.</span>
               <span>Click to run</span>
               <span>Drag to spin</span>
-              <span>
+              {/* Key hints are for keyboards: a touch screen has none. */}
+              <span className="pointer-coarse:hidden">
                 <Kbd>1</Kbd>–<Kbd>{modes.length}</Kbd> modes
               </span>
-              <span>
+              <span className="pointer-coarse:hidden">
                 <Kbd>/</Kbd> message
               </span>
-              <span>
+              <span className="pointer-coarse:hidden">
                 <Kbd>S</Kbd> surprise me
               </span>
             </p>
@@ -142,7 +134,7 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
             type="button"
             onClick={onDismissIntro}
             aria-label="Dismiss the modes tip"
-            className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="grid size-11 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="size-4" aria-hidden />
           </button>
@@ -153,5 +145,5 @@ export function OrbModes({ modes, current, counts, idBase, panelId, hueFor, redu
 }
 
 function Kbd({ children }: { children: React.ReactNode }) {
-  return <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px] text-foreground">{children}</kbd>;
+  return <kbd className="rounded border border-border bg-card px-1 font-mono text-[10px] text-foreground">{children}</kbd>;
 }

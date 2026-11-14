@@ -120,7 +120,7 @@ export function OrbComposer({ chatOn, input, busy, starters, pictures, staff, hi
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-2">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
       {chatOn && starters && starters.length > 0 && (
         <div className={ROW} role="group" aria-label="From the page you were on">
           <span className="flex shrink-0 items-center gap-1 pr-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -166,8 +166,8 @@ export function OrbComposer({ chatOn, input, busy, starters, pictures, staff, hi
               e.preventDefault();
               onSend(input);
             }}
-            // Focused, the box glows in the orb's colour (--orb-b from OrbView).
-            className="flex items-center gap-1 rounded-full border border-border bg-card p-1.5 shadow-[0_16px_40px_-20px_rgb(0_0_0/0.35)] transition-[border-color,box-shadow] duration-200 focus-within:border-foreground/40 focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--orb-b,transparent)_26%,transparent),0_18px_44px_-18px_var(--orb-b,rgb(0_0_0/0.35))]"
+            // Focused, the box takes a soft ring in the orb's colour (--orb-b from OrbView). On a phone the message has its own row above the tools.
+            className="flex flex-wrap items-center gap-1 rounded-[1.75rem] border border-border bg-card p-1.5 shadow-[0_12px_32px_-20px_rgb(0_0_0/0.35)] transition-[border-color,box-shadow] duration-200 focus-within:border-foreground/30 focus-within:shadow-[0_0_0_3px_color-mix(in_oklab,var(--orb-b,transparent)_22%,transparent),0_12px_32px_-20px_rgb(0_0_0/0.35)] sm:flex-nowrap sm:rounded-full"
           >
             {attach}
             <button
@@ -228,20 +228,20 @@ export function OrbComposer({ chatOn, input, busy, starters, pictures, staff, hi
               placeholder={placeholder}
               readOnly={busy || voice.listening}
               aria-label="Message"
-              className="peer h-10 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground sm:h-9"
+              className="peer order-first h-10 min-w-0 flex-1 basis-full bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground sm:order-none sm:h-9 sm:basis-0"
             />
             {input === "" && !busy && !voice.listening && (
               // The shortcut that jumps here from anywhere on the page (keyboards only).
-              <kbd aria-hidden className="mr-1 hidden h-6 shrink-0 place-items-center rounded-md border border-border bg-muted px-1.5 font-mono text-[11px] text-muted-foreground peer-focus:hidden pointer-fine:grid">
+              <kbd aria-hidden className="mr-1 hidden h-6 shrink-0 place-items-center rounded-md border border-border bg-muted px-1.5 font-mono text-[11px] text-muted-foreground peer-focus:hidden pointer-fine:grid max-sm:hidden!">
                 /
               </kbd>
             )}
             {busy ? (
-              <button type="button" onClick={onStop} aria-label="Stop answering" className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9">
+              <button type="button" onClick={onStop} aria-label="Stop answering" className="grid size-10 shrink-0 max-sm:ml-auto place-items-center rounded-full bg-primary text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:size-9">
                 <Square className="size-3.5 fill-current" aria-hidden />
               </button>
             ) : (
-              <button type="submit" disabled={!input.trim() || voice.listening} aria-label="Send" className="group grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-[opacity,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-90 disabled:opacity-30 motion-reduce:transition-none sm:size-9">
+              <button type="submit" disabled={!input.trim() || voice.listening} aria-label="Send" className="group grid size-10 shrink-0 max-sm:ml-auto place-items-center rounded-full bg-primary text-primary-foreground transition-[opacity,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-90 disabled:opacity-30 motion-reduce:transition-none sm:size-9">
                 <ArrowUp className="size-[18px] transition-transform duration-150 ease-out group-enabled:group-hover:-translate-y-0.5 motion-reduce:transition-none" aria-hidden />
               </button>
             )}

@@ -115,7 +115,7 @@ function Dust({ state, dark, accent, signals }: Props) {
       u.uGlassB.value.copy(target.gb);
       target.first = false;
     }
-    u.uFill.value = dark ? 1.4 : 2.2;
+    u.uFill.value = dark ? 0.9 : 1.2;
     u.uCore.value = dark ? 0.72 : 0.8;
     // Dark: the dust adds light, so it glows over the ball.
     mat.blending = dark ? AdditiveBlending : NormalBlending;

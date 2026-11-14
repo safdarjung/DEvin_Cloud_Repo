@@ -772,17 +772,11 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
         )}
         {!showTranscript && (
           <p className="text-balance px-4 text-center">
-            <span
-              className="block text-xs font-semibold uppercase tracking-[0.18em] text-(--orb-a) dark:text-(--orb-b)"
-              style={{ "--orb-a": accent[0], "--orb-b": accent[1] } as React.CSSProperties}
-            >
-              {home.title}
-            </span>
-            <span className="mt-1 block text-xl font-semibold tracking-tight sm:text-2xl">
+            <span className="block text-xl font-semibold tracking-tight sm:text-2xl">
               {hello}
               {firstName ? `, ${firstName}` : ""}
             </span>
-            <span className="mt-0.5 block text-sm text-muted-foreground">{home.greeting}</span>
+            <span className="mt-1 block text-sm text-muted-foreground">{home.greeting}</span>
           </p>
         )}
         <OrbBody
@@ -826,7 +820,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium shadow-sm hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-muted/60 px-4 text-xs font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <MessagesSquare className="size-3.5" aria-hidden />
             Show conversation ({messages.length + localCards.length + explains.length})
@@ -896,7 +890,7 @@ export function OrbView({ institutionSlug, role, chat, features, starters, initi
       {/* Above the phone bottom nav (fixed, lg:hidden), so the message box is always in view. */}
       <div
         style={{ "--orb-a": accent[0], "--orb-b": accent[1] } as React.CSSProperties}
-        className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex min-w-0 flex-col gap-2 self-start rounded-3xl bg-background/90 pb-1 backdrop-blur lg:bottom-2 lg:col-start-1 lg:row-start-3"
+        className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 flex min-w-0 flex-col gap-2 self-start rounded-3xl bg-background/90 pb-1 backdrop-blur before:pointer-events-none before:absolute before:inset-x-0 before:bottom-full before:h-4 before:bg-linear-to-t before:from-background before:to-transparent lg:bottom-2 lg:col-start-1 lg:row-start-3"
       >
         <OrbTray
           items={pending.map((p) => ({ id: p.proposalId, title: p.view.title }))}
