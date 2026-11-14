@@ -66,6 +66,14 @@ test.describe("landing page", () => {
     await expect(demo.locator("[data-answer]")).toBeVisible();
   });
 
+  test("the landing points visitors to Fabric Vision for the detail, from the header and a band after the modules", async ({ page }) => {
+    await page.goto("/");
+    const band = page.locator("#vision");
+    await expect(band.getByRole("heading", { level: 2 })).toContainText("Want every feature in detail?");
+    await expect(band.getByRole("link", { name: "Explore Fabric Vision" })).toHaveAttribute("href", "/product/vision");
+    await expect(page.locator('header a[href="/product/vision"]').first()).toBeAttached();
+  });
+
   test("the module switchboard lists every module, filters by search and labels what is not live", async ({ page }) => {
     await page.goto("/");
     const board = page.locator("#modules");

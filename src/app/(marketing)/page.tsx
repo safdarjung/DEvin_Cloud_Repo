@@ -19,6 +19,7 @@ import { homeMetadata } from "@/components/fabricos/seo";
 import { TourCta } from "@/components/fabricos/tour-cta";
 import { TrustSection } from "@/components/fabricos/trust-section";
 import { UseCasesSection } from "@/components/fabricos/use-cases-section";
+import { VisionCta } from "@/components/fabricos/vision-cta";
 import { HOME_MODULES } from "@/components/home/modules-list";
 
 export const metadata = homeMetadata;
@@ -37,6 +38,7 @@ export default function HomePage() {
       <InsightsSection media={false} />
       <ConfigureSection />
       <ModulesSection modules={HOME_MODULES} />
+      <VisionCta />
       <UseCasesSection />
       <TrustSection />
       <GuaranteesSection />

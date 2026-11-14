@@ -39,6 +39,7 @@ export const NAV: readonly { href: string; label: string }[] = [
   { href: `/#${SECTION.useCases}`, label: "Use Cases" },
   { href: `/#${SECTION.howItWorks}`, label: "How It Works" },
   { href: "/tour", label: "Product Tour" },
+  { href: "/product/vision", label: "Vision" },
 ];
 
 /** Real routes only. */
@@ -46,6 +47,7 @@ export const CTA = {
   primary: { href: "/contact", label: "Book a demo" },
   secondary: { href: "/demo", label: "Try the live demo" },
   tour: { href: "/tour", label: "Take the product tour" },
+  vision: { href: "/product/vision", label: "Explore Fabric Vision" },
   signIn: { href: "/login?switch=1", label: "Sign in" },
 } as const;
 
