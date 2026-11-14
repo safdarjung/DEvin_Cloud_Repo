@@ -2,15 +2,18 @@
 
 // /infographic result: a one-page poster (4:5, or a wide 16:9 layout) in one
 // of five fixed palettes, light and dark, blocks numbered in reading order.
-// Charts use Recharts with a text summary for screen readers. "Save as PDF"
-// prints only the poster (browser print dialog): a PNG export would need a
-// new dependency. Plain text only: React escapes everything.
-import { useRef, useState } from "react";
-import { Printer, Sparkles } from "lucide-react";
+// Charts use Recharts with a text summary for screen readers. The poster lays
+// out by its own width (container queries), so a narrow orb panel or a phone
+// gets one column instead of a clipped grid. "Open" shows it full size;
+// "Save picture" is a PNG (html-to-image, loaded on click) and "Save as PDF"
+// prints that picture fitted to one page. Plain text only: React escapes everything.
+import { useRef, useState, type RefObject } from "react";
+import { Download, Loader2, Maximize2, Printer, Sparkles } from "lucide-react";
 import { Bar, BarChart, Cell, LabelList, Pie, PieChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { cn } from "cn";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { ProviderBadge } from "@/modules/ai/components/ProviderBadge";
 import type { InfographicBlock, InfographicPalette, InfographicResponse } from "@/modules/ai/explain/schemas";
 
@@ -48,12 +51,10 @@ const PALETTES: Record<InfographicPalette, [Tokens, Tokens]> = {
 };
 const NAMES = ["bg", "panel", "ink", "muted", "accent", "on-accent", "rule"];
 const vars = (t: Tokens) => t.map((v, i) => `--ig-${NAMES[i]}:${v}`).join(";");
-// Static CSS from the constants above (no user text). Dark applies on screen only, so a print is always light.
-const CSS = [
-  ...Object.entries(PALETTES).map(([name, [light, dark]]) => `[data-ig=${name}]{${vars(light)}}@media screen{.dark [data-ig=${name}]{${vars(dark)}}}`),
-  "@media print{body.ig-printing *{visibility:hidden!important}body.ig-printing [data-ig-printing],body.ig-printing [data-ig-printing] *{visibility:visible!important}",
-  "body.ig-printing [data-ig-printing]{position:fixed;left:0;top:0;width:100%;max-width:none;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}}",
-].join("");
+// Static CSS from the constants above (no user text).
+const CSS = Object.entries(PALETTES)
+  .map(([name, [light, dark]]) => `[data-ig=${name}]{${vars(light)}}@media screen{.dark [data-ig=${name}]{${vars(dark)}}}`)
+  .join("");
 
 const num = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 });
 const pct = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
@@ -90,8 +91,9 @@ export function packSpans(wants: readonly number[], cols: number): number[] {
 }
 
 // Literal class names so Tailwind sees them.
-const SM_SPAN: Record<number, string> = { 1: "", 2: "sm:col-span-2" };
-const LG_SPAN: Record<number, string> = { 1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3" };
+// Container sizes, not screen sizes: two columns from 32rem of poster width, three (wide) from 48rem.
+const SM_SPAN: Record<number, string> = { 1: "", 2: "@lg:col-span-2" };
+const LG_SPAN: Record<number, string> = { 1: "@3xl:col-span-1", 2: "@3xl:col-span-2", 3: "@3xl:col-span-3" };
 
 function Heading({ n, text }: { n: number; text: string }) {
   return (
@@ -156,7 +158,7 @@ function Block({ b, n }: { b: InfographicBlock; n: number }) {
         <>
           <span className={label}>{String(n).padStart(2, "0")}</span>
           <div className="mt-auto pt-4">
-            <p className="text-[3.25rem] font-black leading-none tracking-[-0.04em] text-[var(--ig-accent)]">{b.value}</p>
+            <p className="text-[2.6rem] font-black leading-none tracking-[-0.04em] text-[var(--ig-accent)] [overflow-wrap:anywhere] @3xl:text-[3.25rem]">{b.value}</p>
             <p className="mt-2 text-sm font-medium leading-snug">{b.label}</p>
           </div>
         </>
@@ -165,7 +167,7 @@ function Block({ b, n }: { b: InfographicBlock; n: number }) {
       return (
         <>
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.2em] opacity-80">{String(n).padStart(2, "0")}</span>
-          <p className="mt-1 text-xl font-bold leading-snug tracking-tight text-balance sm:text-2xl">{b.text}</p>
+          <p className="mt-1 text-xl font-bold leading-snug tracking-tight text-balance @lg:text-2xl">{b.text}</p>
         </>
       );
     case "steps":
@@ -230,7 +232,7 @@ function Block({ b, n }: { b: InfographicBlock; n: number }) {
       return (
         <>
           <Heading n={n} text={b.heading} />
-          <dl className={cn("grid gap-x-5 gap-y-2.5", b.items.length > 4 && "sm:grid-cols-2")}>
+          <dl className={cn("grid gap-x-5 gap-y-2.5", b.items.length > 4 && "@lg:grid-cols-2")}>
             {b.items.map((p, i) => (
               <div key={i} className="text-sm leading-snug">
                 <dt className="font-bold">{p.name}</dt>
@@ -250,32 +252,154 @@ function Block({ b, n }: { b: InfographicBlock; n: number }) {
   }
 }
 
-export function InfographicCard({ result, variant = "poster" }: InfographicCardProps) {
-  const ig = result.infographic;
-  const [layout, setLayout] = useState(variant);
-  const poster = useRef<HTMLDivElement>(null);
+const fileName = (title: string) => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "infographic";
 
-  function savePdf() {
-    const el = poster.current;
-    if (!el) return;
-    el.setAttribute("data-ig-printing", "");
-    document.body.classList.add("ig-printing");
-    window.addEventListener(
-      "afterprint",
-      () => {
-        el.removeAttribute("data-ig-printing");
-        document.body.classList.remove("ig-printing");
-      },
-      { once: true },
-    );
-    window.print();
-  }
+/** The poster as a PNG data URL, at least 1200px wide whatever size it is shown at. */
+async function posterPng(el: HTMLElement): Promise<string> {
+  const { toPng } = await import("html-to-image");
+  return toPng(el, { pixelRatio: Math.max(2, 1200 / Math.max(1, el.offsetWidth)), cacheBust: true });
+}
 
-  const wide = layout === "wide";
+/** Prints one picture fitted to a page from a hidden frame (no pop-up, nothing else on the page prints). */
+function printPicture(src: string, title: string) {
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.append(frame);
+  const doc = frame.contentDocument;
+  const win = frame.contentWindow;
+  if (!doc || !win) return frame.remove();
+  doc.open();
+  doc.write("<!doctype html><style>@page{margin:10mm}html,body{margin:0}img{display:block;width:100%;height:auto;max-height:100vh;object-fit:contain}</style>");
+  doc.close();
+  doc.title = title;
+  const img = doc.createElement("img");
+  img.alt = title;
+  img.addEventListener(
+    "load",
+    () => {
+      win.addEventListener("afterprint", () => frame.remove(), { once: true });
+      win.focus();
+      win.print();
+      setTimeout(() => frame.remove(), 60_000);
+    },
+    { once: true },
+  );
+  img.src = src;
+  doc.body.append(img);
+}
+
+function Poster({ ig, wide, posterRef }: { ig: InfographicResult["infographic"]; wide: boolean; posterRef: RefObject<HTMLDivElement | null> }) {
   const sm = packSpans(ig.blocks.map(want), 2);
   const lg = packSpans(ig.blocks.map(want), 3);
   return (
-    <div className="space-y-3">
+    <div
+      ref={posterRef}
+      data-ig={ig.palette}
+      className={cn(
+        // overflow-clip, not hidden: a scroll container loses aspect-ratio's grow-to-fit-content minimum.
+        // No fixed shape when narrow (a phone): the poster is as tall as its content.
+        "relative isolate mx-auto w-full overflow-clip rounded-[20px] bg-[var(--ig-bg)] text-[var(--ig-ink)] shadow-[0_1px_0_var(--ig-rule),0_28px_56px_-28px_rgb(0_0_0/0.35)]",
+        wide ? "@3xl:aspect-[16/9]" : "max-w-[600px] @lg:aspect-[4/5]",
+      )}
+    >
+      <div aria-hidden className="pointer-events-none absolute -right-28 -top-28 -z-10 size-80 rounded-full bg-[var(--ig-accent)] opacity-[0.13]" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 -z-10 size-56 rounded-full border-[28px] border-[var(--ig-accent)] opacity-[0.07]" />
+      <header className={cn("px-5 pt-6 @lg:px-9 @lg:pt-9", wide && "@3xl:grid @3xl:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] @3xl:items-end @3xl:gap-10")}>
+        <div>
+          <p className={label}>Infographic</p>
+          <h2 className="mt-2 max-w-[16ch] text-[1.9rem] font-black leading-[0.95] tracking-[-0.03em] text-balance [overflow-wrap:anywhere] @sm:text-[2.35rem] @lg:text-[3.25rem]">{ig.title}</h2>
+        </div>
+        {ig.subtitle && <p className="mt-3 max-w-[46ch] text-[15px] font-medium leading-snug text-[var(--ig-muted)]">{ig.subtitle}</p>}
+        <div aria-hidden className="mt-5 h-1.5 w-14 rounded-full bg-[var(--ig-accent)] @3xl:col-span-2" />
+      </header>
+      <ol className={cn("grid gap-3 px-3 pb-4 pt-5 @lg:grid-cols-2 @lg:px-7", wide && "@3xl:grid-cols-3")}>
+        {ig.blocks.map((b, i) => (
+          <li
+            key={i}
+            data-block={b.type}
+            className={cn(
+              "flex min-w-0 flex-col rounded-2xl p-4 @lg:p-5",
+              b.type === "callout" ? "bg-[var(--ig-accent)] text-[var(--ig-on-accent)]" : "bg-[var(--ig-panel)] ring-1 ring-[var(--ig-rule)]",
+              SM_SPAN[sm[i]],
+              wide && LG_SPAN[lg[i]],
+            )}
+          >
+            <Block b={b} n={i + 1} />
+          </li>
+        ))}
+      </ol>
+      <footer className="flex items-center gap-2 px-5 pb-6 text-[11px] leading-snug text-[var(--ig-muted)] @lg:px-9">
+        <Sparkles className="size-3 shrink-0" aria-hidden />
+        {ig.sources_note}
+      </footer>
+    </div>
+  );
+}
+
+export function InfographicCard({ result, variant = "poster" }: InfographicCardProps) {
+  const ig = result.infographic;
+  const [layout, setLayout] = useState(variant);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState<"png" | "pdf" | null>(null);
+  const [failed, setFailed] = useState(false);
+  const poster = useRef<HTMLDivElement>(null);
+  const big = useRef<HTMLDivElement>(null);
+  const wide = layout === "wide";
+
+  // The full-size copy when it is open (larger, so a sharper file), else the one in the card.
+  async function save(kind: "png" | "pdf") {
+    const el = (open && big.current) || poster.current;
+    if (!el || busy) return;
+    setBusy(kind);
+    setFailed(false);
+    try {
+      const png = await posterPng(el);
+      if (kind === "pdf") printPicture(png, ig.title);
+      else {
+        const a = document.createElement("a");
+        a.href = png;
+        a.download = `${fileName(ig.title)}.png`;
+        a.click();
+      }
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const actions = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <div role="group" aria-label="Layout" className="inline-flex rounded-full border bg-background p-0.5">
+        {(["poster", "wide"] as const).map((l) => (
+          <button
+            key={l}
+            type="button"
+            aria-pressed={layout === l}
+            onClick={() => setLayout(l)}
+            className={cn(
+              "min-h-11 rounded-full px-3 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:min-h-7 motion-reduce:transition-none",
+              layout === l ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {l === "poster" ? "Poster 4:5" : "Wide"}
+          </button>
+        ))}
+      </div>
+      <Button type="button" variant="outline" size="sm" onClick={() => void save("png")} disabled={busy !== null}>
+        {busy === "png" ? <Loader2 className="animate-spin" aria-hidden /> : <Download aria-hidden />}
+        Save picture
+      </Button>
+      <Button type="button" variant="outline" size="sm" onClick={() => void save("pdf")} disabled={busy !== null}>
+        {busy === "pdf" ? <Loader2 className="animate-spin" aria-hidden /> : <Printer aria-hidden />}
+        Save as PDF
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="@container space-y-3">
       <style>{CSS}</style>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
@@ -285,70 +409,42 @@ export function InfographicCard({ result, variant = "poster" }: InfographicCardP
           </Badge>
           <ProviderBadge provider={result.provider} />
         </div>
-        <div className="flex items-center gap-1.5">
-          <div role="group" aria-label="Layout" className="inline-flex rounded-full border bg-background p-0.5">
-            {(["poster", "wide"] as const).map((l) => (
-              <button
-                key={l}
-                type="button"
-                aria-pressed={layout === l}
-                onClick={() => setLayout(l)}
-                className={cn(
-                  "min-h-11 rounded-full px-3 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:min-h-7 motion-reduce:transition-none",
-                  layout === l ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {l === "poster" ? "Poster 4:5" : "Wide"}
-              </button>
-            ))}
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={savePdf}>
-            <Printer aria-hidden />
-            Save as PDF
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(true)}>
+            <Maximize2 aria-hidden />
+            Open
           </Button>
+          {actions}
         </div>
       </div>
+      {failed && (
+        <p role="alert" className="text-xs text-destructive">
+          This browser could not make the picture. Use Open and take a screenshot instead.
+        </p>
+      )}
 
-      <div
-        ref={poster}
-        data-ig={ig.palette}
-        className={cn(
-          // overflow-clip, not hidden: a scroll container loses aspect-ratio's grow-to-fit-content minimum.
-          "relative isolate mx-auto w-full overflow-clip rounded-[20px] bg-[var(--ig-bg)] text-[var(--ig-ink)] shadow-[0_1px_0_var(--ig-rule),0_28px_56px_-28px_rgb(0_0_0/0.35)]",
-          wide ? "aspect-[16/9]" : "aspect-[4/5] max-w-[600px]",
-        )}
-      >
-        <div aria-hidden className="pointer-events-none absolute -right-28 -top-28 -z-10 size-80 rounded-full bg-[var(--ig-accent)] opacity-[0.13]" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-20 -left-16 -z-10 size-56 rounded-full border-[28px] border-[var(--ig-accent)] opacity-[0.07]" />
-        <header className={cn("px-6 pt-7 sm:px-9 sm:pt-9", wide && "lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)] lg:items-end lg:gap-10")}>
-          <div>
-            <p className={label}>Infographic</p>
-            <h2 className="mt-2 max-w-[16ch] text-[2.35rem] font-black leading-[0.95] tracking-[-0.03em] text-balance sm:text-[3.25rem]">{ig.title}</h2>
-          </div>
-          {ig.subtitle && <p className="mt-3 max-w-[46ch] text-[15px] font-medium leading-snug text-[var(--ig-muted)]">{ig.subtitle}</p>}
-          <div aria-hidden className="mt-5 h-1.5 w-14 rounded-full bg-[var(--ig-accent)] lg:col-span-2" />
-        </header>
-        <ol className={cn("grid gap-3 px-4 pb-4 pt-5 sm:grid-cols-2 sm:px-7", wide && "lg:grid-cols-3")}>
-          {ig.blocks.map((b, i) => (
-            <li
-              key={i}
-              data-block={b.type}
-              className={cn(
-                "flex min-w-0 flex-col rounded-2xl p-4 sm:p-5",
-                b.type === "callout" ? "bg-[var(--ig-accent)] text-[var(--ig-on-accent)]" : "bg-[var(--ig-panel)] ring-1 ring-[var(--ig-rule)]",
-                SM_SPAN[sm[i]],
-                wide && LG_SPAN[lg[i]],
-              )}
-            >
-              <Block b={b} n={i + 1} />
-            </li>
-          ))}
-        </ol>
-        <footer className="flex items-center gap-2 px-6 pb-6 text-[11px] leading-snug text-[var(--ig-muted)] sm:px-9">
-          <Sparkles className="size-3 shrink-0" aria-hidden />
-          {ig.sources_note}
-        </footer>
+      {/* The whole poster in the card. A click opens it full size: a mouse shortcut only (a poster of
+          headings and tables cannot sit inside a button); the Open button is the keyboard path. */}
+      <div onClick={() => setOpen(true)} className="cursor-zoom-in">
+        <Poster ig={ig} wide={wide} posterRef={poster} />
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="flex h-[94dvh] w-[98vw] max-w-[98vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[98vw]">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 pr-12">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="truncate text-sm font-semibold">{ig.title}</DialogTitle>
+              <DialogDescription className="text-xs">The infographic at full size. Scroll to see all of it.</DialogDescription>
+            </div>
+            {actions}
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto bg-muted/40 p-3 sm:p-6" tabIndex={0}>
+            <div className={cn("@container mx-auto", wide ? "max-w-[1280px]" : "max-w-[640px]")}>
+              <Poster ig={ig} wide={wide} posterRef={big} />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
