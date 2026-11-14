@@ -107,7 +107,7 @@ export function TwinWorkspace({
           scenarioRequested={scenarioRequested}
           onChange={setState}
         />
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <form onSubmit={handleSearch} className="flex items-center gap-1.5">
             <Input
               value={query}

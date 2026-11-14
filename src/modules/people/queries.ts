@@ -75,6 +75,8 @@ export async function listStudents(
       { count: "exact" },
     )
     .eq("institution_id", ctx.institution.id)
+    // Current students first ("active" sorts before alumni/withdrawn), then by admission no.
+    .order("status", { ascending: true })
     .order("admission_no", { ascending: true })
     .range(from, to);
   if (filters.status) builder = builder.eq("status", filters.status);

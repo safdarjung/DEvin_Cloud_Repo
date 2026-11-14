@@ -25,6 +25,8 @@ export interface DashboardDTO {
   gradeDistribution: ExamGradeDistribution | null;
   /** null when the caller lacks `finance.read` — never a zeroed tile. */
   collections: TermCollectionSummary | null;
+  /** True when the collections query threw (e.g. statement timeout): render an error state, not "no term". */
+  collectionsFailed: boolean;
   /** Simulated channel (SMS/email) delivery log — null when the caller lacks `notification.log.read`; render with <SimulatedBadge /> when present (rule 7). */
   recentActivity: DeliveryLogRow[] | null;
 }
@@ -51,15 +53,24 @@ export async function currentTermCollections(ctx: TenantContext): Promise<TermCo
 export async function getDashboardData(ctx: TenantContext): Promise<DashboardDTO> {
   const canReadFinance = ctx.permissions.has("finance.read");
   const canReadActivity = ctx.permissions.has("notification.log.read");
+  // RLS returns no results without `exam.result.read`; skip the scan (it timed out for accountant on hosted).
+  const canReadResults = ctx.permissions.has("exam.result.read");
+  let collectionsFailed = false;
 
   const [attendanceToday, sectionsAtRisk, funnel, gradeDistribution, collections, recentActivity] = await Promise.all([
     attendanceTodaySummary(ctx),
     sectionsBelowThreshold(ctx),
     getAdmissionsFunnelCounts(ctx),
-    examGradeDistribution(ctx),
-    canReadFinance ? currentTermCollections(ctx) : Promise.resolve(null),
+    canReadResults ? examGradeDistribution(ctx).catch(() => null) : Promise.resolve(null),
+    canReadFinance
+      ? currentTermCollections(ctx).catch((e: unknown) => {
+          console.error("dashboard collections failed:", e instanceof Error ? e.message : e);
+          collectionsFailed = true;
+          return null;
+        })
+      : Promise.resolve(null),
     canReadActivity ? listDeliveryLog(ctx, 10) : Promise.resolve(null),
   ]);
 
-  return { attendanceToday, sectionsAtRisk, funnel, gradeDistribution, collections, recentActivity };
+  return { attendanceToday, sectionsAtRisk, funnel, gradeDistribution, collections, collectionsFailed, recentActivity };
 }

@@ -228,7 +228,7 @@ async function WeekTab({ ctx, slug, sp, sections, selected, canManage, timeZone 
       ) : (
         <FadeIn className="space-y-4">
           <Card className="py-0">
-            <CardContent className="overflow-x-auto px-0">
+            <CardContent className="relative overflow-x-auto px-0">
               <table className="w-full min-w-[720px] border-collapse text-sm">
                 <thead>
                   <tr className="bg-secondary text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">

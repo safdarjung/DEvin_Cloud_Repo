@@ -652,7 +652,9 @@ export default async function DashboardPage({
         ["ask-data", askPanel(insights ? NARROW : FULL)],
         ["insights", insights && <Cell span={WIDE}><Insights items={insights} /></Cell>],
     ];
-    else fixedBody = (
+    else fixedBody = data.collectionsFailed ? (
+        <FailedWidget title="Fee collection this term" className={FULL} />
+    ) : (
         <Cell span={FULL}>
           <Widget title="Fee collection this term">
             <EmptyState title="No current term" description="Collections appear once the current academic year has a term with invoices." />

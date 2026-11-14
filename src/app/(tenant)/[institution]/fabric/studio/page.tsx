@@ -62,7 +62,7 @@ export default async function CustomStudioPage({
           description='Use "New request" above to describe a problem and let AI draft a first proposal.'
         />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <div className={selected ? "hidden lg:block" : undefined}>
             <RequestList base={base} items={items} selectedId={selectedId} statusFilter={statusFilter} />
           </div>

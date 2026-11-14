@@ -81,7 +81,7 @@ export default async function PortalTimetablePage({
               ))}
             </div>
           )}
-          <div className="overflow-x-auto rounded-xl border">
+          <div className="relative overflow-x-auto rounded-xl border">
             <table className="w-full min-w-[640px] border-collapse text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-left">
