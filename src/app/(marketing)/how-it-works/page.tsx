@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { CtaBand, PageHero, Rows, Section } from "@/components/marketing/ui";
 
-export const metadata = meta("How it works", "From first conversation to a live institution on Fabric.", "/how-it-works");
+export const metadata = meta("How it works", "From first conversation to a live institution on FabricOS.", "/how-it-works");
 
 export default function Page() {
   return (

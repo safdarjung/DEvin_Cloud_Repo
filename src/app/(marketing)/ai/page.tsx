@@ -1,12 +1,12 @@
 import { meta } from "@/components/marketing/content";
 import { Callout, CtaBand, PageHero, Rows, Section } from "@/components/marketing/ui";
 
-export const metadata = meta("AI", "Fabric's AI assistant, insights and agents: permission-checked, policy-controlled, and approved by people.", "/ai");
+export const metadata = meta("AI", "FabricOS's AI assistant, insights and agents: permission-checked, policy-controlled, and approved by people.", "/ai");
 
 export default function Page() {
   return (
     <>
-      <PageHero eyebrow="AI" title="Intelligence that suggests. People decide." lead="Fabric's AI layer drafts, flags and forecasts. It works inside the same permissions as the person using it, and your institution controls where models run." />
+      <PageHero eyebrow="AI" title="Intelligence that suggests. People decide." lead="FabricOS's AI layer drafts, flags and forecasts. It works inside the same permissions as the person using it, and your institution controls where models run." />
       <Section title="What it does">
         <Rows
           items={[

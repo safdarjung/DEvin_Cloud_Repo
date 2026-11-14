@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { ButtonLink, CtaBand, PageHero, Rows, Section } from "@/components/marketing/ui";
 
-export const metadata = meta("Pricing", "Fabric plans are quoted per institution. How we scope a quote.", "/pricing");
+export const metadata = meta("Pricing", "FabricOS plans are quoted per institution. How we scope a quote.", "/pricing");
 
 export default function Page() {
   return (

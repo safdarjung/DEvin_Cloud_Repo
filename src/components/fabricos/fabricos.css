@@ -1,0 +1,200 @@
+/* FabricOS marketing tokens. Scoped to `.fos` so nothing leaks into the app
+   or the product tour (which still reads the `.fabric-mk` --mk-* tokens).
+   Dark-only by design: deep black, midnight navy, restrained indigo/cyan. */
+.fos {
+  --fos-bg: #05060a;
+  --fos-bg-2: #080b14;
+  --fos-navy: #0c1224;
+  --fos-surface: #0d1019;
+  --fos-elev: #131726;
+  --fos-line: rgb(255 255 255 / 0.08);
+  --fos-line-strong: rgb(255 255 255 / 0.16);
+  --fos-fg: #eef0f6;
+  --fos-muted: #9aa1b4;
+  --fos-faint: #6b7185;
+  --fos-indigo: #8b93ff;
+  --fos-indigo-deep: #4b52c8;
+  --fos-cyan: #67d7ea;
+  --fos-accent-fg: #05060a;
+  --fos-ok: #5fd39a;
+  --fos-warn: #f2c063;
+  --fos-radius: 14px;
+  --fos-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --fos-font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --fos-font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  background: var(--fos-bg);
+  color: var(--fos-fg);
+  color-scheme: dark;
+}
+
+.fos ::selection {
+  background: color-mix(in oklab, var(--fos-indigo) 40%, transparent);
+}
+
+/* ---------------------------------------------------------------------------
+   Landing sections. Everything below is scoped under .fos.
+   --------------------------------------------------------------------------- */
+
+.fos {
+  font-family: var(--fos-font-display);
+}
+
+.fos :focus-visible {
+  outline: 2px solid var(--fos-cyan);
+  outline-offset: 3px;
+}
+
+.fos a {
+  text-underline-offset: 0.22em;
+}
+
+.fos .fos-h2 {
+  font-size: clamp(2rem, 1.35rem + 2.6vw, 3.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+.fos .fos-lead {
+  font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--fos-muted);
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+
+/* Honesty label for illustrative content. */
+.fos .fos-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--fos-font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--fos-muted);
+}
+.fos .fos-tag::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--fos-warn);
+}
+
+/* Buttons: 44px minimum targets. In the components layer so Tailwind
+   utilities (hidden, sm:inline-flex, sizing) can still override them. */
+@layer components {
+.fos .fos-btn {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color 200ms var(--fos-ease),
+    border-color 200ms var(--fos-ease),
+    color 200ms var(--fos-ease),
+    transform 160ms var(--fos-ease);
+}
+.fos .fos-btn:active {
+  transform: scale(0.97);
+}
+.fos .fos-btn-primary {
+  background: var(--fos-fg);
+  color: var(--fos-accent-fg);
+}
+.fos .fos-btn-primary:hover {
+  background: #ffffff;
+}
+.fos .fos-btn-ghost {
+  border: 1px solid var(--fos-line-strong);
+  color: var(--fos-fg);
+}
+.fos .fos-btn-ghost:hover {
+  border-color: rgb(255 255 255 / 0.32);
+  background: rgb(255 255 255 / 0.04);
+}
+
+}
+
+/* Media frames collapse when ProductVideo renders nothing. */
+.fos .fos-media:not(:has(*)) {
+  display: none;
+}
+
+/* Marketing header: transparent over the home hero, solid once scrolled.
+   Opaque on other pages, which sit on the light --mk theme.
+   Unlayered so it wins over the base .fos background. */
+.fos.fos-header {
+  background: transparent;
+}
+.fos.fos-header[data-solid="opaque"] {
+  background: var(--fos-bg);
+}
+.fos.fos-header[data-solid="blur"] {
+  background: color-mix(in oklab, var(--fos-bg) 82%, transparent);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
+  backdrop-filter: saturate(140%) blur(18px);
+}
+
+/* FAQ disclosure */
+.fos .fos-faq summary {
+  list-style: none;
+  cursor: pointer;
+}
+.fos .fos-faq summary::-webkit-details-marker {
+  display: none;
+}
+.fos .fos-faq-icon {
+  transition: transform 250ms var(--fos-ease);
+}
+.fos .fos-faq[open] .fos-faq-icon {
+  transform: rotate(45deg);
+}
+
+.fos ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.fos ::-webkit-scrollbar-thumb {
+  background: var(--fos-line-strong);
+  border-radius: 999px;
+}
+
+@keyframes fos-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes fos-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fos *,
+  .fos *::before,
+  .fos *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

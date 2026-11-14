@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { FabricMark, MARK_BG } from "@/components/fabricos/mark";
 
 // Ids: 192, 512 (any) and maskable (full-bleed, glyph inside the 80% safe zone).
 export function generateImageMetadata() {
@@ -13,7 +14,7 @@ export default async function Icon({ id }: { id: Promise<string | number> }) {
   const which = String(await id);
   const size = which === "192" ? 192 : 512;
   const maskable = which === "maskable";
-  const glyph = Math.round(size * (maskable ? 0.5 : 0.62));
+  const glyph = Math.round(size * (maskable ? 0.56 : 0.74));
   return new ImageResponse(
     (
       <div
@@ -23,14 +24,11 @@ export default async function Icon({ id }: { id: Promise<string | number> }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0b1020",
+          background: MARK_BG,
           borderRadius: maskable ? 0 : Math.round(size * 0.22),
-          color: "#ffffff",
-          fontSize: glyph,
-          fontWeight: 700,
         }}
       >
-        F
+        <FabricMark size={glyph} />
       </div>
     ),
     { width: size, height: size },

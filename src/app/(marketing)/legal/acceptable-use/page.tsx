@@ -1,7 +1,7 @@
 import { meta } from "@/components/marketing/content";
 import { LegalPage } from "@/components/marketing/legal-page";
 
-export const metadata = meta("Acceptable use policy", "Draft acceptable use policy for Fabric. Requires legal review.", "/legal/acceptable-use");
+export const metadata = meta("Acceptable use policy", "Draft acceptable use policy for FabricOS. Requires legal review.", "/legal/acceptable-use");
 
 const SECTIONS = [
   { h: "Status of this document", p: "This is a working draft prepared for internal review. It is not legal advice and has not been approved for publication." },
@@ -16,5 +16,5 @@ const REVIEW = [
 ];
 
 export default function Page() {
-  return <LegalPage title="Acceptable use policy" lead="What users may and may not do with Fabric. Draft." sections={SECTIONS} review={REVIEW} />;
+  return <LegalPage title="Acceptable use policy" lead="What users may and may not do with FabricOS. Draft." sections={SECTIONS} review={REVIEW} />;
 }
