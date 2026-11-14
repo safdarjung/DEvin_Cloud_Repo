@@ -183,7 +183,7 @@ export async function createNotification<T extends NotificationType>(
   const vars = template.varsSchema.parse(input.vars);
   const lang: Lang = input.lang ?? "en";
   const key = `${input.type}:${input.entityId}:${input.recipientUserId}`;
-  const title = template.title(lang);
+  const title = template.title(lang, vars);
   const body = template.body(vars, lang);
 
   const [disabled, { off: moduleOff, isDemo }] = await Promise.all([

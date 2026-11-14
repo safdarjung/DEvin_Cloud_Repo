@@ -300,6 +300,8 @@ export function navItemsFor(
     if (item.group === "Fabric" && !hasDashboard) return false;
     // 0151: section analytics are for subject teachers and exam leaders; admin holds mastery.review but gets refused.
     if (item.href === "/learning-insights" && role === "admin") return false;
+    // /ai is the teacher agent; other ai.generate roles only get a "not available" page there.
+    if (item.href === "/ai" && role && role !== "teacher") return false;
     if (item.module && settings && !isModuleEnabled({ institution: { settings } }, item.module)) return false;
     seen.add(item.href);
     return true;

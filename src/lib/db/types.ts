@@ -8001,6 +8001,11 @@ isOneToOne: false
               "below": number,"class_section_id": string,"curriculum_unit_id": string,"mean_score": number,"students": number,"subject_id": string
             }[]
                            },
+"mastery_section_attendance":
+{ Args: { "p_class_section_id": string,"p_from": string,"p_to": string }; Returns: {
+              "n": number,"status": string,"student_id": string
+            }[]
+                           },
 "mastery_student_stats":
 { Args: { "p_academic_year_id": string,"p_class_section_id": string,"p_gap_threshold": number,"p_min_confidence": number }; Returns: {
               "class_section_id": string,"confident_units": number,"gap_units": number,"mean_score": number,"student_id": string

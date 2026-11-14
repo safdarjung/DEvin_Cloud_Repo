@@ -137,6 +137,8 @@ export async function run(ctx: SeedContext): Promise<void> {
         institution_id: ctx.institutionId,
         employee_no: `EMP/${String(staffCounter).padStart(4, "0")}`,
         full_name: login.name,
+        // staff_select RLS lets non-admin staff read only the row whose user_id is theirs (own HR page, check-in).
+        user_id: userId,
         designation: login.role,
         is_teaching: login.role === "teacher",
       });

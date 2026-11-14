@@ -1,3 +1,7 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import { GUARDIAN_NAV, STUDENT_NAV } from "@/lib/nav";
 import { PageHeader } from "@/components/page-header";
 import { ChildSwitcher } from "./ChildSwitcher";
 import type { PortalSelection } from "@/modules/people/portal";
@@ -30,17 +34,27 @@ export type PortalTabHref =
 export function PortalNav({
   role,
   selection,
+  description,
 }: {
+  /** Shown under the title (the page's own one-line summary). */
+  description?: string;
   institutionSlug?: string;
   role: "guardian" | "student";
   selection: PortalSelection;
   activeHref?: PortalTabHref;
   canStudy?: boolean;
 }) {
+  const pathname = usePathname() ?? "";
+  // Section pages are titled by their own nav label; the portal root keeps the role caption.
+  const [, ...rest] = pathname.split("/").filter(Boolean);
+  const own = rest.length > 1 ? (role === "guardian" ? GUARDIAN_NAV : STUDENT_NAV).find((i) => i.href === `/${rest.join("/")}`)?.label : undefined;
+  const title = own ?? (role === "guardian" ? "My children" : "My school");
   return (
     <div className="mb-6">
       <PageHeader
-        title={role === "guardian" ? "My children" : "My school"}
+        title={title}
+        crumb={own}
+        description={description}
         compact
         actions={selection.children ? <ChildSwitcher students={selection.children} selectedId={selection.studentId} /> : undefined}
       />

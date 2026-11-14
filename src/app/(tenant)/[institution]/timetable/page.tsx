@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { defaultDiarySectionId } from "@/modules/diary/queries";
 import Link from "next/link";
 import { cn } from "cn";
 import { PageHeader } from "@/components/page-header";
@@ -82,7 +83,9 @@ export default async function TimetablePage({ params, searchParams }: { params: 
   const tab: Tab = tabs.some((t) => t.id === sp.tab) ? (sp.tab as Tab) : "week";
 
   const sections = await listSectionOptions(ctx);
-  const selected = sections.find((s) => s.id === sp.section) ?? sections[0];
+  // A class teacher with no ?section= lands on their own class, not the first section in the list.
+  const ownId = !sp.section && ctx.membership.role === "teacher" ? await defaultDiarySectionId(ctx, sections) : undefined;
+  const selected = sections.find((s) => s.id === (sp.section ?? ownId)) ?? sections[0];
   const base = `/${slug}/timetable`;
   // A teacher's Day tab opens on their own day; picking a section switches to it.
   const ownDay = (t: Tab) => t === "day" && ctx.membership.role === "teacher";

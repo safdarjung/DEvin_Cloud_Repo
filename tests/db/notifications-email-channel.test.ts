@@ -91,7 +91,7 @@ describe("notification service email channel (M17-T2)", () => {
     expect(attempt?.status).toBe("sent");
     expect(attempt?.provider).toBe("resend");
     expect(attempt?.provider_ref).toBe("re_123");
-    expect(sentBody.subject).toBe("New announcement");
+    expect(sentBody.subject).toBe("Holiday");
   });
 
   it("guardian with email opt-out: no email attempt, no Resend call", async () => {

@@ -98,7 +98,12 @@ export default async function HostelPage({
                         </TableCell>
                         {canManage && (
                           <TableCell>
-                            <RoomForm institutionSlug={slug} room={r} />
+                            <details>
+                              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">Edit</summary>
+                              <div className="pt-2">
+                                <RoomForm institutionSlug={slug} room={r} />
+                              </div>
+                            </details>
                           </TableCell>
                         )}
                       </TableRow>

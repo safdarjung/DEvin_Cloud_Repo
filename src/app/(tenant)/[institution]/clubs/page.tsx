@@ -92,11 +92,14 @@ async function ClubsTab({ slug, ctx, canManage }: TabProps) {
                   <p className="text-sm text-muted-foreground">No members yet.</p>
                 ) : (
                   <ul className="flex flex-wrap gap-2 text-sm" aria-label={`${c.name} members`}>
-                    {list.map((m) => (
+                    {visibleMembers(list).map((m) => (
                       <li key={m.studentId} className="rounded-md border px-2 py-1">
                         {m.name} <span className="text-muted-foreground">{m.admissionNo}</span>
                       </li>
                     ))}
+                    {hiddenCount(list) > 0 && (
+                      <li className="rounded-md border border-dashed px-2 py-1 text-muted-foreground">+{hiddenCount(list)} from other classes</li>
+                    )}
                   </ul>
                 )}
                 {canManage && (
@@ -251,7 +254,7 @@ async function HousesTab({ slug, ctx, canManage }: TabProps) {
                     <p className="text-sm text-muted-foreground">No members.</p>
                   ) : (
                     <ul className="space-y-1 text-sm">
-                      {h.members.map((m) => (
+                      {visibleMembers(h.members).map((m) => (
                         <li key={m.studentId} className="flex items-center justify-between gap-2">
                           <span>
                             {m.name} <span className="text-muted-foreground">{m.admissionNo}</span>
@@ -259,6 +262,7 @@ async function HousesTab({ slug, ctx, canManage }: TabProps) {
                           {canManage && <RemoveFromHouseButton institutionSlug={slug} studentId={m.studentId} name={m.name} />}
                         </li>
                       ))}
+                      {hiddenCount(h.members) > 0 && <li className="text-muted-foreground">+{hiddenCount(h.members)} from other classes</li>}
                     </ul>
                   )}
                 </CardContent>
@@ -319,3 +323,8 @@ async function HousesTab({ slug, ctx, canManage }: TabProps) {
     </div>
   );
 }
+
+// Students outside the viewer's classes come back without a name (RLS); show them as a count, not as "Student" chips.
+const isHidden = (m: { admissionNo: string }) => m.admissionNo === "";
+const visibleMembers = <T extends { admissionNo: string }>(list: T[]) => list.filter((m) => !isHidden(m));
+const hiddenCount = (list: { admissionNo: string }[]) => list.filter(isHidden).length;

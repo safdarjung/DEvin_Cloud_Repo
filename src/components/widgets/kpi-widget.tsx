@@ -62,9 +62,11 @@ export function KpiTile({ label, value, animateTo, format, sub, href, badge, del
           className={cn(
             "mt-1.5 leading-tight font-bold tracking-tight tabular-nums",
             // Long values (₹ amounts) scale with the tile instead of breaking mid-number.
-            value.length > 8 ? "text-[clamp(1.125rem,10.5cqi,2rem)] whitespace-nowrap" : "text-[26px] sm:text-[28px] 2xl:text-[32px]",
+            value.length > 8 ? "whitespace-nowrap" : "text-[26px] sm:text-[28px] 2xl:text-[32px]",
             TONE_TEXT[tone],
           )}
+          // ~0.6em per tabular digit: shrink with length so a crore-scale ₹ amount still fits a phone-width tile.
+          style={value.length > 8 ? { fontSize: `clamp(0.875rem, ${Math.min(10.5, 160 / value.length).toFixed(2)}cqi, 2rem)` } : undefined}
         >
           {animateTo === undefined ? value : <AnimatedNumber value={animateTo} format={format} />}
         </p>

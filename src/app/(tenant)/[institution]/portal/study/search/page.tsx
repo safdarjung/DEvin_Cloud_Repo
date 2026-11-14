@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { PageHeader } from "@/components/page-header";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
 import { searchContent } from "@/modules/content/queries";
@@ -26,8 +25,7 @@ export default async function PortalTextbookSearchPage({ params, searchParams }:
   const hits = q ? await searchContent(ctx, { q, subjectTextbookId: book || undefined, chapterNo: chapter ? Number(chapter) : undefined, limit: 20 }) : [];
   return (
     <>
-      <PortalNav institutionSlug={slug} role={ctx.membership.role as "guardian" | "student"} selection={selection} />
-      <PageHeader title="Textbook search" description="Find a word or topic in your class books. Each result shows the page to open in your book." />
+      <PortalNav institutionSlug={slug} role={ctx.membership.role as "guardian" | "student"} selection={selection} description="Find a word or topic in your class books. Each result shows the page to open in your book." />
       <TextbookSearch action={`/${slug}/portal/study/search`} books={books} q={q} bookId={book} chapter={chapter} hits={hits} searched={q !== ""} />
     </>
   );

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { defaultDiarySectionId } from "@/modules/diary/queries";
 import { PageHeader } from "@/components/page-header";
 import { SectionSwitcher } from "@/components/section-switcher";
 import { EmptyState } from "@/components/states";
@@ -29,7 +30,9 @@ export default async function LessonPlansPage({
 
   // Teachers get only the sections they teach (listTeachableSections + RLS); never the admin client.
   const sections = await listLabelledTeachableSections(ctx);
-  const active = sections.find((s) => s.id === section) ?? sections[0];
+  // No ?section=: open the teacher's own class, as the class diary does.
+  const fallbackId = section && sections.some((s) => s.id === section) ? undefined : await defaultDiarySectionId(ctx, sections);
+  const active = sections.find((s) => s.id === (fallbackId ?? section)) ?? sections[0];
 
   if (!active) {
     return (

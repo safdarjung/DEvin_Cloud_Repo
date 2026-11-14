@@ -8,7 +8,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
-import { computeAttendancePercentage, getAttendanceSettings, todayInInstitutionTimezone } from "@/modules/attendance/queries";
+import { percentageFromCounts, getAttendanceSettings, todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { InstitutionSettingsSchema } from "@/modules/core/schemas";
 import type { InterventionPlan, MasteryCell, StudentSuccessRow } from "@/modules/fabric/types";
 import {
@@ -305,41 +305,21 @@ export async function masteryStudentSuccessRows(ctx: TenantContext, classSection
   const attendancePctByStudent = new Map<string, number>();
   const attendanceHasDataByStudent = new Set<string>();
   if (term) {
-    const { data: sessions, error: sessionsError } = await supabase
-      .from("attendance_sessions")
-      .select("id")
-      .eq("institution_id", ctx.institution.id)
-      .eq("class_section_id", classSectionId)
-      .is("period_id", null)
-      .gte("date", term.starts_on)
-      .lte("date", term.ends_on);
-    if (sessionsError) throw sessionsError;
-    const sessionIds = (sessions ?? []).map((s) => s.id);
-    if (sessionIds.length > 0) {
-      const settings = getAttendanceSettings(ctx);
-      const codesByStudent = new Map<string, string[]>();
-      const PAGE_SIZE = 1000;
-      for (let from = 0; ; from += PAGE_SIZE) {
-        const { data: page, error: recError } = await supabase
-          .from("attendance_records")
-          .select("student_id, status")
-          .eq("institution_id", ctx.institution.id)
-          .in("session_id", sessionIds)
-          .order("id")
-          .range(from, from + PAGE_SIZE - 1);
-        if (recError) throw recError;
-        for (const r of page ?? []) {
-          const list = codesByStudent.get(r.student_id) ?? [];
-          list.push(r.status);
-          codesByStudent.set(r.student_id, list);
-        }
-        if (!page || page.length < PAGE_SIZE) break;
-      }
-      for (const studentId of studentIds) {
-        const { percentage, totalInDenominator } = computeAttendancePercentage(codesByStudent.get(studentId) ?? [], settings.statuses);
-        attendancePctByStudent.set(studentId, percentage);
-        if (totalInDenominator > 0) attendanceHasDataByStudent.add(studentId);
-      }
+    const { data: counts, error: countsError } = await supabase.rpc("mastery_section_attendance", {
+      p_class_section_id: classSectionId,
+      p_from: term.starts_on,
+      p_to: term.ends_on,
+    });
+    if (countsError) throw countsError;
+    const settings = getAttendanceSettings(ctx);
+    const countsByStudent = new Map<string, { status: string; n: number }[]>();
+    for (const c of counts ?? []) {
+      countsByStudent.set(c.student_id, [...(countsByStudent.get(c.student_id) ?? []), { status: c.status, n: Number(c.n) }]);
+    }
+    for (const studentId of studentIds) {
+      const { percentage, totalInDenominator } = percentageFromCounts(countsByStudent.get(studentId) ?? [], settings.statuses);
+      attendancePctByStudent.set(studentId, percentage);
+      if (totalInDenominator > 0) attendanceHasDataByStudent.add(studentId);
     }
   }
 

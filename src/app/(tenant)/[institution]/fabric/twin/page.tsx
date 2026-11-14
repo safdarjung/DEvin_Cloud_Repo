@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/auth/context";
+import { ErrorState } from "@/components/states";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { uuid } from "@/lib/schemas/common";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
@@ -26,20 +27,39 @@ export default async function DigitalTwinPage({
   const ctx = await getTenantContext(institutionSlug);
   requirePermission(ctx, "dashboard.view");
 
-  const hasHistorical = await twinHasHistorical(ctx);
-  const [current, historical] = await Promise.all([
-    twinSnapshot(ctx, "current"),
-    hasHistorical ? twinSnapshot(ctx, "historical") : Promise.resolve(null),
-  ]);
+  let hasHistorical: boolean;
+  let current: Awaited<ReturnType<typeof twinSnapshot>>;
+  let historical: Awaited<ReturnType<typeof twinSnapshot>>;
+  try {
+    hasHistorical = await twinHasHistorical(ctx);
+    [current, historical] = await Promise.all([
+      twinSnapshot(ctx, "current"),
+      hasHistorical ? twinSnapshot(ctx, "historical") : Promise.resolve(null),
+    ]);
+  } catch (error) {
+    // A slow or failed read (e.g. a database statement timeout) degrades this page, not the whole app.
+    console.error("digital twin load failed:", error instanceof Error ? error.message : error);
+    return (
+      <FabricPage title="Digital twin" ws="twin">
+        <ErrorState description="The twin took too long to load. Refresh to try again." />
+      </FabricPage>
+    );
+  }
 
   // ?scenario=<id> from the simulator's "Open in twin": scenario.manage, same as the simulator page itself.
   const scenarioId = uuid.safeParse(scenarioParam);
   // Section anomalies (0125) need the Analysis lab's access (insight.read + insight.review).
   const canLab = hasPermission(ctx, "insight.read") && hasPermission(ctx, "insight.review");
+  // Optional layers: each one failing leaves the twin itself intact, just without that layer.
+  const optional = <T,>(run: Promise<T>, fallback: T): Promise<T> =>
+    run.catch((error) => {
+      console.error("digital twin layer failed:", error instanceof Error ? error.message : error);
+      return fallback;
+    });
   const [overlays, saved, anomalies] = await Promise.all([
-    current ? twinOverlays(ctx, current) : Promise.resolve(null),
-    current && scenarioId.success && hasPermission(ctx, "scenario.manage") ? getScenario(ctx, scenarioId.data) : Promise.resolve(null),
-    current && canLab ? labSectionAnomalies(ctx) : Promise.resolve([]),
+    current ? optional(twinOverlays(ctx, current), null) : Promise.resolve(null),
+    current && scenarioId.success && hasPermission(ctx, "scenario.manage") ? optional(getScenario(ctx, scenarioId.data), null) : Promise.resolve(null),
+    current && canLab ? optional(labSectionAnomalies(ctx), []) : Promise.resolve([]),
   ]);
   const attention =
     current && (canLab || hasPermission(ctx, "timetable.manage"))

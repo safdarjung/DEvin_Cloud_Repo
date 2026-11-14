@@ -115,7 +115,8 @@ export interface TemplateDef<V> {
   channels: readonly NotificationChannel[];
   category: NotificationCategory;
   varsSchema: z.ZodType<V>;
-  title(lang: Lang): string;
+  /** `vars` is optional to use: most titles are fixed per type; announcements use their own title. */
+  title(lang: Lang, vars: V): string;
   body(vars: V, lang: Lang): string;
 }
 
@@ -182,7 +183,8 @@ export const NOTIFICATION_TEMPLATES = {
     channels: ["in_app", "sms", "whatsapp", "email"],
     category: "announcement",
     varsSchema: AnnouncementVars,
-    title: (lang) => (lang === "hi" ? "नई सूचना" : "New announcement"),
+    // The announcement's own title: a list of identical "New announcement" rows told readers nothing.
+    title: (_lang, v) => v.title,
     body: (v, lang) => (lang === "hi" ? `सूचना: ${v.title} - ${v.excerpt}` : `${v.title}: ${v.excerpt}`),
   }),
   gate_pass_approved: def({

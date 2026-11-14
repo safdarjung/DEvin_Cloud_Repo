@@ -157,8 +157,8 @@ describe("simulated channels never touch the network", () => {
     expect(varsSchema.safeParse({ workflow: "Absence follow-up" }).success).toBe(false);
     const en = body(vars, "en");
     expect(en).toBe("Absence follow-up: 2 absent");
-    expect(title("hi")).toBe("वर्कफ़्लो अलर्ट");
-    expect(title("en")).toBe("Workflow alert");
+    expect(title("hi", vars)).toBe("वर्कफ़्लो अलर्ट");
+    expect(title("en", vars)).toBe("Workflow alert");
     expect(channels).toEqual(["in_app"]);
     expect(category).toBe("announcement");
     // Reject 301-char message

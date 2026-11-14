@@ -121,7 +121,7 @@ export default async function TenantLayout({
               )
             }
           />
-          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-8">
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(9rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-24">
             <div className="mx-auto w-full max-w-7xl">
               {children}
             </div>

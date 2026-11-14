@@ -155,12 +155,17 @@ export function CreateResourceForm({
         {sections.length === 0 ? (
           <p className="text-muted-foreground text-sm">You teach no sections yet.</p>
         ) : (
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
-            {sections.map((s) => (
-              <label key={s.id} className="flex items-center gap-1.5 text-sm">
-                <input type="checkbox" name="classSectionIds" value={s.id} />
-                {s.label}
-              </label>
+          <div className="mt-1 space-y-1">
+            {byGrade(sections).map(([grade, list]) => (
+              <div key={grade} className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="w-10 shrink-0 text-xs font-medium text-muted-foreground">{grade}</span>
+                {list.map((s) => (
+                  <label key={s.id} className="flex min-h-8 items-center gap-1.5 text-sm">
+                    <input type="checkbox" name="classSectionIds" value={s.id} />
+                    {s.label}
+                  </label>
+                ))}
+              </div>
             ))}
           </div>
         )}
@@ -265,4 +270,19 @@ export function DownloadFileButton({ institutionSlug, documentId, fileName }: { 
       Download
     </Button>
   );
+}
+
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+
+/** Rows of sections per grade ("VI-A" -> "VI"), grades in class order, so 70+ sections read as a grid. */
+function byGrade(sections: readonly Option[]): [string, Option[]][] {
+  const groups = new Map<string, Option[]>();
+  for (const s of sections) {
+    const grade = s.label.split("-")[0]!.trim();
+    groups.set(grade, [...(groups.get(grade) ?? []), s]);
+  }
+  const rank = (g: string) => (ROMAN.includes(g) ? ROMAN.indexOf(g) : ROMAN.length);
+  return [...groups.entries()]
+    .sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b))
+    .map(([g, list]) => [g, [...list].sort((x, y) => x.label.localeCompare(y.label))]);
 }

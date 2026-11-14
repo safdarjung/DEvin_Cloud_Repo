@@ -87,7 +87,12 @@ export default async function TransportPage({
                           <TableCell className="tabular-nums">{s.eta}</TableCell>
                           <TableCell className="text-right tabular-nums">{s.students}</TableCell>
                           <TableCell>
-                            <EditStopForm institutionSlug={slug} stop={{ id: s.id, routeId: r.id, seq: s.seq, name: s.name, eta: s.eta, x: s.x, y: s.y }} />
+                            <details>
+                              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">Edit</summary>
+                              <div className="pt-2">
+                                <EditStopForm institutionSlug={slug} stop={{ id: s.id, routeId: r.id, seq: s.seq, name: s.name, eta: s.eta, x: s.x, y: s.y }} />
+                              </div>
+                            </details>
                           </TableCell>
                         </TableRow>
                       ))}

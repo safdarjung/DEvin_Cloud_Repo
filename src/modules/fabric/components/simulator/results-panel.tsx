@@ -145,15 +145,15 @@ export function ResultsPanel({
         </ComposedChart>
       </ChartFrame>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-3">
         <div className="rounded-lg border p-3">
           <p className="text-xs text-muted-foreground">{scenario.months.length}-month revenue</p>
-          <p className="text-lg font-semibold"><AnimatedNumber value={horizonRevenue} format="inr" /></p>
+          <p className="text-lg font-semibold tabular-nums break-words"><AnimatedNumber value={horizonRevenue} format="inr" /></p>
           <Delta current={horizonRevenue} base={baselineHorizonRevenue} />
         </div>
         <div className="rounded-lg border p-3">
           <p className="text-xs text-muted-foreground">{scenario.months.length}-month cost</p>
-          <p className="text-lg font-semibold"><AnimatedNumber value={horizonCost} format="inr" /></p>
+          <p className="text-lg font-semibold tabular-nums break-words"><AnimatedNumber value={horizonCost} format="inr" /></p>
           <Delta current={horizonCost} base={baselineHorizonCost} invert />
         </div>
         <div className="rounded-lg border p-3">

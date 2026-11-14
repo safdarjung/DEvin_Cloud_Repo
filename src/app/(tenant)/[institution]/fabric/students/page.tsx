@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BarList, RadialGauge } from "@/components/widgets/viz";
+import { ErrorState } from "@/components/states";
 import { Widget } from "@/components/widgets/widget";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
@@ -25,14 +26,28 @@ export default async function StudentSuccessPage({
 
   // One section per view: an all-sections roster was one mastery query set per section (72 on the
   // demo tenant) and took ~35s on hosted. The section picker navigates with ?section=<id>.
-  const sections = await studentSuccessSections(ctx);
-  const activeId = sections.find((s) => s.id === section)?.id ?? sections[0]?.id;
-  const [rows, plans] = activeId
-    ? await Promise.all([
-        studentSuccessRoster(ctx, { classSectionId: activeId }),
-        studentInterventionPlans(ctx, { classSectionId: activeId }),
-      ])
-    : [[], []];
+  let sections: Awaited<ReturnType<typeof studentSuccessSections>>;
+  let rows: Awaited<ReturnType<typeof studentSuccessRoster>>;
+  let plans: Awaited<ReturnType<typeof studentInterventionPlans>>;
+  let activeId: string | undefined;
+  try {
+    sections = await studentSuccessSections(ctx);
+    activeId = sections.find((s) => s.id === section)?.id ?? sections[0]?.id;
+    [rows, plans] = activeId
+      ? await Promise.all([
+          studentSuccessRoster(ctx, { classSectionId: activeId }),
+          studentInterventionPlans(ctx, { classSectionId: activeId }),
+        ])
+      : [[], []];
+  } catch (error) {
+    // A slow or failed read (e.g. a database statement timeout) degrades this page, not the whole app.
+    console.error("student success load failed:", error instanceof Error ? error.message : error);
+    return (
+      <FabricPage title="Student success" description="Roster, risk signals, and intervention plans from live records." ws="students">
+        <ErrorState description="The roster took too long to load. Refresh to try again." />
+      </FabricPage>
+    );
+  }
 
   const avg = (pick: (r: (typeof rows)[number]) => number) => (rows.length ? rows.reduce((n, r) => n + pick(r), 0) / rows.length : 0);
   const activeLabel = sections.find((s) => s.id === activeId)?.label;
