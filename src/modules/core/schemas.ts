@@ -16,7 +16,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   "api", "s", "login", "logout", "auth", "admin", "app", "www", "static", "public", "demo", "invite", "onboarding",
   "portal", "sw", "select", "product", "modules", "ai", "security", "pricing", "how-it-works", "faq", "contact",
   "roles", "legal", "offline", "icon", "apple-icon", "opengraph-image", "sitemap", "robots", "manifest", "llms", "for-agents",
-  "platform", "start", "tour",
+  "platform", "start", "tour", "fabricos",
 ]);
 
 // M03-T4 — POST /api/v1/institutions body. Reserved-slug/quota/duplicate

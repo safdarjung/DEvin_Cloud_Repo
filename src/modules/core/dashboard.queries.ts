@@ -27,6 +27,10 @@ export interface DashboardDTO {
   collections: TermCollectionSummary | null;
   /** True when the collections query threw (e.g. statement timeout): render an error state, not "no term". */
   collectionsFailed: boolean;
+  /** True when today's attendance or sections-at-risk read threw: show "—"/error, never a zero. */
+  attendanceFailed: boolean;
+  /** True when the admissions funnel read threw: its widgets render an error state. */
+  funnelFailed: boolean;
   /** Simulated channel (SMS/email) delivery log — null when the caller lacks `notification.log.read`; render with <SimulatedBadge /> when present (rule 7). */
   recentActivity: DeliveryLogRow[] | null;
 }
@@ -56,11 +60,27 @@ export async function getDashboardData(ctx: TenantContext): Promise<DashboardDTO
   // RLS returns no results without `exam.result.read`; skip the scan (it timed out for accountant on hosted).
   const canReadResults = ctx.permissions.has("exam.result.read");
   let collectionsFailed = false;
+  let attendanceFailed = false;
+  let funnelFailed = false;
+  // One slow query (hosted statement timeout) must not take the whole dashboard down.
+  const logFailure = (what: string, e: unknown) => console.error(`dashboard ${what} failed:`, e instanceof Error ? e.message : e);
 
   const [attendanceToday, sectionsAtRisk, funnel, gradeDistribution, collections, recentActivity] = await Promise.all([
-    attendanceTodaySummary(ctx),
-    sectionsBelowThreshold(ctx),
-    getAdmissionsFunnelCounts(ctx),
+    attendanceTodaySummary(ctx).catch((e: unknown): AttendanceTodaySummary => {
+      logFailure("attendance", e);
+      attendanceFailed = true;
+      return { date: "", percentage: 0, studentsMarked: 0, present: 0, halfDay: 0, absent: 0, notCounted: 0, byStatus: [] };
+    }),
+    sectionsBelowThreshold(ctx).catch((e: unknown): SectionAttendanceAlert[] => {
+      logFailure("sections at risk", e);
+      attendanceFailed = true;
+      return [];
+    }),
+    getAdmissionsFunnelCounts(ctx).catch((e: unknown): AdmissionsFunnelCounts => {
+      logFailure("admissions funnel", e);
+      funnelFailed = true;
+      return { enquiryStages: {}, applicationStatuses: {} as AdmissionsFunnelCounts["applicationStatuses"] };
+    }),
     canReadResults ? examGradeDistribution(ctx).catch(() => null) : Promise.resolve(null),
     canReadFinance
       ? currentTermCollections(ctx).catch((e: unknown) => {
@@ -69,8 +89,13 @@ export async function getDashboardData(ctx: TenantContext): Promise<DashboardDTO
           return null;
         })
       : Promise.resolve(null),
-    canReadActivity ? listDeliveryLog(ctx, 10) : Promise.resolve(null),
+    canReadActivity
+      ? listDeliveryLog(ctx, 10).catch((e: unknown) => {
+          logFailure("recent activity", e);
+          return null;
+        })
+      : Promise.resolve(null),
   ]);
 
-  return { attendanceToday, sectionsAtRisk, funnel, gradeDistribution, collections, collectionsFailed, recentActivity };
+  return { attendanceToday, sectionsAtRisk, funnel, gradeDistribution, collections, collectionsFailed, attendanceFailed, funnelFailed, recentActivity };
 }

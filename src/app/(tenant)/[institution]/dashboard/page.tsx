@@ -311,7 +311,8 @@ export default async function DashboardPage({
 
   // ---- shared widgets (each null when its permission/data is absent) -------
 
-  const briefing = canGenerateBriefing && (
+  // The AI briefing would summarise placeholder zeros if its inputs failed to load.
+  const briefing = canGenerateBriefing && !data.attendanceFailed && !data.funnelFailed && (
     <DailyBriefing
       institutionSlug={institutionSlug}
       attendancePercent={canAttendance ? data.attendanceToday.percentage : undefined}
@@ -405,7 +406,7 @@ export default async function DashboardPage({
       </Cell>
     );
 
-  const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && (
+  const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed && (
     <KpiTile key="open-enquiries" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
   );
   const collectedKpi = collections && (
@@ -439,7 +440,9 @@ export default async function DashboardPage({
       </Widget>
     );
   const funnel = (className: string) =>
-    canEnquiries && isModuleEnabled(ctx, "admissions") && (
+    canEnquiries && isModuleEnabled(ctx, "admissions") && (data.funnelFailed ? (
+      <FailedWidget title="Admissions funnel" className={cn("md:col-span-2", className)} />
+    ) : (
       <Widget title="Admissions funnel" action={{ href: `${basePath}/admissions`, label: "Pipeline" }} className={cn("md:col-span-2", className)}>
         {openEnquiries === 0 ? (
           <EmptyState bare title="No enquiries yet" />
@@ -458,7 +461,7 @@ export default async function DashboardPage({
           </div>
         )}
       </Widget>
-    );
+    ));
   const gd = data.gradeDistribution;
   const grades = (className: string) =>
     canResults && isModuleEnabled(ctx, "exams") && (
@@ -575,7 +578,7 @@ export default async function DashboardPage({
       .map(([source, n]) => ({ label: humanize(source), value: n }));
     const totalApps = Object.values(data.funnel.applicationStatuses).reduce((a, n) => a + n, 0);
     const conversion = totalApps > 0 ? Math.round((enrolledCount / totalApps) * 100) : null;
-    const admissionsOn = canEnquiries && isModuleEnabled(ctx, "admissions");
+    const admissionsOn = canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed;
 
     widgets = [
         ["kpi-strip", kpiStrip([
@@ -735,7 +738,7 @@ export default async function DashboardPage({
       tiles.push({
         label: "Attendance today",
         value: marked > 0 ? `${data.attendanceToday.percentage}%` : "—",
-        sub: marked > 0 ? `${marked} marked${sectionAtt ? ` · ${sectionAtt.absentTotal} absent` : ""}` : "Not marked yet",
+        sub: data.attendanceFailed ? "Couldn't load" : marked > 0 ? `${marked} marked${sectionAtt ? ` · ${sectionAtt.absentTotal} absent` : ""}` : "Not marked yet",
         href: `${basePath}/attendance`,
         spark: trendPts.length > 1 ? trendPts.map((p) => p.value) : undefined,
       });
@@ -743,7 +746,7 @@ export default async function DashboardPage({
     if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : undefined, tone: queue.total > 0 ? "warning" : undefined });
     if (collections) tiles.push({ label: "Collected this term", value: inrWhole(collections.collectedPaise), sub: `of ${inrWhole(collections.duePaise)} due`, href: `${basePath}/finance` });
     if (defaulters) tiles.push({ label: "Overdue invoices", value: String(overdue.length), href: `${basePath}/finance/defaulters`, tone: overdue.length > 0 ? "destructive" : undefined });
-    if (canEnquiries && isModuleEnabled(ctx, "admissions")) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled this year`, href: `${basePath}/admissions` });
+    if (canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled this year`, href: `${basePath}/admissions` });
     if (upcomingExams) tiles.push({ label: "Upcoming exams", value: String(upcomingExams.total), sub: upcomingExams.papers[0] ? `Next ${shortDate.format(new Date(upcomingExams.papers[0].scheduledAt))}` : undefined, href: `${basePath}/exams` });
 
     // ---- panels ----
