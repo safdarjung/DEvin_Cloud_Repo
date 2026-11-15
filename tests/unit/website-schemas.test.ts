@@ -98,6 +98,10 @@ describe("UpsertNoticeSchema", () => {
     expect(UpsertNoticeSchema.safeParse({ ...base, id: PAGE_ID }).success).toBe(true);
   });
 
+  it("accepts an India-time offset, as the Orb drafts it", () => {
+    expect(UpsertNoticeSchema.safeParse({ ...base, publishAt: "2026-12-01T09:00:00+05:30", expiresAt: "2026-12-08T09:00:00+05:30" }).success).toBe(true);
+  });
+
   it("rejects a non-ISO publishAt", () => {
     expect(UpsertNoticeSchema.safeParse({ ...base, publishAt: "tomorrow" }).success).toBe(false);
   });
@@ -116,6 +120,10 @@ describe("UpsertEventSchema", () => {
 
   it("accepts the minimal required fields", () => {
     expect(UpsertEventSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("accepts an India-time offset, as the Orb drafts it", () => {
+    expect(UpsertEventSchema.safeParse({ ...base, startsAt: "2026-12-05T14:30:00+05:30", endsAt: "2026-12-05T22:30:00+05:30" }).success).toBe(true);
   });
 
   it("rejects a non-ISO startsAt", () => {

@@ -93,8 +93,8 @@ export const UpsertNoticeSchema = z
     id: uuid.optional(),
     title: shortText,
     body: longText,
-    publishAt: z.string().datetime(),
-    expiresAt: z.string().datetime().optional(),
+    publishAt: z.string().datetime({ offset: true }),
+    expiresAt: z.string().datetime({ offset: true }).optional(),
     isPublic: z.boolean(),
     audience: NoticeAudienceSchema,
   })
@@ -106,8 +106,8 @@ export const UpsertEventSchema = z
   .object({
     id: uuid.optional(),
     title: shortText,
-    startsAt: z.string().datetime(),
-    endsAt: z.string().datetime().optional(),
+    startsAt: z.string().datetime({ offset: true }),
+    endsAt: z.string().datetime({ offset: true }).optional(),
     location: z.string().trim().max(300).optional(),
     isPublic: z.boolean(),
   })
