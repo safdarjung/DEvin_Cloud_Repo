@@ -110,7 +110,7 @@ export function OrbDataChart({ spec }: { spec: ChartSpec }) {
       <figcaption className="text-xs font-semibold">{spec.title}</figcaption>
       <ul className="space-y-1">
         {spec.rows.map((r) => (
-          <li key={r.label} className="grid grid-cols-[4.5rem_1fr_auto] items-center gap-2 text-xs">
+          <li key={r.label} className="grid grid-cols-[minmax(4.5rem,6.5rem)_1fr_auto] items-center gap-2 text-xs">
             <span className="truncate text-muted-foreground" title={r.label}>
               {r.label}
             </span>

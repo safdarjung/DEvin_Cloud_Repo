@@ -58,6 +58,11 @@ describe("result links", () => {
     expect(resultHref(ctxFor("student"), classifiedTask("helpdesk.ticket.raise")!)).toBe("/demo/portal");
     expect(resultHref(ctxFor("principal"), classifiedTask("library.loan.issue")!)).toBe("/demo/library");
   });
+
+  it("website notices and events open their own list, not the website overview", () => {
+    expect(resultHref(ctxFor("principal"), classifiedTask("website.notice.upsert")!)).toBe("/demo/website/notices");
+    expect(resultHref(ctxFor("principal"), classifiedTask("website.event.upsert")!)).toBe("/demo/website/events");
+  });
 });
 
 describe("requireOneOf", () => {
