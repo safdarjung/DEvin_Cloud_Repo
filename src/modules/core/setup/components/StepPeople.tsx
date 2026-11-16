@@ -26,6 +26,21 @@ const OPTIONAL_COLUMNS: Record<Entity, readonly string[]> = {
   staff: ["department", "phone", "email"],
 };
 
+// One example row per entity, in the exact column order; the import also accepts "Class 5", "Male", 01/05/2014 and similar.
+const SAMPLE_ROWS: Record<Entity, string[]> = {
+  students: ["A-1001", "Aarav", "Sharma", "2014-05-01", "male", "V", "A", "1", "Neha Sharma", "9876543210", "neha@example.com", "mother"],
+  staff: ["T-001", "Meera Iyer", "Teacher", "", "9876543210", "meera@example.com", "yes"],
+};
+
+function downloadSample(entity: Entity) {
+  const csv = `${ENTITIES[entity].join(",")}\n${SAMPLE_ROWS[entity].join(",")}\n`;
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  link.download = `sample-${entity}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 interface Parsed {
   fileName: string;
   headers: string[];
@@ -53,11 +68,13 @@ interface StepPeopleProps {
   institutionSlug: string;
   state: SetupStepState;
   studentCount: number;
+  /** Grades set up so far; student rows can only match existing grades and sections. */
+  gradeCount: number;
   /** Filled by the AI-mapping packet; rendered above the unmapped list and nothing else. Reads its state via useAiMappingSlot(). */
   aiMappingSlot?: ReactNode;
 }
 
-export function StepPeople({ institutionSlug, state, studentCount, aiMappingSlot }: StepPeopleProps) {
+export function StepPeople({ institutionSlug, state, studentCount, gradeCount, aiMappingSlot }: StepPeopleProps) {
   const router = useRouter();
   const [entity, setEntity] = useState<Entity>("students");
   const [parsed, setParsed] = useState<Parsed | null>(null);
@@ -162,6 +179,10 @@ export function StepPeople({ institutionSlug, state, studentCount, aiMappingSlot
     router.refresh();
   }
 
+  if (gradeCount === 0 && entity === "students") {
+    return <p className="text-sm text-muted-foreground">Do step 1 first: students are placed into the grades and sections it creates.</p>;
+  }
+
   return (
     <div className="space-y-4">
       {studentCount > 0 && <p className="text-sm text-muted-foreground">{studentCount} students are already in the system. You can import more.</p>}
@@ -176,7 +197,12 @@ export function StepPeople({ institutionSlug, state, studentCount, aiMappingSlot
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="people-file">CSV file (up to 1 MB)</Label>
           <Input id="people-file" type="file" accept=".csv,text/csv" disabled={pending} onChange={(e) => void onFile(e.target.files?.[0] ?? null)} />
-          <p className="text-xs text-muted-foreground">Excel files are not read here. Save the sheet as CSV first.</p>
+          <p className="text-xs text-muted-foreground">
+            Excel files are not read here: save the sheet as CSV first.{" "}
+            <button type="button" className="underline underline-offset-2" onClick={() => downloadSample(entity)}>
+              Download a sample {entity} file
+            </button>
+          </p>
         </div>
       </div>
 

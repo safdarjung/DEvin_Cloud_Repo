@@ -23,9 +23,9 @@ export function parseCsv(text: string): { headers: string[]; rows: Record<string
     transform: (value) => value.trim(),
   });
 
-  if (result.errors.length > 0) {
-    throw new AppError("validation_failed", result.errors[0].message);
-  }
+  // A ragged row (Excel often exports them) is that row's problem, not the whole file's: the row schema reports it.
+  const fatal = result.errors.find((e) => e.type !== "FieldMismatch");
+  if (fatal) throw new AppError("validation_failed", fatal.message);
 
   if (result.data.length > MAX_ROWS) {
     throw new AppError("validation_failed", `CSV has more than ${MAX_ROWS} rows.`);

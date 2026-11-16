@@ -53,9 +53,9 @@ describe("parseCsv", () => {
     }
   });
 
-  it("throws validation_failed when a data row has the wrong field count", () => {
+  it("keeps a row with the wrong field count so the stage can flag just that row", () => {
     const csv = `admission_no,first_name\nA-001,Asha,Extra`;
-    expect(() => parseCsv(csv)).toThrow(AppError);
+    expect(parseCsv(csv).rows).toHaveLength(1);
   });
 
   it("throws validation_failed when there are more than 5000 rows", () => {

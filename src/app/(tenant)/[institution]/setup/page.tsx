@@ -86,6 +86,7 @@ export default async function SetupPage({ params }: { params: Promise<{ institut
                   institutionSlug={institutionSlug}
                   state={state}
                   studentCount={status.counts.students}
+                  gradeCount={status.counts.grades}
                   aiMappingSlot={aiTaskOn(ctx, "import_mapping") ? <ImportMappingSuggest institutionSlug={institutionSlug} /> : undefined}
                 />
               )}

@@ -13,6 +13,7 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import type { Json } from "@/lib/db/types";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeStudentRow } from "@/modules/imports/normalize";
 import {
   CommitImportSchema,
   STAFF_COLUMNS,
@@ -75,9 +76,24 @@ async function loadCurrentSections(
   for (const row of data ?? []) {
     const grade = row.grades as unknown as { code: string } | null;
     if (!grade) continue;
-    map.set(`${grade.code}|${row.name}`, { classSectionId: row.id, academicYearId: row.academic_year_id });
+    map.set(`${grade.code}|${row.name.toUpperCase()}`, { classSectionId: row.id, academicYearId: row.academic_year_id });
   }
   return map;
+}
+
+// Admission numbers this school already has, among the ones in the file (commit would skip them silently).
+async function loadExistingAdmissionNos(supabase: ImportsClient, institutionId: string, wanted: string[]): Promise<Set<string>> {
+  const found = new Set<string>();
+  for (let i = 0; i < wanted.length; i += CHUNK_SIZE) {
+    const { data, error } = await supabase
+      .from("students")
+      .select("admission_no")
+      .eq("institution_id", institutionId)
+      .in("admission_no", wanted.slice(i, i + CHUNK_SIZE));
+    if (error) throwMapped(error);
+    for (const row of data ?? []) found.add(row.admission_no);
+  }
+  return found;
 }
 
 async function loadDepartments(supabase: ImportsClient, institutionId: string): Promise<Map<string, string>> {
@@ -107,10 +123,18 @@ export const stageImport = defineAction({
     const sectionMap = entityType === "students" ? await loadCurrentSections(supabase, ctx.institution.id) : null;
     const departmentMap = entityType === "staff" ? await loadDepartments(supabase, ctx.institution.id) : null;
 
+    const existingAdmissionNos =
+      entityType === "students"
+        ? await loadExistingAdmissionNos(supabase, ctx.institution.id, rows.map((r) => r.admission_no).filter((v): v is string => Boolean(v)))
+        : new Set<string>();
     const seenKeys = new Set<string>();
     const staged: StagedRow[] = rows.map((raw, index) => {
       const rowNo = index + 2; // header is CSV line 1
-      const parsed = rowSchema.safeParse(raw);
+      // Papa puts values past the last header under __parsed_extra: usually an unquoted comma shifting the row.
+      if ("__parsed_extra" in raw) {
+        return { rowNo, status: "invalid", data: {}, errors: { row: ["This row has more columns than the header. If a value contains a comma, put it in double quotes."] } };
+      }
+      const parsed = rowSchema.safeParse(entityType === "students" ? normalizeStudentRow(raw) : raw);
       if (!parsed.success) {
         return { rowNo, status: "invalid", data: {}, errors: parsed.error.flatten().fieldErrors as FieldErrors };
       }
@@ -122,8 +146,19 @@ export const stageImport = defineAction({
         if (seenKeys.has(row.admission_no)) errors = mergeFieldError(errors, "admission_no", "duplicate in file");
         seenKeys.add(row.admission_no);
 
+        if (existingAdmissionNos.has(row.admission_no)) errors = mergeFieldError(errors, "admission_no", "already exists in your school");
+
         const section = sectionMap?.get(`${row.grade}|${row.section}`);
-        if (!section) errors = mergeFieldError(errors, "section", "not found");
+        if (!section) {
+          const mine = [...(sectionMap?.keys() ?? [])].filter((k) => k.startsWith(`${row.grade}|`)).map((k) => k.replace("|", "-"));
+          errors = mergeFieldError(
+            errors,
+            "section",
+            mine.length > 0
+              ? `Grade ${row.grade} section ${row.section} not found. Sections for this grade: ${mine.join(", ")}`
+              : `Grade ${row.grade} is not set up yet. Finish step 1 (school structure) first.`,
+          );
+        }
 
         const data = {
           admission_no: row.admission_no,

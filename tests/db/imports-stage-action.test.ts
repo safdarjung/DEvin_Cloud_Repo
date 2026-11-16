@@ -73,7 +73,7 @@ describe("data.import.stage action (M04-T5)", () => {
     expect(result.data.errors[0].rowNo).toBe(4);
     expect(result.data.errors[0].errors.guardian_phone).toBeDefined();
     expect(result.data.errors[1].rowNo).toBe(9);
-    expect(result.data.errors[1].errors.section).toEqual(["not found"]);
+    expect(result.data.errors[1].errors.section).toEqual(["Grade VI section Z not found. Sections for this grade: VI-A"]);
 
     const [batchRow] = await sql`select row_count, valid_count, error_count from public.import_batches where id = ${result.data.batchId}`;
     expect(batchRow.row_count).toBe(10);
