@@ -13,6 +13,7 @@ import { fail, mapSqlError, ok, type ActionResult } from "@/lib/actions/result";
 import { isCrossSiteRequest, readJsonBody } from "@/lib/http/request";
 import { createClient } from "@/lib/supabase/server";
 import { StartSchoolSchema } from "@/modules/core/setup/schemas";
+import { starterModules } from "@/modules/core/setup/bundles";
 import { createSchoolStartAdminClient } from "@/modules/core/setup/with-service-role";
 import { clientIp } from "@/modules/website/request-ip";
 
@@ -126,6 +127,10 @@ export async function POST(request: Request): Promise<Response> {
           return json(mapped, 500);
       }
     }
+
+    // A new school starts with the small bundle, not ~50 empty modules. Best effort: the school exists either way.
+    const starter = await supabase.rpc("patch_institution_settings", { p_institution_id: data[0].institution_id, p_patch: { modules: starterModules() } });
+    if (starter.error) console.error("/api/public/start: starter modules were not applied");
 
     return json(ok({ redirectTo: `/${data[0].slug}/setup` }), 200);
   } catch {

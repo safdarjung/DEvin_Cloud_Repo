@@ -24,7 +24,7 @@ const STEPS: Record<SetupStep, { title: string; description: string }> = {
   branding: { title: "2. Branding", description: "Optional. Logo and primary colour for your school's pages." },
   people: { title: "3. Students and parents", description: "Upload your student list from a spreadsheet." },
   invite: { title: "4. Invite staff", description: "Optional. Send sign-in invitations to your teachers and office staff." },
-  modules: { title: "5. Modules", description: "Optional. Everything useful is already on; change it any time." },
+  modules: { title: "5. Modules", description: "Optional. A starter set is on; add more any time." },
 };
 
 const STATE_ICON: Record<SetupStepState, { icon: typeof Circle; label: string; className: string }> = {

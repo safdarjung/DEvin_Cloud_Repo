@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useSyncExternalStore, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,8 +9,19 @@ type FieldErrors = Record<string, string[] | undefined>;
 const GENERIC = "Something went wrong. Please try again.";
 const BAD_LINK = "This invite link is incomplete. Open the link from your email again.";
 
+// The token is read from the URL hash once; the hash is then cleared, so the first value is remembered.
+let rememberedToken: string | null = null;
+function readToken(): string | null {
+  if (rememberedToken) return rememberedToken;
+  const found = new URLSearchParams(window.location.hash.slice(1)).get("token");
+  if (found && /^[0-9a-f]{64}$/.test(found)) rememberedToken = found;
+  return rememberedToken;
+}
+const noSubscription = () => () => {};
+
 export function InviteForm({ signedIn }: { signedIn: boolean }) {
-  const [token, setToken] = useState<string | null>(null);
+  const token = useSyncExternalStore(noSubscription, readToken, () => null);
+  const isBrowser = useSyncExternalStore(noSubscription, () => true, () => false);
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
@@ -18,14 +29,8 @@ export function InviteForm({ signedIn }: { signedIn: boolean }) {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   useEffect(() => {
-    const found = new URLSearchParams(window.location.hash.slice(1)).get("token");
-    if (found && /^[0-9a-f]{64}$/.test(found)) {
-      setToken(found);
-      window.history.replaceState(null, "", window.location.pathname); // keep the token out of the address bar
-    } else {
-      setError(BAD_LINK);
-    }
-  }, []);
+    if (token) window.history.replaceState(null, "", window.location.pathname); // keep the token out of the address bar
+  }, [token]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -66,9 +71,9 @@ export function InviteForm({ signedIn }: { signedIn: boolean }) {
           <Field id="password" label="Password (8+ characters)" type="password" autoComplete="new-password" value={password} onChange={setPassword} errors={fieldErrors.password} />
         </>
       )}
-      {error && (
+      {(error ?? (isBrowser && !token ? BAD_LINK : null)) && (
         <p role="alert" className="text-sm text-destructive">
-          {error}
+          {error ?? BAD_LINK}
         </p>
       )}
       <Button type="submit" disabled={pending || !token} className="h-11 sm:h-10">

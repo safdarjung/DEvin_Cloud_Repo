@@ -124,7 +124,17 @@ export default async function StudentsPage({
           {loadError ? (
             <ErrorState title="Could not load students" description={loadError} />
           ) : students.length === 0 ? (
-            <EmptyState title="No students found" description={q || filterQs ? "Try a different search or filter." : "Students appear here once admitted."} />
+            <EmptyState
+              title="No students found"
+              description={q || filterQs ? "Try a different search or filter." : "Students appear here once admitted."}
+              action={
+                !q && !filterQs && hasPermission(ctx, "data.import") ? (
+                  <Link href={`/${institutionSlug}/setup`} className="text-sm font-medium underline underline-offset-2">
+                    Import your student list from a spreadsheet
+                  </Link>
+                ) : undefined
+              }
+            />
           ) : (
             <MaybeBulk enabled={selectable} institutionSlug={institutionSlug} terms={terms}>
             <Table>

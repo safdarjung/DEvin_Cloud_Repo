@@ -1,6 +1,6 @@
 // F18 §H step 5 — recommended module bundles by student count, over the real
 // catalog. Lists are ordered so a module's `requires` come before it.
-import { MODULES, type OptionalModuleKey } from "@/lib/modules/catalog";
+import { MODULES, OPTIONAL_MODULE_KEYS, type OptionalModuleKey } from "@/lib/modules/catalog";
 
 export type BundleTier = "small" | "medium" | "large";
 export const BUNDLE_TIERS: readonly BundleTier[] = ["small", "medium", "large"];
@@ -18,3 +18,9 @@ export function recommendedTier(studentCount: number): BundleTier {
 }
 
 export const bundleTotalInr = (tier: BundleTier): number => BUNDLES[tier].reduce((sum, key) => sum + MODULES[key].priceInr, 0);
+
+/** What a brand-new school starts with: the small bundle on, every other optional module off (the owner adds more later). */
+export function starterModules(): Record<OptionalModuleKey, boolean> {
+  const on = new Set<OptionalModuleKey>(SMALL);
+  return Object.fromEntries(OPTIONAL_MODULE_KEYS.map((key) => [key, on.has(key)])) as Record<OptionalModuleKey, boolean>;
+}
