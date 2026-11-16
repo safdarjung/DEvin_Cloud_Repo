@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/states";
 import { LimitedBadge } from "@/components/honesty";
+import { hasPermission } from "@/lib/auth/require";
 import type { TenantContext } from "@/lib/auth/types";
 import { StudentAttendanceSummary } from "@/modules/attendance/components/StudentAttendanceSummary";
 import type { InvoiceSummary } from "@/modules/finance/queries";
@@ -31,7 +32,7 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
       <StudentProfileHeader student={student} institutionSlug={ctx.institution.slug} />
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <GuardiansCard guardians={student.guardians} />
+        <GuardiansCard guardians={student.guardians} institutionSlug={ctx.institution.slug} canInvite={hasPermission(ctx, "member.manage")} />
         {termId && <StudentAttendanceSummary ctx={ctx} studentId={student.id} termId={termId} studentName={name} />}
       </div>
 

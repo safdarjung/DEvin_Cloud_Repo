@@ -2,10 +2,10 @@
 // (DBT-12 — no portal login provisioned at enrolment); the honesty label
 // (CLAUDE.md rule 7) marks that gap wherever it's shown.
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LimitedBadge } from "@/components/honesty";
+import { GuardianInviteButton } from "@/modules/people/components/GuardianInviteButton";
 import type { GuardianRow } from "@/modules/people/queries";
 
-export function GuardiansCard({ guardians }: { guardians: GuardianRow[] }) {
+export function GuardiansCard({ guardians, institutionSlug, canInvite }: { guardians: GuardianRow[]; institutionSlug: string; canInvite: boolean }) {
   return (
     <Card>
       <CardHeader>
@@ -22,12 +22,13 @@ export function GuardiansCard({ guardians }: { guardians: GuardianRow[] }) {
               {g.phone}
               {g.email ? ` · ${g.email}` : ""}
             </p>
-            {!g.hasPortalLogin && (
-              <div className="flex items-center gap-2">
-                <LimitedBadge />
-                <span className="text-muted-foreground text-xs">Guardian login invite not yet available</span>
-              </div>
-            )}
+            {!g.hasPortalLogin &&
+              canInvite &&
+              (g.email ? (
+                <GuardianInviteButton institutionSlug={institutionSlug} guardianId={g.id} email={g.email} />
+              ) : (
+                <p className="text-muted-foreground text-xs">Add an email address to invite this guardian to the parent portal.</p>
+              ))}
           </div>
         ))}
       </CardContent>
