@@ -125,3 +125,17 @@ describe("setup schemas (F18 §H)", () => {
     ).toBe(false);
   });
 });
+
+import { JoinWithInviteSchema } from "@/modules/core/setup/schemas";
+
+describe("JoinWithInviteSchema", () => {
+  const token = "a".repeat(64);
+  it("accepts a 64-hex token, a name and an 8+ character password", () => {
+    expect(JoinWithInviteSchema.safeParse({ token, fullName: "Asha Rao", password: "longenough" }).success).toBe(true);
+  });
+  it("rejects a short token, a short password and extra keys", () => {
+    expect(JoinWithInviteSchema.safeParse({ token: "abc", fullName: "Asha Rao", password: "longenough" }).success).toBe(false);
+    expect(JoinWithInviteSchema.safeParse({ token, fullName: "Asha Rao", password: "short" }).success).toBe(false);
+    expect(JoinWithInviteSchema.safeParse({ token, fullName: "Asha Rao", password: "longenough", email: "x@y.in" }).success).toBe(false);
+  });
+});

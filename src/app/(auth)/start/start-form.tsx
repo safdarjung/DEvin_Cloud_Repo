@@ -27,16 +27,17 @@ function slugify(name: string): string {
     .replace(/-+$/, "");
 }
 
-export function StartForm() {
+export function StartForm({ initialCode = "", initialEmail = "" }: { initialCode?: string; initialEmail?: string }) {
   const [values, setValues] = useState<Record<FieldName, string>>({
-    code: "",
+    code: initialCode,
     schoolName: "",
     slug: "",
     ownerName: "",
-    email: "",
+    email: initialEmail,
     password: "",
   });
   const [slugEdited, setSlugEdited] = useState(false);
+  const [editingSlug, setEditingSlug] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -78,6 +79,8 @@ export function StartForm() {
     <form onSubmit={onSubmit} className="flex w-full flex-col gap-4" noValidate>
       {FIELDS.map((field) => {
         const errors = fieldErrors[field.name];
+        // The web address follows the school name; it is only shown as an input when changed or in error.
+        if (field.name === "slug" && !editingSlug && !errors) return null;
         return (
           <div key={field.name} className="flex flex-col gap-1.5">
             <Label htmlFor={field.name}>{field.label}</Label>
@@ -96,6 +99,14 @@ export function StartForm() {
             />
             {field.name === "slug" && values.slug && (
               <p className="text-xs text-muted-foreground">Your school will live at /{values.slug}</p>
+            )}
+            {field.name === "schoolName" && !editingSlug && values.slug && !fieldErrors.slug && (
+              <p className="text-xs text-muted-foreground">
+                Web address: /{values.slug}{" "}
+                <button type="button" className="underline underline-offset-2" onClick={() => setEditingSlug(true)}>
+                  Change
+                </button>
+              </p>
             )}
             {errors && (
               <p id={`${field.name}-error`} className="text-xs text-destructive">

@@ -21,10 +21,10 @@ export const metadata: Metadata = { title: "School setup" };
 // F18 §H — setup wizard shell; each step is its own component.
 const STEPS: Record<SetupStep, { title: string; description: string }> = {
   structure: { title: "1. School structure", description: "Year, terms, grades, sections, subjects, bell times and a draft fee structure." },
-  branding: { title: "2. Branding", description: "Logo and primary colour for your school's pages." },
+  branding: { title: "2. Branding", description: "Optional. Logo and primary colour for your school's pages." },
   people: { title: "3. Students and parents", description: "Upload your student list from a spreadsheet." },
-  invite: { title: "4. Invite staff", description: "Send sign-in invitations to your teachers and office staff." },
-  modules: { title: "5. Modules", description: "Choose the modules your school uses." },
+  invite: { title: "4. Invite staff", description: "Optional. Send sign-in invitations to your teachers and office staff." },
+  modules: { title: "5. Modules", description: "Optional. Everything useful is already on; change it any time." },
 };
 
 const STATE_ICON: Record<SetupStepState, { icon: typeof Circle; label: string; className: string }> = {
@@ -45,7 +45,7 @@ export default async function SetupPage({ params }: { params: Promise<{ institut
     <div className="space-y-4">
       <PageHeader
         title="Set up your school"
-        description={`${status.completed} of ${status.total} steps done. Every step can be skipped and picked up later.`}
+        description={`${status.completed} of ${status.total} steps done. Steps 1 and 3 get you going; the rest can wait.`}
       />
       {status.steps.map(({ key, state }) => {
         const { icon: Icon, label, className } = STATE_ICON[state];

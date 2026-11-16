@@ -104,6 +104,9 @@ async function main() {
 
   console.log(`Invite code (shown once, store it safely): ${code}`);
   console.log(`Id ${data.id} · uses ${maxUses} · expires ${expiresAt}`);
+  const base = (process.env.APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+  const link = `${base}/start?code=${encodeURIComponent(code)}${ownerEmail ? `&email=${encodeURIComponent(ownerEmail)}` : ""}`;
+  console.log(`Send this link (fills the code and email in): ${link}`);
   console.log(ownerEmail ? `Bound to ${ownerEmail}: only this email can use the code.` : "Unbound: any email can use the code.");
 }
 

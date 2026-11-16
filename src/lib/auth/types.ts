@@ -11,6 +11,8 @@ export interface TenantContext {
     settings: Record<string, unknown>;
     ai_policy: "local_only" | "cloud_allowed" | "local_with_cloud_fallback";
     is_demo: boolean;
+    /** ISO timestamp; drives the free-trial banner. Optional so test fixtures need not set it. */
+    created_at?: string;
   };
   user: {
     id: string;

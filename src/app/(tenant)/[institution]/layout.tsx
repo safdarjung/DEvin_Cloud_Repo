@@ -18,6 +18,7 @@ import { getClaims } from "@/lib/supabase/server";
 import { brandingStyle } from "@/modules/core/setup/branding-utils";
 import { getLayoutBranding } from "@/modules/core/setup/branding.queries";
 import { listEnabledTasks } from "@/modules/ai/tasks/state";
+import { TrialBanner } from "@/modules/core/setup/components/TrialBanner";
 import { TeachingProfileBanner } from "@/modules/people/components/TeachingProfileBanner";
 import { getMyTeacherProfile } from "@/modules/people/queries";
 
@@ -129,6 +130,7 @@ export default async function TenantLayout({
           />
           <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-4 py-6 pb-[calc(9rem+env(safe-area-inset-bottom))] outline-none sm:px-6 lg:px-8 lg:pb-24">
             <div className="mx-auto w-full max-w-7xl">
+              {!ctx.institution.is_demo && hasPermission(ctx, "institution.settings.manage") && <TrialBanner createdAt={ctx.institution.created_at} />}
               {profilePending && <TeachingProfileBanner href={`${base}/me/teaching-profile`} />}
               {children}
             </div>

@@ -37,6 +37,17 @@ export const StartSchoolSchema = z
   .strict();
 export type StartSchoolInput = z.infer<typeof StartSchoolSchema>;
 
+// POST /api/public/invite: a person with an invite link and no account picks a password.
+// Token shape = AcceptInvitationSchema (invite_member emits 32 random bytes as hex).
+export const JoinWithInviteSchema = z
+  .object({
+    token: z.string().regex(/^[0-9a-f]{64}$/),
+    fullName: z.string().trim().min(2).max(120),
+    password: z.string().min(8).max(72),
+  })
+  .strict();
+export type JoinWithInviteInput = z.infer<typeof JoinWithInviteSchema>;
+
 export const ApplyTemplateSchema = z
   .object({
     board: z.enum(BOARDS),

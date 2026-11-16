@@ -1,8 +1,9 @@
 import { isMarketingPath } from "@/lib/marketing/routes";
 
 // "start": public invite-code sign-up (F18 §H), reached with no session.
+// "invite": accept an email invitation (token in the URL hash), reached with no session.
 // "auth": password reset (forgot-password, callback, reset-password), reached with no session.
-const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout", "start", "auth"]);
+const NON_TENANT_FIRST_SEGMENTS = new Set(["login", "logout", "start", "auth", "invite"]);
 
 // @supabase/ssr session cookie `sb-<ref>-auth-token` or one of its chunks (`.0`, `.1`, …).
 // The `-code-verifier` PKCE cookie is not a session.

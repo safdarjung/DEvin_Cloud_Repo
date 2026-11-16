@@ -30,7 +30,6 @@ export function StepStructure({ institutionSlug, state, gradeCount, yearStart }:
   const [fromGrade, setFromGrade] = useState<GradeCode>("I");
   const [toGrade, setToGrade] = useState<GradeCode>("X");
   const [sectionsPerGrade, setSectionsPerGrade] = useState(2);
-  const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +50,6 @@ export function StepStructure({ institutionSlug, state, gradeCount, yearStart }:
       setError(result.error.message);
       return;
     }
-    setConfirming(false);
     router.refresh();
   }
 
@@ -137,20 +135,9 @@ export function StepStructure({ institutionSlug, state, gradeCount, yearStart }:
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        {confirming ? (
-          <>
-            <Button onClick={apply} disabled={pending || !preview}>
-              {pending ? "Setting up…" : "Yes, create all of this"}
-            </Button>
-            <Button variant="outline" onClick={() => setConfirming(false)} disabled={pending}>
-              Back
-            </Button>
-          </>
-        ) : (
-          <Button onClick={() => setConfirming(true)} disabled={pending || !preview}>
-            Set up for me
-          </Button>
-        )}
+        <Button onClick={apply} disabled={pending || !preview}>
+          {pending ? "Setting up…" : "Create all of this"}
+        </Button>
         <Button variant="ghost" onClick={skip} disabled={pending}>
           {state === "dismissed" ? "Resume this step" : "Skip for now"}
         </Button>

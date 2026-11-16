@@ -23,7 +23,7 @@ export const getTenantContext = cache(async (institutionSlug: string): Promise<T
   const [{ data: institution }, { data: profile }, { data: membership }] = await Promise.all([
     supabase
       .from("institutions")
-      .select("id, slug, name, settings, ai_policy, is_demo")
+      .select("id, slug, name, settings, ai_policy, is_demo, created_at")
       .eq("slug", institutionSlug)
       .maybeSingle(),
     supabase
@@ -56,6 +56,7 @@ export const getTenantContext = cache(async (institutionSlug: string): Promise<T
       settings: (institution.settings ?? {}) as Record<string, unknown>,
       ai_policy: institution.ai_policy as TenantContext["institution"]["ai_policy"],
       is_demo: institution.is_demo,
+      created_at: institution.created_at,
     },
     user: {
       id: claims.sub as string,

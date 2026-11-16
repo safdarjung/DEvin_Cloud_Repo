@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// F18 §H — the only caller is src/app/api/public/start/route.ts: it records the
+// F18 §H — callers: src/app/api/public/start/route.ts and src/app/api/public/invite/route.ts: it records the
 // attempt (public.record_school_start_attempt, the rate limit) and peeks the
 // invite code (both service_role only), creates
 // the owner's auth user (local auth has sign-up disabled) and deletes that
