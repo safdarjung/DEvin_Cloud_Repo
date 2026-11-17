@@ -1,26 +1,21 @@
-// Plain GET form: picks a student by URL so server components can read that student's collectors.
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { SELECT_CLASS } from "./field";
+"use client";
 
-export function StudentPicker({ tab, selected, students, id }: { tab: string; selected?: string; students: { id: string; label: string }[]; id: string }) {
+// Type-ahead student picker; selection goes into the URL so server components can read that student's collectors.
+import { useRouter } from "next/navigation";
+import { Label } from "@/components/ui/label";
+import { StudentSearchSelect } from "@/modules/people/components/StudentSearchSelect";
+
+export function StudentPicker({ tab, selected, institutionSlug, id }: { tab: string; selected?: { id: string; label: string }; institutionSlug: string; id: string }) {
+  const router = useRouter();
   return (
-    <form method="get" className="flex flex-wrap items-end gap-2">
-      <input type="hidden" name="tab" value={tab} />
-      <div className="min-w-56 flex-1 sm:max-w-sm">
-        <Label htmlFor={id}>Student</Label>
-        <select id={id} name="student" defaultValue={selected ?? ""} className={SELECT_CLASS}>
-          <option value="">Choose a student…</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <Button type="submit" variant="outline">
-        Select
-      </Button>
-    </form>
+    <div className="min-w-56 flex-1 sm:max-w-sm">
+      <Label htmlFor={id}>Student</Label>
+      <StudentSearchSelect
+        institutionSlug={institutionSlug}
+        id={id}
+        value={selected ?? null}
+        onChange={(next) => router.push(`?tab=${tab}${next ? `&student=${next.id}` : ""}`)}
+      />
+    </div>
   );
 }

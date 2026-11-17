@@ -41,7 +41,8 @@ export function CollectionsChart({ collectedPaise, duePaise }: CollectionsChartP
           <LabelList
             dataKey="amount"
             position="right"
-            formatter={(v: unknown) => formatINR(Math.round(Number(v) * 100))}
+            // Compact ("₹5.9 Cr"): full crore figures overflow the right margin; the tooltip and summary keep exact values.
+            formatter={(v: unknown) => formatINRCompact(Number(v))}
             {...chartValueLabel}
           />
         </Bar>

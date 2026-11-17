@@ -41,6 +41,11 @@ function weekdayOfDate(dateIso: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+/** "VI-C", not the bare "C" every grade shares. */
+function sectionLabel(s: { name: string; grades: { code: string } | null } | null | undefined): string {
+  return s ? (s.grades?.code ? `${s.grades.code}-${s.name}` : s.name) : "";
+}
+
 export interface CoverNeededRow {
   slotId: string;
   date: string;
@@ -61,7 +66,7 @@ export async function timetableCoverNeeded(ctx: TenantContext, date?: string): P
   const supabase = await createClient();
   const { data: slotRows, error } = await supabase
     .from("timetable_slots")
-    .select("id, teacher_id, class_sections(id, name), subjects(id, name), staff(id, full_name), periods(seq, name, starts_at, ends_at)")
+    .select("id, teacher_id, class_sections(id, name, grades(code)), subjects(id, name), staff(id, full_name), periods(seq, name, starts_at, ends_at)")
     .eq("institution_id", ctx.institution.id)
     .eq("version_id", version)
     .eq("weekday", weekdayOfDate(targetDate));
@@ -85,7 +90,7 @@ export async function timetableCoverNeeded(ctx: TenantContext, date?: string): P
   const subBySlot = new Map((subRows ?? []).map((row) => [row.slot_id, row]));
 
   return relevant.map((row) => {
-    const section = row.class_sections as { id: string; name: string } | null;
+    const section = row.class_sections as { id: string; name: string; grades: { code: string } | null } | null;
     const subject = row.subjects as { id: string; name: string } | null;
     const teacher = row.staff as { id: string; full_name: string } | null;
     const sub = subBySlot.get(row.id);
@@ -94,7 +99,7 @@ export async function timetableCoverNeeded(ctx: TenantContext, date?: string): P
       slotId: row.id,
       date: targetDate,
       period: toPeriodInfo(row.periods as PeriodRow),
-      section: { id: section?.id ?? "", name: section?.name ?? "" },
+      section: { id: section?.id ?? "", name: sectionLabel(section) },
       subject: subject ? { id: subject.id, name: subject.name } : null,
       teacher: { id: teacher?.id ?? "", name: teacher?.full_name ?? "" },
       reason: unavailable.get(row.teacher_id) ?? "absent",
@@ -232,7 +237,7 @@ export async function timetableSubstitutions(ctx: TenantContext, date?: string):
   const { data, error } = await supabase
     .from("substitutions")
     .select(
-      "id, date, status, periods(seq, name, starts_at, ends_at), timetable_slots(class_sections(id, name), subjects(id, name)), original_teacher:staff!original_teacher_id(id, full_name), substitute_teacher:staff!substitute_teacher_id(id, full_name)",
+      "id, date, status, periods(seq, name, starts_at, ends_at), timetable_slots(class_sections(id, name, grades(code)), subjects(id, name)), original_teacher:staff!original_teacher_id(id, full_name), substitute_teacher:staff!substitute_teacher_id(id, full_name)",
     )
     .eq("institution_id", ctx.institution.id)
     .eq("date", targetDate)
@@ -242,7 +247,7 @@ export async function timetableSubstitutions(ctx: TenantContext, date?: string):
 
   return (data ?? []).map((row) => {
     const slot = row.timetable_slots as {
-      class_sections: { id: string; name: string } | null;
+      class_sections: { id: string; name: string; grades: { code: string } | null } | null;
       subjects: { id: string; name: string } | null;
     } | null;
     const original = row.original_teacher as { id: string; full_name: string } | null;
@@ -251,7 +256,7 @@ export async function timetableSubstitutions(ctx: TenantContext, date?: string):
       id: row.id,
       date: row.date,
       period: toPeriodInfo(row.periods as PeriodRow),
-      section: { id: slot?.class_sections?.id ?? "", name: slot?.class_sections?.name ?? "" },
+      section: { id: slot?.class_sections?.id ?? "", name: sectionLabel(slot?.class_sections) },
       subject: slot?.subjects ? { id: slot.subjects.id, name: slot.subjects.name } : null,
       originalTeacher: { id: original?.id ?? "", name: original?.full_name ?? "" },
       substituteTeacher: { id: substitute?.id ?? "", name: substitute?.full_name ?? "" },

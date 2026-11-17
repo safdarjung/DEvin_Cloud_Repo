@@ -51,7 +51,11 @@ export function ThemeEditor({ institutionSlug, institutionName, initialTheme, ai
   const [busy, setBusy] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiProvider, setAiProvider] = useState<AiProviderMeta["provider"] | null>(null);
-  const sample = websiteTemplate("home", institutionName);
+  // The template's "[number]" values are fill-in prompts for a real page; a style preview should read as finished.
+  const SAMPLE_STAT: Record<string, string> = { Students: "1,200", Teachers: "60", "Years of teaching": "25", Board: "CBSE" };
+  const sample = websiteTemplate("home", institutionName).map((b) =>
+    b.type === "stats" ? { ...b, items: b.items.map((i) => (i.value.startsWith("[") ? { ...i, value: SAMPLE_STAT[i.label] ?? "—" } : i)) } : b,
+  );
 
   const [state, formAction, pending] = useActionState<ActionResult<{ id: string }> | null, FormData>(
     () => saveWebsiteTheme(institutionSlug, theme),

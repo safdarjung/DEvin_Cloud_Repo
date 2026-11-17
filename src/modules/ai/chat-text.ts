@@ -21,7 +21,16 @@ export function plainChatText(text: string): string {
     .replace(/\*\*([^*\n]+)\*\*/g, "$1")
     .replace(/^#{1,6}\s+/gm, "")
     .replace(/\[([^\]\n]+)\]\([^)\s]*\)/g, "$1")
-    .replace(/`([^`\n]+)`/g, "$1");
+    .replace(/`([^`\n]+)`/g, "$1")
+    // Markdown tables: drop the |---| rule, show each row as "cell · cell".
+    .replace(/^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?\s*$\n?/gm, "")
+    .replace(/^\s*\|(.+)\|\s*$/gm, (_, row: string) =>
+      row
+        .split("|")
+        .map((c) => c.trim())
+        .filter(Boolean)
+        .join(" · "),
+    );
 }
 
 /** A finished `navigate` tool call's in-app link (assistant/tools.ts navigateTool output), else null. */

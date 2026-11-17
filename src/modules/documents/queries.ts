@@ -6,6 +6,7 @@ import "server-only";
 // shape as every other queries.ts in this codebase.
 import { createClient } from "@/lib/supabase/server";
 import type { TenantContext } from "@/lib/auth/types";
+import { humanize } from "@/lib/format";
 
 export interface DocumentListItem {
   id: string;
@@ -80,7 +81,12 @@ export async function listDocuments(
     ids("student").length ? supabase.from("students").select("id, first_name, last_name, admission_no").in("id", ids("student")) : Promise.resolve({ data: [] }),
     ids("staff").length ? supabase.from("staff").select("id, full_name").in("id", ids("staff")) : Promise.resolve({ data: [] }),
   ]);
+  const books = ids("subject_textbook").length ? await supabase.from("subject_textbooks").select("id, custom_title, ncert_textbooks(title)").in("id", ids("subject_textbook")) : { data: [] };
   const labels = new Map<string, string>();
+  for (const b of books.data ?? []) {
+    const title = b.custom_title ?? (b.ncert_textbooks as { title?: string } | null)?.title;
+    if (title) labels.set(b.id, `Subject textbook: ${title}`);
+  }
   for (const s of students.data ?? []) labels.set(s.id, `${s.first_name} ${s.last_name ?? ""} (${s.admission_no})`.replace("  ", " "));
   for (const s of staff.data ?? []) labels.set(s.id, s.full_name);
 
@@ -96,7 +102,7 @@ export async function listDocuments(
       createdAt: d.created_at,
       entityType: d.entity_type,
       entityId: d.entity_id,
-      entityLabel: labels.get(d.entity_id) ?? `${d.entity_type} ${d.entity_id.slice(0, 8)}`,
+      entityLabel: labels.get(d.entity_id) ?? `${humanize(d.entity_type)} ${d.entity_id.slice(0, 8)}`,
     })),
   };
 }

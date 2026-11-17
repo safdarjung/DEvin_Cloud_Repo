@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { ApplicationDetail } from "@/modules/admissions/components/ApplicationDetail";
@@ -33,6 +34,8 @@ export default async function ApplicationDetailPage({
       ])
     : [[], []];
 
+  const { data: grade } = await (await createClient()).from("grades").select("display_name, code").eq("id", application.gradeAppliedId).eq("institution_id", ctx.institution.id).maybeSingle();
+
   return (
     <ApplicationDetail
       institutionSlug={institutionSlug}
@@ -42,6 +45,7 @@ export default async function ApplicationDetailPage({
       canEnrol={canEnrol}
       sections={sections}
       feeStructures={feeStructures}
+      gradeLabel={grade ? (grade.display_name ?? grade.code) : undefined}
     />
   );
 }

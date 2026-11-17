@@ -143,7 +143,7 @@ export default async function TrustPage({
                     head={["When", "Who", "Action", "Entity"]}
                     rows={rows.map((r) => ({
                       key: r.id,
-                      cells: [new Date(r.at).toISOString().replace("T", " ").slice(0, 16) + " UTC", `${r.actor || "System"}${r.actor_role ? ` (${humanize(r.actor_role)})` : ""}`, r.event, r.entity],
+                      cells: [new Date(r.at).toISOString().replace("T", " ").slice(0, 16) + " UTC", `${r.actor || "System"}${r.actor_role ? ` (${humanize(r.actor_role)})` : ""}`, humanize(r.event.replace(/\./g, " ")), humanize(r.entity)],
                     }))}
                   />
                 )}
@@ -213,7 +213,7 @@ function PermissionList({ role }: { role: Role }) {
         {[...groups.entries()].map(([g, perms]) => (
           <div key={g}>
             <dt className="text-sm font-medium">{humanize(g)}</dt>
-            <dd className="text-sm text-muted-foreground">{perms.join(", ")}</dd>
+            <dd className="text-sm text-muted-foreground">{perms.map((p) => humanize(p.replace(/\./g, " "))).join(", ")}</dd>
           </div>
         ))}
       </dl>

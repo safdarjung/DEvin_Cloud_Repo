@@ -6,6 +6,7 @@
 import { runScenario, type BaselineFacts } from "@/modules/fabric/demo/simulator";
 import { mulberry32 } from "@/modules/fabric/demo/prng";
 import type { InsightSeverity, ScenarioAssumptions } from "@/modules/fabric/types";
+import { formatINR } from "@/lib/format";
 
 // ---------------------------------------------------------------- 0125 row shapes
 // Generated types mark every column non-null; the functions null a metric
@@ -115,7 +116,7 @@ export function feeCohortCaption(row: LabFeeCohortRow): string {
   const who = `${row.grade}, ${BAND_LABEL[row.attendance_band] ?? row.attendance_band} (${row.students} students)`;
   if (row.overdue_invoices === 0) return `${who}: no overdue invoices.`;
   const days = row.avg_days_overdue == null ? "" : `, ${round(row.avg_days_overdue)} days late on average`;
-  return `${who}: ${row.overdue_invoices} of ${row.invoices} invoices overdue (₹${Math.round(row.overdue_paise / 100)})${days}.`;
+  return `${who}: ${row.overdue_invoices} of ${row.invoices} invoices overdue (${formatINR(Math.round(row.overdue_paise / 100) * 100)})${days}.`;
 }
 
 export function trendBreakCaption(row: LabTrendRow): string {
@@ -258,6 +259,9 @@ export function rankAttention(
   for (const row of anomalies) {
     const top = strongestAnomaly(row);
     if (!top || Math.abs(top.z) < MIN_ATTENTION_Z) continue;
+    // Above-average attendance/marks is good news; only a high overdue-invoice rate is adverse above the mean.
+    const adverse = top.label === "overdue-invoice rate" ? top.z > 0 : top.z < 0;
+    if (!adverse) continue;
     const nodeId = labelById.has(row.class_section_id) ? row.class_section_id : null;
     items.push({
       nodeId,

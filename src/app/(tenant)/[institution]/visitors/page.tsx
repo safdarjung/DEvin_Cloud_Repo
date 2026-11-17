@@ -9,12 +9,12 @@ import { AppError } from "@/lib/actions/result";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requireModule } from "@/lib/auth/require";
 import { humanize, type BadgeVariant } from "@/lib/format";
-import { activeStudentOptions, staffOptions } from "@/modules/clubs/queries";
+import { staffOptions } from "@/modules/clubs/queries";
 import { CheckInForm, CheckOutButton } from "@/modules/visitors/components/VisitorLog";
 import { GatePassActions, GatePassForm } from "@/modules/visitors/components/GatePasses";
 import { PickupAddForm, RemovePickupButton } from "@/modules/visitors/components/PickupPersons";
 import { StudentPicker } from "@/modules/visitors/components/StudentPicker";
-import { visitorsGatePasses, visitorsList, visitorsPickupList } from "@/modules/visitors/queries";
+import { visitorsGatePasses, visitorsList, visitorsPickupList, visitorsStudentLabel } from "@/modules/visitors/queries";
 
 export const metadata: Metadata = { title: "Visitors" };
 
@@ -44,18 +44,17 @@ export default async function VisitorsPage({ params, searchParams }: { params: P
 
   const tabs = [canLog && "log", canPass && "gatepass", canPickup && "pickup"].filter((t): t is "log" | "gatepass" | "pickup" => Boolean(t));
   const tab = tabs.find((t) => t === sp.tab) ?? tabs[0];
-  const needStudents = canPass || canPickup;
 
-  const [visitorsR, staffR, passesR, studentsR] = await Promise.allSettled([
+  const [visitorsR, staffR, passesR] = await Promise.allSettled([
     canLog ? visitorsList(ctx, { date: todayIst() }) : Promise.resolve([]),
     canLog ? staffOptions(ctx) : Promise.resolve([]),
     canPass ? visitorsGatePasses(ctx, {}) : Promise.resolve([]),
-    needStudents ? activeStudentOptions(ctx) : Promise.resolve([]),
   ]);
-  [["visitors", visitorsR], ["staff", staffR], ["gate passes", passesR], ["students", studentsR]].forEach(([l, r]) => logError(l as string, r as PromiseSettledResult<unknown>));
-  const students = studentsR.status === "fulfilled" ? studentsR.value : [];
-  const studentId = sp.student && UUID_RE.test(sp.student) && students.some((s) => s.id === sp.student) ? sp.student : undefined;
-  const studentName = students.find((s) => s.id === studentId)?.label;
+  [["visitors", visitorsR], ["staff", staffR], ["gate passes", passesR]].forEach(([l, r]) => logError(l as string, r as PromiseSettledResult<unknown>));
+  const rawStudentId = sp.student && UUID_RE.test(sp.student) ? sp.student : undefined;
+  const studentName = rawStudentId && (tab === "gatepass" || tab === "pickup") ? await visitorsStudentLabel(ctx, rawStudentId).catch(() => undefined) : undefined;
+  const studentId = studentName ? rawStudentId : undefined;
+  const selectedStudent = studentId && studentName ? { id: studentId, label: studentName } : undefined;
   const collectorsR = studentId && (tab === "gatepass" || tab === "pickup") ? await Promise.allSettled([visitorsPickupList(ctx, studentId)]).then(([r]) => r) : undefined;
   if (collectorsR) logError("collectors", collectorsR);
   const collectors = collectorsR?.status === "fulfilled" ? collectorsR.value : [];
@@ -131,7 +130,7 @@ export default async function VisitorsPage({ params, searchParams }: { params: P
                 <CardDescription>Choose the student first, then who will collect them.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <StudentPicker tab="gatepass" selected={studentId} students={students} id="gp-student" />
+                <StudentPicker tab="gatepass" selected={selectedStudent} institutionSlug={slug} id="gp-student" />
                 {studentId && (
                   <GatePassForm
                     institutionSlug={slug}
@@ -199,7 +198,7 @@ export default async function VisitorsPage({ params, searchParams }: { params: P
                 <CardDescription>Guardians and extra people allowed to collect a student. Phone numbers are masked.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <StudentPicker tab="pickup" selected={studentId} students={students} id="pk-student" />
+                <StudentPicker tab="pickup" selected={selectedStudent} institutionSlug={slug} id="pk-student" />
                 {!studentId ? (
                   <EmptyState bare title="Choose a student" description="Their guardians and pickup people appear here." />
                 ) : collectorsR?.status === "rejected" ? (

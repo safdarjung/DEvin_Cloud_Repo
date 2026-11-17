@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FadeIn } from "@/components/motion";
@@ -67,6 +67,15 @@ export function BankPractice({
   const [count, setCount] = useState<number>(10);
   const [phase, setPhase] = useState<Phase>({ kind: "setup" });
   const [notice, setNotice] = useState<string | null>(null);
+
+  // Arriving from "Practice now" (?unit=): start straight away. An open set for the same settings is resumed, so a repeat is harmless.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !initialUnitId || !unitId) return;
+    autoStarted.current = true;
+    begin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (withBank.length === 0) {
     return (

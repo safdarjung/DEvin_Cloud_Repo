@@ -3,7 +3,7 @@
 // T-027 — 06 §W4 application detail: decision buttons with confirm, plus
 // the decision timeline. T-028 replaced the enrol placeholder with
 // EnrolDialog, the real enrolApplicant flow.
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import { DecisionTimeline } from "@/modules/admissions/components/DecisionTimeli
 import { applicationStatusVariant } from "@/modules/admissions/status";
 import { EnrolDialog } from "@/modules/admissions/components/EnrolDialog";
 import type { FeeStructureSummary } from "@/modules/finance/queries";
-import { humanize } from "@/lib/format";
+import { formatDate, humanize } from "@/lib/format";
 
 interface ApplicationDetailProps {
   institutionSlug: string;
@@ -35,6 +35,7 @@ interface ApplicationDetailProps {
   canEnrol: boolean;
   sections: SectionCapacityOption[];
   feeStructures: FeeStructureSummary[];
+  gradeLabel?: string;
 }
 
 const DECISIONS: ApplicationDecision[] = ["offer", "reject", "accept", "withdraw"];
@@ -47,14 +48,28 @@ export function ApplicationDetail({
   canEnrol,
   sections,
   feeStructures,
+  gradeLabel,
 }: ApplicationDetailProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<ApplicationDecision | null>(null);
 
-  const applicant = application.applicant as { firstName?: string; lastName?: string };
+  const applicant = application.applicant as { firstName?: string; lastName?: string; dob?: string; gender?: string };
   const name = [applicant.firstName, applicant.lastName].filter(Boolean).join(" ") || "Applicant";
+
+  const guardian = application.guardian as { fullName?: string; phone?: string; relationship?: string };
+  const details: [string, string][] = (
+    [
+      ["Applicant", name],
+      ["Grade applied for", gradeLabel],
+      ["Date of birth", applicant.dob ? formatDate(applicant.dob) : undefined],
+      ["Gender", applicant.gender ? humanize(applicant.gender) : undefined],
+      ["Guardian", guardian.fullName],
+      ["Guardian phone", guardian.phone],
+      ["Relationship", guardian.relationship ? humanize(guardian.relationship) : undefined],
+    ] as [string, string | undefined][]
+  ).filter((r): r is [string, string] => Boolean(r[1]));
 
   function confirmDecision() {
     if (!confirming) return;
@@ -100,7 +115,23 @@ export function ApplicationDetail({
       )}
 
       <div className="grid gap-4 lg:grid-cols-3">
-      <Card className="min-w-0 self-start lg:col-span-2">
+      <div className="min-w-0 space-y-4 lg:col-span-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            {details.map(([label, value]) => (
+              <Fragment key={label}>
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd>{value}</dd>
+              </Fragment>
+            ))}
+          </dl>
+        </CardContent>
+      </Card>
+      <Card className="min-w-0 self-start">
         <CardHeader>
           <CardTitle>Decisions</CardTitle>
         </CardHeader>
@@ -133,6 +164,7 @@ export function ApplicationDetail({
           />
         </CardContent>
       </Card>
+      </div>
 
       <Card className="min-w-0 self-start">
         <CardHeader>

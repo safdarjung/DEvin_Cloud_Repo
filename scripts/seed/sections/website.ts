@@ -9,7 +9,7 @@ import { uuidV5 } from "../lib/ids.ts";
 // J-01 (08 §4) asserts this exact string never appears in rendered HTML —
 // it lives only in an unpublished v2 of the home page, never in the
 // published v1 that `pages.published_version_id` points to (C-80, T5).
-export const DRAFT_ONLY_MARKER = "DRAFT-ONLY-MARKER-never-published-2026";
+export const DRAFT_ONLY_MARKER = "Coming soon: our new science wing and robotics lab open for the 2027 session.";
 
 interface PageSpec {
   slug: string;

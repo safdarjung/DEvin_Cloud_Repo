@@ -84,11 +84,11 @@ function GradeRow({ institutionSlug, row, canGrade }: { institutionSlug: string;
         >
           <label className="space-y-1 text-xs text-muted-foreground">
             Score
-            <Input type="number" inputMode="decimal" min={0} step="0.5" value={score} onChange={(e) => setScore(e.target.value)} className="tabular-nums" />
+            <Input type="number" inputMode="decimal" min={0} step="any" value={score} onChange={(e) => setScore(e.target.value)} className="tabular-nums" />
           </label>
           <label className="space-y-1 text-xs text-muted-foreground">
             Out of
-            <Input type="number" inputMode="decimal" min={0.01} max={1000} step="0.5" value={maxScore} onChange={(e) => setMaxScore(e.target.value)} className="tabular-nums" />
+            <Input type="number" inputMode="decimal" min={0.01} max={1000} step="any" value={maxScore} onChange={(e) => setMaxScore(e.target.value)} className="tabular-nums" />
           </label>
           <label className="space-y-1 text-xs text-muted-foreground">
             Feedback

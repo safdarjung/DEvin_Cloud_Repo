@@ -10,7 +10,7 @@ import { hasPermission, requireModule, requirePermission } from "@/lib/auth/requ
 import { humanize } from "@/lib/format";
 import { todayInInstitutionTimezone } from "@/modules/attendance/queries";
 import { AllocateForm, RollCallForm, RoomForm, VacateButton } from "@/modules/hostel/components/HostelForms";
-import { hostelAllocatableStudents, hostelAllocations, hostelRollCall, hostelRooms } from "@/modules/hostel/queries";
+import { hostelAllocations, hostelRollCall, hostelRooms } from "@/modules/hostel/queries";
 import { ROLL_CALL_SESSIONS } from "@/modules/hostel/schemas";
 
 export const metadata: Metadata = { title: "Hostel" };
@@ -42,13 +42,12 @@ export default async function HostelPage({
   const date = sp.date && ISO_DATE.test(sp.date) ? sp.date : todayInInstitutionTimezone(ctx);
   const session = ROLL_CALL_SESSIONS.find((s) => s === sp.session) ?? "night";
 
-  const [roomsR, allocR, studentsR, callR] = await Promise.allSettled([
+  const [roomsR, allocR, callR] = await Promise.allSettled([
     hostelRooms(ctx),
     hostelAllocations(ctx),
-    tab === "allocations" && canManage ? hostelAllocatableStudents(ctx) : Promise.resolve([]),
     tab === "rollcall" ? hostelRollCall(ctx, { takenOn: date, session }) : Promise.resolve(null),
   ]);
-  for (const r of [roomsR, allocR, studentsR, callR]) if (r.status === "rejected") console.error("hostel page fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
+  for (const r of [roomsR, allocR, callR]) if (r.status === "rejected") console.error("hostel page fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
 
   return (
     <div className="space-y-6">
@@ -128,13 +127,13 @@ export default async function HostelPage({
 
       {tab === "allocations" && (
         <section aria-label="Allocations" className="space-y-4">
-          {canManage && roomsR.status === "fulfilled" && studentsR.status === "fulfilled" && (
+          {canManage && roomsR.status === "fulfilled" && (
             <Card>
               <CardHeader>
                 <CardTitle>Allocate a student</CardTitle>
               </CardHeader>
               <CardContent>
-                <AllocateForm institutionSlug={slug} rooms={roomsR.value} students={studentsR.value as Awaited<ReturnType<typeof hostelAllocatableStudents>>} />
+                <AllocateForm institutionSlug={slug} rooms={roomsR.value} />
               </CardContent>
             </Card>
           )}

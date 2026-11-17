@@ -56,7 +56,7 @@ describe("seed section learning-exams", () => {
   });
 
   it("has a live practice test for X-A and bank practice sessions for student.one", async () => {
-    expect(await one(`select count(*)::int n from public.online_tests where institution_id = '$INST' and practice and status = 'scheduled' and opens_at <= now() and closes_at > now() + interval '20 days'`)).toBe(1);
+    expect(await one(`select count(*)::int n from public.online_tests where institution_id = '$INST' and practice and status = 'scheduled' and opens_at <= now() and closes_at > now() + interval '20 days' and grade_id in (select id from public.grades where institution_id = '$INST' and code = 'X')`)).toBe(1);
     expect(await one(`select count(*)::int n from public.practice_sessions s join public.memberships m on m.student_id = s.student_id join auth.users u on u.id = m.user_id where u.email = 'student.one@demo.coolskool.test' and s.source = 'bank' and s.submitted_at is not null and m.institution_id = '$INST'`)).toBeGreaterThanOrEqual(4);
   });
 

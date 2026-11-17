@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
 import type { AssignmentSummary } from "@/modules/academics/assignments.queries";
 import { FadeIn } from "@/components/motion";
+import { formatDate } from "@/lib/format";
 
 const STATUS_VARIANT: Record<string, "success" | "warning" | "outline"> = { published: "success", draft: "warning", closed: "outline" };
 const STATUS_LABEL: Record<string, string> = { published: "Published", draft: "Draft", closed: "Closed" };
@@ -45,8 +46,9 @@ export function StudentAssignments({ institutionSlug, assignments, portal }: Stu
                   : ""}
               </Badge>
             )}
-            <Badge variant={STATUS_VARIANT[assignment.status] ?? "outline"}>{STATUS_LABEL[assignment.status] ?? assignment.status}</Badge>
-            {assignment.dueAt ? <span>Due {new Date(assignment.dueAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</span> : null}
+            {assignment.status !== "published" && <Badge variant={STATUS_VARIANT[assignment.status] ?? "outline"}>{STATUS_LABEL[assignment.status] ?? assignment.status}</Badge>}
+            {assignment.dueAt ? <span>Due {formatDate(assignment.dueAt)}</span> : null}
+            {assignment.dueAt && new Date(assignment.dueAt) < new Date() && portal?.states[assignment.id]?.state === "not_submitted" && <Badge variant="destructive">Past due</Badge>}
           </div>
         </FadeIn>
       ))}

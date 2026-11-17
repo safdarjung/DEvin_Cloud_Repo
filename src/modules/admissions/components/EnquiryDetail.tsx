@@ -25,7 +25,7 @@ import { addEnquiryNote, assignEnquiry, convertEnquiryToApplication } from "@/mo
 import { enquiryStatusVariant } from "@/modules/admissions/status";
 import type { EnquiryRow } from "@/modules/admissions/queries";
 import { EnquiryReplyDraft } from "@/modules/ai/components/EnquiryReplyDraft";
-import { humanize } from "@/lib/format";
+import { formatDateTime, humanize } from "@/lib/format";
 
 interface StaffOption {
   id: string;
@@ -72,7 +72,7 @@ export function EnquiryDetail({
     guardianFullName: enquiry.guardianName,
     guardianPhone: enquiry.phone,
     relationship: "father" as "father" | "mother" | "legal_guardian" | "grandparent" | "other",
-    gradeId: gradeOptions[0]?.id ?? "",
+    gradeId: gradeOptions.find((g) => g.id === enquiry.gradeAppliedId)?.id ?? gradeOptions[0]?.id ?? "",
     academicYearId: academicYearOptions[0]?.id ?? "",
   });
 
@@ -262,6 +262,32 @@ export function EnquiryDetail({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted-foreground">Child</dt>
+            <dd>{enquiry.childName}</dd>
+            <dt className="text-muted-foreground">Grade applied for</dt>
+            <dd>{gradeOptions.find((g) => g.id === enquiry.gradeAppliedId)?.label ?? "Not given"}</dd>
+            <dt className="text-muted-foreground">Guardian</dt>
+            <dd>{enquiry.guardianName}</dd>
+            <dt className="text-muted-foreground">Phone</dt>
+            <dd>{enquiry.phone}</dd>
+            {enquiry.email && (
+              <>
+                <dt className="text-muted-foreground">Email</dt>
+                <dd>{enquiry.email}</dd>
+              </>
+            )}
+            <dt className="text-muted-foreground">Source</dt>
+            <dd>{humanize(enquiry.source)}</dd>
+          </dl>
+        </CardContent>
+      </Card>
+
       <EnquiryReplyDraft institutionSlug={institutionSlug} enquiryId={enquiry.id} aiPolicy={aiPolicy} />
       </div>
 
@@ -278,7 +304,7 @@ export function EnquiryDetail({
                 <div key={i} className="relative pl-4 text-sm">
                   <span aria-hidden className="absolute top-1 -left-[6px] size-2.5 rounded-full border-2 border-ring bg-card" />
                   <p>{note.text}</p>
-                  <p className="text-xs text-muted-foreground italic">{note.at ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground italic">{formatDateTime(note.at ?? enquiry.createdAt)}</p>
                 </div>
               ))}
             </AnimatedList>

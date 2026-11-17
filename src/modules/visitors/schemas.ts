@@ -26,7 +26,7 @@ export const VisitorCheckInSchema = z
   })
   .strict()
   .refine((data) => data.hostStaffId || data.meetingWith, {
-    message: "Either hostStaffId or meetingWith is required",
+    message: "Pick who they are meeting, or type a name.",
     path: ["hostStaffId"],
   })
   .refine((data) => (data.idType && data.idLast4) || (!data.idType && !data.idLast4), {

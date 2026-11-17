@@ -71,8 +71,10 @@ export function runScenario(a: ScenarioAssumptions, facts: BaselineFacts = BASEL
   const revenueMonth = Math.round(
     students * facts.avg_fee_paise_month * (1 + a.fee_change_pct / 100) * (collectionRatePct / 100),
   );
+  // Split the caller's own baseline cost (not the demo constants), so a real school's header and 12-month cost agree.
+  const salariesMonth = facts.cost_paise_month * (BASELINE_SALARIES_PAISE_MONTH / (BASELINE_SALARIES_PAISE_MONTH + BASELINE_FIXED_PAISE_MONTH));
   const costMonth = Math.round(
-    (BASELINE_SALARIES_PAISE_MONTH * (staff / facts.teachers) + BASELINE_FIXED_PAISE_MONTH) *
+    (salariesMonth * (staff / facts.teachers) + (facts.cost_paise_month - salariesMonth)) *
       (1 + a.cost_change_pct / 100),
   );
   const capacityUtilisationPct = Math.round(

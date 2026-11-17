@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/states";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { humanize, inr } from "@/lib/format";
+import { formatDate, humanize, inr } from "@/lib/format";
 import { invoiceStatusVariant } from "@/modules/finance/format";
 import type { InvoiceSummary } from "@/modules/finance/queries";
 import { BulkCheckbox } from "@/modules/finance/components/BulkActions";
@@ -94,7 +94,7 @@ export function InvoiceTable({ institutionSlug, invoices, serverFiltered, select
               </TableCell>
               <TableCell className="text-right tabular-nums">{inr(invoice.total)}</TableCell>
               <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
-              <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
+              <TableCell className="hidden sm:table-cell">{invoice.dueOn ? formatDate(invoice.dueOn) : "—"}</TableCell>
             </TableRow>
           ))}
         </TableBody>

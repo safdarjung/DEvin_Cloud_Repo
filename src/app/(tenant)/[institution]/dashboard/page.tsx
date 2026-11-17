@@ -25,6 +25,7 @@ import { attendanceTrend, getAttendanceSettings } from "@/modules/attendance/que
 import { repeatedAbsentees, sectionAttendanceToday } from "@/modules/attendance/command.queries";
 import { calendarForRole } from "@/modules/calendar/queries";
 import { pendingApprovals } from "@/modules/core/approvals.queries";
+import { countOpenEnquiries } from "@/modules/admissions/state";
 import { buildApprovalQueue } from "@/modules/core/approval-queue";
 import { ApprovalsQueue } from "@/modules/core/components/dashboard/ApprovalsQueue";
 import { CollectionsChart } from "@/modules/core/components/dashboard/CollectionsChart";
@@ -47,7 +48,7 @@ import { ForecastCards } from "@/modules/fabric/components/command/forecast-card
 import { PriorityActionsWidget } from "@/modules/fabric/components/command/priority-actions";
 import { RiskIndicators } from "@/modules/fabric/components/command/risk-indicators";
 import { examStatusVariant, recheckStatusVariant } from "@/modules/exams/status";
-import { collectionReport, listDefaulters } from "@/modules/finance/queries";
+import { ageingBucketsPaise, AGEING_BUCKETS, collectionReport, listDefaulters } from "@/modules/finance/queries";
 import { assistantPromptsFor } from "@/modules/ai/prompts/dashboard-prompts";
 import { staffAvailabilityToday } from "@/modules/people/hr.queries";
 import { peopleCounts } from "@/modules/people/counts.queries";
@@ -204,6 +205,15 @@ const STRIP_COLS: Record<number, string> = {
 // `dashboard.view` (e.g. teacher) never reaches `getDashboardData` or any
 // extra fetch, so none of these aggregates are ever computed for them
 // (CLAUDE.md rule 2). Every extra fetch is also gated on its read permission.
+const APPROVAL_LABEL: Record<string, string> = { leave: "staff leave", recheck: "rechecks", insight: "insights", agent_run: "agent runs", workflow_run: "workflow runs" };
+/** "3 staff leave, 208 insights": the queue mixes kinds, so the tile says what the number is made of. */
+function approvalBreakdown(rows: readonly { kind: string }[], studentLeaves: number): string {
+  const counts = new Map<string, number>();
+  for (const r of rows) counts.set(APPROVAL_LABEL[r.kind] ?? r.kind, (counts.get(APPROVAL_LABEL[r.kind] ?? r.kind) ?? 0) + 1);
+  if (studentLeaves) counts.set("student leave", studentLeaves);
+  return [...counts].map(([k, n]) => `${n} ${k}`).join(", ");
+}
+
 export default async function DashboardPage({
   params,
 }: {
@@ -270,7 +280,7 @@ export default async function DashboardPage({
   const firstName = ctx.user.profile.fullName?.trim().split(/\s+/)[0];
 
   const enrolledCount = data.funnel.applicationStatuses.enrolled ?? 0;
-  const openEnquiries = Object.values(data.funnel.enquiryStages).reduce((sum, n) => sum + n, 0);
+  const openEnquiries = countOpenEnquiries(data.funnel.enquiryStages);
   const collections = data.collections;
   const outstandingPaise = collections ? Math.max(collections.duePaise - collections.collectedPaise, 0) : 0;
   const collectionPct = collections && collections.duePaise > 0 ? Math.round((collections.collectedPaise / collections.duePaise) * 1000) / 10 : null;
@@ -346,24 +356,17 @@ export default async function DashboardPage({
       )
     );
 
-  // Defaulter ageing: outstanding rupees by days past due (derived from the defaulter rows above).
-  const ageing = (() => {
-    if (!defaulters) return null;
-    const buckets = [
-      { label: "Not yet due", value: 0, tone: "default" as const },
-      { label: "1–30 days late", value: 0, tone: "warning" as const },
-      { label: "31–60 days late", value: 0, tone: "warning" as const },
-      { label: "61–90 days late", value: 0, tone: "destructive" as const },
-      { label: "Over 90 days late", value: 0, tone: "destructive" as const },
-    ];
-    const today = Date.parse(todayIso);
-    for (const d of defaulters) {
-      const late = d.dueOn ? Math.floor((today - Date.parse(d.dueOn)) / DAY_MS) : 0;
-      const i = late <= 0 ? 0 : late <= 30 ? 1 : late <= 60 ? 2 : late <= 90 ? 3 : 4;
-      buckets[i]!.value += d.outstanding;
-    }
-    return buckets;
-  })();
+  // Defaulter ageing: outstanding by days past due (derived from the defaulter rows above), summed in paise.
+  // Values are shown as preformatted text: the count-up only starts in view, so a static read showed ₹0.00.
+  const AGEING_TONES = ["default", "warning", "warning", "destructive", "destructive"] as const;
+  const ageing = defaulters
+    ? ageingBucketsPaise(defaulters, todayIso).map((paise, i) => ({
+        label: AGEING_BUCKETS[i]!,
+        value: paise,
+        display: formatINR(paise),
+        tone: AGEING_TONES[i]!,
+      }))
+    : null;
   const ageingPanel = (className: string) =>
     defaultersFailed ? (
       <FailedWidget title="Outstanding by age" className={className} />
@@ -377,7 +380,7 @@ export default async function DashboardPage({
             isEmpty={ageing.every((b) => b.value === 0)}
             empty={<EmptyState bare title="Nothing outstanding this term" />}
           >
-            <BarList ariaLabel="Outstanding by days past due" format="inr" items={ageing.map((b) => ({ ...b, href: `${basePath}/finance/defaulters` }))} />
+            <BarList ariaLabel="Outstanding by days past due" items={ageing.map((b) => ({ ...b, href: `${basePath}/finance/defaulters` }))} />
           </Widget>
         </Cell>
       )
@@ -411,7 +414,7 @@ export default async function DashboardPage({
     );
 
   const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed && (
-    <KpiTile key="open-enquiries" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled this year`} href={`${basePath}/admissions`} />
+    <KpiTile key="open-enquiries" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled`} href={`${basePath}/admissions`} />
   );
   const collectedKpi = collections && (
     <KpiTile
@@ -629,9 +632,9 @@ export default async function DashboardPage({
         ["kpi-strip", kpiStrip([
           collectedKpi,
           <KpiTile key="outstanding" label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} tone="warning" />,
-          <KpiTile key="collection-rate" label="Collection rate" value={collectionPct === null ? "—" : `${collectionPct}%`} animateTo={collectionPct ?? undefined} format="percent" sub={`${collections.invoiceCount} invoices this term`} />,
+          <KpiTile key="collection-rate" label="Collection rate" value={collectionPct === null ? "—" : `${collectionPct}%`} animateTo={collectionPct ?? undefined} format="percent" sub={`${collections.invoiceCount.toLocaleString("en-IN")} invoices this term`} />,
           defaulters && (
-            <KpiTile key="overdue" label="Overdue invoices" value={String(overdue.length)} animateTo={overdue.length} sub={`${defaulters.length} unpaid in total`} href={`${basePath}/finance/defaulters`} tone={overdue.length > 0 ? "destructive" : "default"} />
+            <KpiTile key="overdue" label="Overdue invoices" value={String(overdue.length)} animateTo={overdue.length} sub={`${defaulters.length.toLocaleString("en-IN")} unpaid this term`} href={`${basePath}/finance/defaulters`} tone={overdue.length > 0 ? "destructive" : "default"} />
           ),
         ])],
         ["fees-by-class", feesByClassPanel(MAIN)],
@@ -643,7 +646,7 @@ export default async function DashboardPage({
           <Cell span={WIDE}>
             <ListWidget
               title="Top defaulters"
-              description={`${defaulters?.length ?? 0} unpaid invoices, ${overdue.length} overdue`}
+              description={`${(defaulters?.length ?? 0).toLocaleString("en-IN")} unpaid invoices, ${overdue.length.toLocaleString("en-IN")} overdue`}
               action={{ href: `${basePath}/finance/defaulters`, label: "Remind in bulk" }}
               emptyTitle="No unpaid invoices this term"
               rows={topDefaulters.map((d) => ({
@@ -747,10 +750,10 @@ export default async function DashboardPage({
         spark: trendPts.length > 1 ? trendPts.map((p) => p.value) : undefined,
       });
     }
-    if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : undefined, tone: queue.total > 0 ? "warning" : undefined });
+    if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : approvalBreakdown(approvalRows ?? [], studentLeaves?.length ?? 0), tone: queue.total > 0 ? "warning" : undefined });
     if (collections) tiles.push({ label: "Collected this term", value: inrWhole(collections.collectedPaise), sub: `of ${inrWhole(collections.duePaise)} due`, href: `${basePath}/finance` });
     if (defaulters) tiles.push({ label: "Overdue invoices", value: String(overdue.length), href: `${basePath}/finance/defaulters`, tone: overdue.length > 0 ? "destructive" : undefined });
-    if (canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled this year`, href: `${basePath}/admissions` });
+    if (canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled`, href: `${basePath}/admissions` });
     if (upcomingExams) tiles.push({ label: "Upcoming exams", value: String(upcomingExams.total), sub: upcomingExams.papers[0] ? `Next ${shortDate.format(new Date(upcomingExams.papers[0].scheduledAt))}` : undefined, href: `${basePath}/exams` });
 
     // ---- panels ----

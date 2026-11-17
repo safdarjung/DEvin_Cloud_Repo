@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { humanize } from "@/lib/format";
+
+const KIND_LABEL: Record<string, string> = { ptm: "Parent-teacher meeting" };
 import type { CalendarEventRow } from "@/modules/calendar/queries";
 
 const dayFmt = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" });
@@ -33,7 +35,7 @@ export function CalendarList({ events, actions }: { events: CalendarEventRow[]; 
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="w-32 shrink-0 text-sm tabular-nums text-muted-foreground">{dateRange(e)}</span>
                     <span className="font-medium">{e.title}</span>
-                    <Badge variant={e.kind === "holiday" ? "success" : "outline"}>{humanize(e.kind)}</Badge>
+                    <Badge variant={e.kind === "holiday" ? "success" : "outline"}>{KIND_LABEL[e.kind] ?? humanize(e.kind)}</Badge>
                     {e.audience === "staff" && <Badge variant="outline">Staff only</Badge>}
                   </div>
                   {e.description && <p className="text-sm text-muted-foreground">{e.description}</p>}

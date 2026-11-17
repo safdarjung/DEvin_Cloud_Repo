@@ -331,6 +331,45 @@ export async function getInvoice(ctx: TenantContext, id: string): Promise<Invoic
   };
 }
 
+export interface InvoicePayment {
+  id: string;
+  amount: number;
+  mode: string;
+  reference: string | null;
+  receivedAt: string;
+  receiptId: string | null;
+  receiptNo: string | null;
+  reversalKind: string | null;
+}
+
+/** Payments recorded against one invoice, newest first, each with its receipt (one per payment) and any reversal. */
+export async function listInvoicePayments(ctx: TenantContext, invoiceId: string): Promise<InvoicePayment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, amount, mode, reference, received_at, receipts(id, receipt_no), payment_reversals(kind)")
+    .eq("institution_id", ctx.institution.id)
+    .eq("invoice_id", invoiceId)
+    .order("received_at", { ascending: false });
+  if (error) throw error;
+  // One-to-one embeds may come back as an object or a one-element array.
+  const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
+  return (data ?? []).map((p) => {
+    const receipt = one(p.receipts as { id: string; receipt_no: string } | { id: string; receipt_no: string }[] | null);
+    const reversal = one(p.payment_reversals as { kind: string } | { kind: string }[] | null);
+    return {
+      id: p.id,
+      amount: Number(p.amount),
+      mode: p.mode,
+      reference: p.reference,
+      receivedAt: p.received_at,
+      receiptId: receipt?.id ?? null,
+      receiptNo: receipt?.receipt_no ?? null,
+      reversalKind: reversal?.kind ?? null,
+    };
+  });
+}
+
 // T-032 — 06 §W9. Rendered from `receipts.snapshot` only (packet security
 // rule 2: "the receipt must not change if names change later") — no join to
 // students/invoices here.
@@ -698,6 +737,21 @@ export async function listDefaulters(ctx: TenantContext, filters: { termId: stri
         },
       ];
     });
+}
+
+export const AGEING_BUCKETS = ["Not yet due", "1–30 days late", "31–60 days late", "61–90 days late", "Over 90 days late"] as const;
+
+/** Outstanding paise per AGEING_BUCKETS index, by whole days between `dueOn` and `todayIso` (no due date counts as not yet due). */
+export function ageingBucketsPaise(rows: Pick<DefaulterRow, "dueOn" | "outstanding">[], todayIso: string): number[] {
+  const DAY_MS = 86_400_000;
+  const today = Date.parse(todayIso);
+  const paise = AGEING_BUCKETS.map(() => 0);
+  for (const r of rows) {
+    const late = r.dueOn ? Math.floor((today - Date.parse(r.dueOn)) / DAY_MS) : 0;
+    const i = late <= 0 ? 0 : late <= 30 ? 1 : late <= 60 ? 2 : late <= 90 ? 3 : 4;
+    paise[i]! += moneyToPaise(r.outstanding);
+  }
+  return paise;
 }
 
 /** How many students owe fees this term and how much is overdue, without names (safe for the cloud model). */

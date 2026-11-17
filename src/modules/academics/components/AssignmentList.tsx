@@ -19,7 +19,7 @@ interface AssignmentListProps {
   canManage: boolean;
 }
 
-function PublishButton({ institutionSlug, assignmentId }: { institutionSlug: string; assignmentId: string }) {
+export function PublishButton({ institutionSlug, assignmentId }: { institutionSlug: string; assignmentId: string }) {
   const [state, formAction, pending] = useActionState<ActionResult<{ id: string }> | null, FormData>(
     async () => publishAssignment(institutionSlug, { assignmentId }),
     null,

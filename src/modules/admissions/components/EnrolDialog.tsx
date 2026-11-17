@@ -78,11 +78,13 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="secondary" size="sm">
-          Enrol
-        </Button>
-      </DialogTrigger>
+      {enabled && !success && (
+        <DialogTrigger asChild>
+          <Button variant="secondary" size="sm">
+            Enrol
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Enrol this applicant</DialogTitle>

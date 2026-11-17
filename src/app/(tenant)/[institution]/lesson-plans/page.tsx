@@ -43,7 +43,7 @@ export default async function LessonPlansPage({
     );
   }
 
-  const subjects = await listSectionSubjects(ctx, active.id);
+  const subjects = await listSectionSubjects(ctx, active.id, { ownOnly: true });
   const [plans, unitsPerSubject] = await Promise.all([
     curriculumLessonPlans(ctx, { classSectionId: active.id }),
     Promise.all(subjects.map((s) => curriculumSectionUnits(ctx, { classSectionId: active.id, subjectId: s.id }))),

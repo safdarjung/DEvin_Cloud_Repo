@@ -7,6 +7,7 @@
 // so the selection here is only a convenience.
 import { useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { SimulatedBadge } from "@/components/honesty";
 import { Button } from "@/components/ui/button";
 import type { ActionResult } from "@/lib/actions/result";
 import { bulkGenerateStudentInvoices } from "@/modules/finance/actions";
@@ -40,7 +41,7 @@ export function BulkActions({
   const formRef = useRef<HTMLFormElement>(null);
   const [count, setCount] = useState(0);
   const [termId, setTermId] = useState(props.kind === "invoice" ? (props.terms[0]?.id ?? "") : "");
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string; channels?: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const boxes = () => Array.from(formRef.current?.querySelectorAll<HTMLInputElement>(`input[name="${FIELD}"]`) ?? []);
@@ -67,7 +68,7 @@ export function BulkActions({
           ? { ok: true, data: { text: `${r.data.generated.length} invoice${r.data.generated.length === 1 ? "" : "s"} generated${r.data.failed.length ? `, ${r.data.failed.length} failed (${r.data.failed[0]!.message})` : ""}.` } }
           : r;
       }
-      setMessage(result.ok ? { ok: true, text: result.data.text } : { ok: false, text: result.error.message });
+      setMessage(result.ok ? { ok: true, text: result.data.text, channels: props.kind === "remind" } : { ok: false, text: result.error.message });
       if (result.ok) {
         for (const b of boxes()) b.checked = false;
         setCount(0);
@@ -113,6 +114,11 @@ export function BulkActions({
       {message && (
         <p role="status" className={cn("text-sm", message.ok ? "text-muted-foreground" : "text-destructive")}>
           {message.text}
+          {message.channels && (
+            <>
+              {" "}Each goes to the primary guardian as an in-app notification, with SMS, WhatsApp and email copies <SimulatedBadge /> unless the school has connected a provider. Delivery shows in Notifications, Message log (admin).
+            </>
+          )}
         </p>
       )}
       {children}

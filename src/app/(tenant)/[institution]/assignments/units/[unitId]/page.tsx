@@ -70,7 +70,7 @@ export default async function CurriculumUnitQuizPage({
     await Promise.all(
       candidateSections.map(async (section) => ({
         section,
-        subjects: await listSectionSubjects(ctx, section.id),
+        subjects: await listSectionSubjects(ctx, section.id, { ownOnly: true }),
       })),
     )
   )

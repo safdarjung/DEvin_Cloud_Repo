@@ -37,7 +37,7 @@ export async function getSetupStatus(ctx: TenantContext): Promise<SetupStatus> {
   const id = ctx.institution.id;
   const [grades, students, invitations, year] = await Promise.all([
     supabase.from("grades").select("id", { count: "exact", head: true }).eq("institution_id", id).then(countOrThrow),
-    supabase.from("students").select("id", { count: "exact", head: true }).eq("institution_id", id).then(countOrThrow),
+    supabase.from("students").select("id", { count: "exact", head: true }).eq("institution_id", id).eq("status", "active").then(countOrThrow),
     supabase.from("invitations").select("id", { count: "exact", head: true }).eq("institution_id", id).then(countOrThrow),
     supabase.from("academic_years").select("starts_on").eq("institution_id", id).eq("is_current", true).maybeSingle(),
   ]);

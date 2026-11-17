@@ -153,3 +153,12 @@ describe("systemPromptFor", () => {
     for (const role of ["owner", "guardian"] as const) expect(build(role)).toContain("under 150 words");
   });
 });
+
+describe("orb date line", () => {
+  it("states today and the Monday–Sunday week in India time", async () => {
+    const { systemPromptFor } = await import("@/modules/ai/kernel/personas");
+    // 2026-11-17 01:00 IST is still 16 Nov in UTC: the line must use India time.
+    const text = systemPromptFor({ role: "teacher", nonce: "n", mode: "cloud", capabilities: [], instructions: "", now: new Date("2026-11-16T19:30:00Z") });
+    expect(text).toContain("Today is Tuesday, 17 November 2026 (India time). This week runs from Monday, 16 November 2026 to Sunday, 22 November 2026.");
+  });
+});

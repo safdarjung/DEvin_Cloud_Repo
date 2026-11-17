@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { ActionResult } from "@/lib/actions/result";
+import { humanize } from "@/lib/format";
 import { upsertFeeStructure } from "@/modules/finance/actions";
 import { feeFrequency, feeHead } from "@/modules/finance/schemas";
 import type { FeeStructureDetail, PickerOption } from "@/modules/finance/queries";
@@ -116,7 +117,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
               <SelectContent>
                 {feeHead.options.map((h) => (
                   <SelectItem key={h} value={h}>
-                    {h}
+                    {humanize(h)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -136,7 +137,7 @@ export function FeeStructureForm({ institutionSlug, academicYears, grades, initi
               <SelectContent>
                 {feeFrequency.options.map((f) => (
                   <SelectItem key={f} value={f}>
-                    {f}
+                    {humanize(f)}
                   </SelectItem>
                 ))}
               </SelectContent>

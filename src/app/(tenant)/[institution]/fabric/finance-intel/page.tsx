@@ -4,7 +4,7 @@ import { KpiStrip, KpiTile } from "@/components/widgets/kpi-widget";
 import { BarList, ProgressBar } from "@/components/widgets/viz";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
-import { inr } from "@/lib/format";
+import { formatDate, inr } from "@/lib/format";
 import { currentTermCollections } from "@/modules/core/dashboard.queries";
 import { FinanceIntelChart, type FinanceChartPoint } from "@/modules/fabric/components/finance-intel-chart";
 import { FabricPage } from "@/modules/fabric/components/fabric-page";
@@ -41,8 +41,9 @@ export default async function FinanceIntelPage({
     }),
     loadSection(ctx, "collections", "finance.read", "fees", () => currentTermCollections(ctx)),
     loadSection(ctx, "defaulters", "finance.structure.manage", "fees", async () => {
-      const terms = await listTermOptions(ctx);
-      const term = terms[0];
+      // Same term as the dashboard and the "Billed this term" tile (the current one), not the first listed.
+      const [terms, current] = await Promise.all([listTermOptions(ctx), currentTermCollections(ctx)]);
+      const term = terms.find((t) => t.id === current?.termId) ?? terms[0];
       return term ? { term, rows: await listDefaulters(ctx, { termId: term.id }) } : null;
     }),
     loadSection(ctx, "budgets", "expense.read", "expenses", () => expensesBudgetVsActual(ctx, {})),
@@ -69,7 +70,7 @@ export default async function FinanceIntelPage({
         {collections.state === "ok" && collections.data && (
           <section aria-label="This term">
             <KpiStrip className="md:[&>div]:grid-cols-4 xl:[&>div]:grid-cols-4">
-            <KpiTile label="Billed this term" value={paiseToInr(collections.data.duePaise)} animateTo={collections.data.duePaise / 100} format="inr" sub={`${collections.data.invoiceCount} invoices`} />
+            <KpiTile label="Billed this term" value={paiseToInr(collections.data.duePaise)} animateTo={collections.data.duePaise / 100} format="inr" sub={`${collections.data.invoiceCount.toLocaleString("en-IN")} invoices`} />
             <KpiTile label="Collected" value={paiseToInr(collections.data.collectedPaise)} animateTo={collections.data.collectedPaise / 100} format="inr" spark={observedSpark} />
             <KpiTile
               label="Outstanding"
@@ -170,7 +171,7 @@ export default async function FinanceIntelPage({
               return (
                 <div className="space-y-2">
                   <p className="text-sm">
-                    <span className="font-medium tabular-nums">{inr(total)}</span> outstanding across {d.rows.length} invoices in {d.term.label}.
+                    <span className="font-medium tabular-nums">{inr(total)}</span> outstanding across {d.rows.length.toLocaleString("en-IN")} invoices in {d.term.label}.
                   </p>
                   <BarList
                     ariaLabel={`Largest outstanding invoices, ${d.term.label}`}
@@ -185,7 +186,7 @@ export default async function FinanceIntelPage({
                       const overdue = r.dueOn !== null && r.dueOn < today;
                       return {
                         key: r.invoiceId,
-                        cells: [r.studentName, inr(r.outstanding), r.dueOn ? <>{r.dueOn}{overdue && <StatusChip tone="bad"> Overdue</StatusChip>}</> : "No due date"],
+                        cells: [r.studentName, inr(r.outstanding), r.dueOn ? <>{formatDate(r.dueOn)}{overdue && <StatusChip tone="bad"> Overdue</StatusChip>}</> : "No due date"],
                       };
                     })}
                   />

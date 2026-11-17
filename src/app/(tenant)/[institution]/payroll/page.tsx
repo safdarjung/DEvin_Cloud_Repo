@@ -130,7 +130,7 @@ export default async function PayrollPage({ params, searchParams }: { params: Pr
                         <span className="font-medium">{s.fullName}</span>
                         <span className="block text-xs text-muted-foreground">{s.employeeNo}</span>
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell">{s.designation}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{s.designation && humanize(s.designation)}</TableCell>
                       <TableCell className="hidden text-right tabular-nums sm:table-cell">{s.structure ? inrPaise(s.structure.grossPaise) : "—"}</TableCell>
                       <TableCell className="text-right tabular-nums">{s.structure ? inrPaise(s.structure.netPaise) : <span className="text-muted-foreground">Not set</span>}</TableCell>
                       <TableCell className="text-right">

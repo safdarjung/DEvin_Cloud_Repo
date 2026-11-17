@@ -4,7 +4,7 @@ import type { TenantContext } from "@/lib/auth/types";
 import { isModuleEnabled } from "@/lib/modules/catalog";
 
 export function addStudentHref(ctx: TenantContext, slug: string): { href: string; label: string } | null {
-  if (isModuleEnabled(ctx, "admissions") && hasPermission(ctx, "admissions.enquiry.read")) return { href: `/${slug}/admissions/applications`, label: "Add student (admission)" };
+  if (isModuleEnabled(ctx, "admissions") && hasPermission(ctx, "admissions.enquiry.read")) return { href: `/${slug}/admissions`, label: "Add student (admission)" };
   if (hasPermission(ctx, "data.import")) return { href: `/${slug}/setup`, label: "Add students (import)" };
   return null;
 }

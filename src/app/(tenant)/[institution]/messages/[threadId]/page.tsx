@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
+import { createClient } from "@/lib/supabase/server";
 import { uuid } from "@/lib/schemas/common";
 import { MessageList } from "@/modules/messaging/components/MessageList";
 import { ReplyComposer } from "@/modules/messaging/components/ReplyComposer";
@@ -29,6 +30,21 @@ export default async function MessageThreadPage({ params }: { params: Promise<{ 
   const canReply = hasPermission(ctx, "message.send") && participant;
   const other = isTeacher ? (thread.guardianName ?? "Parent") : "Participant";
 
+  // Leaders are not a side of the thread: name each sender from the guardian and teacher on it (where RLS lets them read it).
+  const senderNames: Record<string, string> = {};
+  if (!isTeacher) {
+    const supabase = await createClient();
+    const { data: t } = await supabase.from("message_threads").select("guardian_id, teacher_staff_id").eq("id", threadId).eq("institution_id", ctx.institution.id).maybeSingle();
+    if (t) {
+      const [g, s] = await Promise.all([
+        supabase.from("guardians").select("user_id, full_name").eq("id", t.guardian_id).maybeSingle(),
+        supabase.from("staff").select("user_id, full_name").eq("id", t.teacher_staff_id).maybeSingle(),
+      ]);
+      if (g.data?.user_id) senderNames[g.data.user_id] = g.data.full_name;
+      if (s.data?.user_id) senderNames[s.data.user_id] = s.data.full_name;
+    }
+  }
+
   return (
     <div className="max-w-3xl">
       <PageHeader
@@ -38,7 +54,7 @@ export default async function MessageThreadPage({ params }: { params: Promise<{ 
       />
       <Card className="gap-0 py-0">
         <CardContent className="py-4">
-          <MessageList messages={messages} otherName={other} />
+          <MessageList messages={messages} otherName={other} senderNames={senderNames} />
         </CardContent>
         <div className="border-t border-border bg-secondary/50 px-4 py-3">
           {canReply ? (

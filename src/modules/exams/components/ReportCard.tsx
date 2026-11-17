@@ -69,10 +69,10 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
               <th className="py-2 font-medium">Subject</th>
-              <th className="py-2 text-right font-medium">Marks</th>
-              <th className="py-2 text-right font-medium">Max</th>
-              <th className="py-2 text-right font-medium">Grade</th>
-              {canRequestRecheck && <th className="py-2 text-right font-medium print:hidden">Recheck</th>}
+              <th className="py-2 pl-4 text-right font-medium">Marks</th>
+              <th className="py-2 pl-4 text-right font-medium">Max</th>
+              <th className="py-2 pl-4 text-right font-medium">Grade</th>
+              {canRequestRecheck && <th className="py-2 pl-4 text-right font-medium print:hidden">Recheck</th>}
             </tr>
           </thead>
           <tbody>
@@ -81,11 +81,11 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
               return (
                 <tr key={subject.examPaperId} className="border-b border-border/50">
                   <td className="py-2">{subject.subjectName}</td>
-                  <td className="py-2 text-right">{subject.isAbsent ? "Absent" : subject.marksObtained}</td>
-                  <td className="py-2 text-right">{subject.maxMarks}</td>
-                  <td className="py-2 text-right">{subject.grade ?? "—"}</td>
+                  <td className="py-2 pl-4 text-right">{subject.isAbsent ? "Absent" : subject.marksObtained}</td>
+                  <td className="py-2 pl-4 text-right">{subject.maxMarks}</td>
+                  <td className="py-2 pl-4 text-right">{subject.grade ?? "—"}</td>
                   {canRequestRecheck && (
-                    <td className="py-2 text-right print:hidden">
+                    <td className="py-2 pl-4 text-right whitespace-nowrap print:hidden">
                       {recheck ? (
                         <span className="text-muted-foreground text-xs">
                           {RECHECK_STATUS_LABEL[recheck.status] ?? recheck.status}
@@ -107,9 +107,9 @@ export async function ReportCard({ ctx, examId, studentId }: ReportCardProps) {
           <tfoot>
             <tr className="border-t font-semibold">
               <td className="py-2">Total</td>
-              <td className="py-2 text-right">{result.total}</td>
-              <td className="py-2 text-right">{result.maxTotal}</td>
-              <td className="py-2 text-right">{result.grade}</td>
+              <td className="py-2 pl-4 text-right">{result.total}</td>
+              <td className="py-2 pl-4 text-right">{result.maxTotal}</td>
+              <td className="py-2 pl-4 text-right">{result.grade}</td>
               {canRequestRecheck && <td className="print:hidden" />}
             </tr>
           </tfoot>

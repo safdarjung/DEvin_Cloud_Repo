@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getTenantContext } from "@/lib/auth/context";
 import { requireModule, requirePermission } from "@/lib/auth/require";
-import { humanize } from "@/lib/format";
+import { formatDate, humanize } from "@/lib/format";
 import { IssueCertificateForm } from "@/modules/certificates/components/IssueCertificateForm";
 import { ID_CARD_MAX } from "@/modules/certificates/id-cards.queries";
 import { listCertificates } from "@/modules/certificates/queries";
@@ -88,7 +88,7 @@ export default async function CertificatesPage({ params, searchParams }: { param
                             {c.classLabel && ` · ${c.classLabel}`}
                           </span>
                         </TableCell>
-                        <TableCell className="hidden tabular-nums sm:table-cell">{c.issuedOn}</TableCell>
+                        <TableCell className="hidden tabular-nums sm:table-cell">{formatDate(c.issuedOn)}</TableCell>
                         <TableCell className="text-right">
                           <Button asChild size="sm" variant="outline">
                             <a href={`${printBase}?cert=${c.id}`} target="_blank" rel="noopener noreferrer" aria-label={`Open print view for ${c.serialNo}`}>

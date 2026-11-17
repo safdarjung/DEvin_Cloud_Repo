@@ -245,7 +245,7 @@ export function AppTour({ steps, intro, roleLabel, storageKey, orbHref, institut
               Welcome, {roleLabel}
             </h2>
             <p id="app-tour-text" className="mt-2 text-sm text-muted-foreground">
-              {intro} Would you like a guided tour? It opens each of your {total} tabs in turn and says what it is for, about {minutes} minutes. Or pick
+              {intro} Would you like a guided tour? It opens your {total} main tabs in turn and says what each is for, about {minutes} minutes. Or pick
               one feature to try on its own.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2">

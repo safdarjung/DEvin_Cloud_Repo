@@ -32,11 +32,19 @@ export default async function AdmissionsPage({
     <div className="space-y-4">
       <PageHeader
         title="Admissions pipeline"
-        description="Enquiries grouped by stage. Change a card's stage from its dropdown."
+        description="Enquiries grouped by stage. Change a card's stage from its dropdown. Enquiries arrive from the school's public admissions form."
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/${institutionSlug}/admissions/applications`}>Applications</Link>
-          </Button>
+          <>
+            {/* No staff-side create action exists; enquiries are created by the public form. */}
+            <Button asChild size="sm">
+              <Link href={`/s/${institutionSlug}/admissions`} target="_blank" rel="noopener">
+                New enquiry (public form, opens in a new tab)
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${institutionSlug}/admissions/applications`}>Applications</Link>
+            </Button>
+          </>
         }
       />
       {totalEnquiries > 0 && (

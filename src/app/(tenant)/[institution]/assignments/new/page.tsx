@@ -21,7 +21,7 @@ export default async function NewAssignmentPage({
 
   const sections = await listTeachableSections(ctx);
   const sectionsWithSubjects = await Promise.all(
-    sections.map(async (section) => ({ ...section, subjects: await listSectionSubjects(ctx, section.id) })),
+    sections.map(async (section) => ({ ...section, subjects: await listSectionSubjects(ctx, section.id, { ownOnly: true }) })),
   );
 
   return (

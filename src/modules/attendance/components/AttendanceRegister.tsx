@@ -189,7 +189,7 @@ export function AttendanceRegister({
       )}
 
       <Card>
-        <CardContent>
+        <CardContent className="min-w-0">
           <Table>
             <TableHeader>
               <TableRow>

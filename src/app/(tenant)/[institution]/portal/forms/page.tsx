@@ -11,6 +11,8 @@ import { formMine } from "@/modules/forms/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 
+const PARENT_WORDING = /\b(your child|my child|your ward|my ward|your son|your daughter)\b/i;
+
 export const metadata: Metadata = { title: "Forms" };
 
 export default async function PortalFormsPage({
@@ -34,7 +36,10 @@ export default async function PortalFormsPage({
 
   let forms;
   try {
-    forms = (await formMine(ctx)).filter((f) => f.studentId === selection.studentId);
+    forms = (await formMine(ctx)).filter(
+      // shortcut: forms have no audience field (only sections), so parent-addressed wording is the signal; add a real audience column to replace this.
+      (f) => f.studentId === selection.studentId && (role === "guardian" || !PARENT_WORDING.test(JSON.stringify([f.title, f.description, f.fields]))),
+    );
   } catch (e) {
     console.error("portal forms fetch failed:", e instanceof Error ? e.message : e);
     return (

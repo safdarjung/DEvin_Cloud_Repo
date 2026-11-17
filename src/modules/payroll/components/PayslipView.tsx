@@ -4,7 +4,7 @@
 import { LimitedBadge } from "@/components/honesty";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { inr } from "@/lib/format";
+import { humanize, inr } from "@/lib/format";
 import type { PayslipRow } from "@/modules/payroll/queries";
 import { componentTotals, PAYROLL_LIMITED_NOTE } from "@/modules/payroll/schemas";
 
@@ -40,7 +40,7 @@ export function PayslipView({ payslip, schoolName }: { payslip: PayslipRow; scho
         <dt className="text-muted-foreground">Employee no</dt>
         <dd className="text-right">{payslip.employeeNo ?? "—"}</dd>
         <dt className="text-muted-foreground">Designation</dt>
-        <dd className="text-right">{payslip.designation ?? "—"}</dd>
+        <dd className="text-right">{payslip.designation ? humanize(payslip.designation) : "—"}</dd>
       </dl>
 
       <Table>

@@ -15,6 +15,14 @@ export const DEFAULT_ENQUIRY_STAGES = [
 
 export type EnquiryStage = string;
 
+/** Stages that are no longer open work: counted by "open enquiries" nowhere. */
+export const CLOSED_ENQUIRY_STAGES: readonly string[] = ["converted", "closed"];
+
+/** Sum of enquiries still being worked (excludes converted and closed). */
+export function countOpenEnquiries(stages: Record<string, number>): number {
+  return Object.entries(stages).reduce((sum, [k, n]) => (CLOSED_ENQUIRY_STAGES.includes(k) ? sum : sum + (typeof n === "number" ? n : 0)), 0);
+}
+
 export type ApplicationStatus =
   | "submitted"
   | "under_review"

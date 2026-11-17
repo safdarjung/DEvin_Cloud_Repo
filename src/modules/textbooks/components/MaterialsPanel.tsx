@@ -165,7 +165,7 @@ export function MaterialsPanel({ institutionSlug, heading, description, items, e
         </ul>
       )}
       {upload && (
-        <form className="flex flex-wrap items-end gap-2" onSubmit={submit} aria-busy={pending}>
+        <form className="flex min-w-0 flex-wrap items-end gap-2" onSubmit={submit} aria-busy={pending}>
           <div className="min-w-0 flex-1">
             <Label htmlFor={inputId} className="text-xs">
               {upload.label} (PDF, JPEG or PNG, up to 10 MB)

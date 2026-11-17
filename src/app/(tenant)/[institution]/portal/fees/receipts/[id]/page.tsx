@@ -43,7 +43,7 @@ export default async function PortalReceiptPage({
         canStudy={hasPermission(ctx, "ai.study")}
       />
       <FadeIn>
-        <ReceiptView receipt={receipt} />
+        <ReceiptView receipt={receipt} family />
       </FadeIn>
     </>
   );

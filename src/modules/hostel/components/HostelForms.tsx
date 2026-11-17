@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { describeActionError } from "@/lib/action-error";
 import { allocateRoom, createRoom, saveRollCall, updateRoom, vacateAllocation } from "@/modules/hostel/actions";
-import type { HostelAllocationRow, HostelRollCallEntryRow, HostelRoomRow, HostelStudentOption } from "@/modules/hostel/queries";
+import { StudentSearchSelect } from "@/modules/people/components/StudentSearchSelect";
+import type { HostelAllocationRow, HostelRollCallEntryRow, HostelRoomRow } from "@/modules/hostel/queries";
 import { ROLL_CALL_STATUSES, type HostelRollCallSaveInput } from "@/modules/hostel/schemas";
 
 const SELECT_CLASS = "h-10 rounded-md border border-input bg-transparent px-3 text-sm";
@@ -72,17 +73,18 @@ export function RoomForm({ institutionSlug, room }: { institutionSlug: string; r
   );
 }
 
-export function AllocateForm({ institutionSlug, rooms, students }: { institutionSlug: string; rooms: HostelRoomRow[]; students: HostelStudentOption[] }) {
+export function AllocateForm({ institutionSlug, rooms }: { institutionSlug: string; rooms: HostelRoomRow[] }) {
   const { pending, run } = useRun();
   const [roomId, setRoomId] = useState("");
-  const [studentId, setStudentId] = useState("");
+  const [student, setStudent] = useState<{ id: string; label: string } | null>(null);
+  const studentId = student?.id ?? "";
   return (
     <form
       className="flex flex-wrap items-end gap-3"
       aria-busy={pending}
       onSubmit={(e) => {
         e.preventDefault();
-        run(() => allocateRoom(institutionSlug, { roomId, studentId }), "Student allocated", () => setStudentId(""));
+        run(() => allocateRoom(institutionSlug, { roomId, studentId }), "Student allocated", () => setStudent(null));
       }}
     >
       <div>
@@ -98,14 +100,7 @@ export function AllocateForm({ institutionSlug, rooms, students }: { institution
       </div>
       <div>
         <Label htmlFor="al-student">Student</Label>
-        <select id="al-student" className={SELECT_CLASS} value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-          <option value="">Choose student</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} ({s.admissionNo})
-            </option>
-          ))}
-        </select>
+        <StudentSearchSelect institutionSlug={institutionSlug} id="al-student" value={student} onChange={setStudent} />
       </div>
       <Button type="submit" size="sm" disabled={pending || !roomId || !studentId}>
         Allocate

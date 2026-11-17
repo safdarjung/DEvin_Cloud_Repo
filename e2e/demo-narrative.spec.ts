@@ -10,7 +10,7 @@ import { generateQuizWithRetry, isOllamaReachable, loginAs, reportCardBySubjectC
 // one spec that is allowed to depend on seed-entity state across steps,
 // since it IS the 13-step narrative the seed's "named demo entities" exist
 // for (05 §8.1).
-const DRAFT_ONLY_MARKER = "DRAFT-ONLY-MARKER-never-published-2026";
+const DRAFT_ONLY_MARKER = "Coming soon: our new science wing and robotics lab open for the 2027 session.";
 
 function serviceClient(): SupabaseClient {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!);

@@ -11,7 +11,7 @@ const SLUG = "st-josephs-demo";
 // Mirrors `DRAFT_ONLY_MARKER` in scripts/seed/sections/website.ts (not
 // imported across the scripts/e2e boundary — this spec isn't run in
 // phase 1, so the string is duplicated here rather than left unverified).
-const DRAFT_ONLY_MARKER = "DRAFT-ONLY-MARKER-never-published-2026";
+const DRAFT_ONLY_MARKER = "Coming soon: our new science wing and robotics lab open for the 2027 session.";
 
 test.describe("J-01: public site renders published content only", () => {
   test("home page renders with seeded content", async ({ page }) => {

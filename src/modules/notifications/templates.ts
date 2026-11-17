@@ -2,6 +2,7 @@
 // channel list (per the spec table) and a Zod-validated variable schema so
 // a handler can never render free-form payload text into a message body.
 import { z } from "zod";
+import { formatDate } from "../../lib/format.ts";
 
 export type NotificationChannel = "in_app" | "sms" | "email" | "whatsapp";
 export type Lang = "en" | "hi";
@@ -213,10 +214,12 @@ export const NOTIFICATION_TEMPLATES = {
     category: "finance",
     varsSchema: FeeReminderVars,
     title: (lang) => (lang === "hi" ? "शुल्क अनुस्मारक" : "Fee reminder"),
-    body: (v, lang) =>
-      lang === "hi"
-        ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${v.due_on})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
-        : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${v.due_on}). Please pay at the school office. -${v.school}`,
+    body: (v, lang) => {
+      const due = /^\d{4}-\d{2}-\d{2}$/.test(v.due_on) ? formatDate(v.due_on) : v.due_on;
+      return lang === "hi"
+        ? `शुल्क अनुस्मारक: ${v.student} के लिए ${v.amount} बकाया है (चालान ${v.invoice_no}, देय तिथि ${due})। कृपया विद्यालय कार्यालय में भुगतान करें। -${v.school}`
+        : `Fee reminder: ${v.amount} is due for ${v.student} (invoice ${v.invoice_no}, due ${due}). Please pay at the school office. -${v.school}`;
+    },
   }),
   workflow_alert: def({
     channels: ["in_app"],

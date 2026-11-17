@@ -99,7 +99,7 @@ async function AttendanceTab({ ctx, slug }: { ctx: TenantContext; slug: string }
                 {r.data.map((s) => (
                   <TableRow key={s.staffId}>
                     <TableCell className="font-medium">{s.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{s.designation}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{s.designation && humanize(s.designation)}</TableCell>
                     <TableCell>
                       {s.onLeave ? <Badge variant="outline">On leave</Badge> : s.status ? <Badge variant={s.status === "absent" ? "destructive" : "success"}>{humanize(s.status)}</Badge> : <Badge variant="outline">Not marked</Badge>}
                     </TableCell>

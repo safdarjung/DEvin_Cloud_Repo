@@ -74,7 +74,7 @@ export function TreeView({ nodes, label, forceOpen, readOnly, saves, onToggle, o
           <div className="min-w-0 flex-1 basis-40">
             <div className="flex flex-wrap items-baseline gap-x-2">
               <span className={cn("text-sm", node.kind === "category" || node.kind === "mode" ? "font-semibold" : "font-medium")}>{node.label}</span>
-              {has && node.kind !== "blocked" && <span className="text-xs text-muted-foreground">{c.on} of {c.total} on</span>}
+              {has && node.kind !== "blocked" && c.total > 0 && <span className="text-xs text-muted-foreground">{c.on} of {c.total} on</span>}
               {has && node.kind === "blocked" && <span className="text-xs text-muted-foreground">{countAll(node)} actions</span>}
             </div>
             {node.hint && node.kind !== "mode" && <p className="line-clamp-1 text-xs text-muted-foreground">{node.hint}</p>}

@@ -9,6 +9,7 @@
 import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +26,7 @@ import { LimitedBadge } from "@/components/honesty";
 import type { ActionResult } from "@/lib/actions/result";
 import { inr } from "@/lib/format";
 import { recordPayment, type RecordPaymentResult } from "@/modules/finance/actions";
+import { paymentModeLabel } from "@/modules/finance/format";
 
 function nowForInput(): string {
   const d = new Date();
@@ -59,7 +61,8 @@ export function RecordPaymentDialog({
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
-    if (next) {
+    // After a success the page still shows the old invoice until navigation lands; keep the same key so a re-open cannot record twice.
+    if (next && !state?.ok) {
       setAmount(outstanding.toFixed(2));
       setMode(paymentModes[0] ?? "cash");
       setReference("");
@@ -80,7 +83,8 @@ export function RecordPaymentDialog({
       });
       if (result.ok) {
         onRecorded?.();
-        setOpen(false);
+        toast.success(`Payment recorded. Receipt ${result.data.receiptNo}.`);
+        // Dialog stays open (submit locked) until the receipt page replaces this one.
         router.push(`/${institutionSlug}/finance/receipts/${result.data.receiptId}`);
       }
       return result;
@@ -132,7 +136,7 @@ export function RecordPaymentDialog({
               <SelectContent>
                 {paymentModes.map((m) => (
                   <SelectItem key={m} value={m}>
-                    {m}
+                    {paymentModeLabel(m)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -164,8 +168,8 @@ export function RecordPaymentDialog({
           )}
 
           <DialogFooter>
-            <Button type="submit" disabled={pending || !amount || Number(amount) <= 0}>
-              {pending ? "Recording…" : "Record"}
+            <Button type="submit" disabled={pending || state?.ok || !amount || Number(amount) <= 0}>
+              {pending ? "Recording…" : state?.ok ? "Recorded, opening receipt…" : "Record"}
             </Button>
           </DialogFooter>
         </form>

@@ -23,7 +23,7 @@ export function SubjectCurriculum({
     return <EmptyState title="No subjects assigned yet" description="Subjects appear once teachers are assigned to your section." />;
   }
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       {subjects.map((s, i) => {
         const covered = s.units.filter((u) => u.coveredOn).length;
         return (

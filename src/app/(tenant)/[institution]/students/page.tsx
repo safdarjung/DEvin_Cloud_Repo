@@ -16,6 +16,7 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listSectionOptions } from "@/modules/exams/queries";
 import { BulkActions, BulkCheckbox } from "@/modules/finance/components/BulkActions";
 import { listGradeOptions, listTermOptions } from "@/modules/finance/queries";
+import { humanize } from "@/lib/format";
 import { addStudentHref } from "@/modules/people/add-student";
 import { studentStatusVariant } from "@/modules/people/components/StudentProfileHeader";
 import { listStudents } from "@/modules/people/queries";
@@ -113,7 +114,7 @@ export default async function StudentsPage({
           </select>
           <select name="sectionId" defaultValue={filters.sectionId ?? ""} aria-label="Filter by section" className={SELECT_CLASS}>
             <option value="">All sections</option>
-            {sections.map((s) => (
+            {sections.filter((s) => !filters.gradeId || s.gradeId === filters.gradeId).map((s) => (
               <option key={s.id} value={s.id}>
                 {s.label}
               </option>
@@ -123,7 +124,7 @@ export default async function StudentsPage({
             <option value="">All statuses</option>
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {humanize(s)}
               </option>
             ))}
           </select>
@@ -175,7 +176,7 @@ export default async function StudentsPage({
                     <TableCell>{[s.firstName, s.lastName].filter(Boolean).join(" ")}</TableCell>
                     <TableCell className="hidden sm:table-cell">{s.gradeName ? `${s.gradeName}-${s.sectionName}` : "—"}</TableCell>
                     <TableCell>
-                      <Badge variant={studentStatusVariant(s.status)}>{s.status}</Badge>
+                      <Badge variant={studentStatusVariant(s.status)}>{humanize(s.status)}</Badge>
                     </TableCell>
                   </TableRow>
                 ))}

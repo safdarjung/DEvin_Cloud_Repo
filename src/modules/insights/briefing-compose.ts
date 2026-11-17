@@ -6,6 +6,7 @@
 // shapes are read from `data: unknown` via local type guards below — this
 // module does not depend on those modules' exported types, only on the
 // source's documented JSON shape (06-backend-packets/M25-tasks.md rulings).
+import { countOpenEnquiries } from "@/modules/admissions/state";
 import type { Role } from "@/lib/auth/permissions";
 import type { DailyBrief, BriefingSource, PriorityAction, RiskIndicator } from "@/modules/fabric/types";
 import type { CalendarEventRow } from "@/modules/calendar/queries";
@@ -242,7 +243,7 @@ function isAdmissionsDashboard(data: unknown): data is AdmissionsDashboardLike {
 function admissionsItem(results: readonly BriefingSourceResult[], slug: string): Item | null {
   const data = find(results, "dashboard.admissions");
   if (!isAdmissionsDashboard(data)) return null;
-  const open = Object.values(data.funnel.enquiryStages).reduce((sum, v) => sum + (typeof v === "number" ? v : 0), 0);
+  const open = countOpenEnquiries(data.funnel.enquiryStages);
   const statuses = data.applicationStatuses;
   const inProgress = (["submitted", "under_review", "interaction_scheduled", "offered"] as const).reduce(
     (sum, key) => sum + (typeof statuses[key] === "number" ? statuses[key] : 0),

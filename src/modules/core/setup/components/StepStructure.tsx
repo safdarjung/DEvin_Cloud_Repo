@@ -34,7 +34,7 @@ export function StepStructure({ institutionSlug, state, gradeCount, yearStart }:
   const [error, setError] = useState<string | null>(null);
 
   if (state === "done") {
-    return <p className="text-sm text-muted-foreground">Done: {gradeCount} grades are set up. Edit them under Academics.</p>;
+    return <p className="text-sm text-muted-foreground">Done: {gradeCount} grades are set up.</p>;
   }
 
   const rangeOk = GRADE_LADDER.indexOf(fromGrade) <= GRADE_LADDER.indexOf(toGrade);

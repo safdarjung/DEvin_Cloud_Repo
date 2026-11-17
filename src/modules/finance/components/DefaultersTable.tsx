@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/states";
-import { inr } from "@/lib/format";
+import { formatDate, inr } from "@/lib/format";
 import type { DefaulterRow } from "@/modules/finance/queries";
 import { BulkCheckbox } from "@/modules/finance/components/BulkActions";
 import { FeeReminderDraftButton } from "@/modules/ai/components/FeeReminderDraftButton";
@@ -64,7 +64,7 @@ export function DefaultersTable({
             <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(row.total)}</TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(row.paidTotal)}</TableCell>
             <TableCell className="text-right font-medium tabular-nums">{inr(row.outstanding)}</TableCell>
-            <TableCell className="hidden sm:table-cell">{row.dueOn ?? "—"}</TableCell>
+            <TableCell className="hidden sm:table-cell">{row.dueOn ? formatDate(row.dueOn) : "—"}</TableCell>
             {aiDraftTermId && (
               <TableCell className="text-right">
                 <FeeReminderDraftButton institutionSlug={institutionSlug} invoiceId={row.invoiceId} termId={aiDraftTermId} studentName={row.studentName} />

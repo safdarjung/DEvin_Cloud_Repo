@@ -11,9 +11,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDateTime, humanize, inr } from "@/lib/format";
+import { paymentModeLabel } from "@/modules/finance/format";
 import type { ReceiptDetail } from "@/modules/finance/queries";
 
-export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
+export function ReceiptView({ receipt, family = false }: { receipt: ReceiptDetail; /** Guardian/student view: hide the staff-only reversal note. */ family?: boolean }) {
   const { snapshot } = receipt;
 
   return (
@@ -24,7 +25,7 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
           <h2 className="text-lg font-semibold">{receipt.receiptNo}</h2>
           <p className="text-muted-foreground text-sm">FY {receipt.financialYear}</p>
         </div>
-        <Badge variant="outline">{humanize(snapshot.mode)}</Badge>
+        <Badge variant="outline">{paymentModeLabel(snapshot.mode)}</Badge>
       </div>
 
       <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm sm:w-96">
@@ -74,7 +75,7 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
       </Table>
 
       <p className="text-muted-foreground text-xs">
-        This is a computer-generated receipt. Contact admin to reverse a recorded payment — there is no cancel path for payments.
+        This is a computer-generated receipt.{family ? "" : " Contact admin to reverse a recorded payment — there is no cancel path for payments."}
       </p>
     </div>
   );

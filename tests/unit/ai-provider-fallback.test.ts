@@ -234,6 +234,7 @@ describe("chat text helpers (what the chat UIs render)", async () => {
   it("strips Markdown bold and heading marks the UIs would show raw", () => {
     expect(plainChatText("## Fees\n**Grade IX** owes ₹13,358 * 2 rows")).toBe("Fees\nGrade IX owes ₹13,358 * 2 rows");
     expect(plainChatText("See the [Attendance page](/attendance) or call `getAttendancePattern`.")).toBe("See the Attendance page or call getAttendancePattern.");
+    expect(plainChatText("Today:\n| Time | Period |\n|------|--------|\n| 8:00 | Maths VI-A |")).toBe("Today:\nTime · Period\n8:00 · Maths VI-A");
   });
 
   it("only turns a finished navigate call with an in-app path into a link", () => {

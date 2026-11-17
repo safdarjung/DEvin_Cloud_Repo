@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requireModule, requirePermission } from "@/lib/auth/require";
-import { humanize } from "@/lib/format";
+import { formatDate, humanize } from "@/lib/format";
 import { portalTimeline } from "@/modules/behaviour/queries";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
@@ -56,7 +56,7 @@ export default async function PortalBehaviourPage({
                       <p className="font-medium">
                         {i.category} <Badge variant="outline">{humanize(i.severity)}</Badge>
                       </p>
-                      <p className="text-muted-foreground text-xs tabular-nums">{i.occurredOn}</p>
+                      <p className="text-muted-foreground text-xs tabular-nums">{formatDate(i.occurredOn)}</p>
                       {i.note && <p className="mt-1 text-sm">{i.note}</p>}
                     </div>
                     <span className="font-semibold tabular-nums">{i.points > 0 ? `+${i.points}` : i.points}</span>

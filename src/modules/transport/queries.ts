@@ -96,7 +96,7 @@ async function allAssignments(institutionId: string): Promise<{ route_id: string
 export async function transportRoutes(ctx: TenantContext): Promise<TransportRouteDetail[]> {
   const supabase = await createClient();
   const [routesRes, vehiclesRes, stopsRes, assignmentRows] = await Promise.all([
-    supabase.from("transport_routes").select("id, name, status, vehicle_id").eq("institution_id", ctx.institution.id),
+    supabase.from("transport_routes").select("id, name, status, vehicle_id").eq("institution_id", ctx.institution.id).order("name", { ascending: true }).order("id", { ascending: true }),
     supabase.from("transport_vehicles").select("id, registration_no, driver_name, capacity").eq("institution_id", ctx.institution.id),
     supabase
       .from("transport_stops")

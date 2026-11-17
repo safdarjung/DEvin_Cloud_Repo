@@ -28,6 +28,7 @@ export async function listTermOptions(ctx: TenantContext): Promise<TermOption[]>
 export interface SectionOption {
   id: string;
   label: string;
+  gradeId: string;
 }
 
 /** Every class section — the `createExamPapers` picker is controller-only (exam.manage), so no teacher narrowing. */
@@ -35,7 +36,7 @@ export async function listSectionOptions(ctx: TenantContext): Promise<SectionOpt
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_sections")
-    .select("id, name, grades(code, sort_key)")
+    .select("id, name, grade_id, grades(code, sort_key)")
     .eq("institution_id", ctx.institution.id)
     .order("name");
   if (error) throw error;
@@ -47,6 +48,7 @@ export async function listSectionOptions(ctx: TenantContext): Promise<SectionOpt
     .map((row) => ({
       id: row.id,
       label: `${(row.grades as { code: string } | null)?.code ?? "?"}-${row.name}`,
+      gradeId: row.grade_id,
     }));
 }
 
@@ -134,8 +136,7 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
     .from("exam_papers")
     .select("id, class_section_id, subject_id, max_marks, pass_marks, held_on, scheduled_at, duration_minutes, room_id, class_sections(name, grades(code)), subjects(name)")
     .eq("institution_id", ctx.institution.id)
-    .eq("exam_id", examId)
-    .order("held_on", { ascending: true, nullsFirst: true });
+    .eq("exam_id", examId);
   if (papersError) throw papersError;
 
   return {
@@ -162,7 +163,7 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
         durationMinutes: row.duration_minutes,
         roomId: row.room_id,
       };
-    }),
+    }).sort((a, b) => a.sectionLabel.localeCompare(b.sectionLabel) || a.subjectName.localeCompare(b.subjectName)), // stable: scheduling a date must not reorder rows
   };
 }
 

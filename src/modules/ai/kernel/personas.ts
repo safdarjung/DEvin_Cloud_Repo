@@ -22,6 +22,19 @@ export interface SystemPromptInput {
   childId?: string;
   /** Guardian only — every linked child in scope (several when none was picked). */
   children?: readonly { id: string; name: string }[];
+  /** Defaults to now; tests pin it. */
+  now?: Date;
+}
+
+const IST = "Asia/Kolkata";
+const dayText = (d: Date) => d.toLocaleDateString("en-IN", { timeZone: IST, weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+/** Today and this Mon-Sun week in India time, so "this week" / "yesterday" questions resolve to real dates. */
+function dateLine(now: Date): string {
+  const weekday = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(now.toLocaleDateString("en-US", { timeZone: IST, weekday: "long" }));
+  const monday = new Date(now.getTime() - ((weekday + 6) % 7) * 86_400_000);
+  const sunday = new Date(monday.getTime() + 6 * 86_400_000);
+  return `Today is ${dayText(now)} (India time). This week runs from ${dayText(monday)} to ${dayText(sunday)}.`;
 }
 
 const MODE_LINE: Record<SystemPromptInput["mode"], string> = {
@@ -121,7 +134,7 @@ function schoolInstructionsBlock(instructions: string, nonce: string): string | 
 }
 
 export function systemPromptFor(input: SystemPromptInput): string {
-  const parts = [baseRules(input.nonce, input.mode, input.role), personaFor(input.role, input.studentPrefs, input.childId, input.children)];
+  const parts = [baseRules(input.nonce, input.mode, input.role), personaFor(input.role, input.studentPrefs, input.childId, input.children), dateLine(input.now ?? new Date())];
   const capLines = capabilityLines(input.capabilities);
   if (capLines) parts.push(capLines);
   const instrLines = instructionLines(input.capabilities);

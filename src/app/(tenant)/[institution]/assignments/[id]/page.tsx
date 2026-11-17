@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission, requirePermission, requireModule } from "@/lib/auth/require";
 import { AssignmentForm } from "@/modules/academics/components/AssignmentForm";
+import { PublishButton } from "@/modules/academics/components/AssignmentList";
 import { QuizContentView } from "@/modules/academics/components/QuizContentView";
 import { assignmentStatusVariant } from "@/modules/academics/status";
 import { getAssignment } from "@/modules/academics/assignments.queries";
@@ -39,9 +40,12 @@ export default async function AssignmentDetailPage({
         description={assignment.dueAt ? `Due ${new Date(assignment.dueAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : undefined}
         back={{ href: `/${institutionSlug}/assignments`, label: "Assignments" }}
         actions={
-          <Badge variant={assignmentStatusVariant(assignment.status)} className="capitalize">
-            {assignment.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            {canEdit && <PublishButton institutionSlug={institutionSlug} assignmentId={id} />}
+            <Badge variant={assignmentStatusVariant(assignment.status)} className="capitalize">
+              {assignment.status}
+            </Badge>
+          </div>
         }
       />
 

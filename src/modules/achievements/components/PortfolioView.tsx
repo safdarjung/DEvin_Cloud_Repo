@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import { humanize } from "@/lib/format";
+import { formatDate, humanize } from "@/lib/format";
 import type { Portfolio } from "@/modules/achievements/queries";
 import { PrintButton } from "./AchievementForms";
 
@@ -25,7 +25,7 @@ export function PortfolioView({ portfolio, schoolName }: { portfolio: Portfolio;
             <li key={e.id} className="break-inside-avoid rounded-md border p-3">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="font-medium">{e.title}</p>
-                <p className="text-muted-foreground text-xs tabular-nums">{e.eventDate}</p>
+                <p className="text-muted-foreground text-xs tabular-nums">{formatDate(e.eventDate)}</p>
               </div>
               <p className="text-sm">
                 {humanize(e.category)}, {humanize(e.level)} level{e.position ? `, ${e.position}` : ""}

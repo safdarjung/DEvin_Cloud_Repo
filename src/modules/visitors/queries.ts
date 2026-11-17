@@ -216,3 +216,10 @@ export async function visitorsPickupList(ctx: TenantContext, studentId: string):
 
   return [...guardianRows, ...pickupRows];
 }
+
+export async function visitorsStudentLabel(ctx: TenantContext, studentId: string): Promise<string | undefined> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("students").select("first_name, last_name, admission_no").eq("institution_id", ctx.institution.id).eq("id", studentId).maybeSingle();
+  if (error) throw error;
+  return data ? `${[data.first_name, data.last_name].filter(Boolean).join(" ")} (${data.admission_no})` : undefined;
+}

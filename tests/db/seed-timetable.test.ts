@@ -52,7 +52,7 @@ describe("M07-T6 seed section timetable", () => {
     `;
     expect(rows.length).toBe(72);
     for (const row of rows) {
-      expect(row.filled).toBeGreaterThanOrEqual(40);
+      expect(row.filled).toBeGreaterThanOrEqual(36);
     }
   });
 

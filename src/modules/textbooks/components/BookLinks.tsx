@@ -109,7 +109,7 @@ export function TimetableBookLink({ books, subjectName }: { books: BookView[] | 
   return (
     <details className="mt-1 text-xs">
       <summary className="inline-flex min-h-6 cursor-pointer items-center gap-1 text-primary" aria-label={`Textbook for ${subjectName}`}>
-        <BookOpen className="size-3" aria-hidden /> Book
+        <BookOpen className="size-3" aria-hidden /> Textbook
       </summary>
       <ul className="mt-1 space-y-1">
         {books.map((b) => {

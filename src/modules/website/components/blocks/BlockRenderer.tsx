@@ -18,7 +18,7 @@ export function BlockRenderer({ blocks, slug, institutionId }: { blocks: Block[]
       {blocks.map((block, index) => {
         switch (block.type) {
           case "hero":
-            return <Hero key={index} block={block} />;
+            return <Hero key={index} block={block} slug={slug} />;
           case "rich_text":
             return <RichText key={index} block={block} />;
           case "image":

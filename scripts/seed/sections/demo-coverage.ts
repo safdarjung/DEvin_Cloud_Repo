@@ -58,7 +58,7 @@ async function studentLeave(ctx: SeedContext, users: Record<string, string>): Pr
     ["Ananya", -10, -9, "Fever and doctor's advice to rest.", "approved", "Get well soon."],
     ["Ananya", 5, 6, "Family wedding out of town.", "pending", null],
     ["Ananya", -25, -25, "Dental appointment.", "rejected", "Unit test that day; please reschedule."],
-    ["Aarav", 3, 3, "Cousin's engagement ceremony.", "pending", null],
+    // Aarav's pending leave comes from the homeroom section (tests/db/seed-homeroom.test.ts expects exactly one).
   ];
   const decider = users["principal"] ?? parent;
   for (const [name, from, to, reason, status, note] of plan) {

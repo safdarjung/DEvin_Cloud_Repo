@@ -48,9 +48,12 @@ export default async function ExamDetailPage({
   const canSchedule = exam.papers.length > 0 && exam.status !== "published";
   const rooms = canSchedule ? await listRoomOptions(ctx) : [];
   const [verification, progress] = await Promise.all([
-    exam.papers.length > 0 ? verifyExam(institutionSlug, { examId }) : null,
+    // Published results are a frozen snapshot: students enrolled afterwards are not "missing".
+    exam.papers.length > 0 && exam.status !== "published" ? verifyExam(institutionSlug, { examId }) : null,
     getMarksProgress(ctx, exam),
   ]);
+
+  const progressByPaper = new Map(progress.map((p) => [p.paperId, p]));
 
   return (
     <div className="space-y-6">
@@ -100,7 +103,9 @@ export default async function ExamDetailPage({
                   <Link href={`/${institutionSlug}/exams/${exam.id}/papers/${paper.id}`} className="hover:underline">
                     {paper.sectionLabel} · {paper.subjectName}
                   </Link>
-                  <span className="text-sm text-muted-foreground">/{paper.maxMarks}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {progressByPaper.has(paper.id) ? `${progressByPaper.get(paper.id)!.entered}/${progressByPaper.get(paper.id)!.total} entered · ` : ""}/{paper.maxMarks}
+                  </span>
                 </FadeIn>
               ))}
             </ul>

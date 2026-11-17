@@ -268,7 +268,7 @@ export interface SubjectOption {
 }
 
 /** Subjects selectable for a given section: all institution subjects for owner/principal/the section's class teacher, else only subjects assigned to this teacher for this section. */
-/** `ownOnly`: a teacher sees just the subjects assigned to them, even as the section's class teacher (falls back to all if they have none there). */
+/** `ownOnly`: a teacher sees just the subjects assigned to them, even as the section's class teacher (none if they teach nothing there). */
 export async function listSectionSubjects(
   ctx: TenantContext,
   classSectionId: string,
@@ -307,7 +307,7 @@ export async function listSectionSubjects(
   if (assignedError) throw assignedError;
 
   const subjectIds = (assigned ?? []).map((row) => row.subject_id);
-  if (subjectIds.length === 0) return wholeSection ? allSubjects() : [];
+  if (subjectIds.length === 0) return wholeSection && !opts.ownOnly ? allSubjects() : [];
 
   const { data, error } = await supabase
     .from("subjects")

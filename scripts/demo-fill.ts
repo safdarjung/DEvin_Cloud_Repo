@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createScriptAdminClient } from "./lib/admin-client.ts";
 import { uuidV5 } from "./seed/lib/ids.ts";
+import { SCHOOL_DAYS } from "./seed/sections/attendance.ts";
+import { LAST_NAMES } from "./seed/lib/names.ts";
 
 // Fills demo-school pages that would otherwise show an empty state (owner request, 2026-11-12).
 // Run:  node --env-file-if-exists=.env.local scripts/demo-fill.ts [--apply]
@@ -16,10 +18,10 @@ const apply = process.argv.includes("--apply");
 const id = (key: string) => uuidV5("demo-fill", key);
 
 type Row = Record<string, unknown>;
-interface Step { label: string; table: string; rows: Row[]; idCol: string; onConflict: string }
+interface Step { label: string; table: string; rows: Row[]; idCol: string; onConflict: string; prefiltered?: boolean }
 const steps: Step[] = [];
-const put = (label: string, table: string, rows: Row[], idCol = "id", onConflict = "id") => {
-  if (rows.length > 0) steps.push({ label, table, rows, idCol, onConflict });
+const put = (label: string, table: string, rows: Row[], idCol = "id", onConflict = "id", prefiltered = false) => {
+  if (rows.length > 0) steps.push({ label, table, rows, idCol, onConflict, prefiltered });
 };
 const skipped: string[] = [];
 
@@ -323,20 +325,94 @@ async function main() {
     put(`study studio audience (${login})`, "study_material_sections", [{ material_id: materialId, institution_id, class_section_id: section.id }], "material_id", "material_id,class_section_id");
   }
 
+  // ===== attendance: every school day (Mon-Sat) after the seeded window up to today, per section =====
+  // Same shape as the seed's attendance section: one submitted session per section/day, one record per
+  // actively enrolled student. A (section, date) that already has a session (e.g. marked live in QA) is left alone.
+  const fetchAll = async <T,>(q: () => { range: (a: number, b: number) => PromiseLike<{ data: unknown; error: { message: string } | null }> }, what: string) => {
+    const out: T[] = [];
+    for (let from = 0; ; from += 1000) {
+      const page = await must<T[]>(q().range(from, from + 999), what);
+      out.push(...page);
+      if (page.length < 1000) return out;
+    }
+  };
+  const lastSeeded = SCHOOL_DAYS[SCHOOL_DAYS.length - 1]!;
+  const attDays: string[] = [];
+  for (let d = addDays(lastSeeded, 1); d <= today; d = addDays(d, 1)) if (!isSunday(d)) attDays.push(d);
+  if (attDays.length > 0) {
+    const attSections = await fetchAll<{ id: string; class_teacher_id: string | null }>(
+      () => admin.from("class_sections").select("id, class_teacher_id").eq("institution_id", institution_id).eq("academic_year_id", year.id).order("id"), "attendance sections");
+    const enrolled = await fetchAll<{ student_id: string; class_section_id: string }>(
+      () => admin.from("enrolments").select("student_id, class_section_id").eq("institution_id", institution_id).eq("academic_year_id", year.id).eq("status", "active").order("id"), "attendance enrolments");
+    const studentsBySection = new Map<string, string[]>();
+    for (const e of enrolled) studentsBySection.set(e.class_section_id, [...(studentsBySection.get(e.class_section_id) ?? []), e.student_id]);
+    const existing = new Set((await fetchAll<{ class_section_id: string; date: string }>(
+      () => admin.from("attendance_sessions").select("class_section_id, date").eq("institution_id", institution_id).gte("date", attDays[0]!).is("period_id", null).order("id"), "existing attendance")).map((r) => `${r.class_section_id}:${r.date}`));
+    // ~93.5% P, 4% A, 1.5% L, 1% OL, drawn from the deterministic record id (no RNG state).
+    const statusFor = (recordId: string) => {
+      const r = parseInt(recordId.slice(0, 8), 16) / 0x1_0000_0000;
+      return r < 0.935 ? "P" : r < 0.975 ? "A" : r < 0.99 ? "L" : "OL";
+    };
+    const sessionRows: Row[] = [];
+    const recordRows: Row[] = [];
+    for (const sec of attSections) {
+      for (const date of attDays) {
+        if (existing.has(`${sec.id}:${date}`)) continue;
+        const sessionId = id(`attendance:session:${sec.id}:${date}`);
+        sessionRows.push({ id: sessionId, institution_id, class_section_id: sec.id, date, status: "submitted", marked_by: sec.class_teacher_id, submitted_at: at(date, "15:30") });
+        for (const studentId of studentsBySection.get(sec.id) ?? []) {
+          const recordId = id(`attendance:record:${sessionId}:${studentId}`);
+          recordRows.push({ id: recordId, institution_id, session_id: sessionId, student_id: studentId, status: statusFor(recordId) });
+        }
+      }
+    }
+    put(`attendance sessions (${attDays[0]}..${attDays[attDays.length - 1]})`, "attendance_sessions", sessionRows, "id", "id", true);
+    put("attendance records", "attendance_records", recordRows, "id", "id", true);
+  }
+
+  // ===== staff names: rename the seeded class teachers and any duplicate full names (by deterministic seed ids) =====
+  const CLASS_TEACHER_NAMES: Record<string, string> = { "teacher.vi-a": "Sunita Deshmukh", "teacher.viii-b": "Rajesh Kulkarni", "teacher.x-a": "Meenakshi Raghavan" };
+  const staffRows = await fetchAll<{ id: string; full_name: string }>(
+    () => admin.from("staff").select("id, full_name").eq("institution_id", institution_id).order("id"), "staff names");
+  const renames = new Map<string, string>();
+  for (const [login, name] of Object.entries(CLASS_TEACHER_NAMES)) {
+    const sid = uuidV5("people", login);
+    const row = staffRows.find((r) => r.id === sid);
+    if (row && row.full_name !== name) renames.set(sid, name);
+  }
+  const taken = new Set(staffRows.map((r) => renames.get(r.id) ?? r.full_name));
+  const seen = new Set<string>();
+  for (const r of staffRows.filter((x) => x.id.length > 0).sort((a, b) => a.full_name.localeCompare(b.full_name))) {
+    const name = renames.get(r.id) ?? r.full_name;
+    if (!seen.has(name)) { seen.add(name); continue; }
+    // Duplicate: only touch generated teachers/clerk (seed ids), walk to a surname that makes the name unique.
+    const [first, ...rest] = name.split(" ");
+    let idx = LAST_NAMES.indexOf(rest.join(" "));
+    if (idx < 0) continue;
+    let candidate = name;
+    do { idx = (idx + 1) % LAST_NAMES.length; candidate = `${first} ${LAST_NAMES[idx]}`; } while (taken.has(candidate));
+    taken.add(candidate);
+    renames.set(r.id, candidate);
+  }
+  console.log(`staff renames: ${renames.size}${apply ? "" : " (dry run)"}`);
+  if (apply) for (const [sid, name] of renames) await must(admin.from("staff").update({ full_name: name }).eq("id", sid), "staff rename");
+
   // ===== run =====
   console.log(`${apply ? "APPLY" : "DRY RUN"} - ${SLUG} (is_demo), today ${today} IST`);
   for (const step of steps) {
     const ids = step.rows.map((r) => r[step.idCol] as string);
     const present = new Set<string>();
-    for (let i = 0; i < ids.length; i += 100) {
+    for (let i = 0; !step.prefiltered && i < ids.length; i += 100) {
       const found = await must<Record<string, string>[]>(admin.from(step.table).select(step.idCol).in(step.idCol, ids.slice(i, i + 100)), `${step.table} existing`);
       for (const r of found) present.add(r[step.idCol]!);
     }
     const fresh = step.rows.filter((r) => !present.has(r[step.idCol] as string));
     console.log(`  ${step.label}: ${fresh.length} new, ${step.rows.length - fresh.length} already present (${step.table})`);
     if (apply && fresh.length > 0) {
-      const { error } = await admin.from(step.table).upsert(fresh, { onConflict: step.onConflict, ignoreDuplicates: true });
-      if (error) throw new Error(`insert into ${step.table} failed: ${error.message}`);
+      for (let i = 0; i < fresh.length; i += 2000) {
+        const { error } = await admin.from(step.table).upsert(fresh.slice(i, i + 2000), { onConflict: step.onConflict, ignoreDuplicates: true });
+        if (error) throw new Error(`insert into ${step.table} failed: ${error.message}`);
+      }
     }
   }
   for (const s of skipped) console.log(`  SKIPPED ${s}`);

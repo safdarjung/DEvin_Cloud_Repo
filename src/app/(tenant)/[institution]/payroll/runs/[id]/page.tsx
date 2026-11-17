@@ -78,7 +78,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ ins
                   <TableRow key={p.id}>
                     <TableCell>
                       <span className="font-medium">{p.staffName ?? "—"}</span>
-                      <span className="block text-xs text-muted-foreground">{p.designation}</span>
+                      <span className="block text-xs text-muted-foreground">{p.designation && humanize(p.designation)}</span>
                     </TableCell>
                     <TableCell className="hidden text-right tabular-nums sm:table-cell">{inrPaise(p.grossPaise)}</TableCell>
                     <TableCell className="hidden text-right tabular-nums sm:table-cell">{inrPaise(p.grossPaise - p.netPaise)}</TableCell>

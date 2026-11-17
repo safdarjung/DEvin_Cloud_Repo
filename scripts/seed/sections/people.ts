@@ -149,9 +149,15 @@ export async function run(ctx: SeedContext): Promise<void> {
 
   const staffRows: Record<string, unknown>[] = [];
   const newTeacherIds: string[] = [];
+  const usedStaffNames = new Set<string>();
   for (let i = 0; i < NEW_TEACHING_COUNT; i++) {
     const wing = wingsCycle[i % wingsCycle.length]!;
-    const { firstName, lastName } = pickName(ctx.rng, ctx.rng() < 0.5 ? "male" : "female");
+    const picked = pickName(ctx.rng, ctx.rng() < 0.5 ? "male" : "female");
+    const firstName = picked.firstName;
+    // Unique staff names without extra rng draws: on a repeat, walk to the next surname.
+    let lastName = picked.lastName;
+    while (usedStaffNames.has(`${firstName} ${lastName}`)) lastName = LAST_NAMES[(LAST_NAMES.indexOf(lastName) + 1) % LAST_NAMES.length]!;
+    usedStaffNames.add(`${firstName} ${lastName}`);
     const employeeNo = await nextSequence(ctx, "employee_no");
     const id = uuidV5("people", `staff:teacher:${i}`);
     newTeacherIds.push(id);
@@ -167,7 +173,10 @@ export async function run(ctx: SeedContext): Promise<void> {
   }
 
   {
-    const { firstName, lastName } = pickName(ctx.rng, "male");
+    const picked = pickName(ctx.rng, "male");
+    const firstName = picked.firstName;
+    let lastName = picked.lastName;
+    while (usedStaffNames.has(`${firstName} ${lastName}`)) lastName = LAST_NAMES[(LAST_NAMES.indexOf(lastName) + 1) % LAST_NAMES.length]!;
     const employeeNo = await nextSequence(ctx, "employee_no");
     staffRows.push({
       id: uuidV5("people", "staff:clerk"),

@@ -228,7 +228,7 @@ function renderBonafideHtml(snapshot: CertificateSnapshot): string {
  * Renders character certificate HTML.
  */
 function renderCharacterHtml(snapshot: CertificateSnapshot): string {
-  const { student, guardian, school, issued_by_name, serial_no, issued_on, conduct } = snapshot;
+  const { student, guardian, school, issued_by_name, serial_no, issued_on, conduct, purpose } = snapshot;
 
   const issueDate = formatDateIN(issued_on);
   const relPhrase = relationPhrase(student.gender, guardian?.relationship ?? null);
@@ -245,7 +245,9 @@ function renderCharacterHtml(snapshot: CertificateSnapshot): string {
   ${verb} a student of ${escapeHtml(school.name)}.</p>
 
   <p>The conduct and character of the above student have been <strong>${escapeHtml(conduct ?? "Good")}</strong>.</p>
-
+${purpose ? `
+  <p><strong>Purpose:</strong> ${escapeHtml(purpose)}</p>
+` : ""}
   <p><strong>Serial Number:</strong> ${escapeHtml(serial_no)}</p>
   <p><strong>Date of Issue:</strong> ${issueDate}</p>
   <p><strong>Issued by:</strong> ${escapeHtml(issued_by_name)}</p>

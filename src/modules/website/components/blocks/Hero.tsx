@@ -2,7 +2,9 @@ import type { HeroBlock } from "@/modules/website/blocks";
 
 // Hero style comes from the themed wrapper's `data-hero` (theme.ts
 // THEMED_SITE_CLASS / `group/site`): split (default), centered, banner.
-export function Hero({ block }: { block: HeroBlock }) {
+// `slug` set on the public site: a site-relative CTA ("/admissions") gets the `/s/<slug>` prefix, like the nav (layout.tsx).
+export function Hero({ block, slug }: { block: HeroBlock; slug?: string }) {
+  const href = block.cta && slug && block.cta.href.startsWith("/") && !block.cta.href.startsWith(`/s/${slug}`) ? `/s/${slug}${block.cta.href === "/" ? "" : block.cta.href}` : block.cta?.href;
   return (
     <section className="grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-2 lg:gap-12 group-data-[hero=banner]/site:my-6 group-data-[hero=banner]/site:rounded-xl group-data-[hero=banner]/site:bg-primary group-data-[hero=banner]/site:px-6 group-data-[hero=banner]/site:text-primary-foreground sm:group-data-[hero=banner]/site:px-10 group-data-[hero=centered]/site:text-center lg:group-data-[hero=centered]/site:grid-cols-1">
       <div className="space-y-5 group-data-[hero=centered]/site:mx-auto group-data-[hero=centered]/site:max-w-2xl">
@@ -15,7 +17,7 @@ export function Hero({ block }: { block: HeroBlock }) {
         )}
         {block.cta && (
           <a
-            href={block.cta.href}
+            href={href}
             className="inline-flex min-h-11 items-center rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground outline-none transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-data-[hero=banner]/site:bg-primary-foreground group-data-[hero=banner]/site:text-primary group-data-[hero=banner]/site:hover:bg-primary-foreground/90"
           >
             {block.cta.label}

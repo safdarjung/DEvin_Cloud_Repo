@@ -28,7 +28,7 @@ export function ListPager({
   return (
     <nav aria-label="Pagination" className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground tabular-nums">
-        Page {page} of {pages} ({total} {noun})
+        Page {page} of {pages} ({total.toLocaleString("en-IN")} {noun})
       </span>
       <div className="flex gap-2">
         {page > 1 && (

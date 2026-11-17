@@ -33,6 +33,7 @@ interface StudentInvoicesProps {
 
 export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnline = false, portal = false }: StudentInvoicesProps) {
   const invoices = await listInvoicesForStudent(ctx, studentId);
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }); // YYYY-MM-DD in IST
 
   if (invoices.length === 0) {
     return <EmptyState title="No invoices yet" />;
@@ -45,8 +46,8 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnli
           <TableHead>Invoice</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Total</TableHead>
-          <TableHead className="hidden text-right sm:table-cell">Paid</TableHead>
-          <TableHead className="hidden sm:table-cell">Due on</TableHead>
+          <TableHead className="text-right">Paid</TableHead>
+          <TableHead>Due on</TableHead>
           {payOnline && <TableHead className="text-right">Pay</TableHead>}
         </TableRow>
       </TableHeader>
@@ -67,10 +68,13 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnli
             </TableCell>
             <TableCell>
               <Badge variant={invoiceStatusVariant(invoice.status)}>{humanize(invoice.status)}</Badge>
+              {(invoice.status === "issued" || invoice.status === "part_paid") && invoice.dueOn && invoice.dueOn < today && invoice.total - invoice.paidTotal > 0 && (
+                <Badge variant="destructive" className="ml-1">Overdue</Badge>
+              )}
             </TableCell>
             <TableCell className="text-right tabular-nums">{inr(invoice.total)}</TableCell>
-            <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
-            <TableCell className="hidden sm:table-cell">{invoice.dueOn ? formatDate(invoice.dueOn) : "—"}</TableCell>
+            <TableCell className="text-right tabular-nums whitespace-nowrap">{inr(invoice.paidTotal)}</TableCell>
+            <TableCell className="whitespace-nowrap">{invoice.dueOn ? formatDate(invoice.dueOn) : "—"}</TableCell>
             {payOnline && (
               <TableCell className="text-right">
                 {(invoice.status === "issued" || invoice.status === "part_paid") && invoice.total - invoice.paidTotal > 0 && (

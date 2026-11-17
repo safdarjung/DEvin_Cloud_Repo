@@ -107,6 +107,9 @@ export async function run(ctx: SeedContext): Promise<void> {
   // constrained — process them first, stable-sorted, so a shared teacher's
   // calendar fills around their tighter needs rather than the other way round.
   const busyTeacherSlots = new Set<string>(); // `${weekday}:${periodId}:${teacherId}`
+  // Keep every teacher within the default weekly load (src/modules/timetable/rules.ts DEFAULT_MAX_PERIODS_WEEK).
+  const MAX_PERIODS_WEEK = 36;
+  const periodsByTeacher = new Map<string, number>();
   const slotRows: Record<string, unknown>[] = [];
   const sectionsByConstraint = [...sections].sort(
     (a, b) => (assignmentsBySectionId.get(a.id)?.length ?? Infinity) - (assignmentsBySectionId.get(b.id)?.length ?? Infinity),
@@ -139,7 +142,10 @@ export async function run(ctx: SeedContext): Promise<void> {
         let chosen: { teacherId: string; subjectId: string } | undefined;
         for (let i = 0; i < assignmentList.length; i++) {
           const candidate = assignmentList[(start + i) % assignmentList.length]!;
-          if (!busyTeacherSlots.has(`${weekday}:${periodId}:${candidate.teacherId}`)) {
+          if (
+            !busyTeacherSlots.has(`${weekday}:${periodId}:${candidate.teacherId}`) &&
+            (periodsByTeacher.get(candidate.teacherId) ?? 0) < MAX_PERIODS_WEEK
+          ) {
             chosen = candidate;
             break;
           }
@@ -147,6 +153,7 @@ export async function run(ctx: SeedContext): Promise<void> {
         if (!chosen) continue;
 
         busyTeacherSlots.add(`${weekday}:${periodId}:${chosen.teacherId}`);
+        periodsByTeacher.set(chosen.teacherId, (periodsByTeacher.get(chosen.teacherId) ?? 0) + 1);
         slotRows.push({
           id: uuidV5("timetable", `slot:${section.key}:${weekday}:${period.seq}`),
           institution_id: ctx.institutionId,
