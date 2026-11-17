@@ -10,7 +10,7 @@
 // Reused unchanged by both the normal view page and the print page.
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { humanize, inr } from "@/lib/format";
+import { formatDateTime, humanize, inr } from "@/lib/format";
 import type { ReceiptDetail } from "@/modules/finance/queries";
 
 export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
@@ -40,7 +40,7 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
           {snapshot.termName ? ` (${snapshot.termName})` : ""}
         </dd>
         <dt className="text-muted-foreground">Received on</dt>
-        <dd className="text-right">{new Date(snapshot.receivedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</dd>
+        <dd className="text-right">{formatDateTime(snapshot.receivedAt)}</dd>
         <dt className="text-muted-foreground">Reference</dt>
         <dd className="text-right">{snapshot.reference ?? "—"}</dd>
         <dt className="font-medium">Amount received</dt>
@@ -58,7 +58,7 @@ export function ReceiptView({ receipt }: { receipt: ReceiptDetail }) {
         <TableBody>
           {snapshot.heads.map((h) => (
             <TableRow key={h.head}>
-              <TableCell>{h.head}</TableCell>
+              <TableCell>{humanize(h.head)}</TableCell>
               <TableCell className="text-right tabular-nums">{inr(h.amount)}</TableCell>
               <TableCell className="text-right tabular-nums">{inr(h.concessionAmount)}</TableCell>
             </TableRow>

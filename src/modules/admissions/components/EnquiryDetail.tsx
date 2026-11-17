@@ -192,11 +192,16 @@ export function EnquiryDetail({
                   value={convertForm.dob}
                   onChange={(e) => setConvertForm((f) => ({ ...f, dob: e.target.value }))}
                 />
-                <Input aria-label="Gender"
-                  placeholder="Gender"
-                  value={convertForm.gender}
-                  onChange={(e) => setConvertForm((f) => ({ ...f, gender: e.target.value }))}
-                />
+                <Select value={convertForm.gender} onValueChange={(value) => setConvertForm((f) => ({ ...f, gender: value }))}>
+                  <SelectTrigger aria-label="Gender" className="w-full">
+                    <SelectValue placeholder="Gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Male</SelectItem>
+                    <SelectItem value="female">Female</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input aria-label="Guardian full name"
                   placeholder="Guardian full name"
                   value={convertForm.guardianFullName}

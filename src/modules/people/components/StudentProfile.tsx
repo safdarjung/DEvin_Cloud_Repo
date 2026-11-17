@@ -13,7 +13,7 @@ import { StudentAttendanceSummary } from "@/modules/attendance/components/Studen
 import type { InvoiceSummary } from "@/modules/finance/queries";
 import { GuardiansCard } from "@/modules/people/components/GuardiansCard";
 import { StudentProfileHeader } from "@/modules/people/components/StudentProfileHeader";
-import { inr } from "@/lib/format";
+import { formatDate, humanize, inr } from "@/lib/format";
 import { invoiceStatusVariant } from "@/modules/finance/format";
 import type { StudentProfile as StudentProfileData } from "@/modules/people/queries";
 
@@ -65,11 +65,11 @@ export function StudentProfile({ ctx, student, invoices, termId }: StudentProfil
                   <TableRow key={invoice.id}>
                     <TableCell>{invoice.invoiceNo}</TableCell>
                     <TableCell>
-                      <Badge variant={invoiceStatusVariant(invoice.status)}>{invoice.status.replace("_", " ")}</Badge>
+                      <Badge variant={invoiceStatusVariant(invoice.status)}>{humanize(invoice.status)}</Badge>
                     </TableCell>
                     <TableCell>{inr(invoice.total)}</TableCell>
                     <TableCell className="hidden sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
-                    <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{invoice.dueOn ? formatDate(invoice.dueOn) : "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

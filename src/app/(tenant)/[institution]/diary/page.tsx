@@ -39,7 +39,7 @@ export default async function DiaryPage({
     );
   }
 
-  const [subjects, entries] = await Promise.all([listSectionSubjects(ctx, active.id), diaryForSection(ctx, active.id)]);
+  const [subjects, entries] = await Promise.all([listSectionSubjects(ctx, active.id, { ownOnly: true }), diaryForSection(ctx, active.id)]);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(new Date());
 
   return (

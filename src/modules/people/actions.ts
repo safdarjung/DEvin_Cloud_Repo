@@ -10,6 +10,7 @@ import { AppError, mapSqlError } from "@/lib/actions/result";
 import { audit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { listStudents } from "@/modules/people/queries";
 import {
   DepartmentUpsertSchema,
   GuardianLinkSchema,
@@ -17,6 +18,7 @@ import {
   SaveQualificationRulesSchema,
   SaveTeacherProfileSchema,
   StaffUpsertSchema,
+  StudentSearchSchema,
   StudentUpdateSchema,
   type DepartmentUpsertInput,
   type SaveQualificationRulesInput,
@@ -24,6 +26,7 @@ import {
   type GuardianLinkInput,
   type GuardianUpdateInput,
   type StaffUpsertInput,
+  type StudentSearchInput,
   type StudentUpdateInput,
 } from "@/modules/people/schemas";
 
@@ -131,6 +134,21 @@ export const upsertStaff = defineAction({
 // link_guardian is a thin RPC wrapper, same style as timetable/actions.ts's
 // publishVersion). Never touches status/user_id/details/photo_path. Audit
 // rows hold changed field names only — no values (lesson 10 / brief).
+
+/** Picker lookup: first page (50) of active students matching a name or admission no. RLS scopes the rows. */
+export const searchStudentOptions = defineAction({
+  name: "people.student.search",
+  module: "people",
+  schema: StudentSearchSchema,
+  permission: "student.read",
+  handler: async ({ q }: StudentSearchInput, ctx) => {
+    const { students } = await listStudents(ctx, q, 1, { status: "active" });
+    return students.map((s) => ({
+      id: s.id,
+      label: `${[s.firstName, s.lastName].filter(Boolean).join(" ")} (${s.admissionNo}${s.sectionName ? `, ${s.gradeName ?? ""}-${s.sectionName}` : ""})`,
+    }));
+  },
+});
 
 export const updateStudent = defineAction({
   name: "people.student.update",

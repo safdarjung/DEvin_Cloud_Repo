@@ -145,7 +145,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/payroll", label: "Payroll", icon: Wallet, permission: "payroll.manage", group: "Operations", module: "payroll" },
   // Every staff role holds leave.request; the page gates its tabs (attendance, leave approval, substitutions).
   { href: "/staff", label: "Staff HR", icon: UserCog, permission: "leave.request", group: "Operations", module: "staff_attendance" },
-  { href: "/me/teaching-profile", label: "My teaching profile", icon: GraduationCap, permission: "leave.request", group: "Operations" },
+  // diary.write = roles that teach (not accountant/admissions/front desk).
+  { href: "/me/teaching-profile", label: "My teaching profile", icon: GraduationCap, permission: "diary.write", group: "Operations" },
   { href: "/staff/qualifications", label: "Teacher qualifications", icon: Award, permission: "staff.read", group: "Operations" },
   { href: "/library", label: "Library", icon: Library, permission: "library.manage", group: "Operations", module: "library" },
   // One page: front desk sees the visitor log; class teachers only the gate-pass tab (deduped by href).

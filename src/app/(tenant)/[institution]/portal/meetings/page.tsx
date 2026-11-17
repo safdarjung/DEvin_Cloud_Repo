@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission, hasPermission } from "@/lib/auth/require";
+import { formatDate, formatDateTime } from "@/lib/format";
 import { PortalNav } from "@/modules/people/components/PortalNav";
 import { resolvePortalSelection } from "@/modules/people/portal";
 import { ptmForStudent, type PtmBookableRow } from "@/modules/ptm/queries";
@@ -52,14 +53,14 @@ export default async function PortalMeetingsPage({
           {[...events.entries()].map(([id, e]) => {
             const byTeacher = new Map<string, PtmBookableRow[]>();
             for (const r of e.rows) byTeacher.set(r.staffId, [...(byTeacher.get(r.staffId) ?? []), r]);
-            const open = e.rows.filter((r) => r.state !== "taken").length;
+            const open = e.rows.filter((r) => r.state === "open").length;
             return (
               <StaggerItem key={id}>
               <Card>
                 <CardHeader>
                   <CardTitle>{e.title}</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    {e.date} · booking closes {new Date(e.closes).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}
+                    {formatDate(e.date)} · booking closes {formatDateTime(e.closes)}
                   </p>
                   <ProgressBar
                     className="pt-2"

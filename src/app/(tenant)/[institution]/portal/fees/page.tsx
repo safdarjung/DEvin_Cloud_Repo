@@ -41,7 +41,7 @@ export default async function PortalFeesPage({
       />
 
       <FadeIn key={selection.studentId} className="space-y-4">
-        <StudentInvoices ctx={ctx} institutionSlug={institutionSlug} studentId={selection.studentId}
+        <StudentInvoices ctx={ctx} portal institutionSlug={institutionSlug} studentId={selection.studentId}
           payOnline={ctx.membership.role === "guardian" && hasPermission(ctx, "finance.payment.online")}
         />
 

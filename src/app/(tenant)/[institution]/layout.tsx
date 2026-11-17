@@ -17,6 +17,9 @@ import { navItemsFor } from "@/lib/nav";
 import { AppTour } from "@/components/tenant/app-tour";
 import { buildTourSteps, tourStorageKey } from "@/lib/tour";
 import { ROLE_INTRO, TOUR_COPY } from "@/lib/tour-copy";
+import { isModuleEnabled } from "@/lib/modules/catalog";
+import { starterPromptsFor } from "@/modules/ai/page-starters";
+import { practiceOptionsFor } from "@/modules/core/practice/scenarios";
 import { getClaims } from "@/lib/supabase/server";
 import { brandingStyle } from "@/modules/core/setup/branding-utils";
 import { getLayoutBranding } from "@/modules/core/setup/branding.queries";
@@ -143,7 +146,22 @@ export default async function TenantLayout({
       <BottomNav items={navItems} user={sidebarUser} />
       <ShellExtras institutionSlug={ctx.institution.slug} />
       <AppTour
-        steps={buildTourSteps(navItems, base, ctx.membership.role, TOUR_COPY)}
+        steps={buildTourSteps(navItems, base, ctx.membership.role, TOUR_COPY).map((s) => {
+          const tab = s.href.slice(base.length);
+          const ask = starterPromptsFor(tab, ctx.membership.role)[0];
+          return {
+            ...s,
+            // Only a question written for this page; the role's general starters would not match the tab.
+            ask: ask === starterPromptsFor("/-", ctx.membership.role)[0] ? undefined : ask,
+            practice: practiceOptionsFor(tab, {
+              isDemo: ctx.institution.is_demo,
+              has: (p) => hasPermission(ctx, p),
+              moduleOn: (m) => isModuleEnabled(ctx, m),
+            }),
+          };
+        })}
+        orbHref={navItems.some((i) => i.href === `${base}/orb`) ? `${base}/orb` : null}
+        institutionSlug={ctx.institution.slug}
         intro={ROLE_INTRO[ctx.membership.role]}
         roleLabel={ROLE_LABELS[ctx.membership.role]}
         storageKey={tourStorageKey(ctx.user.id, ctx.institution.id)}

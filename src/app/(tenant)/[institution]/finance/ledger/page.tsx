@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Stagger, StaggerItem } from "@/components/motion";
 import { KpiTile } from "@/components/widgets/kpi-widget";
-import { inr } from "@/lib/format";
+import { humanize, inr } from "@/lib/format";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getTenantContext } from "@/lib/auth/context";
 import { requirePermission } from "@/lib/auth/require";
@@ -67,14 +67,17 @@ export default async function LedgerPage({
         <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
           <KpiTile label="Credit" value={inr(ledger.totalCredit)} animateTo={ledger.totalCredit} format="inr" />
         </StaggerItem>
-        <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
-          <KpiTile
-            label="Balanced"
-            value={ledger.balanced ? "Yes" : "No"}
-            tone={ledger.balanced ? "success" : "destructive"}
-            sub={ledger.balanced ? "Debit equals credit" : "Debit and credit differ"}
-          />
-        </StaggerItem>
+        {/* A single account never balances on its own; the check only means something across all accounts. */}
+        {!range.account && (
+          <StaggerItem className="min-w-0 motion-safe:fill-mode-backwards">
+            <KpiTile
+              label="Balanced"
+              value={ledger.balanced ? "Yes" : "No"}
+              tone={ledger.balanced ? "success" : "destructive"}
+              sub={ledger.balanced ? "Debit equals credit" : "Debit and credit differ"}
+            />
+          </StaggerItem>
+        )}
       </Stagger>
 
       <Card>
@@ -103,7 +106,7 @@ export default async function LedgerPage({
               <SelectItem value="all">All</SelectItem>
               {LEDGER_ACCOUNTS.map((a) => (
                 <SelectItem key={a} value={a}>
-                  {a.replace(/_/g, " ")}
+                  {humanize(a)}
                 </SelectItem>
               ))}
             </SelectContent>

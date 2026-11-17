@@ -86,8 +86,8 @@ export default async function PortalClubsPage({
                       </div>
                       {c.description && <p className="text-sm text-muted-foreground">{c.description}</p>}
                       <p className="text-xs text-muted-foreground">
-                        {c.patronName ? `Patron: ${c.patronName}` : "No patron yet"}
-                        {c.capacity ? ` · Capacity ${c.capacity}` : ""}
+                        {/* Staff names are hidden from families by RLS, so a missing name is not a missing patron. */}
+                        {[c.patronName && `Patron: ${c.patronName}`, c.capacity && `Capacity ${c.capacity}`].filter(Boolean).join(" · ")}
                       </p>
                       {(c.isActive || isMember) && (
                         <MembershipButton institutionSlug={slug} clubId={c.id} studentId={selection.studentId} isMember={isMember} name={c.name} />

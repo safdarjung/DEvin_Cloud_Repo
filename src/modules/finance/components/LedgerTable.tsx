@@ -4,7 +4,7 @@
 // form and pagination links.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/states";
-import { inr } from "@/lib/format";
+import { formatDate, humanize, inr } from "@/lib/format";
 import type { LedgerPage } from "@/modules/finance/queries";
 
 // Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
@@ -35,8 +35,8 @@ export function LedgerTable({ ledger }: { ledger: LedgerPage }) {
         <TableBody>
           {ledger.entries.map((entry, i) => (
             <TableRow key={entry.id} className={ROW_ENTER} style={rowDelay(i)}>
-              <TableCell>{entry.entryDate}</TableCell>
-              <TableCell>{entry.account}</TableCell>
+              <TableCell>{formatDate(entry.entryDate)}</TableCell>
+              <TableCell>{humanize(entry.account)}</TableCell>
               <TableCell className="text-right tabular-nums">{entry.debit > 0 ? inr(entry.debit) : "—"}</TableCell>
               <TableCell className="text-right tabular-nums">{entry.credit > 0 ? inr(entry.credit) : "—"}</TableCell>
               <TableCell className="hidden text-muted-foreground sm:table-cell">{entry.memo ?? "—"}</TableCell>

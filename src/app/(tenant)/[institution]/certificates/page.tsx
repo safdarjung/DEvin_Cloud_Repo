@@ -12,7 +12,6 @@ import { humanize } from "@/lib/format";
 import { IssueCertificateForm } from "@/modules/certificates/components/IssueCertificateForm";
 import { ID_CARD_MAX } from "@/modules/certificates/id-cards.queries";
 import { listCertificates } from "@/modules/certificates/queries";
-import { activeStudentOptions } from "@/modules/clubs/queries";
 import { listSectionOptions } from "@/modules/exams/queries";
 
 export const metadata: Metadata = { title: "Certificates" };
@@ -28,8 +27,8 @@ export default async function CertificatesPage({ params, searchParams }: { param
   requireModule(ctx, "certificates");
   requirePermission(ctx, "certificate.manage");
 
-  const [listR, studentsR, sectionsR] = await Promise.allSettled([listCertificates(ctx, { limit: LIST_LIMIT }), activeStudentOptions(ctx), listSectionOptions(ctx)]);
-  for (const [l, r] of [["list", listR], ["students", studentsR], ["sections", sectionsR]] as const) {
+  const [listR, sectionsR] = await Promise.allSettled([listCertificates(ctx, { limit: LIST_LIMIT }), listSectionOptions(ctx)]);
+  for (const [l, r] of [["list", listR], ["sections", sectionsR]] as const) {
     if (r.status === "rejected") console.error(`certificates page ${l} failed:`, r.reason instanceof Error ? r.reason.message : r.reason);
   }
   const sections = sectionsR.status === "fulfilled" ? sectionsR.value : [];
@@ -52,11 +51,7 @@ export default async function CertificatesPage({ params, searchParams }: { param
               <CardDescription>Each certificate gets a serial number and cannot be edited or deleted afterwards.</CardDescription>
             </CardHeader>
             <CardContent>
-              {studentsR.status === "rejected" ? (
-                <ErrorState bare title="Could not load students" description="Refresh to try again." />
-              ) : (
-                <IssueCertificateForm institutionSlug={slug} students={studentsR.value} />
-              )}
+              <IssueCertificateForm institutionSlug={slug} />
             </CardContent>
           </Card>
           <h2 className="text-base font-semibold">Issued certificates</h2>

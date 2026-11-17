@@ -36,8 +36,8 @@ export default async function MessagesPage({
     canSend && query ? listStudents(ctx, query, 1) : Promise.resolve(null),
     canSend && isTeacher && student && uuid.safeParse(student).success ? getStudentProfile(ctx, student) : Promise.resolve(null),
   ]);
-  // Guardians with no portal login cannot read replies, so they are not offered.
-  const guardians = profile?.guardians.filter((g) => g.hasPortalLogin) ?? [];
+  // Every linked guardian is offered (the RPC only needs the link); those without a portal login are marked, since they cannot read replies yet.
+  const guardians = profile?.guardians ?? [];
 
   return (
     <div>
@@ -93,7 +93,7 @@ export default async function MessagesPage({
                   institutionSlug={institutionSlug}
                   studentId={profile.id}
                   counterpartLabel="Parent"
-                  options={guardians.map((g) => ({ id: g.id, label: `${g.fullName} (${g.relationship})` }))}
+                  options={guardians.map((g) => ({ id: g.id, label: `${g.fullName} (${g.relationship})${g.hasPortalLogin ? "" : " - no portal login yet"}` }))}
                   threadBase={base}
                 />
               )}

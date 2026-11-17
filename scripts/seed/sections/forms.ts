@@ -65,12 +65,15 @@ const FORMS: { key: string; title: string; description: string; status: "draft" 
   },
 ];
 
-const TEXTS = ["No allergies.", "Peanut allergy, carries medication.", "9876500011", "9876500022", "None"];
+// Text answers match the question: phone numbers only for phone/contact fields.
+const TEXTS = ["No allergies.", "Peanut allergy, carries medication.", "Dust allergy.", "None"];
+const PHONES = ["9876500011", "9876500022", "9876500033"];
 
 function answer(f: Field, n: number): unknown {
   if (f.type === "consent") return f.required ? true : n % 3 !== 0;
   if (f.type === "choice") return n % f.options.length;
-  return f.required || n % 2 === 0 ? TEXTS[n % TEXTS.length]! : null;
+  const pool = /phone|contact|mobile/i.test(f.label) ? PHONES : TEXTS;
+  return f.required || n % 2 === 0 ? pool[n % pool.length]! : null;
 }
 
 export async function run(ctx: SeedContext): Promise<void> {

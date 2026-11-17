@@ -17,8 +17,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { decideApplication } from "@/modules/admissions/actions";
-import { canDecide, type ApplicationDecision, type ApplicationStatus } from "@/modules/admissions/state";
+import { toast } from "sonner";
+import { decideApplication, startApplicationReview } from "@/modules/admissions/actions";
+import { canDecide, canStartReview, type ApplicationDecision, type ApplicationStatus } from "@/modules/admissions/state";
 import type { ApplicationDecisionRow, ApplicationRow, SectionCapacityOption } from "@/modules/admissions/queries";
 import { DecisionTimeline } from "@/modules/admissions/components/DecisionTimeline";
 import { applicationStatusVariant } from "@/modules/admissions/status";
@@ -65,6 +66,20 @@ export function ApplicationDetail({
         setError(result.error.message);
         return;
       }
+      toast.success(`Application ${humanize(confirming).toLowerCase()} recorded`);
+      router.refresh();
+    });
+  }
+
+  function startReview() {
+    setError(null);
+    startTransition(async () => {
+      const result = await startApplicationReview(institutionSlug, { applicationId: application.id });
+      if (!result.ok) {
+        setError(result.error.message);
+        return;
+      }
+      toast.success("Review started");
       router.refresh();
     });
   }
@@ -92,6 +107,11 @@ export function ApplicationDetail({
         <CardContent className="space-y-4">
           {canDecideApplication && (
             <div className="flex flex-wrap gap-2">
+              {canStartReview(application.status as ApplicationStatus) && (
+                <Button size="sm" disabled={pending} onClick={startReview}>
+                  Start review
+                </Button>
+              )}
               {DECISIONS.filter((d) => canDecide(application.status as ApplicationStatus, d)).map((decision) => (
                 <Button key={decision} variant="outline" size="sm" disabled={pending} onClick={() => setConfirming(decision)}>
                   {humanize(decision)}

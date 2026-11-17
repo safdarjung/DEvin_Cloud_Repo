@@ -35,14 +35,19 @@ export async function listSectionOptions(ctx: TenantContext): Promise<SectionOpt
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("class_sections")
-    .select("id, name, grades(code)")
+    .select("id, name, grades(code, sort_key)")
     .eq("institution_id", ctx.institution.id)
     .order("name");
   if (error) throw error;
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    label: `${(row.grades as { code: string } | null)?.code ?? "?"}-${row.name}`,
-  }));
+  // Grade order (sort_key), then section name — not alphabetical on the label.
+  const sortKey = (row: (typeof rows)[number]) => (row.grades as { sort_key: number } | null)?.sort_key ?? Number.MAX_SAFE_INTEGER;
+  const rows = data ?? [];
+  return [...rows]
+    .sort((a, b) => sortKey(a) - sortKey(b) || a.name.localeCompare(b.name))
+    .map((row) => ({
+      id: row.id,
+      label: `${(row.grades as { code: string } | null)?.code ?? "?"}-${row.name}`,
+    }));
 }
 
 export interface SubjectOption {
@@ -97,6 +102,9 @@ export interface ExamPaperSummary {
   maxMarks: number;
   passMarks: number;
   heldOn: string | null;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+  roomId: string | null;
 }
 
 export interface ExamDetail {
@@ -124,7 +132,7 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
 
   const { data: papers, error: papersError } = await supabase
     .from("exam_papers")
-    .select("id, class_section_id, subject_id, max_marks, pass_marks, held_on, class_sections(name, grades(code)), subjects(name)")
+    .select("id, class_section_id, subject_id, max_marks, pass_marks, held_on, scheduled_at, duration_minutes, room_id, class_sections(name, grades(code)), subjects(name)")
     .eq("institution_id", ctx.institution.id)
     .eq("exam_id", examId)
     .order("held_on", { ascending: true, nullsFirst: true });
@@ -150,6 +158,9 @@ export async function getExamWithPapers(ctx: TenantContext, examId: string): Pro
         maxMarks: row.max_marks,
         passMarks: row.pass_marks,
         heldOn: row.held_on,
+        scheduledAt: row.scheduled_at,
+        durationMinutes: row.duration_minutes,
+        roomId: row.room_id,
       };
     }),
   };

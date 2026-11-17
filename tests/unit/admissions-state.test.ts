@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canDecide, canTransitionEnquiry, nextStatusForDecision } from "@/modules/admissions/state";
+import { canDecide, canStartReview, canTransitionEnquiry, nextStatusForDecision } from "@/modules/admissions/state";
 
 const STAGES = ["new", "contacted", "visit_scheduled", "application_sent", "converted", "closed"];
 
@@ -53,5 +53,13 @@ describe("canDecide / nextStatusForDecision (06 §W4 application diagram)", () =
 
   it("submitted cannot accept directly (AC3)", () => {
     expect(canDecide("submitted", "accept")).toBe(false);
+  });
+});
+
+describe("canStartReview", () => {
+  it("is offered only from submitted", () => {
+    expect(canStartReview("submitted")).toBe(true);
+    expect(canStartReview("under_review")).toBe(false);
+    expect(canStartReview("offered")).toBe(false);
   });
 });

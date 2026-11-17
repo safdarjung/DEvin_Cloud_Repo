@@ -22,3 +22,20 @@ export function humanize(value: string): string {
   const s = value.replace(/_/g, " ");
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** "11 Oct 2026" from a `YYYY-MM-DD` date or an ISO timestamp (shown in IST). */
+export function formatDate(value: string): string {
+  const dateOnly = DATE_ONLY.test(value);
+  return new Date(dateOnly ? `${value}T00:00:00Z` : value).toLocaleDateString("en-IN", {
+    day: "numeric", month: "short", year: "numeric", timeZone: dateOnly ? "UTC" : "Asia/Kolkata",
+  });
+}
+
+/** "20 Nov 2026, 6:00 pm" from an ISO timestamp, in IST. */
+export function formatDateTime(value: string): string {
+  return new Date(value).toLocaleString("en-IN", {
+    day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata",
+  });
+}

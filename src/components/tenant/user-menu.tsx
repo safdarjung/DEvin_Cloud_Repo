@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Bell, ChevronDown, Compass, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
+import { Bell, ChevronDown, Compass, ListChecks, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
 import { demoLogin } from "@/app/(auth)/login/actions";
 import { SWITCH_ROLE_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
@@ -108,6 +108,9 @@ export function UserMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem className={item} onSelect={() => window.dispatchEvent(new Event(TOUR_START_EVENT))}>
           <Compass aria-hidden /> Take the tour
+        </DropdownMenuItem>
+        <DropdownMenuItem className={item} onSelect={() => window.dispatchEvent(new CustomEvent(TOUR_START_EVENT, { detail: "pick" }))}>
+          <ListChecks aria-hidden /> Try one feature
         </DropdownMenuItem>
         {notificationsHref && (
           <DropdownMenuItem asChild className={item}>

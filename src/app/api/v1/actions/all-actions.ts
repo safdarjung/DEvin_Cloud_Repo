@@ -18,6 +18,7 @@ import "@/modules/certificates/actions";
 import "@/modules/core/actions";
 import "@/modules/core/dashboard-layout.actions";
 import "@/modules/core/setup/actions";
+import "@/modules/core/practice/actions";
 import "@/modules/diary/actions";
 import "@/modules/documents/actions";
 import "@/modules/exam-seating/actions";

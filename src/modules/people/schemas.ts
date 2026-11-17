@@ -55,6 +55,10 @@ export const StudentUpdateSchema = z
 
 export type StudentUpdateInput = z.infer<typeof StudentUpdateSchema>;
 
+/** Search-as-you-type student picker: 2+ characters, active students only. */
+export const StudentSearchSchema = z.object({ q: z.string().trim().min(2).max(80) }).strict();
+export type StudentSearchInput = z.infer<typeof StudentSearchSchema>;
+
 export const GuardianUpdateSchema = z
   .object({
     guardianId: uuid,

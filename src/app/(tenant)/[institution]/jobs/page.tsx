@@ -55,7 +55,7 @@ export default async function JobsPage({
     <div className="space-y-4">
       <PageHeader
         title="Jobs"
-        description="Background jobs that failed at least once (06 §W12). Dead-lettered jobs can be requeued."
+        description="Background jobs that failed at least once. Dead-lettered jobs can be requeued."
       />
 
       {jobs.length === 0 ? (

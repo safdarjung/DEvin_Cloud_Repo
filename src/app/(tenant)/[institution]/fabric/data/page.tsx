@@ -69,7 +69,7 @@ export default async function DataPage({
                 </div>
                 <Button type="submit" variant="outline" className="w-full sm:w-auto">Look up</Button>
               </form>
-              <p id="batch-help" className="mt-2 text-xs text-muted-foreground">Batch ids are shown when an import finishes. There is no import history list yet.</p>
+              <p id="batch-help" className="mt-2 text-xs text-muted-foreground">Batch ids are shown when an import finishes.</p>
               {batch && !batchId && <p role="alert" className="mt-2 text-sm text-destructive">That is not a valid batch id.</p>}
               {importBatch &&
                 renderSection(

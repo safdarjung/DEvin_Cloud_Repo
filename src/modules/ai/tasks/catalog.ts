@@ -247,11 +247,14 @@ export const TASK_CATALOG: Readonly<Record<string, TaskRow>> = {
   "form.respond": x(OWN_ANSWERS),
   "safety.alert.send": x("stays a page button"),
   "finance.payment.createIntent": x("needs the payment gateway UI"),
+  "people.student.search": x("type-ahead lookup behind the student pickers"),
+  "core.practice.run": x("demo practice data stays a tour button"),
   "briefing.generate": x("AI generation; belongs in Ask"),
   "insight.explain": x("AI generation; belongs in Ask"),
 
   // ── rule 6 (marks, money, access, welfare): excluded until slice 2 hosts the existing forms (design §9.1) ──
   "admissions.application.decide": x(RULE6_LATER),
+  "admissions.application.start_review": x(RULE6_LATER),
   "assignment.grade": x(RULE6_LATER),
   "behaviour.incident.log": x(RULE6_LATER),
   "behaviour.incident.void": x(RULE6_LATER),

@@ -64,3 +64,12 @@ export function canDecide(from: ApplicationStatus, decision: ApplicationDecision
 export function nextStatusForDecision(decision: ApplicationDecision): ApplicationStatus {
   return DECISION_RULES[decision].to;
 }
+
+/**
+ * submitted -> under_review is a plain RLS write (app.guard_application_decision
+ * only guards moves INTO offered/accepted/rejected/withdrawn), so no decide RPC:
+ * it is what unlocks offer/reject, which require under_review or interaction_scheduled.
+ */
+export function canStartReview(from: ApplicationStatus): boolean {
+  return from === "submitted";
+}

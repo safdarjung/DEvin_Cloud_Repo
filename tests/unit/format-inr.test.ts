@@ -2,7 +2,7 @@
 // model sees: integer paise in, rupee display text out, Indian grouping,
 // paise shown only when non-zero.
 import { describe, expect, it } from "vitest";
-import { formatINR } from "@/lib/format";
+import { formatDate, formatDateTime, formatINR } from "@/lib/format";
 
 describe("formatINR (integer paise -> rupee text)", () => {
   it("formats zero as ₹0", () => {
@@ -28,4 +28,9 @@ describe("formatINR (integer paise -> rupee text)", () => {
     expect(formatINR(-123_450)).toBe("-₹1,234.50");
     expect(formatINR(-1_000_000_000)).toBe("-₹1,00,00,000");
   });
+});
+
+it("formats dates and timestamps in one en-IN style", () => {
+  expect(formatDate("2026-10-11")).toBe("11 Oct 2026");
+  expect(formatDateTime("2026-11-20T12:30:00Z")).toBe("20 Nov 2026, 6:00 pm");
 });

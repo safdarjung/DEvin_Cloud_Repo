@@ -222,6 +222,12 @@ export function LabPanels({
           <EmptyState bare title="No grade has a cohort of 5 or more students yet" description={SUPPRESSED} />
         ) : (
           <>
+            {/* The query runs with the viewer's own access: roles that can't read attendance get every row as no_data. */}
+            {fee.every((r) => r.attendance_band === "no_data") && (
+              <p className="text-sm text-muted-foreground">
+                Attendance bands show only for roles that can see attendance, such as the principal. Your role sees the fee side.
+              </p>
+            )}
             <ChartFrame
               summary={`Overdue fees by grade, split by attendance band, across ${feeChart.length} grades.`}
               heightClass="h-64"

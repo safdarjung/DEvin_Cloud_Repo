@@ -7,6 +7,8 @@
 import { Label } from "@/components/ui/label";
 import { useActionState, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -42,6 +44,7 @@ interface EnrolDialogProps {
 }
 
 export function EnrolDialog({ institutionSlug, applicationId, sections, feeStructures, enabled }: EnrolDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [classSectionId, setClassSectionId] = useState(sections[0]?.id ?? "");
   const [feeStructureId, setFeeStructureId] = useState(
@@ -50,12 +53,14 @@ export function EnrolDialog({ institutionSlug, applicationId, sections, feeStruc
   const [rollNo, setRollNo] = useState("");
 
   const [state, formAction, pending] = useActionState<ActionResult<EnrolResult> | null, FormData>(async () => {
-    return enrolApplicant(institutionSlug, {
+    const result = await enrolApplicant(institutionSlug, {
       applicationId,
       classSectionId,
       feeStructureId,
       rollNo: rollNo.trim() ? Number(rollNo) : undefined,
     });
+    if (result.ok) toast.success(`Enrolled, admission ${result.data.admissionNo}`, { action: { label: "View student", onClick: () => router.push(`/${institutionSlug}/students/${result.data.studentId}`) } });
+    return result;
   }, null);
 
   const success = state && state.ok ? state.data : null;

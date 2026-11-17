@@ -14,7 +14,9 @@ import type { QuickAction } from "@/components/widgets/quick-actions";
 import { StaffAvailabilityWidget } from "@/components/widgets/staff-availability-widget";
 import { AnimatedList, BarList, BorderBeam, InteractiveTrend, ProgressBar, RadialGauge } from "@/components/widgets/viz";
 import { Widget } from "@/components/widgets/widget";
+import { redirect } from "next/navigation";
 import { getTenantContext } from "@/lib/auth/context";
+import { homePathFor } from "@/lib/nav";
 import { hasPermission, requirePermission } from "@/lib/auth/require";
 import { humanize, inr, type BadgeVariant } from "@/lib/format";
 import { isModuleEnabled } from "@/lib/modules/catalog";
@@ -209,6 +211,8 @@ export default async function DashboardPage({
 }) {
   const { institution: institutionSlug } = await params;
   const ctx = await getTenantContext(institutionSlug);
+  // Teachers and families have their own home; a link or typed URL to /dashboard lands there, not on an error.
+  if (!hasPermission(ctx, "dashboard.view")) redirect(`/${institutionSlug}${homePathFor(ctx.permissions, ctx.institution.settings)}`);
   requirePermission(ctx, "dashboard.view");
 
   const role = ctx.membership.role;

@@ -28,7 +28,7 @@ export default async function PersonalAIPage({
       {canPayslips && <MyPayslips ctx={ctx} />}
       {canAi && (
         <FadeIn>
-          <EmptyState title="Personal AI is not available yet" description="This workspace arrives in packet F-UI-13." />
+          <EmptyState title="Personal AI is not available yet" description="Check back soon." />
         </FadeIn>
       )}
     </FabricPage>

@@ -77,6 +77,7 @@ export function GenerateSeatingForm({
       <Button type="submit" disabled={pending || picked.length === 0}>
         {pending ? "Generating…" : hasPlan ? "Regenerate plan" : "Generate plan"}
       </Button>
+      {picked.length === 0 && rooms.length > 0 && <p className="text-xs text-muted-foreground">Tick at least one room to generate the plan.</p>}
     </form>
   );
 }

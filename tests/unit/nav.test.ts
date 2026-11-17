@@ -133,7 +133,7 @@ const EXPECTED_HREFS: Record<Role, string[]> = {
 // Calendar (academics.read) is on every role's sidebar; Transport is transport.manage on staff, student.read in the portal.
 const LEADERS = ["owner", "principal", "admin"];
 // 0155: every staff role (leave.request) has its own teaching profile; staff.read roles see the qualification list.
-const TEACHING_PROFILE_ROLES: readonly string[] = ["owner", "principal", "admin", "admissions", "accountant", "exam_controller", "teacher"];
+const TEACHING_PROFILE_ROLES: readonly string[] = ["owner", "principal", "admin", "teacher"];
 const QUALIFICATION_ROLES: readonly string[] = ["owner", "principal", "admin", "accountant", "exam_controller"];
 const teachingHrefs = (role: Role): string[] => [
   ...(TEACHING_PROFILE_ROLES.includes(role) ? ["/me/teaching-profile"] : []),

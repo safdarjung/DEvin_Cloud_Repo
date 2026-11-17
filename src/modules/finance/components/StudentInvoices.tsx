@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/states";
 import type { TenantContext } from "@/lib/auth/types";
-import { humanize, inr } from "@/lib/format";
+import { formatDate, humanize, inr } from "@/lib/format";
 import { invoiceStatusVariant } from "@/modules/finance/format";
 import { listInvoicesForStudent } from "@/modules/finance/queries";
 import { PayNowButton } from "@/modules/finance/components/PayNowButton";
@@ -27,9 +27,11 @@ interface StudentInvoicesProps {
   studentId: string;
   /** Guardian with finance.payment.online: show Pay now on open invoices. */
   payOnline?: boolean;
+  /** Link rows to the portal invoice view (guardian/student chrome). */
+  portal?: boolean;
 }
 
-export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnline = false }: StudentInvoicesProps) {
+export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnline = false, portal = false }: StudentInvoicesProps) {
   const invoices = await listInvoicesForStudent(ctx, studentId);
 
   if (invoices.length === 0) {
@@ -53,7 +55,11 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnli
           <TableRow key={invoice.id}>
             <TableCell>
               <Link
-                href={`/${institutionSlug}/finance/invoices/${invoice.id}`}
+                href={
+                  portal
+                    ? `/${institutionSlug}/portal/fees/invoices/${invoice.id}?student=${studentId}`
+                    : `/${institutionSlug}/finance/invoices/${invoice.id}`
+                }
                 className="underline-offset-2 hover:underline"
               >
                 {invoice.invoiceNo}
@@ -64,7 +70,7 @@ export async function StudentInvoices({ ctx, institutionSlug, studentId, payOnli
             </TableCell>
             <TableCell className="text-right tabular-nums">{inr(invoice.total)}</TableCell>
             <TableCell className="hidden text-right tabular-nums sm:table-cell">{inr(invoice.paidTotal)}</TableCell>
-            <TableCell className="hidden sm:table-cell">{invoice.dueOn ?? "—"}</TableCell>
+            <TableCell className="hidden sm:table-cell">{invoice.dueOn ? formatDate(invoice.dueOn) : "—"}</TableCell>
             {payOnline && (
               <TableCell className="text-right">
                 {(invoice.status === "issued" || invoice.status === "part_paid") && invoice.total - invoice.paidTotal > 0 && (

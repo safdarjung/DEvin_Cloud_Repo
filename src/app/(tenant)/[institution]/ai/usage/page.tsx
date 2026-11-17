@@ -112,7 +112,7 @@ export default async function AiUsagePage({
 
       <p className="text-muted-foreground text-xs">
         Cost figures are estimates from a static price table (never a provider bill). Concurrency limits are
-        enforced per server process, not globally across instances (DBT-02).
+        enforced per server process, not globally across instances.
       </p>
     </div>
   );

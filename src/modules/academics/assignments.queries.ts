@@ -249,6 +249,12 @@ export async function listTeachableSections(ctx: TenantContext): Promise<Section
     rows = rows.filter((row) => managesWholeSection(ctx, row.class_teacher_id) || taughtIds.has(row.id));
   }
 
+  // The teacher's own class first, so forms that default to the first section start there.
+  if (ctx.membership.staffId) {
+    const own = (row: (typeof rows)[number]) => (row.class_teacher_id === ctx.membership.staffId ? 0 : 1);
+    rows = [...rows].sort((a, b) => own(a) - own(b));
+  }
+
   // Grade code first ("VIII-B"), as the exams module labels sections: a bare "B" is ambiguous across grades.
   return rows.map((row) => {
     const grade = (row.grades as { code: string } | null)?.code;
@@ -262,7 +268,12 @@ export interface SubjectOption {
 }
 
 /** Subjects selectable for a given section: all institution subjects for owner/principal/the section's class teacher, else only subjects assigned to this teacher for this section. */
-export async function listSectionSubjects(ctx: TenantContext, classSectionId: string): Promise<SubjectOption[]> {
+/** `ownOnly`: a teacher sees just the subjects assigned to them, even as the section's class teacher (falls back to all if they have none there). */
+export async function listSectionSubjects(
+  ctx: TenantContext,
+  classSectionId: string,
+  opts: { ownOnly?: boolean } = {},
+): Promise<SubjectOption[]> {
   const supabase = await createClient();
 
   async function allSubjects(): Promise<SubjectOption[]> {
@@ -282,9 +293,9 @@ export async function listSectionSubjects(ctx: TenantContext, classSectionId: st
     .eq("institution_id", ctx.institution.id)
     .maybeSingle();
   if (sectionError) throw sectionError;
-  if (managesWholeSection(ctx, section?.class_teacher_id ?? null)) {
-    return allSubjects();
-  }
+  // Admin has no subject assignments but may read every subject (curriculum RLS allows it); writes stay gated by permission.
+  const wholeSection = ctx.membership.role === "admin" || managesWholeSection(ctx, section?.class_teacher_id ?? null);
+  if (wholeSection && !(opts.ownOnly && ctx.membership.role === "teacher")) return allSubjects();
   if (!ctx.membership.staffId) return [];
 
   const { data: assigned, error: assignedError } = await supabase
@@ -296,7 +307,7 @@ export async function listSectionSubjects(ctx: TenantContext, classSectionId: st
   if (assignedError) throw assignedError;
 
   const subjectIds = (assigned ?? []).map((row) => row.subject_id);
-  if (subjectIds.length === 0) return [];
+  if (subjectIds.length === 0) return wholeSection ? allSubjects() : [];
 
   const { data, error } = await supabase
     .from("subjects")

@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ProgressBar } from "@/components/widgets/viz";
-import { inr } from "@/lib/format";
+import { formatDate, humanize, inr } from "@/lib/format";
 import type { InvoiceDetail as InvoiceDetailData } from "@/modules/finance/queries";
 
 // Row entrance: CSS only, `from`-state held during the delay, skipped under reduced motion.
@@ -30,8 +30,8 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
         <TableBody>
           {invoice.lines.map((line, i) => (
             <TableRow key={line.head} className={ROW_ENTER} style={rowDelay(i)}>
-              <TableCell>{line.head}</TableCell>
-              <TableCell className="hidden sm:table-cell">{line.description}</TableCell>
+              <TableCell>{humanize(line.head)}</TableCell>
+              <TableCell className="hidden sm:table-cell">{line.description && humanize(line.description)}</TableCell>
               <TableCell className="text-right tabular-nums">{inr(line.amount)}</TableCell>
               <TableCell className="text-right tabular-nums">{inr(line.concessionAmount)}</TableCell>
             </TableRow>
@@ -58,7 +58,7 @@ export function InvoiceDetail({ invoice }: { invoice: InvoiceDetailData }) {
             <dt className="text-muted-foreground">Outstanding</dt>
             <dd className="text-right font-medium">{inr(invoice.total - invoice.paidTotal)}</dd>
             <dt className="text-muted-foreground">Due on</dt>
-            <dd className="text-right">{invoice.dueOn ?? "—"}</dd>
+            <dd className="text-right">{invoice.dueOn ? formatDate(invoice.dueOn) : "—"}</dd>
           </dl>
           {invoice.total > 0 && (
             <ProgressBar

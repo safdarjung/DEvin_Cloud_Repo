@@ -14,7 +14,11 @@ export const TOUR_COPY: Record<string, TourCopy> = {
   "/dashboard": { text: "A live summary of enrolment, attendance, fee collection and recent activity. Start with the numbers that matter to your role. In the demo school some widgets use sample data." },
   "/today": { text: "Your day in one place: the registers to mark and today's timetable. Open a section such as V-A and mark attendance." },
   "/assistant": { text: "Ask questions about your school's data in plain English, for example how many students were absent this week." },
-  "/orb": { text: "A visual map of what the app can do, with a chat to ask or create things. Click a dot to jump to that feature." },
+  "/orb": {
+    text: "Every feature as a dot on one sphere, with a chat underneath. Click a dot to open that feature or start its task, or type a question in plain words. Each step of this tour has an Ask the Orb button with a question that suits that page.",
+    student: "Every study tool as a dot on one sphere, with a chat underneath. Click a dot to start it, or ask about a chapter in plain words.",
+    guardian: "Everything about your child as a dot on one sphere, with a chat underneath. Click a dot, or ask in plain words, for example how many days your child was absent this month.",
+  },
   "/portal": {
     text: "The family-facing home page: timetable, attendance and recent updates for a student. Open it to see what parents and students see.",
     student: "Your home page: today's timetable, attendance for the last 30 days and recent updates. Check today's timetable first.",

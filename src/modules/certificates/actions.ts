@@ -16,6 +16,8 @@ import { IssueCertificateSchema, type IssueCertificateInput } from "@/modules/ce
 const POSTGRES_UNIQUE_VIOLATION = "23505";
 const POSTGRES_RLS_VIOLATION = "42501";
 
+const TC_NOT_WITHDRAWN = /not withdrawn/i;
+
 function throwMapped(error: unknown): never {
   const code = (error as { code?: unknown } | null)?.code;
   if (code === POSTGRES_UNIQUE_VIOLATION) {
@@ -26,7 +28,10 @@ function throwMapped(error: unknown): never {
   }
   const mapped = mapSqlError(error);
   if (mapped.ok) throw new AppError("internal", "Unexpected error.");
-  throw new AppError(mapped.error.code, mapped.error.message, mapped.error.fieldErrors);
+  const message = TC_NOT_WITHDRAWN.test(mapped.error.message)
+    ? "A transfer certificate can only be issued after the student has left the school. Withdraw or transfer the student first under Students, Lifecycle, then issue the TC."
+    : mapped.error.message;
+  throw new AppError(mapped.error.code, message, mapped.error.fieldErrors);
 }
 
 /** `issue_certificate` returns jsonb — the generated `Json` type carries no field names; narrow once at the boundary (lifecycle/actions.ts's asJsonRecord precedent). */

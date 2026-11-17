@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Walks every sidebar page as each demo role and records what a UX pass needs:
 // a desktop and a phone screenshot per page, console/page errors, HTTP status,
-// horizontal overflow, load time and the page heading. Read-only: it only navigates.
+// horizontal overflow, load time, the page heading, and visible text a demo would expose
+// (leaked undefined/NaN/null, empty states, error lines, broken images). Read-only: it only navigates.
 //
 // Usage:
-//   node scripts/dev/role-walk.mjs --base http://localhost:3210 [--roles principal,teacher.vi-a] [--out .webshots/walk] [--only finance]
+//   node scripts/dev/role-walk.mjs --base http://localhost:3210 [--roles principal,teacher.vi-a] [--out .webshots/walk] [--only finance] [--desktop-only]
 // Prints one JSON line per role while running and writes <out>/report.json at the end.
 // Needs NEXT_PUBLIC_DEMO_LOGIN_HINTS=true on the server (one-tap demo login, no password).
 import { chromium } from "@playwright/test";
@@ -20,6 +21,7 @@ const { values: args } = parseArgs({
     only: { type: "string" },
     slug: { type: "string", default: "st-josephs-demo" },
     phone: { type: "boolean", default: true },
+    "desktop-only": { type: "boolean", default: false },
   },
 });
 
@@ -61,13 +63,22 @@ async function visit(page, url, file, size) {
   }
   const ms = Date.now() - t0;
   const facts = await page
-    .evaluate(() => ({
-      h1: document.querySelector("h1")?.textContent?.trim().slice(0, 80) ?? null,
-      overflowX: document.documentElement.scrollWidth - window.innerWidth,
-      height: document.documentElement.scrollHeight,
-      errorText: /something went wrong|application error|unhandled|failed to load/i.test(document.body.innerText),
-      path: location.pathname,
-    }))
+    .evaluate(() => {
+      const text = document.body.innerText;
+      // Lines a person demoing would notice: leaked placeholders, broken values, empty pages, error banners.
+      const pick = (re) => [...new Set((text.match(re) ?? []).map((s) => s.trim().slice(0, 90)))].slice(0, 6);
+      return {
+        h1: document.querySelector("h1")?.textContent?.trim().slice(0, 80) ?? null,
+        overflowX: document.documentElement.scrollWidth - window.innerWidth,
+        height: document.documentElement.scrollHeight,
+        errorText: /something went wrong|application error|unhandled|failed to load/i.test(text),
+        leaks: pick(/[^\n]*\b(undefined|NaN|Invalid Date|\[object Object\]|lorem ipsum|TODO|null)\b[^\n]*/g),
+        empties: pick(/[^\n]*\b(no [a-z ]{2,40} yet|nothing (to show|here)|no (records|data|results) (found|yet)?)[^\n]*/gi),
+        problems: pick(/[^\n]*\b(could not|couldn't|failed|not configured|forbidden|permission denied|error)\b[^\n]*/gi),
+        brokenImages: [...document.images].filter((i) => i.complete && i.naturalWidth === 0).length,
+        path: location.pathname,
+      };
+    })
     .catch(() => ({}));
   const height = Math.min(facts.height ?? size.height, MAX_SHOT_HEIGHT);
   await page
@@ -94,7 +105,7 @@ try {
         const name = link.replace(`/${args.slug}/`, "").replace(/[/?=&]/g, "_") || "root";
         const row = { role, link };
         for (const [kind, size] of Object.entries(SIZES)) {
-          if (kind === "phone" && !args.phone) continue;
+          if (kind === "phone" && (!args.phone || args["desktop-only"])) continue;
           row[kind] = await visit(page, `${args.base}${link}`, join(dir, `${name}.${kind}.jpg`), size);
         }
         report.push(row);
@@ -104,6 +115,8 @@ try {
       console.log(JSON.stringify({ role, error: String(e.message) }));
     }
     await context.close();
+    // Saved after every role so a long or interrupted run keeps what it has.
+    writeFileSync(join(args.out, "report.json"), JSON.stringify(report, null, 1));
   }
 } finally {
   await browser.close();

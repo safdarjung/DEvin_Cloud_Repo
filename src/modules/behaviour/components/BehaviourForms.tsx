@@ -9,18 +9,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { describeActionError } from "@/lib/action-error";
 import { logIncident, voidIncident } from "@/modules/behaviour/actions";
+import { StudentSearchSelect } from "@/modules/people/components/StudentSearchSelect";
 import { BEHAVIOUR_CATEGORIES, BEHAVIOUR_SEVERITIES, IncidentLogSchema } from "@/modules/behaviour/schemas";
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 
-export function LogIncidentForm({ institutionSlug, students }: { institutionSlug: string; students: { id: string; label: string }[] }) {
+export function LogIncidentForm({ institutionSlug }: { institutionSlug: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [student, setStudent] = useState<{ id: string; label: string } | null>(null);
 
   function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    if (!student) {
+      setError("Search for a student and pick one.");
+      return;
+    }
     const parsed = IncidentLogSchema.safeParse({
       studentId: fd.get("studentId"),
       category: fd.get("category"),
@@ -40,6 +46,7 @@ export function LogIncidentForm({ institutionSlug, students }: { institutionSlug
       if (res.ok) {
         toast.success("Incident logged");
         form.reset();
+        setStudent(null);
         router.refresh();
       } else {
         setError(describeActionError(res.error));
@@ -51,16 +58,7 @@ export function LogIncidentForm({ institutionSlug, students }: { institutionSlug
     <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2" aria-busy={pending}>
       <div className="sm:col-span-2">
         <Label htmlFor="bh-student">Student</Label>
-        <select id="bh-student" name="studentId" required className={SELECT_CLASS} defaultValue="">
-          <option value="" disabled>
-            Select a student
-          </option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <StudentSearchSelect institutionSlug={institutionSlug} id="bh-student" name="studentId" value={student} onChange={setStudent} />
       </div>
       <div>
         <Label htmlFor="bh-category">Category</Label>

@@ -14,7 +14,6 @@ import { hasPermission, requireModule } from "@/lib/auth/require";
 import { AppError } from "@/lib/actions/result";
 import { humanize } from "@/lib/format";
 import { listSectionOptions } from "@/modules/exams/queries";
-import { listStudents } from "@/modules/people/queries";
 import { LogIncidentForm, VoidIncidentButton } from "@/modules/behaviour/components/BehaviourForms";
 import { BEHAVIOUR_PAGE_SIZE, listIncidents, studentPointTotals } from "@/modules/behaviour/queries";
 import { IncidentListSchema } from "@/modules/behaviour/schemas";
@@ -24,7 +23,7 @@ export const metadata: Metadata = { title: "Behaviour" };
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 const SEVERITY_VARIANT = { low: "outline", medium: "warning", high: "destructive" } as const;
 
-type Search = { section?: string; category?: string; from?: string; to?: string; page?: string; q?: string };
+type Search = { section?: string; category?: string; from?: string; to?: string; page?: string };
 
 export default async function BehaviourPage({
   params,
@@ -49,15 +48,13 @@ export default async function BehaviourPage({
   });
   const filters = parsed.success ? parsed.data : {};
 
-  const [listR, totalsR, sectionsR, studentsR] = await Promise.allSettled([
+  const [listR, totalsR, sectionsR] = await Promise.allSettled([
     listIncidents(ctx, filters),
     studentPointTotals(ctx, filters),
     listSectionOptions(ctx),
-    listStudents(ctx, sp.q, 1, { status: "active" }),
   ]);
-  for (const r of [listR, totalsR, sectionsR, studentsR]) if (r.status === "rejected") console.error("behaviour page fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
+  for (const r of [listR, totalsR, sectionsR]) if (r.status === "rejected") console.error("behaviour page fetch failed:", r.reason instanceof Error ? r.reason.message : r.reason);
   const sections = sectionsR.status === "fulfilled" ? sectionsR.value : [];
-  const students = studentsR.status === "fulfilled" ? studentsR.value.students.map((s) => ({ id: s.id, label: `${[s.firstName, s.lastName].filter(Boolean).join(" ")} (${s.admissionNo}${s.sectionName ? `, ${s.gradeName ?? ""}-${s.sectionName}` : ""})` })) : [];
   const isAdmin = ["owner", "principal", "admin"].includes(ctx.membership.role);
 
   return (
@@ -69,18 +66,7 @@ export default async function BehaviourPage({
           <CardTitle>Log incident</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form method="get" className="flex items-end gap-2">
-            {/* Narrows the student picker below; keeps the list filters. */}
-            {Object.entries({ section: sp.section, category: sp.category, from: sp.from, to: sp.to }).map(([k, v]) => v && <input key={k} type="hidden" name={k} value={v} />)}
-            <div className="flex-1">
-              <Label htmlFor="bh-q">Find student</Label>
-              <Input id="bh-q" name="q" defaultValue={sp.q} placeholder="Name or admission no" />
-            </div>
-            <Button type="submit" variant="outline">
-              Search
-            </Button>
-          </form>
-          <LogIncidentForm institutionSlug={slug} students={students} />
+          <LogIncidentForm institutionSlug={slug} />
         </CardContent>
       </Card>
 

@@ -83,6 +83,10 @@ export const DecideApplicationSchema = z
 
 export type DecideApplicationInput = z.infer<typeof DecideApplicationSchema>;
 
+export const StartApplicationReviewSchema = z.object({ applicationId: uuid }).strict();
+
+export type StartApplicationReviewInput = z.infer<typeof StartApplicationReviewSchema>;
+
 // T-028 — 06 §W4 enrolApplicant. roll_no is optional (app.enrol_applicant
 // assigns max+1 for the section when omitted).
 export const EnrolApplicantSchema = z

@@ -23,15 +23,17 @@ import {
   ConvertEnquirySchema,
   DecideApplicationSchema,
   EnrolApplicantSchema,
+  StartApplicationReviewSchema,
   UpdateEnquiryStatusSchema,
   type AddEnquiryNoteInput,
   type AssignEnquiryInput,
   type ConvertEnquiryInput,
   type DecideApplicationInput,
   type EnrolApplicantInput,
+  type StartApplicationReviewInput,
   type UpdateEnquiryStatusInput,
 } from "./schemas";
-import { canDecide, canTransitionEnquiry, type ApplicationStatus } from "./state";
+import { canDecide, canStartReview, canTransitionEnquiry, type ApplicationStatus } from "./state";
 
 function throwMapped(error: unknown): never {
   const mapped = mapSqlError(error);
@@ -225,6 +227,49 @@ export const decideApplication = defineAction({
     const result = asJsonRecord(data);
     revalidatePath(`/${ctx.institution.slug}/admissions/applications/${input.applicationId}`);
     return { applicationId: result.application_id as string, status: result.status as string, decisionId: result.decision_id as string };
+  },
+});
+
+export const startApplicationReview = defineAction({
+  name: "admissions.application.start_review",
+  schema: StartApplicationReviewSchema,
+  module: "admissions",
+  permission: "admissions.application.decide",
+  handler: async (input: StartApplicationReviewInput, ctx: TenantContext) => {
+    const supabase = await createClient();
+    const { data: current, error: readError } = await supabase
+      .from("applications")
+      .select("status")
+      .eq("id", input.applicationId)
+      .eq("institution_id", ctx.institution.id)
+      .maybeSingle();
+    if (readError) throwMapped(readError);
+    if (!current) throw new AppError("not_found", "Application not found.");
+    if (!canStartReview(current.status as ApplicationStatus)) {
+      throw new AppError("invalid_state", `Cannot start review of an application in status "${current.status}".`);
+    }
+
+    // The status filter makes a concurrent double-click a no-op instead of a rewrite.
+    const { data, error } = await supabase
+      .from("applications")
+      .update({ status: "under_review" })
+      .eq("id", input.applicationId)
+      .eq("institution_id", ctx.institution.id)
+      .eq("status", "submitted")
+      .select("id");
+    if (error) throwMapped(error);
+    if ((data ?? []).length === 0) throw new AppError("invalid_state", "Application is no longer submitted.");
+
+    await audit(ctx, {
+      action: "admissions.application.start_review",
+      entityType: "application",
+      entityId: input.applicationId,
+      before: { status: "submitted" },
+      after: { status: "under_review" },
+    });
+
+    revalidatePath(`/${ctx.institution.slug}/admissions/applications/${input.applicationId}`);
+    return { applicationId: input.applicationId, status: "under_review" };
   },
 });
 

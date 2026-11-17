@@ -1,12 +1,13 @@
 "use client";
 
-// 0155: shown to a teacher on every page until they save their teaching profile (not on the form itself).
+// 0155: shown to a teacher on their home (/today) until they save their teaching profile.
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GraduationCap } from "lucide-react";
 
 export function TeachingProfileBanner({ href }: { href: string }) {
-  if (usePathname() === href) return null;
+  const pathname = usePathname();
+  if (pathname !== href.replace(/\/me\/teaching-profile$/, "/today")) return null;
   return (
     <div role="note" className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
       <GraduationCap className="size-5 shrink-0 text-primary" aria-hidden />

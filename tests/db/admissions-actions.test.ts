@@ -14,6 +14,7 @@ import {
   assignEnquiry,
   convertEnquiryToApplication,
   decideApplication,
+  startApplicationReview,
   updateEnquiryStatus,
 } from "@/modules/admissions/actions";
 import { getAdmissionsFunnelCounts, getApplication, getEnquiry, listApplicationDecisions } from "@/modules/admissions/queries";
@@ -267,6 +268,34 @@ describe("admissions pipeline actions (T-027) — real actions via callAs + the 
       const result = await callAs(inst, "admissions", decideApplication, { applicationId, decision: "accept" });
       expect(result.ok).toBe(false);
       if (!result.ok) expect(result.error.code).toBe("invalid_state");
+    } finally {
+      await inst.cleanup();
+    }
+  });
+
+  it("startApplicationReview moves submitted -> under_review so offer works; a second start is invalid_state; admin is forbidden", async () => {
+    const inst = await createTestInstitution("adm-start-review");
+    try {
+      await setNumberingSettings(inst.institutionId);
+      const yearId = await createAcademicYear(inst.institutionId);
+      const gradeId = await createGrade(inst.institutionId);
+      const applicationId = await createApplication(inst.institutionId, gradeId, yearId, { status: "submitted" });
+
+      const adminTry = await callAs(inst, "admin", startApplicationReview, { applicationId });
+      expect(adminTry.ok).toBe(false);
+      if (!adminTry.ok) expect(adminTry.error.code).toBe("forbidden");
+
+      const started = await callAs(inst, "admissions", startApplicationReview, { applicationId });
+      expect(started.ok).toBe(true);
+      const [row] = await sql`select status from public.applications where id = ${applicationId}::uuid`;
+      expect(row.status).toBe("under_review");
+
+      const again = await callAs(inst, "admissions", startApplicationReview, { applicationId });
+      expect(again.ok).toBe(false);
+      if (!again.ok) expect(again.error.code).toBe("invalid_state");
+
+      const offer = await callAs(inst, "admissions", decideApplication, { applicationId, decision: "offer" });
+      expect(offer.ok).toBe(true);
     } finally {
       await inst.cleanup();
     }

@@ -152,6 +152,15 @@ export function dateInWords(iso: string): string {
   return `${dayWord} ${monthWord} ${year}`;
 }
 
+// The DB stores "male"/"female"/"other"; snapshots and tests may carry "M"/"F".
+const isMale = (g: string) => g === "M" || g === "male";
+const isFemale = (g: string) => g === "F" || g === "female";
+
+/** He/She from the stored gender; falls back to "He/She" when unknown. */
+function pronoun(gender: string): string {
+  return isMale(gender) ? "He" : isFemale(gender) ? "She" : "He/She";
+}
+
 /**
  * Determines relation phrase based on gender and relationship.
  * male/female + "father"/"mother"/null → "son of" / "daughter of"
@@ -165,8 +174,8 @@ export function relationPhrase(
     return "ward of";
   }
 
-  if (gender === "M") return "son of";
-  if (gender === "F") return "daughter of";
+  if (isMale(gender)) return "son of";
+  if (isFemale(gender)) return "daughter of";
   return "ward of";
 }
 
@@ -203,7 +212,7 @@ function renderBonafideHtml(snapshot: CertificateSnapshot): string {
   <h2>Bonafide Certificate</h2>
   <p>This is to certify that <strong>${escapeHtml(student.name)}</strong>, ${guardianLine},
   is a bonafide student of ${escapeHtml(school.name)}.
-  He/She is studying in Class ${classLabel} for the academic session ${academicYear}.</p>
+  ${pronoun(student.gender)} is studying in Class ${classLabel} for the academic session ${academicYear}.</p>
 
   <p><strong>Date of Birth:</strong> ${dobDate} (${dobWords})</p>
   <p><strong>Purpose:</strong> ${escapeHtml(purpose ?? "")}</p>
@@ -352,11 +361,6 @@ export function renderCertificateHtml(snapshot: CertificateSnapshot): string {
   }
 
   // Build school address if available.
-  const addressParts = [];
-  if (school.address) {
-    addressParts.push(school.address);
-  }
-  const addressLine = addressParts.length > 0 ? addressParts.join(", ") : "Address not provided";
 
   // Monogram: first letters of school name words.
   const monogram = school.name
@@ -523,7 +527,7 @@ export function renderCertificateHtml(snapshot: CertificateSnapshot): string {
       <div class="school-info">
         <div class="school-name">${escapeHtml(school.name)}</div>
         ${school.board ? `<div class="school-board">${escapeHtml(school.board)}</div>` : ""}
-        <div class="school-address">${escapeHtml(addressLine)}</div>
+        ${school.address ? `<div class="school-address">${escapeHtml(school.address)}</div>` : ""}
       </div>
     </div>
 

@@ -6,6 +6,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
 import { EmptyState } from "@/components/states";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ export function PipelineBoard({ institutionSlug, stages, byStage }: PipelineBoar
         setError(result.error.message);
         return;
       }
+      toast.success(`Moved to ${humanize(status)}`);
       router.refresh();
     });
   }

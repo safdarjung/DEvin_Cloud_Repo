@@ -105,6 +105,16 @@ describe('renderCertificateHtml', () => {
     tc: null,
   }
 
+  it('uses the student gender for the pronoun and hides a missing address', () => {
+    const noAddr = { ...bonafideSnapshot, school: { ...bonafideSnapshot.school, address: null } }
+    const female = renderCertificateHtml({ ...noAddr, student: { ...noAddr.student, gender: 'female' } })
+    expect(female).toContain('She is studying')
+    expect(female).not.toContain('Address not provided')
+    expect(female).not.toContain('school-address">')
+    expect(renderCertificateHtml({ ...noAddr, student: { ...noAddr.student, gender: 'other' } })).toContain('He/She is studying')
+    expect(renderCertificateHtml(bonafideSnapshot)).toContain('He is studying')
+  })
+
   const characterSnapshot: CertificateSnapshot = {
     ...bonafideSnapshot,
     kind: 'character',

@@ -8,6 +8,10 @@ export interface TourStep {
   title: string;
   text: string;
   group: string;
+  /** A question about this page to send to the Orb chat. */
+  ask?: string;
+  /** Practice scenarios this member can make for this tab (demo school only). */
+  practice?: { key: string; label: string; detail: string }[];
 }
 
 export function buildTourSteps(

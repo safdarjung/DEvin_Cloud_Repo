@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { describeActionError } from "@/lib/action-error";
 import { issueCertificate } from "@/modules/certificates/actions";
 import { IssueCertificateSchema } from "@/modules/certificates/schemas";
+import { StudentSearchSelect } from "@/modules/people/components/StudentSearchSelect";
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 const KINDS = [
@@ -18,6 +19,13 @@ const KINDS = [
   { value: "character", label: "Character certificate" },
   { value: "transfer", label: "Transfer certificate (TC)" },
 ] as const;
+
+// Plain-language replacements for raw Zod text, keyed by field.
+const FRIENDLY: Record<string, string> = {
+  studentId: "Search for a student and pick one.",
+  purpose: "Enter a purpose of at least 3 characters, for example Passport application.",
+  conduct: "Enter the student's conduct, for example Good.",
+};
 
 function FieldError({ errors }: { errors?: string[] }) {
   if (!errors?.length) return null;
@@ -28,24 +36,29 @@ function FieldError({ errors }: { errors?: string[] }) {
   );
 }
 
-export function IssueCertificateForm({ institutionSlug, students }: { institutionSlug: string; students: { id: string; label: string }[] }) {
+export function IssueCertificateForm({ institutionSlug }: { institutionSlug: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [errors, setErrors] = useState<Record<string, string[]>>({});
-  const [form, setForm] = useState({ studentId: "", kind: "bonafide", purpose: "", conduct: "" });
+  const [student, setStudent] = useState<{ id: string; label: string } | null>(null);
+  const [form, setForm] = useState({ kind: "bonafide", purpose: "", conduct: "" });
+  const studentId = student?.id ?? "";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     const input =
       form.kind === "bonafide"
-        ? { kind: "bonafide", studentId: form.studentId, purpose: form.purpose }
+        ? { kind: "bonafide", studentId, purpose: form.purpose }
         : form.kind === "character"
-          ? { kind: "character", studentId: form.studentId, conduct: form.conduct, ...(form.purpose ? { purpose: form.purpose } : {}) }
-          : { kind: "transfer", studentId: form.studentId };
+          ? { kind: "character", studentId, conduct: form.conduct, ...(form.purpose ? { purpose: form.purpose } : {}) }
+          : { kind: "transfer", studentId };
     const parsed = IssueCertificateSchema.safeParse(input);
     if (!parsed.success) {
       const flat: Record<string, string[]> = {};
-      for (const issue of parsed.error.issues) (flat[String(issue.path[0] ?? "form")] ??= []).push(issue.message);
+      for (const issue of parsed.error.issues) {
+        const field = String(issue.path[0] ?? "form");
+        flat[field] = [FRIENDLY[field] ?? "Check this field."];
+      }
       setErrors(flat);
       return;
     }
@@ -57,8 +70,12 @@ export function IssueCertificateForm({ institutionSlug, students }: { institutio
         setForm({ ...form, purpose: "", conduct: "" });
         router.refresh();
       } else {
-        if (res.error.fieldErrors) setErrors(res.error.fieldErrors);
-        toast.error(describeActionError(res.error));
+        if (res.error.code === "validation_failed" && res.error.fieldErrors) {
+          setErrors(Object.fromEntries(Object.keys(res.error.fieldErrors).map((f) => [f, [FRIENDLY[f] ?? "Check this field."]])));
+          toast.error("Check the highlighted fields and try again.");
+        } else {
+          toast.error(describeActionError(res.error));
+        }
       }
     });
   }
@@ -67,14 +84,7 @@ export function IssueCertificateForm({ institutionSlug, students }: { institutio
     <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2" aria-busy={pending}>
       <div>
         <Label htmlFor="c-student">Student</Label>
-        <select id="c-student" className={SELECT_CLASS} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} aria-invalid={Boolean(errors.studentId)}>
-          <option value="">Choose a student…</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <StudentSearchSelect institutionSlug={institutionSlug} id="c-student" value={student} onChange={setStudent} invalid={Boolean(errors.studentId)} />
         <FieldError errors={errors.studentId} />
       </div>
       <div>

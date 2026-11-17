@@ -16,6 +16,7 @@ import { isModuleEnabled } from "@/lib/modules/catalog";
 import { listSectionOptions } from "@/modules/exams/queries";
 import { BulkActions, BulkCheckbox } from "@/modules/finance/components/BulkActions";
 import { listGradeOptions, listTermOptions } from "@/modules/finance/queries";
+import { addStudentHref } from "@/modules/people/add-student";
 import { studentStatusVariant } from "@/modules/people/components/StudentProfileHeader";
 import { listStudents } from "@/modules/people/queries";
 import { StudentListFiltersSchema } from "@/modules/people/schemas";
@@ -81,9 +82,20 @@ export default async function StudentsPage({
   }
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const addStudent = addStudentHref(ctx, institutionSlug);
   return (
     <div className="space-y-4">
-      <PageHeader title="Students" description={`${total} enrolled and past students`} />
+      <PageHeader
+        title="Students"
+        description={`${total} enrolled and past students`}
+        actions={
+          addStudent && (
+            <Button asChild>
+              <Link href={addStudent.href}>{addStudent.label}</Link>
+            </Button>
+          )
+        }
+      />
 
       <Card>
         <form method="get" role="search" className="flex flex-col gap-2 border-b-2 border-border px-4 pb-3 sm:flex-row sm:flex-wrap sm:items-center">
