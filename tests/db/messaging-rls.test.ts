@@ -290,3 +290,66 @@ describe("messaging (0102)", () => {
     }
   }, 30_000);
 });
+
+describe("school office messaging (0156)", () => {
+  it("admin messages a student's guardian without teaching the child; the guardian sees it and both can reply", async () => {
+    const inst = await createTestInstitution("msg-office");
+    try {
+      const base = await makeBase(inst);
+      const adminStaff = await membershipId(inst.institutionId, "admin", "staff_id");
+      const started = await inst.clientAs("admin").rpc("start_message_thread", {
+        p_institution_id: inst.institutionId,
+        p_student_id: base.studentId,
+        p_counterpart_id: base.guardianId,
+        p_subject: "Bus pass renewal",
+        p_body: "Please send a photo for the new bus pass.",
+      });
+      expect(started.error).toBeNull();
+      expect(started.data!.teacher_staff_id).toBe(adminStaff);
+      const threadId = started.data!.id as string;
+
+      const guardianView = await inst.clientAs("guardian").from("message_threads").select("id").eq("id", threadId);
+      expect(guardianView.data).toHaveLength(1);
+      const reply = await inst.clientAs("guardian").rpc("send_message", { p_thread_id: threadId, p_body: "Sent it today." });
+      expect(reply.error).toBeNull();
+      const back = await inst.clientAs("admin").rpc("send_message", { p_thread_id: threadId, p_body: "Received, thank you." });
+      expect(back.error).toBeNull();
+      const [{ n }] = await sql`select count(*)::int as n from public.notifications where institution_id = ${inst.institutionId} and recipient_user_id = ${inst.users.admin.id} and type = 'message.received'`;
+      expect(n).toBe(1);
+    } finally {
+      await inst.cleanup();
+    }
+  }, 30_000);
+
+  it("other staff roles still cannot start a thread, and the office cannot write to an unlinked guardian", async () => {
+    const inst = await createTestInstitution("msg-office-deny");
+    try {
+      const base = await makeBase(inst);
+      const asAccountant = await inst.clientAs("accountant").rpc("start_message_thread", {
+        p_institution_id: inst.institutionId, p_student_id: base.studentId, p_counterpart_id: base.guardianId, p_subject: "Fees", p_body: "Hello",
+      });
+      expect(asAccountant.error?.message).toBe("code:forbidden");
+      const stranger = await createBareGuardian(inst.institutionId);
+      const unlinked = await inst.clientAs("admin").rpc("start_message_thread", {
+        p_institution_id: inst.institutionId, p_student_id: base.studentId, p_counterpart_id: stranger, p_subject: "Hi", p_body: "Hello",
+      });
+      expect(unlinked.error?.message).toBe("code:forbidden");
+    } finally {
+      await inst.cleanup();
+    }
+  }, 30_000);
+
+  it("a guardian still cannot open a thread with the office (only with the child's teachers)", async () => {
+    const inst = await createTestInstitution("msg-office-guardian");
+    try {
+      const base = await makeBase(inst);
+      const adminStaff = await membershipId(inst.institutionId, "admin", "staff_id");
+      const res = await inst.clientAs("guardian").rpc("start_message_thread", {
+        p_institution_id: inst.institutionId, p_student_id: base.studentId, p_counterpart_id: adminStaff, p_subject: "Hi", p_body: "Hello",
+      });
+      expect(res.error?.message).toBe("code:forbidden");
+    } finally {
+      await inst.cleanup();
+    }
+  }, 30_000);
+});

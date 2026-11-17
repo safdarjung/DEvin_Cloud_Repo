@@ -28,7 +28,7 @@ export default async function MessageThreadPage({ params }: { params: Promise<{ 
   const isTeacher = ctx.membership.role === "teacher";
   const participant = isTeacher || messages.some((m) => m.mine);
   const canReply = hasPermission(ctx, "message.send") && participant;
-  const other = isTeacher ? (thread.guardianName ?? "Parent") : "Participant";
+  const other = isTeacher || participant ? (thread.guardianName ?? "Parent") : "Participant";
 
   // Leaders are not a side of the thread: name each sender from the guardian and teacher on it (where RLS lets them read it).
   const senderNames: Record<string, string> = {};
@@ -36,12 +36,16 @@ export default async function MessageThreadPage({ params }: { params: Promise<{ 
     const supabase = await createClient();
     const { data: t } = await supabase.from("message_threads").select("guardian_id, teacher_staff_id").eq("id", threadId).eq("institution_id", ctx.institution.id).maybeSingle();
     if (t) {
-      const [g, s] = await Promise.all([
-        supabase.from("guardians").select("user_id, full_name").eq("id", t.guardian_id).maybeSingle(),
-        supabase.from("staff").select("user_id, full_name").eq("id", t.teacher_staff_id).maybeSingle(),
+      // Logins link to people through memberships (guardian_id / staff_id), not a user_id on the person row.
+      const [g, s, m] = await Promise.all([
+        supabase.from("guardians").select("full_name").eq("id", t.guardian_id).maybeSingle(),
+        supabase.from("staff").select("full_name").eq("id", t.teacher_staff_id).maybeSingle(),
+        supabase.from("memberships").select("user_id, guardian_id, staff_id").eq("institution_id", ctx.institution.id).or(`guardian_id.eq.${t.guardian_id},staff_id.eq.${t.teacher_staff_id}`),
       ]);
-      if (g.data?.user_id) senderNames[g.data.user_id] = g.data.full_name;
-      if (s.data?.user_id) senderNames[s.data.user_id] = s.data.full_name;
+      for (const row of m.data ?? []) {
+        const name = row.guardian_id === t.guardian_id ? g.data?.full_name : s.data?.full_name;
+        if (row.user_id && name) senderNames[row.user_id] = name;
+      }
     }
   }
 

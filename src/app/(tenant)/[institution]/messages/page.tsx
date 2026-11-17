@@ -28,13 +28,16 @@ export default async function MessagesPage({
   requirePermission(ctx, "message.read");
   const canSend = hasPermission(ctx, "message.send");
   const isTeacher = ctx.membership.role === "teacher";
+  // The school office writes to any family (migration 0156); a teacher only to families of students they teach.
+  const isOffice = ["owner", "principal", "admin"].includes(ctx.membership.role);
+  const canCompose = canSend && (isTeacher || isOffice);
   const base = `/${institutionSlug}/messages`;
 
   const threads = await myThreads(ctx);
   const query = q?.trim();
   const [found, profile] = await Promise.all([
     canSend && query ? listStudents(ctx, query, 1) : Promise.resolve(null),
-    canSend && isTeacher && student && uuid.safeParse(student).success ? getStudentProfile(ctx, student) : Promise.resolve(null),
+    canCompose && student && uuid.safeParse(student).success ? getStudentProfile(ctx, student) : Promise.resolve(null),
   ]);
   // Every linked guardian is offered (the RPC only needs the link); those without a portal login are marked, since they cannot read replies yet.
   const guardians = profile?.guardians ?? [];
@@ -43,9 +46,15 @@ export default async function MessagesPage({
     <div>
       <PageHeader
         title="Messages"
-        description={isTeacher ? "Conversations with parents of your students." : "All parent-teacher conversations. You can read; only participants can reply."}
+        description={
+          isTeacher
+            ? "Conversations with parents of your students."
+            : isOffice
+              ? "All parent conversations. Start a message to any parent; you can reply in conversations you started."
+              : "All parent-teacher conversations. You can read; only participants can reply."
+        }
       />
-      <div className={canSend && isTeacher ? "grid gap-4 lg:grid-cols-3" : undefined}>
+      <div className={canCompose ? "grid gap-4 lg:grid-cols-3" : undefined}>
         <section aria-label="Inbox" className="min-w-0 lg:col-span-2">
           <ThreadList
             threads={threads}
@@ -54,7 +63,7 @@ export default async function MessagesPage({
           />
         </section>
 
-        {canSend && isTeacher && (
+        {canCompose && (
           <Card className="min-w-0 self-start">
             <section aria-labelledby="new-h" className="space-y-3 px-4">
               <h2 id="new-h" className="border-b-2 border-border pb-3 text-[15px] font-semibold">
