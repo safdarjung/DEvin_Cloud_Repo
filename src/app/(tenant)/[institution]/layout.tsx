@@ -14,6 +14,9 @@ import { SIDEBAR_COOKIE, TenantSidebar, type SidebarUser } from "@/components/te
 import { getTenantContext } from "@/lib/auth/context";
 import { hasPermission } from "@/lib/auth/require";
 import { navItemsFor } from "@/lib/nav";
+import { AppTour } from "@/components/tenant/app-tour";
+import { buildTourSteps, tourStorageKey } from "@/lib/tour";
+import { ROLE_INTRO, TOUR_COPY } from "@/lib/tour-copy";
 import { getClaims } from "@/lib/supabase/server";
 import { brandingStyle } from "@/modules/core/setup/branding-utils";
 import { getLayoutBranding } from "@/modules/core/setup/branding.queries";
@@ -139,6 +142,12 @@ export default async function TenantLayout({
       </div>
       <BottomNav items={navItems} user={sidebarUser} />
       <ShellExtras institutionSlug={ctx.institution.slug} />
+      <AppTour
+        steps={buildTourSteps(navItems, base, ctx.membership.role, TOUR_COPY)}
+        intro={ROLE_INTRO[ctx.membership.role]}
+        roleLabel={ROLE_LABELS[ctx.membership.role]}
+        storageKey={tourStorageKey(ctx.user.id, ctx.institution.id)}
+      />
       <AskAiLauncher
         institutionSlug={ctx.institution.slug}
         role={ctx.membership.role}

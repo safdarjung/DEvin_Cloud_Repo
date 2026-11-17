@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { useTheme } from "next-themes";
-import { Bell, ChevronDown, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
+import { Bell, ChevronDown, Compass, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
 import { demoLogin } from "@/app/(auth)/login/actions";
 import { SWITCH_ROLE_ACCOUNTS } from "@/lib/auth/demo-accounts";
 import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
+import { TOUR_START_EVENT } from "@/lib/tour";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -105,6 +106,9 @@ export function UserMenu({
           </>
         )}
         <DropdownMenuSeparator />
+        <DropdownMenuItem className={item} onSelect={() => window.dispatchEvent(new Event(TOUR_START_EVENT))}>
+          <Compass aria-hidden /> Take the tour
+        </DropdownMenuItem>
         {notificationsHref && (
           <DropdownMenuItem asChild className={item}>
             <Link href={notificationsHref}>
