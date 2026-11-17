@@ -43,7 +43,8 @@ export default async function LessonPlansPage({
     );
   }
 
-  const subjects = await listSectionSubjects(ctx, active.id, { ownOnly: true });
+  // Own subjects for creating plans; every section subject only to name the plans already listed.
+  const [subjects, allSubjects] = await Promise.all([listSectionSubjects(ctx, active.id, { ownOnly: true }), listSectionSubjects(ctx, active.id)]);
   const [plans, unitsPerSubject] = await Promise.all([
     curriculumLessonPlans(ctx, { classSectionId: active.id }),
     Promise.all(subjects.map((s) => curriculumSectionUnits(ctx, { classSectionId: active.id, subjectId: s.id }))),
@@ -62,6 +63,7 @@ export default async function LessonPlansPage({
         today={today}
         subjects={subjects.map((s, i) => ({ subjectId: s.id, subjectName: s.name, units: unitsPerSubject[i] }))}
         plans={plans}
+        subjectNames={Object.fromEntries(allSubjects.map((s) => [s.id, s.name]))}
         canManage={hasPermission(ctx, "assignment.manage")}
         canDraftWithAi={aiTaskOn(ctx, "lesson_plan_writer")}
         unitChapterLabels={unitChapterLabels}

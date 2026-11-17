@@ -27,6 +27,8 @@ export interface SubjectUnits {
 interface Props {
   institutionSlug: string;
   classSectionId: string;
+  /** Every section subject id -> name, so plans in subjects this member does not teach still show their subject. */
+  subjectNames?: Readonly<Record<string, string>>;
   /** Institution-local date (YYYY-MM-DD) used as the default plan date and the covered-on date. */
   today: string;
   subjects: SubjectUnits[];
@@ -51,13 +53,13 @@ interface Draft {
   resources: string;
 }
 
-export function LessonPlansView({ institutionSlug, classSectionId, today, subjects, plans, canManage, canDraftWithAi = false, unitChapterLabels = {} }: Props) {
+export function LessonPlansView({ institutionSlug, classSectionId, today, subjects, plans, canManage, canDraftWithAi = false, unitChapterLabels = {}, subjectNames = {} }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<LessonPlanRow | null>(null);
-  const subjectName = (id: string) => subjects.find((s) => s.subjectId === id)?.subjectName ?? "Subject";
+  const subjectName = (id: string) => subjects.find((s) => s.subjectId === id)?.subjectName ?? subjectNames[id] ?? "Subject";
 
   function openNew() {
     setFormError(null);

@@ -85,7 +85,7 @@ export async function listDocuments(
   const labels = new Map<string, string>();
   for (const b of books.data ?? []) {
     const title = b.custom_title ?? (b.ncert_textbooks as { title?: string } | null)?.title;
-    if (title) labels.set(b.id, `Subject textbook: ${title}`);
+    if (title) labels.set(b.id, title);
   }
   for (const s of students.data ?? []) labels.set(s.id, `${s.first_name} ${s.last_name ?? ""} (${s.admission_no})`.replace("  ", " "));
   for (const s of staff.data ?? []) labels.set(s.id, s.full_name);

@@ -104,7 +104,7 @@ export default async function ExamDetailPage({
                     {paper.sectionLabel} · {paper.subjectName}
                   </Link>
                   <span className="text-sm text-muted-foreground">
-                    {progressByPaper.has(paper.id) ? `${progressByPaper.get(paper.id)!.entered}/${progressByPaper.get(paper.id)!.total} entered · ` : ""}/{paper.maxMarks}
+                    {progressByPaper.has(paper.id) ? `${progressByPaper.get(paper.id)!.entered}/${progressByPaper.get(paper.id)!.total} entered · ` : ""}out of {paper.maxMarks}
                   </span>
                 </FadeIn>
               ))}

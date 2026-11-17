@@ -88,7 +88,7 @@ export default async function StudentsPage({
     <div className="space-y-4">
       <PageHeader
         title="Students"
-        description={`${total} enrolled and past students`}
+        description={`${total.toLocaleString("en-IN")} enrolled and past students`}
         actions={
           addStudent && (
             <Button asChild>

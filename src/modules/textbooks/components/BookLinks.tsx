@@ -30,7 +30,7 @@ export function BookCard({ book, summarySlug }: { book: BookView; summarySlug?: 
   const bookHref = safe(book.bookUrl);
   const schoolHref = safe(book.schoolUrl);
   return (
-    <div className="rounded-md border border-border p-3">
+    <div className="min-w-0 rounded-md border border-border p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 font-medium">
@@ -82,7 +82,7 @@ export function BookCard({ book, summarySlug }: { book: BookView; summarySlug?: 
 export function BookList({ books, empty = "No textbook set for this subject yet.", summarySlug }: { books: BookView[]; empty?: string; summarySlug?: string }) {
   if (books.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
   return (
-    <div className="grid gap-2">
+    <div className="grid grid-cols-1 gap-2">
       {books.map((b) => (
         <BookCard key={b.id} book={b} summarySlug={summarySlug} />
       ))}

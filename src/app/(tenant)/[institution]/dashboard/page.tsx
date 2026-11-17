@@ -205,13 +205,14 @@ const STRIP_COLS: Record<number, string> = {
 // `dashboard.view` (e.g. teacher) never reaches `getDashboardData` or any
 // extra fetch, so none of these aggregates are ever computed for them
 // (CLAUDE.md rule 2). Every extra fetch is also gated on its read permission.
-const APPROVAL_LABEL: Record<string, string> = { leave: "staff leave", recheck: "rechecks", insight: "insights", agent_run: "agent runs", workflow_run: "workflow runs" };
+const APPROVAL_LABEL: Record<string, [one: string, many: string]> = { leave: ["staff leave", "staff leave"], recheck: ["recheck", "rechecks"], insight: ["insight", "insights"], agent_run: ["agent run", "agent runs"], workflow_run: ["workflow run", "workflow runs"] };
 /** "3 staff leave, 208 insights": the queue mixes kinds, so the tile says what the number is made of. */
 function approvalBreakdown(rows: readonly { kind: string }[], studentLeaves: number): string {
   const counts = new Map<string, number>();
-  for (const r of rows) counts.set(APPROVAL_LABEL[r.kind] ?? r.kind, (counts.get(APPROVAL_LABEL[r.kind] ?? r.kind) ?? 0) + 1);
-  if (studentLeaves) counts.set("student leave", studentLeaves);
-  return [...counts].map(([k, n]) => `${n} ${k}`).join(", ");
+  for (const r of rows) counts.set(r.kind, (counts.get(r.kind) ?? 0) + 1);
+  if (studentLeaves) counts.set("student_leave", studentLeaves);
+  const label = (kind: string, n: number) => (kind === "student_leave" ? "student leave" : (APPROVAL_LABEL[kind]?.[n === 1 ? 0 : 1] ?? humanize(kind)));
+  return [...counts].map(([k, n]) => `${n.toLocaleString("en-IN")} ${label(k, n)}`).join(", ");
 }
 
 export default async function DashboardPage({
@@ -414,7 +415,7 @@ export default async function DashboardPage({
     );
 
   const enquiryKpi = canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed && (
-    <KpiTile key="open-enquiries" label="Open enquiries" value={String(openEnquiries)} animateTo={openEnquiries} sub={`${enrolledCount} enrolled`} href={`${basePath}/admissions`} />
+    <KpiTile key="open-enquiries" label="Open enquiries" value={openEnquiries.toLocaleString("en-IN")} animateTo={openEnquiries} sub={`${enrolledCount} enrolled`} href={`${basePath}/admissions`} />
   );
   const collectedKpi = collections && (
     <KpiTile
@@ -590,8 +591,8 @@ export default async function DashboardPage({
     widgets = [
         ["kpi-strip", kpiStrip([
           enquiryKpi,
-          admissionsOn && <KpiTile key="new" label="New this week" value={String(newThisWeek)} animateTo={newThisWeek} sub="enquiries received" href={`${basePath}/admissions`} />,
-          admissionsOn && <KpiTile key="enrolled" label="Enrolled this year" value={String(enrolledCount)} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
+          admissionsOn && <KpiTile key="new" label="New this week" value={newThisWeek.toLocaleString("en-IN")} animateTo={newThisWeek} sub="enquiries received" href={`${basePath}/admissions`} />,
+          admissionsOn && <KpiTile key="enrolled" label="Enrolled this year" value={enrolledCount.toLocaleString("en-IN")} animateTo={enrolledCount} href={`${basePath}/admissions/applications`} />,
           admissionsOn && (
             <KpiTile key="conv" label="Application conversion" value={conversion === null ? "—" : `${conversion}%`} animateTo={conversion ?? undefined} format="percent" sub={`${totalApps} applications`} />
           ),
@@ -634,7 +635,7 @@ export default async function DashboardPage({
           <KpiTile key="outstanding" label="Outstanding" value={formatINR(outstandingPaise)} animateTo={outstandingPaise / 100} format="inr" sub={`of ${formatINR(collections.duePaise)} due this term`} href={`${basePath}/finance/defaulters`} tone="warning" />,
           <KpiTile key="collection-rate" label="Collection rate" value={collectionPct === null ? "—" : `${collectionPct}%`} animateTo={collectionPct ?? undefined} format="percent" sub={`${collections.invoiceCount.toLocaleString("en-IN")} invoices this term`} />,
           defaulters && (
-            <KpiTile key="overdue" label="Overdue invoices" value={String(overdue.length)} animateTo={overdue.length} sub={`${defaulters.length.toLocaleString("en-IN")} unpaid this term`} href={`${basePath}/finance/defaulters`} tone={overdue.length > 0 ? "destructive" : "default"} />
+            <KpiTile key="overdue" label="Overdue invoices" value={overdue.length.toLocaleString("en-IN")} animateTo={overdue.length} sub={`${defaulters.length.toLocaleString("en-IN")} unpaid this term`} href={`${basePath}/finance/defaulters`} tone={overdue.length > 0 ? "destructive" : "default"} />
           ),
         ])],
         ["fees-by-class", feesByClassPanel(MAIN)],
@@ -679,7 +680,7 @@ export default async function DashboardPage({
           exams && <KpiTile key="me" label="In marks entry" value={String(byStatus("marks_entry"))} animateTo={byStatus("marks_entry")} sub={`${byStatus("draft")} in draft`} href={`${basePath}/exams`} />,
           exams && <KpiTile key="ver" label="In verification" value={String(byStatus("verification"))} animateTo={byStatus("verification")} href={`${basePath}/exams`} />,
           exams && <KpiTile key="pub" label="Published" value={String(byStatus("published"))} animateTo={byStatus("published")} sub={`of ${examTotal} exams`} href={`${basePath}/exams`} tone="success" />,
-          rechecks && <KpiTile key="rc" label="Pending rechecks" value={String(rechecks.length)} animateTo={rechecks.length} href={`${basePath}/exams/rechecks`} tone={rechecks.length > 0 ? "warning" : "default"} />,
+          rechecks && <KpiTile key="rc" label="Pending rechecks" value={rechecks.length.toLocaleString("en-IN")} animateTo={rechecks.length} href={`${basePath}/exams/rechecks`} tone={rechecks.length > 0 ? "warning" : "default"} />,
         ])],
         ["exam-grades", grades("") && <Cell span={MAIN}>{grades("")}</Cell>],
         ["exam-pipeline", exams && examTotal > 0 && (
@@ -750,11 +751,11 @@ export default async function DashboardPage({
         spark: trendPts.length > 1 ? trendPts.map((p) => p.value) : undefined,
       });
     }
-    if (queue) tiles.push({ label: "Approvals waiting", value: String(queue.total), sub: queue.total === 0 ? "Nothing to decide" : approvalBreakdown(approvalRows ?? [], studentLeaves?.length ?? 0), tone: queue.total > 0 ? "warning" : undefined });
+    if (queue) tiles.push({ label: "Approvals waiting", value: queue.total.toLocaleString("en-IN"), sub: queue.total === 0 ? "Nothing to decide" : approvalBreakdown(approvalRows ?? [], studentLeaves?.length ?? 0), tone: queue.total > 0 ? "warning" : undefined });
     if (collections) tiles.push({ label: "Collected this term", value: inrWhole(collections.collectedPaise), sub: `of ${inrWhole(collections.duePaise)} due`, href: `${basePath}/finance` });
-    if (defaulters) tiles.push({ label: "Overdue invoices", value: String(overdue.length), href: `${basePath}/finance/defaulters`, tone: overdue.length > 0 ? "destructive" : undefined });
-    if (canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed) tiles.push({ label: "Open enquiries", value: String(openEnquiries), sub: `${enrolledCount} enrolled`, href: `${basePath}/admissions` });
-    if (upcomingExams) tiles.push({ label: "Upcoming exams", value: String(upcomingExams.total), sub: upcomingExams.papers[0] ? `Next ${shortDate.format(new Date(upcomingExams.papers[0].scheduledAt))}` : undefined, href: `${basePath}/exams` });
+    if (defaulters) tiles.push({ label: "Overdue invoices", value: overdue.length.toLocaleString("en-IN"), href: `${basePath}/finance/defaulters`, tone: overdue.length > 0 ? "destructive" : undefined });
+    if (canEnquiries && isModuleEnabled(ctx, "admissions") && !data.funnelFailed) tiles.push({ label: "Open enquiries", value: openEnquiries.toLocaleString("en-IN"), sub: `${enrolledCount} enrolled`, href: `${basePath}/admissions` });
+    if (upcomingExams) tiles.push({ label: "Upcoming exams", value: upcomingExams.total.toLocaleString("en-IN"), sub: upcomingExams.papers[0] ? `Next ${shortDate.format(new Date(upcomingExams.papers[0].scheduledAt))}` : undefined, href: `${basePath}/exams` });
 
     // ---- panels ----
     const approvalsPanel = failed(approvalsR) ? (
