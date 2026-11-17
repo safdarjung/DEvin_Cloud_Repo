@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 import { Bell, ChevronDown, LogOut, Moon, ShieldCheck, Sun, Users } from "lucide-react";
 import { demoLogin } from "@/app/(auth)/login/actions";
 import { SWITCH_ROLE_ACCOUNTS } from "@/lib/auth/demo-accounts";
+import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
 import { RoleBadge } from "@/components/tenant/role-badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -87,7 +88,7 @@ export function UserMenu({
             <Moon aria-hidden /> Dark
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
-        {isDemo && (
+        {isDemo && DEMO_QUICK_LOGIN && (
           <>
             <DropdownMenuSeparator />
             {/* Inline, not a side submenu: on a phone the submenu opened off the screen. */}

@@ -8,6 +8,7 @@ import { homeIcon } from "@/components/home/icons";
 import { HONESTY_TEXT } from "@/components/home/story";
 import { tabKeyDown } from "@/components/home/tabs";
 import { TOUR_ROLES } from "@/components/tour/roles";
+import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
 import { ScrollReveal } from "./scroll-reveal";
 import { SectionShell } from "./section-shell";
 
@@ -67,19 +68,21 @@ export function RolesSection() {
             <div>
               <h3 className="text-2xl leading-tight font-medium tracking-[-0.025em] text-(color:--fos-fg) sm:text-[2rem]">{role.tagline}</h3>
               <div className="mt-8 flex flex-wrap gap-3">
-                <form method="post" action="/api/public/demo-login">
-                  <input type="hidden" name="email" value={role.demoEmail} />
-                  <button type="submit" className="fos-btn fos-btn-primary">
-                    Try the {role.label} demo
-                    <ArrowRight className="size-4" aria-hidden />
-                  </button>
-                </form>
+                {DEMO_QUICK_LOGIN && (
+                  <form method="post" action="/api/public/demo-login">
+                    <input type="hidden" name="email" value={role.demoEmail} />
+                    <button type="submit" className="fos-btn fos-btn-primary">
+                      Try the {role.label} demo
+                      <ArrowRight className="size-4" aria-hidden />
+                    </button>
+                  </form>
+                )}
                 <Link href={`/tour#tour-${role.key}`} className="fos-btn fos-btn-ghost">
                   <Box className="size-4" aria-hidden />
                   {role.room} in 3D
                 </Link>
               </div>
-              <p className="mt-4 text-sm text-(color:--fos-faint)">Opens a sample school as this person. No sign-up.</p>
+              {DEMO_QUICK_LOGIN && <p className="mt-4 text-sm text-(color:--fos-faint)">Opens a sample school as this person. No sign-up.</p>}
             </div>
             <ul className="grid gap-x-8 gap-y-6 sm:grid-cols-2">
               {role.features.map((f) => {

@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowRight, CalendarCheck, Play } from "lucide-react";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
 import type { StopKey } from "./path";
 import { TOUR_ROLES, type TourRole, type TourRoleKey } from "./roles";
 
@@ -88,6 +89,7 @@ export function FinaleCard() {
 
 /** Same as the /demo role cards: plain form, no JS, so an early click still submits natively. */
 export function DemoForm({ role, ghost = false }: { role: TourRole; ghost?: boolean }) {
+  if (!DEMO_QUICK_LOGIN) return null;
   return (
     <form method="post" action="/api/public/demo-login">
       <input type="hidden" name="email" value={role.demoEmail} />

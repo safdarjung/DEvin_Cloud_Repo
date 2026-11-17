@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { HONESTY_TEXT, PLAIN_FACTS, START_STEPS, THREADS, TRUST } from "@/components/home/story";
 import { TOUR_ROLES } from "@/components/tour/roles";
+import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
 import { Weave } from "../Weave";
 import "./closing.css";
 
@@ -100,21 +101,23 @@ export function TrySlide() {
           </Link>
         </nav>
       </div>
-      <ul className="y-demos">
-        {TOUR_ROLES.map((r) => (
-          <li key={r.key}>
-            {/* Same as DemoForm in src/components/tour/TourCards.tsx: a plain form, so it works before hydration. */}
-            <form method="post" action="/api/public/demo-login">
-              <input type="hidden" name="email" value={r.demoEmail} />
-              <button type="submit" className="y-demo" style={{ "--role": r.accent } as CSSProperties}>
-                <span className="y-swatch" aria-hidden />
-                Try the {r.label} demo
-                <ArrowRight aria-hidden className="dk-ico y-arrow" />
-              </button>
-            </form>
-          </li>
-        ))}
-      </ul>
+      {DEMO_QUICK_LOGIN && (
+        <ul className="y-demos">
+          {TOUR_ROLES.map((r) => (
+            <li key={r.key}>
+              {/* Same as DemoForm in src/components/tour/TourCards.tsx: a plain form, so it works before hydration. */}
+              <form method="post" action="/api/public/demo-login">
+                <input type="hidden" name="email" value={r.demoEmail} />
+                <button type="submit" className="y-demo" style={{ "--role": r.accent } as CSSProperties}>
+                  <span className="y-swatch" aria-hidden />
+                  Try the {r.label} demo
+                  <ArrowRight aria-hidden className="dk-ico y-arrow" />
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

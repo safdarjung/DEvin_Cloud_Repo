@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRef, useState, type CSSProperties } from "react";
 import { TOUR_ROLES } from "@/components/tour/roles";
+import { DEMO_QUICK_LOGIN } from "@/lib/auth/demo-flag";
 import { homeIcon } from "../icons";
 import { HONESTY_TEXT } from "../story";
 import { tabKeyDown } from "../tabs";
@@ -55,12 +56,14 @@ export function People() {
         <div className="lh-person-head">
           <h3 className="lm-display lh-h3">{role.tagline}</h3>
           <div className="lh-person-actions">
-            <form method="post" action="/api/public/demo-login">
-              <input type="hidden" name="email" value={role.demoEmail} />
-              <button type="submit" className="lm-btn">
-                Try the {role.label} demo <ArrowRight aria-hidden className="size-4" />
-              </button>
-            </form>
+            {DEMO_QUICK_LOGIN && (
+              <form method="post" action="/api/public/demo-login">
+                <input type="hidden" name="email" value={role.demoEmail} />
+                <button type="submit" className="lm-btn">
+                  Try the {role.label} demo <ArrowRight aria-hidden className="size-4" />
+                </button>
+              </form>
+            )}
             <button
               type="button"
               className="lm-btn"
