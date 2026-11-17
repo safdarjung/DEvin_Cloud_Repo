@@ -40,16 +40,7 @@ export async function POST(request: Request): Promise<Response> {
     console.error("/api/public/invite misconfigured: CRON_SECRET missing");
     return json(fail("internal", "Something went wrong. Please try again."), 500);
   }
-  // Same client key and attempt limit as /start (5 per client per 15 min).
-  const client = sha256Hex(clientIp(request) + sha256Hex(`${secret}:${new Date().toISOString().slice(0, 10)}`));
   const admin = createSchoolStartAdminClient();
-  const attempt = await admin.rpc("record_school_start_attempt", { p_client_hash: client, p_code: token });
-  if (attempt.error) {
-    const mapped = mapSqlError(attempt.error);
-    if (!mapped.ok && mapped.error.code === "rate_limited") return json(fail("rate_limited", "Too many attempts. Try again later."), 429);
-    return json(mapped, 500);
-  }
-
   const { data: invitation, error: lookupError } = await admin
     .from("invitations")
     .select("email, institution_id, accepted_at, revoked_at, expires_at")
@@ -57,6 +48,15 @@ export async function POST(request: Request): Promise<Response> {
     .maybeSingle();
   if (lookupError) return json(fail("internal", "Something went wrong. Please try again."), 500);
   if (!invitation || invitation.accepted_at || invitation.revoked_at || new Date(invitation.expires_at) <= new Date()) {
+    // Only wrong tokens count toward the /start limit (5 per client per 15 min). A valid token is itself the
+    // credential, so a school office behind one IP can still onboard many people at once.
+    const client = sha256Hex(clientIp(request) + sha256Hex(`${secret}:${new Date().toISOString().slice(0, 10)}`));
+    const attempt = await admin.rpc("record_school_start_attempt", { p_client_hash: client, p_code: token });
+    if (attempt.error) {
+      const mapped = mapSqlError(attempt.error);
+      if (!mapped.ok && mapped.error.code === "rate_limited") return json(fail("rate_limited", "Too many attempts. Try again later."), 429);
+      return json(mapped, 500);
+    }
     return json(fail("forbidden", INVALID_LINK), 403);
   }
 

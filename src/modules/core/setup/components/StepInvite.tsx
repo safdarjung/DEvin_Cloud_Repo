@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { describeActionError } from "@/lib/action-error";
 import { inviteMember } from "@/modules/core/actions";
 import { setProgress } from "@/modules/core/setup/actions";
-import { MAX_INVITES_PER_BATCH, parseEmailList } from "@/modules/core/setup/email-list";
+import { MAX_INVITES_PER_BATCH, parseEmailList, staffFromEmail } from "@/modules/core/setup/email-list";
 import type { SetupStepState } from "@/modules/core/setup/queries";
+import { upsertStaff } from "@/modules/people/actions";
 
 const SELECT_CLASS = "h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm";
 const ROLES = [
@@ -50,7 +51,12 @@ export function StepInvite({ institutionSlug, state, invitationCount }: StepInvi
     setError(null);
     const results: Outcome[] = [];
     for (const email of valid) {
-      const res = await inviteMember(institutionSlug, { email, role });
+      const staff = await upsertStaff(institutionSlug, staffFromEmail(email, role));
+      if (!staff.ok) {
+        results.push({ email, ok: false, message: describeActionError(staff.error) });
+        continue;
+      }
+      const res = await inviteMember(institutionSlug, { email, role, staffId: staff.data.id });
       results.push(
         res.ok
           ? { email, ok: true, delivery: res.data.delivery, link: `${window.location.origin}/invite#token=${res.data.token}` }

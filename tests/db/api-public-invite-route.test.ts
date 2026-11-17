@@ -19,10 +19,10 @@ afterAll(async () => {
   await closeRolesHelper();
 });
 
-function request(body: unknown): Request {
+function request(body: unknown, ip: string = crypto.randomUUID()): Request {
   return new Request("http://localhost/api/public/invite", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-forwarded-for": crypto.randomUUID() },
+    headers: { "content-type": "application/json", "x-forwarded-for": ip },
     body: JSON.stringify(body),
   });
 }
@@ -82,6 +82,25 @@ describe("POST /api/public/invite", () => {
       expect(inv.accepted_at).toBeNull();
     } finally {
       if (created.data.user) await admin().auth.admin.deleteUser(created.data.user.id);
+      await fixture.cleanup();
+    }
+  });
+
+  it("wrong tokens are limited per client, but a valid token from that same client still works", async () => {
+    const ip = crypto.randomUUID();
+    const wrong = () => request({ token: crypto.randomUUID().replaceAll("-", "").repeat(2), fullName: "Nobody", password: PASSWORD }, ip);
+    for (let i = 0; i < 5; i++) expect((await join(wrong())).status).toBe(403);
+    expect((await join(wrong())).status).toBe(429);
+
+    const fixture = await createTestInstitution("join-limit");
+    const email = `limit-${crypto.randomUUID()}@test.local`;
+    try {
+      const token = await invite(fixture, email);
+      const res = await join(request({ token, fullName: "Still Fine", password: PASSWORD }, ip));
+      expect(res.status).toBe(200);
+    } finally {
+      const [u] = await sql`select id from auth.users where email = ${email}`;
+      if (u) await admin().auth.admin.deleteUser(u.id);
       await fixture.cleanup();
     }
   });

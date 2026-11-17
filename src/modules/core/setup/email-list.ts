@@ -12,6 +12,25 @@ export interface ParsedEmails {
   duplicates: number;
 }
 
+// invite_member needs a staff row for every staff-class role (0079), so each pasted address first gets a
+// placeholder one, named after the address; the school can correct the name later in Staff.
+export function staffFromEmail(email: string, role: string) {
+  const local = email.split("@")[0] ?? email;
+  const fullName = local
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const designation = role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
+  return {
+    employeeNo: `INV-${crypto.randomUUID().replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+    fullName: fullName || local,
+    designation,
+    email,
+    isTeaching: role === "teacher",
+  };
+}
+
 export function parseEmailList(text: string): ParsedEmails {
   const seen = new Set<string>();
   const valid: string[] = [];
